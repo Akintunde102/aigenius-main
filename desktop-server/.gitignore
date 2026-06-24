@@ -1,0 +1,6 @@
+dist/
+node_modules/
+
+# Local Python env (TTS sidecar deps)
+venv/
+.venv/

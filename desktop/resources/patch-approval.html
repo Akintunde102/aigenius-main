@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'" />
+    <title>File changes</title>
+    <style>
+      :root {
+        --bg: #0f1114;
+        --surface: #161a20;
+        --surface-hover: #1c2129;
+        --border: rgba(148, 163, 184, 0.12);
+        --border-strong: rgba(148, 163, 184, 0.2);
+        --text: #e8eaef;
+        --muted: #94a3b8;
+        --dim: #64748b;
+        --accent: #38bdf8;
+        --accent-dim: rgba(56, 189, 248, 0.14);
+        --accent-border: rgba(56, 189, 248, 0.45);
+        --create: #34d399;
+        --create-bg: rgba(52, 211, 153, 0.1);
+        --update: #38bdf8;
+        --update-bg: rgba(56, 189, 248, 0.1);
+        --delete: #fb923c;
+        --delete-bg: rgba(251, 146, 60, 0.1);
+        --radius: 12px;
+        --radius-sm: 8px;
+        --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--font);
+        font-size: 14px;
+        line-height: 1.45;
+        color: var(--text);
+        background: var(--bg);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .chrome {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding: 0;
+      }
+
+      #titlebar-drag {
+        height: env(titlebar-area-height, 0px);
+        width: 100%;
+        -webkit-app-region: drag;
+        flex-shrink: 0;
+        background: var(--bg);
+      }
+
+      .content-scroll {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 12px 22px 8px;
+      }
+
+      .content-scroll::-webkit-scrollbar {
+        width: 8px;
+      }
+      .content-scroll::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.25);
+        border-radius: 4px;
+      }
+
+      .list-wrap {
+        min-height: 80px;
+        margin: 0 -2px;
+        padding: 0 2px 4px;
+        border-radius: var(--radius);
+      }
+
+      .row {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        transition: border-color 0.15s ease, background 0.15s ease;
+      }
+
+      .row:hover {
+        background: var(--surface-hover);
+        border-color: var(--border-strong);
+      }
+
+      .badge {
+        flex-shrink: 0;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 4px 8px;
+        border-radius: 6px;
+        margin-top: 2px;
+      }
+
+      .badge.create {
+        color: var(--create);
+        background: var(--create-bg);
+        border: 1px solid rgba(52, 211, 153, 0.25);
+      }
+      .badge.update {
+        color: var(--update);
+        background: var(--update-bg);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+      }
+      .badge.delete {
+        color: var(--delete);
+        background: var(--delete-bg);
+        border: 1px solid rgba(251, 146, 60, 0.28);
+      }
+
+      .path-block {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .file-name {
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text);
+        word-break: break-all;
+      }
+
+      .dir {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 3px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        direction: rtl;
+        text-align: left;
+      }
+
+      .dir-inner {
+        direction: ltr;
+        unicode-bidi: embed;
+      }
+
+      .footer {
+        flex-shrink: 0;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 22px 18px;
+        border-top: 1px solid var(--border);
+        background: var(--bg);
+        box-shadow: 0 -12px 24px rgba(0, 0, 0, 0.35);
+      }
+
+      button {
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        border-radius: 9px;
+        padding: 9px 16px;
+        border: 1px solid transparent;
+        -webkit-app-region: no-drag;
+        transition:
+          background 0.15s ease,
+          border-color 0.15s ease,
+          color 0.15s ease;
+      }
+
+      button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .btn-cancel {
+        background: transparent;
+        color: var(--muted);
+        border-color: var(--border);
+      }
+      .btn-cancel:hover {
+        background: var(--surface);
+        color: var(--text);
+        border-color: var(--border-strong);
+      }
+
+      .btn-apply {
+        background: var(--accent-dim);
+        color: var(--accent);
+        border-color: var(--accent-border);
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.08);
+      }
+      .btn-apply:hover {
+        background: rgba(56, 189, 248, 0.22);
+        color: #7dd3fc;
+        border-color: rgba(56, 189, 248, 0.55);
+      }
+
+      .empty {
+        color: var(--dim);
+        padding: 24px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chrome">
+      <div id="titlebar-drag" aria-hidden="true"></div>
+      <div class="content-scroll">
+        <div class="list-wrap" id="list"></div>
+      </div>
+      <div class="footer">
+        <button type="button" class="btn-cancel" id="btn-cancel">Cancel</button>
+        <button type="button" class="btn-apply" id="btn-apply">Apply</button>
+      </div>
+    </div>
+    <script>
+      const api = window.aigeniusPatchApproval;
+      if (!api) {
+        document.getElementById('list').innerHTML = '<div class="empty">UI failed to load.</div>';
+        throw new Error('aigeniusPatchApproval missing');
+      }
+
+      function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      function render(data) {
+        const list = document.getElementById('list');
+        list.innerHTML = '';
+
+        if (!data.rows || data.rows.length === 0) {
+          list.innerHTML = '<div class="empty">No changes.</div>';
+          return;
+        }
+
+        for (const row of data.rows) {
+          const el = document.createElement('div');
+          el.className = 'row';
+          el.setAttribute('title', row.fullPath);
+          el.innerHTML =
+            '<span class="badge ' +
+            esc(row.variant) +
+            '">' +
+            esc(row.verb) +
+            '</span>' +
+            '<div class="path-block">' +
+            '<div class="file-name">' +
+            esc(row.fileName) +
+            '</div>' +
+            '<div class="dir"><span class="dir-inner">' +
+            esc(row.directory) +
+            '</span></div>' +
+            '</div>';
+
+          list.appendChild(el);
+        }
+      }
+
+      api.bootstrap(function (data) {
+        render(data);
+      });
+
+      document.getElementById('btn-cancel').addEventListener('click', function () {
+        api.done(false);
+      });
+      document.getElementById('btn-apply').addEventListener('click', function () {
+        api.done(true);
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+**/.git
+**/.next
+**/node_modules
+**/dist
+**/release
+**/.env.local
+backend/env
+**/*.log
+desktop
+desktop-server
+.agent
+**/.next
+**/whisper.cpp

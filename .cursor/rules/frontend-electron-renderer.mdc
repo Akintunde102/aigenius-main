@@ -1,0 +1,25 @@
+---
+description: Next.js renderer when embedded in Electron — IPC usage, perceived performance, cleanup.
+globs: frontend/**/*
+alwaysApply: false
+---
+
+# Frontend in the Electron shell
+
+When editing code that runs in **both** the web app and the **AIGenius Electron** `BrowserWindow`, apply web performance as usual **plus** desktop constraints. Principles align with [Johnny Le — Building High-Performance Electron Apps](https://www.johnnyle.io/read/electron-performance). See skill **`electron-desktop-performance`**.
+
+## Detecting the shell
+
+Use `frontend/src/lib/utils/desktop-runtime.ts` (`isAigeniusDesktopRuntime()`, `isLikelyElectronRenderer()`, etc.). Do not assume every visitor is Electron.
+
+## Must follow (shell-aware paths)
+
+1. **IPC:** use **async** APIs exposed by preload (`invoke`-style patterns); never introduce synchronous IPC that blocks the renderer.
+2. **Subscriptions:** `ipcRenderer.on` (or bridge wrappers) must be **removed** on unmount or when the handler scope ends—match existing cleanup patterns in the file.
+3. **Perceived performance:** optimistic updates, loading states, `startTransition` / `useTransition` for non-urgent UI so the chat shell stays responsive.
+4. **Long sessions:** avoid unbounded in-memory growth (message lists, caches); prefer virtualization patterns already used for long chats where applicable.
+5. **Bundle:** keep heavy desktop-only code behind dynamic import or narrow imports so the web build does not pay unnecessary cost.
+
+## Coordination
+
+- IPC and preload contract changes require corresponding updates in `desktop/src` preload/main—mention both sides in the same change when possible.

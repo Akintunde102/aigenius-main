@@ -1,0 +1,987 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 34 41% 96%;
+    --foreground: 212 28% 17%;
+
+    --card: 35 56% 98%;
+    --card-foreground: 212 28% 17%;
+
+    --popover: 35 56% 98%;
+    --popover-foreground: 212 28% 17%;
+
+    --primary: 219 64% 58%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 37 31% 91%;
+    --secondary-foreground: 212 22% 29%;
+
+    --muted: 35 30% 93%;
+    --muted-foreground: 213 14% 37%;
+
+    --accent: 28 66% 60%;
+    --accent-foreground: 24 35% 18%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 214 20% 84%;
+    --input: 214 20% 84%;
+    --ring: 219 64% 58%;
+
+    --radius: 0.9rem;
+
+    --app-ink-900: #1f2a37;
+    --app-ink-700: #3a4757;
+    --app-mist-50: #fffaf4;
+    --app-mist-100: #f5f1ea;
+    --app-mist-200: #eae2d6;
+    --app-panel: rgba(255, 250, 244, 0.88);
+    --app-panel-strong: #fff9f2;
+    --app-brand-500: #4c7fd9;
+    --app-brand-600: #3e6fc4;
+    --app-accent-400: #e6a86a;
+    --app-accent-500: #d99152;
+    --app-success: #4d8b6a;
+    --app-border-soft: rgba(58, 71, 87, 0.1);
+    --app-shadow-soft: 0 18px 55px -24px rgba(31, 42, 55, 0.28);
+    --app-shadow-card: 0 12px 28px -18px rgba(76, 127, 217, 0.24);
+
+    /* Custom design tokens */
+    --gradient-primary: linear-gradient(135deg, #4c7fd9, #7ca4ea);
+    --gradient-subtle: linear-gradient(135deg, #fffaf4, #f5f1ea);
+    --gradient-dark: linear-gradient(135deg, #1f2a37, #314459);
+
+    --auth-bg: 0 0% 3%;
+    --auth-sidebar: 0 0% 6%;
+    --auth-sidebar-foreground: 0 0% 98%;
+
+    --shadow-elegant: 0 10px 40px -10px hsl(0 0% 0% / 0.5);
+    --shadow-subtle: 0 1px 3px 0 hsl(0 0% 0% / 0.3);
+
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --workflow-shell-gradient: linear-gradient(180deg, #f4f6f9 0%, #eef1f6 100%);
+    --workflow-canvas-bg: #f0f4f8;
+    --workflow-canvas-dot: rgba(58, 71, 87, 0.072);
+
+    /* ── Sidebar theme tokens (light defaults) ───────────────────────────────────
+     * Override in .dark below for the charcoal feel. */
+    --sidebar-bg: #f8f9fa;
+    --sidebar-bg-list: #eef0f3;
+    --sidebar-border: rgba(0, 0, 0, 0.08);
+    --sidebar-fg: #1c1d1f;
+    --sidebar-muted-fg: #6b7280;
+    --sidebar-icon-btn-bg: rgba(0, 0, 0, 0.055);
+    --sidebar-icon-btn-border: rgba(0, 0, 0, 0.12);
+    --sidebar-icon-btn-hover-bg: rgba(0, 0, 0, 0.1);
+    --sidebar-list-dot: rgba(60, 65, 80, 0.1);
+    --sidebar-search-bg: rgba(0, 0, 0, 0.05);
+    --sidebar-search-border: rgba(0, 0, 0, 0.12);
+    --sidebar-search-fg: #374151;
+    --sidebar-menu-bg: #ffffff;
+    --sidebar-menu-border: rgba(0, 0, 0, 0.1);
+    --sidebar-menu-row-hover: rgba(0, 0, 0, 0.05);
+    --sidebar-menu-fg: #1c1d1f;
+
+    /* Chat — neutral surfaces; accent reserved for primary actions */
+    --chat-canvas-bg: #f5f1ea;
+    --chat-composer-bg: #ffffff;
+    --chat-composer-border: rgba(0, 0, 0, 0.1);
+    --chat-muted-fg: #6b7280;
+    --chat-accent: #3b82f6;
+    --chat-accent-hover: #2563eb;
+    --chat-accent-muted: #eff6ff;
+    --sidebar-row-hover: rgba(0, 0, 0, 0.05);
+    --sidebar-row-active: rgba(0, 0, 0, 0.08);
+
+    --modal-overlay: rgba(15, 23, 42, 0.45);
+    --modal-bg: #ffffff;
+    --modal-bg-muted: #f8f9fa;
+    --modal-border: rgba(0, 0, 0, 0.1);
+    --modal-fg: #1c1d1f;
+    --modal-muted-fg: #6b7280;
+    --surface-elevated: #ffffff;
+    --surface-muted: #f3f4f6;
+    --credits-fg: #4d7c5a;
+    --user-bubble-bg: #eff6ff;
+    --user-bubble-border: #bfdbfe;
+    --user-bubble-fg: #0f172a;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+
+    /* Chat canvas + prose — adapts with the sidebar via CSS vars (--sidebar-*) */
+    --app-ink-900: #e8eaef;
+    --app-ink-700: #cbd5e1;
+    --app-mist-50: #121214;
+    --app-mist-100: #0b0b0e;
+    --app-mist-200: #18181c;
+    --app-panel: rgba(30, 30, 33, 0.92);
+    --app-panel-strong: #222226;
+    --app-brand-500: #60a5fa;
+    --app-brand-600: #3b82f6;
+    --app-accent-400: #e6a86a;
+    --app-accent-500: #d99152;
+    --app-success: #6ee7b7;
+    --app-border-soft: rgba(248, 250, 252, 0.09);
+    --app-shadow-soft: 0 18px 55px -24px rgba(0, 0, 0, 0.55);
+    --app-shadow-card: 0 12px 28px -18px rgba(0, 0, 0, 0.5);
+
+    --gradient-primary: linear-gradient(135deg, #3b82f6, #60a5fa);
+    --gradient-subtle: linear-gradient(135deg, #18181b, #27272a);
+    --gradient-dark: linear-gradient(135deg, #0f1114, #1a1d24);
+
+    --workflow-shell-gradient: linear-gradient(180deg, #121214 0%, #0c0c0e 100%);
+    --workflow-canvas-bg: #18181b;
+    --workflow-canvas-dot: rgba(255, 255, 255, 0.045);
+
+    /* ── Sidebar dark — stepped surface above chat canvas (no competing blues) */
+    --sidebar-bg: #16161a;
+    --sidebar-bg-list: #16161a;
+    --sidebar-border: rgba(255, 255, 255, 0.06);
+    --sidebar-fg: #ececef;
+    --sidebar-muted-fg: #9ca3af;
+    --sidebar-icon-btn-bg: rgba(255, 255, 255, 0.06);
+    --sidebar-icon-btn-border: rgba(255, 255, 255, 0.08);
+    --sidebar-icon-btn-hover-bg: rgba(255, 255, 255, 0.1);
+    --sidebar-list-dot: transparent;
+    --sidebar-search-bg: rgba(255, 255, 255, 0.05);
+    --sidebar-search-border: rgba(255, 255, 255, 0.08);
+    --sidebar-search-fg: #ececef;
+    --sidebar-menu-bg: #1c1c20;
+    --sidebar-menu-border: rgba(255, 255, 255, 0.08);
+    --sidebar-menu-row-hover: rgba(255, 255, 255, 0.06);
+    --sidebar-menu-fg: #ececef;
+    --sidebar-row-hover: rgba(255, 255, 255, 0.06);
+    --sidebar-row-active: rgba(255, 255, 255, 0.09);
+
+    --chat-canvas-bg: #0b0b0e;
+    --chat-composer-bg: #18181c;
+    --chat-composer-border: rgba(255, 255, 255, 0.08);
+    --chat-muted-fg: #9ca3af;
+    --chat-accent: #3b82f6;
+    --chat-accent-hover: #2563eb;
+    --chat-accent-muted: rgba(59, 130, 246, 0.12);
+
+    --modal-overlay: rgba(0, 0, 0, 0.58);
+    --modal-bg: #18181c;
+    --modal-bg-muted: #1e1e22;
+    --modal-border: rgba(255, 255, 255, 0.08);
+    --modal-fg: #ececef;
+    --modal-muted-fg: #9ca3af;
+    --surface-elevated: #1e1e22;
+    --surface-muted: #16161a;
+    --credits-fg: #9eceb0;
+    --user-bubble-bg: #1a1a1f;
+    --user-bubble-border: rgba(255, 255, 255, 0.1);
+    --user-bubble-fg: #ececef;
+  }
+}
+
+@layer components {
+  .app-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--modal-overlay);
+    padding: 1rem;
+  }
+
+  .app-modal-panel {
+    display: flex;
+    max-height: min(90vh, 640px);
+    width: 100%;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 12px;
+    border: 1px solid var(--modal-border);
+    background: var(--modal-bg);
+    color: var(--modal-fg);
+    box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.45);
+  }
+
+  .app-modal-panel-header {
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--modal-border);
+    background: var(--modal-bg-muted);
+    padding: 1rem 1.25rem;
+  }
+
+  .app-modal-panel-body {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.25rem 1.25rem;
+  }
+
+  .app-modal-field-label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--modal-muted-fg);
+  }
+
+  .app-modal-input {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--modal-border);
+    background: var(--surface-muted);
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--modal-fg);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &::placeholder {
+      color: var(--modal-muted-fg);
+    }
+
+    &:focus {
+      border-color: color-mix(in srgb, var(--chat-accent) 45%, var(--modal-border));
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--chat-accent) 18%, transparent);
+    }
+  }
+
+  .app-modal-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 8px;
+    background: var(--chat-accent);
+    padding: 0.625rem 1rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #fff;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+
+    &:hover:not(:disabled) {
+      background: var(--chat-accent-hover);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+  }
+
+  .app-modal-tab {
+    flex: 1;
+    border-bottom: 2px solid transparent;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--modal-muted-fg);
+    transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+
+    &:hover {
+      color: var(--modal-fg);
+      background: color-mix(in srgb, var(--surface-muted) 65%, transparent);
+    }
+  }
+
+  .app-modal-tab--active {
+    border-bottom-color: var(--chat-accent);
+    color: var(--modal-fg);
+  }
+
+  .app-surface-card {
+    border: 1px solid var(--modal-border);
+    background: var(--surface-elevated);
+    color: var(--modal-fg);
+  }
+
+  .app-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 6px;
+    border: 1px solid var(--modal-border);
+    background: var(--surface-muted);
+    padding: 0.125rem 0.375rem;
+    font-size: 0.8125rem;
+    color: var(--modal-fg);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+      background: color-mix(in srgb, var(--surface-elevated) 88%, var(--sidebar-row-hover));
+    }
+  }
+
+  .app-chip--active {
+    border-color: color-mix(in srgb, var(--chat-accent) 40%, var(--modal-border));
+    background: color-mix(in srgb, var(--chat-accent) 12%, var(--surface-muted));
+  }
+
+  .app-tab-pill {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--modal-muted-fg);
+    background: transparent;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      color: var(--modal-fg);
+      background: var(--sidebar-row-hover);
+    }
+  }
+
+  .app-tab-pill--active {
+    background: var(--chat-accent);
+    color: #fff;
+  }
+}
+
+/* Sidebar menu row — picks up theme-aware hover from CSS vars defined in :root / .dark above */
+.sidebar-menu-row {
+  color: var(--sidebar-menu-fg);
+}
+
+.sidebar-menu-row:hover {
+  background-color: var(--sidebar-menu-row-hover);
+}
+
+@layer base {
+  h1 {
+    font-weight: 600;
+    font-size: 34px;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.5rem;
+  }
+
+  h2 {
+    font-weight: 600;
+    font-size: 26px;
+    line-height: 1.3;
+    letter-spacing: -0.005em;
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  h3 {
+    font-weight: 600;
+    font-size: 20px;
+    line-height: 1.35;
+    margin-top: 1.25rem;
+    margin-bottom: 0.25rem;
+  }
+
+  h4 {
+    font-weight: 600;
+    font-size: 17px;
+    line-height: 19px;
+  }
+
+  h5 {
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 17px;
+
+  }
+
+  a.n_link {
+    color: #2563eb;
+    text-decoration: underline;
+  }
+
+  .dark a.n_link {
+    color: #7cb3ff;
+  }
+}
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  background-color: var(--app-mist-100);
+  color: var(--app-ink-900);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  text-rendering: optimizeLegibility;
+}
+
+.auth {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+}
+
+input {
+  outline: none !important;
+}
+
+/* Global typography improvements */
+p {
+  line-height: 1.7;
+  letter-spacing: 0.2px;
+}
+
+ul,
+ol {
+  padding-left: 1.25rem;
+}
+
+ul li,
+ol li {
+  margin: 0.25rem 0;
+}
+
+code,
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.95em;
+}
+
+blockquote {
+  border-left: 3px solid #e5e7eb;
+  padding-left: 0.75rem;
+  color: #374151;
+}
+
+.auth-btn {
+  background: linear-gradient(93.49deg,
+      #fecb00 59.01%,
+      #d19500 100.52%,
+      #fecb00 109.82%);
+  color: #0c0c0b;
+  font-weight: 500;
+  transition: background 0.3s ease;
+  /* Add transition for smooth color change */
+
+  /* Hover effect */
+  &:hover {
+    background: linear-gradient(93.49deg,
+        #ffdb58 59.01%,
+        /* Adjust the color for hover effect */
+        #d19500 100.52%,
+        #ffdb58 109.82%);
+  }
+
+  /* Active effect */
+  &:active {
+    opacity: 0.8;
+    /* Adjust opacity for active effect */
+  }
+}
+
+
+.circles-bg {
+  background:
+    radial-gradient(farthest-side, #fecb00 32%, yellow 90%, purple 93%, purple 96%, transparent) left center/60px 60px,
+    radial-gradient(farthest-side, #d19500 96%, transparent) bottom left/80px 80px,
+    radial-gradient(farthest-side, #fecb00 96%, transparent) top right/80px 80px,
+    radial-gradient(farthest-side, #fecb00 96%, transparent) 100px 50px/100px 100px,
+    radial-gradient(farthest-side, #d19500 96%, transparent) top left/40px 40px,
+    #000;
+
+  background-repeat: no-repeat;
+}
+
+
+.welcome-bg {
+  background-image: url("/welcome-bg.svg");
+  background-size: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.welcome-bg {
+  position: relative;
+}
+
+.welcome-bg::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to top right, transparent 0%, #FAFAFA 83%);
+  opacity: 1;
+  /* Adjust the opacity value to control the fading effect */
+}
+
+.fixed-header {
+  position: sticky;
+  top: 0;
+  background-color: white;
+}
+
+.modal-overlay::before {
+  content: "";
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.07);
+  z-index: 2;
+}
+
+
+.header {
+  position: sticky;
+  top: 0rem;
+  height: 60px;
+  z-index: 10;
+}
+
+.sidebar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  transition: translate 200ms ease;
+}
+
+/* Custom thin scrollbar for sidebars */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 transparent;
+  /* slate-300 */
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #CBD5E1;
+  /* slate-300 */
+  border-radius: 9999px;
+  border: 2px solid transparent;
+}
+
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background-color: #94A3B8;
+  /* slate-400 */
+}
+
+
+.editor-bg {
+  border-radius: 4px;
+  border-color: #404040;
+  background-color: #1E1E1E;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 0),
+    radial-gradient(rgba(255, 255, 255, 0.01) 1px, transparent 0);
+
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 100%;
+    max-width: 320px;
+    right: auto;
+    left: 0;
+    translate: -100% 0;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    position: fixed;
+    z-index: 40;
+  }
+
+  .sidebar.translate-x-0 {
+    translate: 0 0;
+  }
+
+  // Ensure main content doesn't get pushed to the side on mobile
+  main {
+    .flex.flex-col.flex-1 {
+      margin-left: 0 !important;
+      width: 100% !important;
+      position: relative;
+      z-index: 1;
+    }
+  }
+
+  // Mobile-specific content padding
+  .mobile-content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    width: 100%;
+  }
+
+  // Ensure ModelInterface is properly positioned on mobile
+  .model-interface-mobile {
+    position: relative;
+    z-index: 35;
+    top: 0;
+    height: calc(var(--vh, 1vh) * 100);
+    max-height: calc(var(--vh, 1vh) * 100);
+    width: 100%;
+    left: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  // Ensure main content is not affected by sidebar on mobile
+  main.flex.flex-row {
+    position: relative;
+    width: 100%;
+  }
+
+  // Ensure sidebar overlays content properly
+  .sidebar {
+    position: fixed !important;
+    z-index: 40 !important;
+  }
+
+  main:has(#menuToggler:checked) {
+    .sidebar {
+      backdrop-filter: blur(10px);
+      translate: 0 0;
+    }
+
+    #menuHandle {
+      &>div:first-of-type {
+        display: none;
+      }
+
+      &>div:last-of-type {
+        display: block;
+      }
+    }
+  }
+
+  #menuHandle {
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    position: relative;
+    outline: 0;
+    border: 0;
+
+    &>div:last-of-type {
+      display: none;
+    }
+
+    input#menuToggler {
+      background-color: transparent;
+      border: 0;
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      outline: none !important;
+      box-shadow: none;
+      cursor: pointer;
+
+      &:checked {
+        background: none;
+      }
+    }
+  }
+
+  // Debug styles for mobile layout
+  body {
+    overflow-x: hidden;
+  }
+
+  main {
+    overflow-x: hidden;
+    width: 100%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .auth-bg {
+    background-image: url("/auth-bg.png");
+    background-size: cover;
+    width: 614px;
+    height: 614px;
+  }
+}
+
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9998;
+  background-color: var(--modal-overlay);
+}
+
+
+.modal-grid {
+  background-image: url('/hero-grid.png');
+  background-size: cover;
+  background-repeat: repeat;
+  width: 100%;
+}
+
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  background: var(--modal-bg);
+  color: var(--modal-fg);
+  border: 1px solid var(--modal-border);
+  border-radius: 12px;
+  opacity: 1;
+
+
+  .close-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background-color: transparent;
+    color: #999999;
+    border: none;
+    font-size: 15px;
+    cursor: pointer;
+  }
+
+  .close-button:hover {
+    color: #f00;
+  }
+}
+
+.modal-content {
+  width: 600px;
+  padding-inline: 2rem;
+
+  overflow: auto;
+  scrollbar-color: transparent transparent;
+
+  @media screen and (max-width: 1024px) {
+    width: 24rem;
+  }
+}
+
+aside {
+  width: 290px;
+  background: #fff;
+
+  a:not(.sidebar-logo a) {
+    @apply flex px-5 py-1 items-center hover:text-secondary hover:font-medium cursor-pointer relative;
+
+    &.active {
+      @apply text-secondary font-medium items-center;
+    }
+
+    font-size: 13px;
+  }
+}
+
+.btn-primary {
+  background-color: #556dff;
+  color: #FAFAFA;
+
+  &.small {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 32px;
+    border-radius: 4px;
+    font-size: 12px;
+    height: 27px;
+    background-color: #F0F0FF;
+    color: #4945FF;
+    border: 1px solid #D9D8FF;
+
+    &:hover {
+      background-color: #D9D8FF;
+      border: 1px solid #4945FF;
+    }
+  }
+}
+
+
+.btn-primary-two {
+  background-color: #a1a6c8;
+  color: #FAFAFA;
+
+  &.small {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 32px;
+    border-radius: 4px;
+    height: 37px;
+    background-color: #F0F0FF;
+    color: #1c1c32;
+    border: 1px solid #D9D8FF;
+
+    &:hover {
+      background-color: #D9D8FF;
+      border: 1px solid #817fea;
+    }
+  }
+}
+
+.form-group {
+  @apply flex flex-col flex-nowrap;
+  margin-bottom: 16px;
+
+  label {
+    @apply text-sm pb-2 text-gray-500;
+  }
+
+  input[type='text'],
+  input[type='number'],
+  input[type='email'],
+  select,
+  textarea {
+    border: 1px solid #DCDCE4;
+    border-radius: 4px;
+    outline: none;
+    width: 100%;
+    height: 40px;
+  }
+
+  textarea {
+    height: 200px;
+  }
+
+  button {
+    background-color: #556dff;
+    margin-top: 10px;
+    color: #FAFAFA;
+    height: 40px;
+    border-radius: 4px;
+  }
+}
+
+.display-box {
+  width: 20rem;
+  max-width: 80%;
+
+  min-height: 10rem;
+
+  @media screen and (max-width: 500px) {
+    width: 40rem;
+    height: fit-content;
+    max-width: 100%;
+  }
+}
+
+
+.ant-upload.ant-upload-select {
+  display: block;
+}
+
+
+.ant-image {
+  margin-inline: 2.5rem;
+
+  &:first-of-type {
+    margin-inline: 0;
+  }
+
+  &:last-of-type {
+    margin-right: 0;
+  }
+}
+
+.nobox-upload-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: .5rem;
+
+  &>div {
+
+    height: fit-content !important;
+
+    img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: cover;
+    }
+  }
+}
+
+.ant-space-item {
+  // background-color: red;
+  height: 3rem;
+  aspect-ratio: 1;
+
+  span {
+    width: 100%;
+    height: 100%;
+
+    svg {
+      margin-inline: auto;
+      width: 60%;
+      height: 60%;
+
+    }
+  }
+}
+
+// Ensure proper height for layout
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#__next {
+  height: 100%;
+}
+
+@import 'desktop';

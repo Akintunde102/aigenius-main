@@ -1,0 +1,28 @@
+/* Schedule-run toasts: slide in from the right (top-right stack); library wraps content with this class. */
+@keyframes schedule-notification-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(100% + 12px));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.schedule-notification-toast {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  animation: schedule-notification-toast-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.schedule-notification-toast .schedule-run-toast-inner {
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .schedule-notification-toast {
+    animation: none;
+  }
+}

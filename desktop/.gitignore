@@ -1,0 +1,6 @@
+dist/
+dist-resources/
+release/
+node_modules/
+.env
+whisper.cpp/

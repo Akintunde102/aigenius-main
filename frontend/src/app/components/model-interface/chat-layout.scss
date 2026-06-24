@@ -1,0 +1,78 @@
+// Chat layout styles - separated from markdown styling for better organization
+
+.model-interface-container {
+    height: calc(var(--vh, 1vh) * 100);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.chat-area-container {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-area {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1.5rem;
+}
+
+.chat-input-container {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 50;
+}
+
+// Ensure chat messages don't overlap with input
+.chat-message {
+    margin-bottom: 1.5rem;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+}
+
+// Mobile responsive adjustments
+@media (max-width: 768px) {
+    .model-interface-container {
+        height: calc(var(--vh, 1vh) * 100);
+        width: 100%;
+    }
+
+    .chat-container {
+        height: 100%;
+        max-height: 100%;
+        overflow: hidden;
+    }
+
+    // Additional mobile keyboard handling
+}
+
+// Mobile keyboard handling - moved outside to avoid parent selector issues
+@media (max-width: 768px) {
+
+    // Smooth transitions when keyboard is closing
+    body:not(.keyboard-open) .model-interface-container {
+
+        .chat-input-container,
+        .chat-area-container,
+        .chat-area {
+            transition: all 0.2s ease-out;
+        }
+    }
+}

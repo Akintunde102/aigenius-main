@@ -1,0 +1,24 @@
+.x-input {
+    border: none;
+    border-bottom: 1px solid #ddd;
+    /* Default bottom border color */
+    outline: none;
+    /* Remove the outline */
+    padding: 1px 0 0;
+    /* Optional padding */
+    margin: 0;
+    /* Reset margin */
+    width: 100%;
+    /* Optional full width */
+    transition: border-color 0.9s ease;
+    line-height: 0.5rem;
+    font-size: 14px;
+}
+
+select.x-input {
+    line-height: 0.8rem;
+}
+
+.x-input:focus {
+    border: none;
+}

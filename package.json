@@ -1,0 +1,53 @@
+{
+  "name": "ai-genius",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "frontend",
+      "desktop",
+      "desktop-server"
+    ],
+    "nohoist": [
+      "**/better-sqlite3",
+      "**/better-sqlite3/**",
+      "**/onnxruntime-node",
+      "**/onnxruntime-node/**",
+      "**/sharp",
+      "**/sharp/**"
+    ]
+  },
+  "description": "AIGenius client monorepo — frontend, desktop, and desktop-server (backend is a separate repo)",
+  "scripts": {
+    "dev": "node scripts/dev.cjs",
+    "dev:all": "./scripts/run-all.sh",
+    "dev:backend": "node scripts/ensure-backend.cjs && cd backend && npm run dev",
+    "dev:frontend": "cd frontend && yarn dev",
+    "backend:clone": "node scripts/clone-backend.cjs",
+    "sync:backend": "node scripts/sync-backend.cjs",
+    "sync:client": "node scripts/sync-client.cjs",
+    "sync:frontend": "node scripts/run-sync.cjs frontend",
+    "publish:initial": "node scripts/initial-publish.cjs",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "dev:docker": "docker compose up --build",
+    "dev:docker:db": "docker compose run --rm api npm run db:migrate",
+    "db:sync-from-prod": "cd backend && npm run db:sync-from-prod",
+    "sync:codex": "python3 .agent/scripts/generate_codex_agents.py",
+    "desktop:dev": "cd desktop && npm install && npm run dev",
+    "desktop:package": "cd desktop && npm install && npm run package"
+  },
+  "devDependencies": {
+    "@neon-rs/cli": "^0.2.6",
+    "@types/ffmpeg-static": "^3.0.3",
+    "concurrently": "^9.1.0"
+  },
+  "resolutions": {
+    "sass": "1.69.5",
+    "@editorjs/embed": "2.7.2"
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
+  "dependencies": {
+    "ffmpeg-static": "^5.3.0"
+  }
+}

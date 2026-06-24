@@ -1,0 +1,201 @@
+/**
+ * Ultra-lightweight modal styles optimized for minimal processing power.
+ * 
+ * Performance optimizations:
+ * - No transitions or animations
+ * - No backdrop-filter (GPU-intensive)
+ * - No complex box-shadows
+ * - Minimal CSS properties
+ * - Hardware acceleration only where beneficial
+ * - No hover effects that cause repaints
+ */
+
+/* Base modal overlay - minimal styling */
+.lwm-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+/* Modal content container - minimal styling */
+.lwm-content {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive adjustments without media queries (better performance) */
+.lwm-content {
+    width: min(600px, 90vw);
+}
+
+/* Minimal scrollbar styling */
+.lwm-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.lwm-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.lwm-content::-webkit-scrollbar-thumb {
+    background-color: #ccc;
+    border-radius: 4px;
+}
+
+/* Performance-focused variants */
+
+/* Ultra-minimal variant - absolute minimum styling */
+.lwm-minimal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lwm-minimal-content {
+    background-color: white;
+    padding: 1rem;
+    border-radius: 4px;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+}
+
+/* High-contrast variant for accessibility without performance cost */
+.lwm-high-contrast .lwm-overlay {
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+.lwm-high-contrast .lwm-content {
+    border: 2px solid #333;
+}
+
+/* Mobile-optimized variant */
+.lwm-mobile .lwm-content {
+    width: 95vw;
+    height: 90vh;
+    max-width: none;
+    border-radius: 12px 12px 0 0;
+    margin-top: auto;
+}
+
+/* Focus management - minimal but accessible */
+.lwm-content:focus-visible {
+    outline: 2px solid #0066cc;
+    outline-offset: 2px;
+}
+
+/* Button styling for close buttons */
+.lwm-close-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    line-height: 1;
+    color: #666;
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+}
+
+.lwm-close-button:hover {
+    color: #333;
+}
+
+.lwm-close-button:focus-visible {
+    outline: 2px solid #0066cc;
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* Utility classes for common modal patterns */
+.lwm-centered-text {
+    text-align: center;
+}
+
+.lwm-button-group {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+.lwm-button {
+    padding: 0.5rem 1rem;
+    border: 1px solid #ccc;
+    background-color: white;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.lwm-button:hover {
+    background-color: #f5f5f5;
+}
+
+.lwm-button-primary {
+    background-color: #0066cc;
+    color: white;
+    border-color: #0066cc;
+}
+
+.lwm-button-primary:hover {
+    background-color: #0052a3;
+}
+
+/* Error/warning states without expensive animations */
+.lwm-error {
+    border-left: 4px solid #dc2626;
+}
+
+.lwm-warning {
+    border-left: 4px solid #f59e0b;
+}
+
+.lwm-success {
+    border-left: 4px solid #10b981;
+}
+
+/* Loading state - minimal spinner */
+.lwm-loading {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #333;
+    border-radius: 50%;
+    animation: lwm-spin 1s linear infinite;
+}
+
+@keyframes lwm-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Print styles - hide modals when printing */
+@media print {
+    .lwm-overlay {
+        display: none !important;
+    }
+}

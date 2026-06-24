@@ -1,0 +1,535 @@
+/**
+ * Composes model list, chat/session state, UI chrome, and wires useChatOperationsRefined.
+ * Entry point for everything the chat page needs below ModelInterface.
+ */
+import { useModelData, useComputedValues } from "../../features/models/hooks";
+import {
+  useChatData,
+  useChatOperationsRefined,
+  useSessionSwitcher,
+  useConversationEvents,
+} from "../../features/chat/hooks";
+import { DRAFT_SESSION_KEY } from "../../features/chat/hooks/chatOperations.constants";
+import { useUIState, useScrollAndKeyboard } from "../../shared/hooks";
+import {
+  AudioStatus,
+} from "../../features/chat/hooks/audioMode.utils";
+import { useConversationalMode } from "../../features/chat/hooks/useConversationalMode";
+import { useSentenceStreaming } from "../../features/chat/hooks/useSentenceStreaming";
+import { useAudioSTT } from "../../features/chat/hooks/useAudioSTT";
+import { useAudioSocket } from "../../features/chat/hooks/useAudioSocket";
+import {
+  getSavedChatItems,
+  saveChatItem,
+  removeSavedChatItemById,
+} from "@/lib/utils/modelChatConversationUtils";
+import { getUserDetails } from "@/lib/calls/get-logged-user-details";
+import {
+  ChatMessage,
+  PendingOrphanReply,
+  ChatSession,
+} from "@/app/components/model-interface/shared/types";
+import { LINKS } from "@/lib/links";
+import { authorizedFetch } from "@/lib/api/auth-client";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
+import {
+  listPersonalities,
+  Personality as PersonaType,
+} from "@/lib/calls/model-chat-conversation";
+import { resolveViewSessionId } from "../../conversation/conversationViewSession";
+
+export function useModelInterface(options?: {
+  onInsufficientFunds?: () => void;
+  routeConversationId?: string | null;
+}) {
+  const routeConversationId = options?.routeConversationId ?? null;
+
+  const {
+    models,
+    modelsLoading,
+    selectedModel,
+    setSelectedModel,
+    recentModels,
+  } = useModelData();
+
+  const {
+    search,
+    setSearch,
+    orderByCost,
+    setOrderByCost,
+    showWebSearch,
+    setShowWebSearch,
+    showToolsOnly,
+    setShowToolsOnly,
+    selectedModalities,
+    toggleModality,
+    selectedOutputModalities,
+    toggleOutputModality,
+    allModalities,
+    allOutputModalities,
+    pinnedModelIds,
+    favoritesLoaded,
+    isModelPinned,
+    togglePinModel,
+    imageFilterOnly,
+    setImageFilterOnly,
+    selectedProviders,
+    setSelectedProviders,
+    orderBy,
+    setOrderBy,
+    orderDir,
+    setOrderDir,
+    loadingMap,
+    streamingMap,
+    setLoadingForSession,
+    setStreamingForSession,
+    streamingEnabled,
+    setStreamingEnabled,
+    showSaved,
+    setShowSaved,
+    showTyping,
+    setShowTyping,
+    showScrollToBottom,
+    setShowScrollToBottom,
+    totalSpent,
+    setTotalSpent,
+    imagePreview,
+    setImagePreview,
+    uploading,
+    setUploading,
+    uploadProgress,
+    setUploadProgress,
+    dragActive,
+    setDragActive,
+    historySearch,
+    setHistorySearch,
+    showCosts,
+    setShowCosts,
+    showNaira,
+    setShowNaira,
+  } = useUIState(models);
+
+  // Define currentSessionId here since it's not in useUIState
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+
+  const {
+    chatMap,
+    setChatForSession,
+    chatHistory,
+    setChatHistory,
+    refreshChatHistory,
+    populateFromBackend,
+    updateSessionMessages,
+  } = useChatData();
+
+  const viewSessionId = resolveViewSessionId(routeConversationId, currentSessionId);
+  const activeKey = viewSessionId ?? DRAFT_SESSION_KEY;
+  const chat = chatMap[activeKey] || [];
+  const loading = loadingMap[activeKey] || false;
+  const streaming = streamingMap[activeKey] || false;
+
+  const setChat = useCallback((updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
+    setChatForSession(activeKey, updater);
+  }, [activeKey, setChatForSession]);
+
+  const [modelError, setModelError] = useState("");
+  const [personalities, setPersonalities] = useState<PersonaType[]>([]);
+  const [selectedPersonalityName, setSelectedPersonalityName] = useState<
+    string | undefined
+  >(undefined);
+  const [selectedPersonalityIconUrl, setSelectedPersonalityIconUrl] = useState<
+    string | undefined
+  >(undefined);
+  const [pendingOrphanReply, setPendingOrphanReply] =
+    useState<PendingOrphanReply | null>(null);
+
+  const [savedChats, setSavedChats] = useState<ChatMessage[]>([]);
+  const [savedFullChats, setSavedFullChats] = useState<ChatMessage[]>([]);
+
+  const [showModelDetailsModal, setShowModelDetailsModal] = useState(false);
+  const [selectedModelForDetails, setSelectedModelForDetails] = useState<
+    (typeof models)[0] | null
+  >(null);
+  const [showModelSelectionModal, setShowModelSelectionModal] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const startOrphanReply = useCallback((reply: PendingOrphanReply) => {
+    setPendingOrphanReply(reply);
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [ps, sc] = await Promise.all([
+          listPersonalities(),
+          getSavedChatItems(),
+        ]);
+        setPersonalities(ps);
+        setSavedChats(sc);
+      } catch (err) {
+        console.error("Failed to load personalities or saved chats:", err);
+      }
+    })();
+  }, [setModelError]);
+
+  const {
+    chatEndRef,
+    chatAreaRef,
+    inputRef,
+    handleInputKeyDown,
+  } = useScrollAndKeyboard({
+    chat,
+    loading,
+    streaming,
+    input: "",
+    setShowScrollToBottom,
+    setShowTyping,
+  });
+
+  const {
+    input,
+    setInput,
+    wallet,
+    setWallet,
+    assistantResponse,
+    optimizationMessage,
+    handleSend,
+    handleStop,
+  } = useChatOperationsRefined({
+    selectedModel,
+    chat,
+    setChat,
+    setChatForSession,
+    streaming,
+    setStreamingForSession,
+    setLoadingForSession,
+    setError: setModelError,
+    streamingEnabled,
+    chatEndRef,
+    refreshChatHistory,
+    currentSessionId,
+    routeConversationId,
+    setCurrentSessionId,
+    setChatHistory,
+    updateSessionMessages,
+    selectedPersonalityName,
+    selectedPersonalityIconUrl,
+    pendingOrphanReply,
+    clearPendingOrphanReply: () => setPendingOrphanReply(null),
+    onInsufficientFunds: options?.onInsufficientFunds,
+  });
+
+  const audioSession = useAudioSocket();
+
+  const dictationMicLiveRef = useRef(false);
+  const conversationalMicLiveRef = useRef(false);
+
+  const {
+    isSTTActive,
+    isTranscribing,
+    toggleSTT,
+    exitDictation,
+    isRecording: isDictationRecording,
+  } = useAudioSTT({
+    input,
+    setInput,
+    socket: audioSession.socket,
+    peerMicSuppressRef: conversationalMicLiveRef,
+  });
+
+  // Audio & Conversational Features
+  const {
+    isAudioMode,
+    audioTranscription,
+    audioStatus,
+    audioNotice,
+    audioVolume,
+    toggleAudioMode,
+    isMiniMode,
+    toggleMiniMode,
+    playAISpeech,
+    speakTextNative,
+    stopAISpeech,
+    socket: audioSocket,
+    analyzer,
+    isConversationalRecording,
+    streamFlushPendingRef,
+  } = useConversationalMode({
+    onTranscriptionComplete: handleSend,
+    isLoading: loading,
+    isStreaming: streaming,
+    audioSession,
+    onEnterAudioMode: exitDictation,
+    onBargeIn: handleStop,
+    peerMicSuppressRef: dictationMicLiveRef,
+  });
+
+  useLayoutEffect(() => {
+    dictationMicLiveRef.current = isSTTActive && isDictationRecording;
+  }, [isSTTActive, isDictationRecording]);
+
+  useLayoutEffect(() => {
+    conversationalMicLiveRef.current = isAudioMode && isConversationalRecording;
+  }, [isAudioMode, isConversationalRecording]);
+
+  useSentenceStreaming({
+    isAudioMode,
+    isStreaming: streaming,
+    assistantResponse,
+    playAISpeech,
+    speakTextNative,
+    stopAISpeech,
+    socket: audioSocket,
+    streamFlushPendingRef,
+  });
+
+  const handleAudioModeToggle = toggleAudioMode;
+
+  const handleStartSTT = useCallback(() => {
+    if (isAudioMode) {
+      toggleAudioMode(false);
+    }
+    toggleSTT();
+  }, [isAudioMode, toggleAudioMode, toggleSTT]);
+
+  // Session switching
+  const { switchToSession, createAndSwitchToNewSession, isSessionActive } =
+    useSessionSwitcher({ currentSessionId, chatMap, setChatForSession });
+
+  // Methods
+  const handleSaveWithUpdate = useCallback(async (msg: ChatMessage) => {
+    await saveChatItem(msg);
+    const updatedSavedChats = await getSavedChatItems();
+    setSavedChats(updatedSavedChats);
+  }, [setSavedChats]);
+
+  const handleRemoveSavedWithUpdate = useCallback(async (mongoId: string) => {
+    await removeSavedChatItemById(mongoId);
+    const updatedSavedChats = await getSavedChatItems();
+    setSavedChats(updatedSavedChats);
+  }, [setSavedChats]);
+
+  const handleSendWithKeyboard = useCallback((
+    content?: string,
+    enableStreaming?: boolean,
+    preCreatedMessage?: ChatMessage,
+    chatSnapshot?: ChatMessage[],
+  ): Promise<void> => {
+    return handleSend(content, enableStreaming, preCreatedMessage, chatSnapshot);
+  }, [handleSend]);
+
+  const handleInputKeyDownWithSend = useCallback((
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
+  ) => {
+    if (handleInputKeyDown(e)) {
+      handleSend();
+    }
+  }, [handleInputKeyDown, handleSend]);
+
+  const handleShowModelDetails = useCallback((model: typeof selectedModel) => {
+    setSelectedModelForDetails(model);
+    setShowModelDetailsModal(true);
+  }, [setSelectedModelForDetails, setShowModelDetailsModal]);
+
+  const handleInsertSaved = useCallback(async (msg: ChatMessage) => {
+    setChat((prev) => [...prev, msg]);
+  }, [setChat]);
+
+  const refreshWalletFromBackend = useCallback(async () => {
+    try {
+      const userDetails = await getUserDetails(true);
+      const newWalletBalance = userDetails?.config?.wallet ?? null;
+      setWallet(newWalletBalance);
+      return newWalletBalance;
+    } catch (error) {
+      console.error("Failed to refresh wallet:", error);
+      return null;
+    }
+  }, [setWallet]);
+
+  const enhancedSwitchToSession = useCallback((session: ChatSession) => {
+    setPendingOrphanReply(null);
+    switchToSession(session, setCurrentSessionId, setChatHistory);
+  }, [switchToSession, setCurrentSessionId, setChatHistory]);
+
+  const enhancedCreateNewSession = useCallback((_modelId: string) => {
+    setPendingOrphanReply(null);
+    createAndSwitchToNewSession(setCurrentSessionId);
+  }, [createAndSwitchToNewSession, setCurrentSessionId]);
+
+  const {
+    modalSortedModels,
+    currentChatCostUSD,
+    currentChatCostNaira,
+    supportsImageUpload,
+  } = useComputedValues({
+    models,
+    chat,
+    selectedModel,
+    search,
+    selectedModalities,
+    selectedOutputModalities,
+    showWebSearch,
+    showToolsOnly,
+    orderByCost,
+    imageFilterOnly,
+    orderBy,
+    orderDir,
+    selectedProviders,
+  });
+
+  return {
+    modelState: {
+      models,
+      modelsLoading,
+      selectedModel,
+      setSelectedModel,
+      recentModels,
+      modalSortedModels,
+      supportsImageUpload,
+      selectedModelForDetails,
+      setSelectedModelForDetails,
+      handleShowModelDetails,
+      isModelPinned,
+      togglePinModel,
+    },
+    personalityState: {
+      personalities,
+      setPersonalities,
+      selectedPersonalityName,
+      setSelectedPersonalityName,
+      selectedPersonalityIconUrl,
+      setSelectedPersonalityIconUrl,
+    },
+    chatState: {
+      input,
+      setInput,
+      chat,
+      setChat,
+      pendingOrphanReply,
+      clearPendingOrphanReply: () => setPendingOrphanReply(null),
+      setChatForSession,
+      assistantResponse,
+      chatHistory,
+      setChatHistory,
+      savedChats,
+      setSavedChats,
+      savedFullChats,
+      setSavedFullChats,
+      currentSessionId,
+      viewSessionId,
+      setCurrentSessionId,
+      refreshChatHistory,
+      populateFromBackend,
+      showTyping,
+      setShowTyping,
+      showScrollToBottom,
+      setShowScrollToBottom,
+    },
+    uiState: {
+      loading,
+      setLoading: (l: boolean) => setLoadingForSession(activeKey, l),
+      error: modelError,
+      setError: setModelError,
+      streaming,
+      setStreaming: (s: boolean) => setStreamingForSession(activeKey, s),
+      streamingEnabled,
+      setStreamingEnabled,
+      imagePreview,
+      setImagePreview,
+      uploading,
+      setUploading,
+      uploadProgress,
+      setUploadProgress,
+      dragActive,
+      setDragActive,
+      showCosts,
+      setShowCosts,
+      showNaira,
+      setShowNaira,
+      showSaved,
+      setShowSaved,
+      totalSpent,
+      setTotalSpent,
+      optimizationMessage,
+    },
+    modalState: {
+      showModelDetailsModal,
+      setShowModelDetailsModal,
+      showModelSelectionModal,
+      setShowModelSelectionModal,
+    },
+    filterState: {
+      search,
+      setSearch,
+      historySearch,
+      setHistorySearch,
+      orderByCost,
+      setOrderByCost,
+      allModalities,
+      selectedModalities,
+      allOutputModalities,
+      selectedOutputModalities,
+      showWebSearch,
+      setShowWebSearch,
+      showToolsOnly,
+      setShowToolsOnly,
+      pinnedModelIds,
+      favoritesLoaded,
+      orderBy,
+      setOrderBy,
+      orderDir,
+      setOrderDir,
+      selectedProviders,
+      setSelectedProviders,
+      imageFilterOnly,
+      setImageFilterOnly,
+      toggleModality,
+      toggleOutputModality,
+    },
+    walletState: {
+      wallet,
+      setWallet,
+      refreshWalletFromBackend,
+    },
+    refs: {
+      chatEndRef,
+      fileInputRef,
+      chatAreaRef,
+    },
+    computed: {
+      currentChatCostUSD,
+      currentChatCostNaira,
+    },
+    sessionState: {
+      switchToSession: enhancedSwitchToSession,
+      createNewSessionAndSwitch: enhancedCreateNewSession,
+      isSessionActive,
+      startOrphanReply,
+      project: "projectt",
+    },
+    audioState: {
+      isAudioMode,
+      audioTranscription,
+      audioStatus,
+      audioNotice,
+      audioVolume,
+      handleAudioModeToggle,
+      isMiniMode,
+      handleMiniModeToggle: toggleMiniMode,
+      isSTTActive,
+      handleStartSTT,
+      isDictationTranscribing: isTranscribing,
+      analyzer,
+    },
+    actions: {
+      handleSend: handleSendWithKeyboard,
+      handleStop,
+      handleInputKeyDown: handleInputKeyDownWithSend,
+      handleSave: handleSaveWithUpdate,
+      handleInsertSaved,
+      handleRemoveSaved: handleRemoveSavedWithUpdate,
+    },
+  };
+}

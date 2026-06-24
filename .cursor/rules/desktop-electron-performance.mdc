@@ -1,0 +1,21 @@
+---
+description: Electron main/preload performance — startup, async I/O, IPC, long-lived process hygiene.
+globs: desktop/**/*
+alwaysApply: false
+---
+
+# Desktop (Electron) performance
+
+Source principles: [Building High-Performance Electron Apps — Johnny Le](https://www.johnnyle.io/read/electron-performance). Load skill **`electron-desktop-performance`** from `.agent/skills/` for the full checklist.
+
+## Must follow
+
+1. **Startup:** defer non-critical work; avoid loading large data or heavy modules until needed; keep initial main-process path small.
+2. **Never block blindly:** use async file/network APIs; push heavy CPU work to workers, utility processes, or native/WASM when appropriate; avoid long synchronous sections on the main thread.
+3. **IPC:** prefer **`ipcMain.handle` + `ipcRenderer.invoke`** for request/response; do **not** add `sendSync` from the renderer unless there is an exceptional, documented reason.
+4. **Long-lived app:** remove `ipcMain`/`webContents`/`BrowserWindow` listeners on teardown; clear timers/intervals; avoid unbounded caches.
+5. **Measure:** profile main and renderer when changing hot paths; watch memory over long sessions.
+
+## Repo alignment
+
+- Coordinate IPC shapes with `frontend` preload consumers; keep security patterns (OAuth, external links, shell) consistent with existing guards.

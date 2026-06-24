@@ -1,0 +1,40 @@
+/* No border, no background. Dim text only, like a terminal log. */
+
+.streamingThinking {
+    margin: 0 0 6px;
+    overflow: hidden;
+}
+
+/* At least 4 lines visible so streaming text can be read as it piles up */
+.streamingThinkingScroll {
+    min-height: 70px; /* ~4 lines at 11px font, 1.4 line-height */
+    max-height: 70px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 2px;
+}
+
+/* Markdown root lives inside MarkdownRenderer; typography is overridden in markdown-renderer.scss */
+.streamingThinkingMarkdownWrap {
+    min-width: 0;
+    word-break: break-word;
+}
+
+.streamingThinkingScroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.streamingThinkingScroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.streamingThinkingScroll::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .streamingThinkingScroll::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+    }
+}

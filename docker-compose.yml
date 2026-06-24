@@ -1,0 +1,153 @@
+# PostgreSQL + Redis + Nest API + Next.js (dev, hot reload).
+#
+# From repo root (Docker Desktop running):
+#   docker compose up --build
+#
+# First-time DB schema (after Postgres is up):
+#   docker compose run --rm api npm run db:migrate
+#
+# App URLs (host browser):
+#   Frontend: http://localhost:3001
+#   API:      http://localhost:8000
+#   Adminer:  http://localhost:8080  (DB: System "PostgreSQL", Server "postgres", user/pass/db aigenius/ai_genius)
+#
+# Backend env: requires backend/env/.local.env (copy from .dev.env or .env.example if
+# you do not have it yet). Compose overrides PG/Redis for the Docker network.
+#
+# Sidecar (search): set AIGENIUS_SECRET_TOKEN in the shell or repo-root `.env` before
+# `docker compose up` includes sidecar — compose allows it unset so partial stacks (e.g.
+# redis + postgres only) still parse; without it, /search on the sidecar returns 401.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: aigenius-postgres
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: aigenius
+      POSTGRES_PASSWORD: aigenius
+      POSTGRES_DB: ai_genius
+    volumes:
+      - aigenius_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aigenius -d ai_genius"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer:4
+    container_name: aigenius-adminer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # Pre-fills "Server" so you only pick PostgreSQL and enter user/password/db
+      ADMINER_DEFAULT_SERVER: postgres
+
+  redis:
+    image: redis:7-alpine
+    container_name: aigenius-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - aigenius_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      network: host
+      dockerfile: docker/Dockerfile.backend
+    image: aigenius-api:dev
+    container_name: aigenius-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      NODE_ENV: local
+      PG_DATABASE_HOST: postgres
+      PG_DATABASE_PORT: "5432"
+      PG_DATABASE_USER: aigenius
+      PG_DATABASE_PASSWORD: aigenius
+      PG_DATABASE_NAME: ai_genius
+      PG_DATABASE_URL: postgresql://aigenius:aigenius@postgres:5432/ai_genius
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      # Hot reload: bind mounts (esp. from Windows) often miss inotify; polling is reliable
+      CHOKIDAR_USEPOLLING: "1"
+      CHOKIDAR_INTERVAL: "1000"
+    env_file:
+      - backend/env/.local.env
+    volumes:
+      - ./backend:/app
+      - api_node_modules:/app/node_modules
+      - ./.git:/.git:ro
+
+  web:
+    build:
+      context: .
+      network: host
+      dockerfile: docker/Dockerfile.frontend
+    image: aigenius-web:dev
+    container_name: aigenius-web
+    restart: unless-stopped
+    command: ["yarn", "exec", "next", "dev", "-H", "0.0.0.0", "-p", "3001"]
+    depends_on:
+      - api
+    ports:
+      - "3001:3001"
+    env_file:
+      - docker/frontend.env
+    environment:
+      # Hot reload (duplicates docker/frontend.env so it is obvious; Next.js + webpack on bind mounts)
+      CHOKIDAR_USEPOLLING: "1"
+      WATCHPACK_POLLING: "true"
+      NODE_OPTIONS: "--max-old-space-size=4096"
+    volumes:
+      - ./frontend:/repo/frontend
+      - web_node_modules:/repo/node_modules
+      - web_next:/repo/frontend/.next
+  sidecar:
+    build:
+      context: ./desktop-server
+      dockerfile: Dockerfile
+    image: aigenius-sidecar:dev
+    container_name: aigenius-sidecar
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8001:8001"
+    environment:
+      NODE_ENV: development
+      HOST: "0.0.0.0"
+      PORT: "8001"
+      AIGENIUS_UPSTREAM_API_URL: http://api:8000
+      AIGENIUS_DB_PATH: /app/data/search-index.sqlite
+      AIGENIUS_USER_DATA_PATH: /app/data
+      AIGENIUS_SECRET_TOKEN: ${AIGENIUS_SECRET_TOKEN:-}
+    volumes:
+      - ./desktop-server/data:/app/data
+
+volumes:
+  aigenius_pgdata:
+  aigenius_redisdata:
+  api_node_modules:
+  web_node_modules:
+  web_next:

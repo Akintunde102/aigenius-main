@@ -1,0 +1,15 @@
+---
+description: Global default for self-documenting, behavior-safe code edits.
+alwaysApply: true
+---
+
+# Clean Defaults
+
+- Preserve behavior unless the user explicitly asks for behavior changes.
+- Prefer intent-revealing names for variables, functions, and types.
+- Keep functions small and single-purpose; extract named helpers for orchestration.
+- Use guard clauses for invalid inputs and missing runtime context.
+- Prefer explicit transformations over implicit mutations.
+- Keep comments minimal; explain non-obvious "why" only.
+- Avoid `any`; if needed, isolate it at integration boundaries.
+- When refactoring, keep or improve test coverage for decision branches and edge cases.

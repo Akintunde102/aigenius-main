@@ -1,0 +1,28 @@
+# Dev image for Next.js (Yarn workspaces). Hot reload uses polling env vars from docker/frontend.env.
+FROM node:20-bookworm-slim
+
+WORKDIR /repo
+
+ENV CI=1
+ENV YARN_CACHE_FOLDER=/tmp/yarn-cache
+
+COPY package.json yarn.lock ./
+COPY frontend/package.json ./frontend/
+COPY desktop/package.json ./desktop/
+COPY desktop-server/package.json ./desktop-server/
+
+RUN --mount=type=cache,target=/tmp/yarn-cache \
+    yarn install --frozen-lockfile --ignore-scripts
+
+COPY docker/entrypoint-frontend-dev.sh /entrypoint-frontend-dev.sh
+RUN chmod +x /entrypoint-frontend-dev.sh
+
+COPY frontend/ ./frontend/
+
+WORKDIR /repo/frontend
+
+EXPOSE 3001
+ENV NODE_ENV=development
+ENV HOSTNAME=0.0.0.0
+ENTRYPOINT ["/entrypoint-frontend-dev.sh"]
+CMD ["yarn", "exec", "next", "dev", "-H", "0.0.0.0", "-p", "3001"]

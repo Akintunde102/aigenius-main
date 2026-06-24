@@ -1,0 +1,13 @@
+# Python deps for PocketTTS / voice sidecar (`python/voice_sidecar.py`). Install before desktop-server TTS:
+#   pip install -r requirements-tts.txt
+#
+# Packaged Electron copies `desktop-server/dist/python/` (entry `voice_sidecar.py` + `voice_sidecar_lib/`); Python must be on PATH
+# (or set PYTHON_PATH) on the end-user machine for local synthesis.
+
+pocket-tts
+scipy
+onnxruntime-directml  # High-performance TTS inference on Windows GPU
+maturin               # Required for building the Rust audio-transcoder extension
+av                    # PyAV for in-process zero-latency FFmpeg audio transcoding
+# Local STT for desktop...
+faster-whisper

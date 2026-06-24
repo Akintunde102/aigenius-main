@@ -1,0 +1,25 @@
+# Dev image: dependencies baked in; source from bind mount in compose. Entrypoint
+# runs `npm ci` the first time the named `node_modules` volume is empty.
+FROM node:20-bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ ca-certificates git \
+  && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY backend/package.json backend/package-lock.json ./
+ENV CI=1
+ENV NPM_CONFIG_LOGLEVEL=warn
+
+RUN --mount=type=cache,target=/root/.npm \
+    npm install \
+      --legacy-peer-deps \
+      --fetch-retries=5 \
+      --fetch-retry-mintimeout=10000 \
+      --fetch-retry-maxtimeout=60000 \
+      --maxsockets=5
+COPY docker/entrypoint-backend-dev.sh /entrypoint-backend-dev.sh
+RUN chmod +x /entrypoint-backend-dev.sh
+COPY backend/ ./
+EXPOSE 8000
+ENV NODE_ENV=local
+ENTRYPOINT ["/entrypoint-backend-dev.sh"]
+CMD ["npm", "run", "dev:docker"]

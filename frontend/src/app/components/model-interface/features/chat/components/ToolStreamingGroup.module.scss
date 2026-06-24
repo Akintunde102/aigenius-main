@@ -1,0 +1,66 @@
+.group {
+  margin: 0.2rem 0;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: var(--tool-work-muted, #64748b);
+}
+
+.header {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: baseline;
+  gap: 0.2rem;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: var(--tool-work-text, #334155);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--tool-work-ring, rgba(148, 163, 184, 0.45));
+    border-radius: 2px;
+  }
+}
+
+.headerLabel {
+  font-weight: 400;
+  color: var(--tool-work-text, #475569);
+}
+
+.chevron {
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--tool-work-muted, #94a3b8);
+  user-select: none;
+  transform: translateY(-0.5px);
+}
+
+.list {
+  margin: 0.125rem 0 0;
+  padding: 0 0 0 0.75rem;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.listItem {
+  min-width: 0;
+}
+
+:global(.dark) .group {
+  --tool-work-muted: var(--chat-muted-fg);
+  --tool-work-text: var(--modal-fg);
+  --tool-work-ring: color-mix(in srgb, var(--chat-accent) 22%, transparent);
+}

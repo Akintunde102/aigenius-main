@@ -1,0 +1,633 @@
+/* Scoped chat prose: strategy / long-form reading (typography PRD — desktop-first) */
+.markdown-chat-body.markdown-body {
+  box-sizing: border-box;
+  min-width: 0;
+  /* Reset github-markdown-css padding so it does not collapse the content area
+     inside a min-w-0 flex item and does not interact with overflow: auto scroll
+     containers higher up the tree. Element-level margins provide spacing. */
+  padding: 0;
+  background-color: transparent;
+  color: #222;
+  /*
+   * github-markdown-css applies @media (prefers-color-scheme: dark) to `.markdown-body` and sets
+   * --bgColor-default / --bgColor-muted to near-black for table zebra rows. Chat copy uses dark ink
+   * (#222) but does not override those variables → dark rows + dark text. Force the light semantic
+   * palette inside chat so tables/pre match the product design regardless of OS theme.
+   */
+  color-scheme: light;
+  --bgColor-default: #ffffff;
+  --bgColor-muted: #f1f5f9;
+  --fgColor-default: #0f172a;
+  --fgColor-muted: #475569;
+  --borderColor-default: #d1d9e0;
+  --borderColor-muted: #d1d9e0b3;
+  --bgColor-neutral-muted: #818b981f;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  line-height: 1.7;
+  letter-spacing: 0;
+}
+
+@media (min-width: 768px) {
+  .markdown-chat-body.markdown-body {
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+}
+
+.markdown-chat-body.markdown-body p,
+.markdown-chat-body.markdown-body ul,
+.markdown-chat-body.markdown-body ol {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .markdown-chat-body.markdown-body p,
+  .markdown-chat-body.markdown-body ul,
+  .markdown-chat-body.markdown-body ol {
+    margin-top: 0.875rem;
+    margin-bottom: 0.875rem;
+  }
+}
+
+/* Restore list markers: Tailwind Preflight sets list-style:none on ul/ol globally.
+   padding-left: 1.75rem gives two-digit decimal markers (e.g. "10.") enough room
+   without being clipped by a parent min-w-0 container. */
+.markdown-chat-body.markdown-body ul {
+  list-style-type: disc;
+  list-style-position: outside;
+  padding-left: 1.75rem;
+}
+
+.markdown-chat-body.markdown-body ol {
+  list-style-type: decimal;
+  list-style-position: outside;
+  padding-left: 1.75rem;
+}
+
+.markdown-chat-body.markdown-body ul ul {
+  list-style-type: circle;
+}
+
+.markdown-chat-body.markdown-body ul ul ul {
+  list-style-type: square;
+}
+
+.markdown-chat-body.markdown-body li {
+  display: list-item;
+  margin-top: 0.2rem;
+  margin-bottom: 0.2rem;
+}
+
+.markdown-chat-body.markdown-body h1,
+.markdown-chat-body.markdown-body h2,
+.markdown-chat-body.markdown-body h3,
+.markdown-chat-body.markdown-body h4,
+.markdown-chat-body.markdown-body h5,
+.markdown-chat-body.markdown-body h6 {
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.0125em;
+  color: #1a1a1a;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .markdown-chat-body.markdown-body h1,
+  .markdown-chat-body.markdown-body h2,
+  .markdown-chat-body.markdown-body h3,
+  .markdown-chat-body.markdown-body h4,
+  .markdown-chat-body.markdown-body h5,
+  .markdown-chat-body.markdown-body h6 {
+    margin-top: 1.75rem;
+    margin-bottom: 0.625rem;
+  }
+}
+
+.markdown-chat-body.markdown-body h1 {
+  font-size: 1.25rem;
+}
+
+.markdown-chat-body.markdown-body h2 {
+  font-size: 1.125rem;
+}
+
+.markdown-chat-body.markdown-body h3 {
+  font-size: 1.0625rem;
+}
+
+.markdown-chat-body.markdown-body h4 {
+  font-size: 1rem;
+}
+
+.markdown-chat-body.markdown-body h5,
+.markdown-chat-body.markdown-body h6 {
+  font-size: 0.9375rem;
+}
+
+.markdown-chat-body.markdown-body h1:first-child,
+.markdown-chat-body.markdown-body h2:first-child,
+.markdown-chat-body.markdown-body h3:first-child,
+.markdown-chat-body.markdown-body h4:first-child,
+.markdown-chat-body.markdown-body h5:first-child,
+.markdown-chat-body.markdown-body h6:first-child {
+  margin-top: 0;
+}
+
+.markdown-chat-body.markdown-body strong,
+.markdown-chat-body.markdown-body b {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.markdown-chat-body.markdown-body em {
+  font-weight: 500;
+  font-style: italic;
+}
+
+.markdown-chat-body.markdown-body hr {
+  margin: 1.5rem 0;
+  border: 0;
+  border-top: 1px solid rgba(26, 26, 26, 0.08);
+}
+
+.markdown-chat-body.markdown-body p:first-child,
+.markdown-chat-body.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-chat-body.markdown-body p:last-child,
+.markdown-chat-body.markdown-body > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-chat-body.markdown-body a {
+  color: var(--app-brand-600, #3e6fc4);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown-chat-body.markdown-body a:hover {
+  color: var(--app-brand-500, #4c7fd9);
+}
+
+/* --- Code: wrapped text + hover copy (see markdown-code-widgets.tsx) --- */
+
+.markdown-chat-body.markdown-body {
+  .markdown-code-block-shell {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .markdown-code-block-copy {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid rgba(58, 71, 87, 0.14);
+    background: rgba(255, 255, 255, 0.96);
+    color: #64748b;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    cursor: pointer;
+    opacity: 0;
+    transition:
+      opacity 0.15s ease,
+      color 0.12s ease,
+      background-color 0.12s ease;
+  }
+
+  .markdown-code-block-copy:hover {
+    color: #334155;
+    background: rgba(248, 250, 252, 1);
+  }
+
+  .markdown-code-block-copy:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--app-brand-500, #4c7fd9);
+    outline-offset: 2px;
+  }
+
+  .markdown-code-block-shell:hover .markdown-code-block-copy,
+  .markdown-code-block-shell:focus-within .markdown-code-block-copy {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .markdown-code-block-copy {
+      opacity: 0.5;
+    }
+
+    .markdown-code-block-shell:hover .markdown-code-block-copy,
+    .markdown-code-block-shell:focus-within .markdown-code-block-copy {
+      opacity: 0.85;
+    }
+  }
+
+  .markdown-code-block-pre {
+    margin: 0;
+    padding: 0.85rem 2.35rem 0.85rem 1rem;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    border-radius: 10px;
+    /* Solid light surface + explicit ink — avoids “invisible” text on cream / bad inheritance */
+    color: #0f172a;
+    background: #f1f5f9;
+    border: 1px solid rgba(51, 65, 85, 0.22);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .markdown-code-block-pre code {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    font-family: inherit;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* highlight.js: keep token colors but anchor default text to dark ink */
+  .markdown-code-block-pre code.hljs {
+    color: #24292e;
+    background: transparent;
+  }
+
+  .markdown-inline-code-shell {
+    max-width: 100%;
+    vertical-align: baseline;
+  }
+
+  .markdown-inline-code-copy {
+    position: absolute;
+    top: 0.1em;
+    right: 0.15em;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    padding: 0;
+    border-radius: 4px;
+    border: 1px solid rgba(58, 71, 87, 0.12);
+    background: rgba(255, 255, 255, 0.95);
+    color: #64748b;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .markdown-inline-code-copy:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--app-brand-500, #4c7fd9);
+    outline-offset: 1px;
+  }
+
+  .markdown-inline-code-shell:hover .markdown-inline-code-copy,
+  .markdown-inline-code-shell:focus-within .markdown-inline-code-copy {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .markdown-inline-code-copy {
+      opacity: 0.45;
+    }
+  }
+
+  .markdown-inline-code {
+    display: inline;
+    max-width: 100%;
+    padding: 0.12em 1.65em 0.12em 0.4em;
+    font-size: 0.88em;
+    border-radius: 6px;
+    color: #0f172a;
+    background: #f1f5f9;
+    border: 1px solid rgba(51, 65, 85, 0.2);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    vertical-align: 0.05em;
+  }
+
+  .markdown-inline-code-shell:hover .markdown-inline-code,
+  .markdown-inline-code-shell:focus-within .markdown-inline-code {
+    border-color: rgba(58, 71, 87, 0.18);
+  }
+}
+
+.markdown-chat-body.markdown-body blockquote {
+  margin: 0.75rem 0;
+  padding: 0 0 0 0.85rem;
+  border-left: 3px solid rgba(76, 127, 217, 0.4);
+  color: #555;
+  font-weight: 400;
+}
+
+.markdown-chat-body.markdown-body table {
+  display: block;
+  max-width: 100%;
+  overflow: auto;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+}
+
+/* github-markdown: zebra is on `tr`; keep rows visually neutral—cells own the surface */
+.markdown-chat-body.markdown-body table tr {
+  background-color: transparent;
+  border-top-color: rgba(58, 71, 87, 0.12);
+}
+
+.markdown-chat-body.markdown-body table tr:nth-child(2n) {
+  background-color: transparent;
+}
+
+.markdown-chat-body.markdown-body table th,
+.markdown-chat-body.markdown-body table td {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid rgba(58, 71, 87, 0.18);
+}
+
+.markdown-chat-body.markdown-body table thead th {
+  background-color: #e2e8f0;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.markdown-chat-body.markdown-body table tbody td {
+  background-color: #ffffff;
+  color: #1e293b;
+}
+
+.markdown-chat-body.markdown-body table tr:nth-child(2n) td {
+  background-color: #f8fafc;
+}
+
+.markdown-chat-body.markdown-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-chat-body.markdown-body input[type='checkbox'] {
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+
+/* Ephemeral reasoning / thinking stream: compact, dim, monospace-first */
+.markdown-thinking-stream.markdown-chat-body.markdown-body {
+  color: rgba(100, 100, 100, 0.45);
+  font-size: 11px;
+  line-height: 1.4;
+  font-family:
+    ui-monospace,
+    'SF Mono',
+    'Cascadia Code',
+    Consolas,
+    monospace;
+}
+
+.markdown-thinking-stream.markdown-chat-body.markdown-body p,
+.markdown-thinking-stream.markdown-chat-body.markdown-body ul,
+.markdown-thinking-stream.markdown-chat-body.markdown-body ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.markdown-thinking-stream.markdown-chat-body.markdown-body h1,
+.markdown-thinking-stream.markdown-chat-body.markdown-body h2,
+.markdown-thinking-stream.markdown-chat-body.markdown-body h3,
+.markdown-thinking-stream.markdown-chat-body.markdown-body h4,
+.markdown-thinking-stream.markdown-chat-body.markdown-body h5,
+.markdown-thinking-stream.markdown-chat-body.markdown-body h6 {
+  font-size: 11px;
+  margin-top: 0.35rem;
+  margin-bottom: 0.2rem;
+  color: rgba(90, 90, 90, 0.55);
+}
+
+.markdown-thinking-stream.markdown-chat-body.markdown-body strong,
+.markdown-thinking-stream.markdown-chat-body.markdown-body b {
+  color: rgba(85, 85, 85, 0.55);
+}
+
+.markdown-thinking-stream.markdown-chat-body.markdown-body a {
+  color: rgba(70, 110, 160, 0.65);
+}
+
+.markdown-thinking-stream.markdown-chat-body.markdown-body .markdown-inline-code {
+  font-size: 10px;
+  background: rgba(120, 120, 120, 0.08);
+  border-color: rgba(100, 100, 100, 0.12);
+}
+
+.markdown-thinking-stream.markdown-chat-body.markdown-body .markdown-code-block-pre {
+  font-size: 10px;
+  padding: 0.5rem 1.85rem 0.5rem 0.45rem;
+  background: rgba(120, 120, 120, 0.06);
+  border-color: rgba(100, 100, 100, 0.1);
+  box-shadow: none;
+}
+
+.markdown-thinking-stream.markdown-chat-body.markdown-body .markdown-code-block-copy,
+.markdown-thinking-stream.markdown-chat-body.markdown-body .markdown-inline-code-copy {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-color: rgba(100, 100, 100, 0.15);
+  background: rgba(245, 245, 245, 0.92);
+}
+
+.markdown-thinking-stream.markdown-chat-body.markdown-body blockquote {
+  border-left-color: rgba(100, 100, 100, 0.25);
+  color: rgba(100, 100, 100, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  .markdown-thinking-stream.markdown-chat-body.markdown-body {
+    color: rgba(150, 150, 150, 0.4);
+  }
+
+  .markdown-thinking-stream.markdown-chat-body.markdown-body strong,
+  .markdown-thinking-stream.markdown-chat-body.markdown-body b {
+    color: rgba(170, 170, 170, 0.5);
+  }
+
+  .markdown-thinking-stream.markdown-chat-body.markdown-body h1,
+  .markdown-thinking-stream.markdown-chat-body.markdown-body h2,
+  .markdown-thinking-stream.markdown-chat-body.markdown-body h3,
+  .markdown-thinking-stream.markdown-chat-body.markdown-body h4,
+  .markdown-thinking-stream.markdown-chat-body.markdown-body h5,
+  .markdown-thinking-stream.markdown-chat-body.markdown-body h6 {
+    color: rgba(160, 160, 160, 0.45);
+  }
+}
+
+.dark .markdown-thinking-stream.markdown-chat-body.markdown-body {
+  color: rgba(180, 180, 180, 0.35);
+}
+
+.dark .markdown-thinking-stream.markdown-chat-body.markdown-body strong,
+.dark .markdown-thinking-stream.markdown-chat-body.markdown-body b {
+  color: rgba(200, 200, 200, 0.45);
+}
+
+.dark .markdown-thinking-stream.markdown-chat-body.markdown-body h1,
+.dark .markdown-thinking-stream.markdown-chat-body.markdown-body h2,
+.dark .markdown-thinking-stream.markdown-chat-body.markdown-body h3,
+.dark .markdown-thinking-stream.markdown-chat-body.markdown-body h4,
+.dark .markdown-thinking-stream.markdown-chat-body.markdown-body h5,
+.dark .markdown-thinking-stream.markdown-chat-body.markdown-body h6 {
+  color: rgba(190, 190, 190, 0.4);
+}
+
+/* Tool execution results: compact, smaller font, less whitespace */
+.markdown-tool-result.markdown-chat-body.markdown-body {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: inherit;
+}
+
+.markdown-tool-result.markdown-chat-body.markdown-body p,
+.markdown-tool-result.markdown-chat-body.markdown-body ul,
+.markdown-tool-result.markdown-chat-body.markdown-body ol {
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.markdown-tool-result.markdown-chat-body.markdown-body h1,
+.markdown-tool-result.markdown-chat-body.markdown-body h2,
+.markdown-tool-result.markdown-chat-body.markdown-body h3,
+.markdown-tool-result.markdown-chat-body.markdown-body h4,
+.markdown-tool-result.markdown-chat-body.markdown-body h5,
+.markdown-tool-result.markdown-chat-body.markdown-body h6 {
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+  font-size: 13px;
+}
+
+.markdown-tool-result.markdown-chat-body.markdown-body li {
+  margin-top: 0.1rem;
+  margin-bottom: 0.1rem;
+}
+
+.markdown-tool-result.markdown-chat-body.markdown-body .markdown-code-block-pre {
+  font-size: 10.5px;
+  padding: 0.5rem 1.5rem 0.5rem 0.5rem;
+  border-radius: 6px;
+}
+
+.markdown-tool-result.markdown-chat-body.markdown-body .markdown-code-block-copy {
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* Dark chat canvas — `html.dark` from sidebar “Dark chat area” */
+.dark .markdown-chat-body.markdown-body {
+  color-scheme: dark;
+  color: #e4e4e7;
+  --bgColor-default: #27272a;
+  --bgColor-muted: #3f3f46;
+  --fgColor-default: #f4f4f5;
+  --fgColor-muted: #a1a1aa;
+  --borderColor-default: #52525b;
+  --borderColor-muted: rgba(82, 82, 91, 0.65);
+  --bgColor-neutral-muted: rgba(255, 255, 255, 0.06);
+}
+
+.dark .markdown-chat-body.markdown-body h1,
+.dark .markdown-chat-body.markdown-body h2,
+.dark .markdown-chat-body.markdown-body h3,
+.dark .markdown-chat-body.markdown-body h4,
+.dark .markdown-chat-body.markdown-body h5,
+.dark .markdown-chat-body.markdown-body h6 {
+  color: #f4f4f5;
+}
+
+.dark .markdown-chat-body.markdown-body strong,
+.dark .markdown-chat-body.markdown-body b {
+  color: #fafafa;
+}
+
+.dark .markdown-chat-body.markdown-body hr {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .markdown-chat-body.markdown-body blockquote {
+  color: #a1a1aa;
+  border-left-color: rgba(96, 165, 250, 0.45);
+}
+
+.dark .markdown-chat-body.markdown-body table thead th {
+  background-color: #3f3f46;
+  color: #f4f4f5;
+}
+
+.dark .markdown-chat-body.markdown-body table tbody td {
+  background-color: #27272a;
+  color: #e4e4e7;
+}
+
+.dark .markdown-chat-body.markdown-body table tr:nth-child(2n) td {
+  background-color: #2f2f33;
+}
+
+.dark .markdown-chat-body.markdown-body .markdown-code-block-pre {
+  color: #e4e4e7;
+  background: #18181b;
+  border-color: rgba(82, 82, 91, 0.85);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.dark .markdown-chat-body.markdown-body .markdown-code-block-pre code.hljs {
+  color: #e2e8f0;
+}
+
+.dark .markdown-chat-body.markdown-body .markdown-inline-code {
+  color: #e4e4e7;
+  background: #27272a;
+  border-color: rgba(82, 82, 91, 0.85);
+  box-shadow: none;
+}
+
+.dark .markdown-chat-body.markdown-body .markdown-code-block-copy,
+.dark .markdown-chat-body.markdown-body .markdown-inline-code-copy {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(39, 39, 42, 0.96);
+  color: #a1a1aa;
+}

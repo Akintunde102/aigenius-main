@@ -1,0 +1,7 @@
+---
+description: For multi-file or structural work in the Next.js frontend, read the architecture map first.
+globs: frontend/**/*
+alwaysApply: false
+---
+
+Before large or cross-cutting edits under `frontend/`, open **`frontend/ARCHITECTURE.md`** for the App Router map, chat data-flow diagram, layer conventions (`lib/` vs `nobox-client/` vs `model-interface`), and the “where to change what” table. Prefer small changes in colocated `*.utils.ts` and hooks over growing `ModelInterface.tsx`.

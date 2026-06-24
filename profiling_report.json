@@ -1,0 +1,42 @@
+[
+  {
+    "session_name": "STT Benchmark",
+    "total_duration_ms": 10379.2,
+    "steps": [
+      {
+        "name": "Transcribe (whisper.cpp): scratch\\test_audio.wav model=C:\\Users\\DELL5530\\Desktop\\projects\\aigenius\\desktop-server\\models\\ggml-small.en-q5_1.bin",
+        "duration_ms": 10375.8
+      }
+    ]
+  },
+  {
+    "session_name": "TTS Benchmark",
+    "total_duration_ms": 20922.81,
+    "steps": [
+      {
+        "name": "Import pocket_tts",
+        "duration_ms": 13049.0
+      },
+      {
+        "name": "Load TTS model from disk (kyutai/pocket-tts english)",
+        "duration_ms": 2052.6
+      },
+      {
+        "name": "Load TTS model (kyutai/pocket-tts english)",
+        "duration_ms": 15101.9
+      },
+      {
+        "name": "Load voice state: alba",
+        "duration_ms": 4.4
+      },
+      {
+        "name": "Generate audio (sample_rate=24000)",
+        "duration_ms": 4326.4
+      },
+      {
+        "name": "Write WAV file: output.wav",
+        "duration_ms": 3.5
+      }
+    ]
+  }
+]

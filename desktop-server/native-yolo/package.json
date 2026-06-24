@@ -1,0 +1,16 @@
+{
+  "name": "native-yolo",
+  "version": "0.1.0",
+  "description": "Rust-based YOLOX inference using Tract",
+  "main": "index.node",
+  "scripts": {
+    "build": "cargo build --release && npm run copy",
+    "build-debug": "cargo build && npm run copy-debug",
+    "copy": "node -e \"require('fs').copyFileSync('target/release/libnative_yolo.so', 'index.node')\" || node -e \"require('fs').copyFileSync('target/release/libnative_yolo.dylib', 'index.node')\" || node -e \"require('fs').copyFileSync('target/release/native_yolo.dll', 'index.node')\"",
+    "copy-debug": "node -e \"require('fs').copyFileSync('target/debug/libnative_yolo.so', 'index.node')\" || node -e \"require('fs').copyFileSync('target/debug/libnative_yolo.dylib', 'index.node')\" || node -e \"require('fs').copyFileSync('target/debug/native_yolo.dll', 'index.node')\"",
+    "install": "npm run build"
+  },
+  "keywords": ["yolo", "onnx", "tract", "rust", "neon"],
+  "author": "AIGenius",
+  "license": "MIT"
+}

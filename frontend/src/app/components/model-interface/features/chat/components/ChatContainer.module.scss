@@ -1,0 +1,131 @@
+/* ChatContainer Mobile Keyboard Styles */
+
+.chatContainer {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    background-color: var(--chat-canvas-bg);
+}
+
+.chatMainArea {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    position: relative;
+}
+
+.chatAreaContainer {
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
+    padding: 12px 16px 0;
+    display: flex;
+    flex-direction: column;
+    background-color: transparent;
+
+    @media (min-width: 1024px) {
+        padding: 16px 24px 0;
+    }
+}
+
+.chatInputContainer {
+    display: flex;
+    align-items: flex-end;
+    background-color: transparent;
+    border-top: none;
+}
+
+/* Mobile keyboard handling styles */
+@media (max-width: 768px) {
+
+    /* iOS Safari and Chrome specific fixes */
+    @supports (-webkit-touch-callout: none) {
+        /* iOS-specific styles are handled in global CSS */
+    }
+
+    /* Prevent zoom on input focus for all mobile browsers */
+    .chatInputContainer :global(input),
+    .chatInputContainer :global(textarea) {
+        font-size: 16px !important;
+        transform: translateZ(0);
+    }
+
+    /* Minimal fix: Ensure chatbox stays visible above keyboard */
+    .chatInputContainer {
+        position: relative;
+        bottom: 0;
+        background: transparent;
+        border-top: none;
+        z-index: 100;
+    }
+}
+
+/* Base keyboard open styles - avoid vh units for better keyboard handling */
+@media (max-width: 768px) {
+    .chatAreaContainer.keyboardOpen {
+        // max-height: calc(100% - 140px) !important;
+        // flex: 1 1 auto !important;
+        // transition: none !important;
+    }
+
+    .chatInputContainer.keyboardOpen {
+        // min-height: 120px !important;
+        // max-height: 140px !important;
+        // flex-shrink: 0 !important;
+        // transition: none !important;
+    }
+}
+
+/* iOS specific keyboard handling */
+@media (max-width: 834px) {
+    .chatAreaContainer.keyboardOpenIos {
+        max-height: calc(100% - 160px) !important;
+        /* iOS needs more space for safe areas */
+    }
+
+    .chatInputContainer.keyboardOpenIos {
+        min-height: 140px !important;
+        max-height: 160px !important;
+        /* Account for iOS safe area */
+        padding-bottom: max(env(safe-area-inset-bottom), 20px) !important;
+    }
+}
+
+/* Android specific keyboard handling */
+@media (max-width: 768px) {
+    .chatAreaContainer.keyboardOpenAndroid {
+        // max-height: calc(100% - 120px) !important;
+        // /* Android can be more aggressive with space */
+    }
+
+    .chatInputContainer.keyboardOpenAndroid {
+        // min-height: 100px !important;
+        // max-height: 120px !important;
+    }
+}
+
+/* Smooth transitions when keyboard is closing */
+@media (max-width: 834px) {
+
+    .chatAreaContainer:not(.keyboardOpen),
+    .chatInputContainer:not(.keyboardOpen) {
+        transition: all 0.2s ease-out;
+    }
+}
+
+/* Fallback for browsers without Visual Viewport API */
+@media (max-width: 768px) and (max-height: 500px) {
+    // .chatAreaContainer {
+    //     max-height: calc(100vh - 140px) !important;
+    // }
+
+    // .chatInputContainer {
+    //     min-height: 120px !important;
+    //     max-height: 140px !important;
+    // }
+}
+
+/* Chat scrollbar styles moved to global CSS */

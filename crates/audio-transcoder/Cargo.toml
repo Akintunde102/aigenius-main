@@ -1,0 +1,28 @@
+[package]
+name = "audio-transcoder"
+version = "0.1.0"
+edition = "2021"
+description = "Zero-dependency audio transcoding for AIGenius — converts WebM/OGG/WAV to 16kHz mono PCM without spawning ffmpeg"
+license = "MIT"
+
+[lib]
+name = "audio_transcoder"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Audio decoding — pure Rust, no C dependencies
+symphonia = { version = "0.5", features = ["all"] }
+# High-quality sample-rate resampling
+rubato = "0.15"
+# PyO3 for Python bindings (enabled only when building a Python extension)
+pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
+# Error handling
+thiserror = "1"
+
+[dev-dependencies]
+tempfile = "3"
+
+[features]
+default = []
+# Enable PyO3 Python bindings: `cargo build --features python`
+python = ["dep:pyo3"]

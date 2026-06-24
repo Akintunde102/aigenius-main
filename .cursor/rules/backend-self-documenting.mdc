@@ -1,0 +1,24 @@
+---
+description: Backend TypeScript pattern for self-documenting service and util code.
+globs: backend/src/**/*.ts
+alwaysApply: false
+---
+
+# Backend Self-Documenting Standard
+
+- Preserve behavior by default; treat readability changes as behavior-safe refactors.
+- Use richer domain types and names (avoid vague names like `data`, `obj`, `ctx`).
+- Keep service methods readable top-to-bottom via named steps:
+  1) `validate...`
+  2) `build...Context`
+  3) `execute/enqueue...`
+  4) `to/map...` transformation helpers
+- Use guard clauses early for required body/user/message invariants.
+- Keep utility boundaries explicit and side-effect free.
+- Keep comments rare and concise; only explain intent that code cannot express.
+
+## Testing for Refactors
+
+- Add or update focused tests for each extracted decision branch.
+- Include edge-case tests for normalization and payload shaping.
+- Keep existing assertions that lock current behavior.

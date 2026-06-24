@@ -1,0 +1,44 @@
+/* 
+ * AIGenius Desktop Shell Overrides
+ * Only active when data-aigenius-desktop-shell="1" is set on <html>
+ */
+
+html[data-aigenius-desktop-shell="1"] {
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--aigenius-desktop-chrome-bg, #1a1a1c);
+
+  body {
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--aigenius-desktop-chrome-bg, #1a1a1c);
+  }
+
+  .aigenius-desktop-sidebar-chrome {
+    -webkit-app-region: no-drag;
+  }
+
+  /* 
+   * Fix: Center modals relative to content area in Electron (accounting for Top Bar).
+   * Targets the common pattern: fixed inset-0 flex items-center
+   */
+  .fixed.inset-0.flex {
+    padding-top: var(--aigenius-desktop-titlebar-top, 0px);
+  }
+
+  /* Fix: Push Toast notifications below the title bar */
+  div[data-hot-toast-container] {
+    padding-top: var(--aigenius-desktop-titlebar-top, 0px);
+  }
+}
+
+/* 
+ * Desktop Shell UI Components 
+ * These classes are safe to keep globally as they use --aigenius-desktop variables 
+ * which are 0px/transparent in standard browsers.
+ */
+.aigenius-desktop-drag-strip {
+  -webkit-app-region: drag;
+  /* Opaque shell chrome — avoids body `--app-mist-100` bleeding through above the content padding. */
+  background-color: var(--aigenius-desktop-chrome-bg, #1a1a1c);
+}

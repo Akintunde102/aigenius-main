@@ -1,0 +1,71 @@
+# Dependencies
+node_modules/
+
+# Python virtual environments
+venv/
+.venv/
+env/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+
+# Environment files (keep .env.example and env.example)
+.env
+.env.*
+!.env.example
+!env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / Editor
+.idea/
+.vscode/
+*.sublime-*
+
+# Test / Coverage
+coverage/
+.nyc_output/
+test-results/
+*.lcov
+
+.publish/
+*.tsbuildinfo
+*.pem
+github_key
+.gittoken
+*.token
+*.secret
+.vercel/
+.pnp
+.pnp.js
+.yarn/
+
+# Diff / temp files
+*.diff
+changes*.diff
+audit-report.md
+
+# Voice cloner app secrets (if any)
+voice-cloner-app/.env
+voice-cloner-app/.env.*
+
+# Rust/Cargo build outputs
+target/
+
+# Local sidecar binaries
+desktop-server/bin/
+
+# whisper.cpp
+desktop/whisper.cpp/
