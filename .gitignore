@@ -69,3 +69,6 @@ desktop-server/bin/
 
 # whisper.cpp
 desktop/whisper.cpp/
+
+frontend/public/monaco-editor
+frontend/public/vad

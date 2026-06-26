@@ -22,6 +22,7 @@
     "dev:all": "./scripts/run-all.sh",
     "dev:backend": "node scripts/ensure-backend.cjs && cd backend && npm run dev",
     "dev:frontend": "cd frontend && yarn dev",
+    "install:frontend": "yarn install --ignore-scripts",
     "backend:clone": "node scripts/clone-backend.cjs",
     "sync:backend": "node scripts/sync-backend.cjs",
     "sync:client": "node scripts/sync-client.cjs",

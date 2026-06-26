@@ -8,6 +8,22 @@ const resolvedNoboxApiRootUrl =
     process.env.NEXT_PUBLIC_NOBOX_API_ROOT_URL ||
     (process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:8000' : undefined);
 
+/** Allow fetch/WebSocket to the configured API origin in CSP connect-src. */
+function apiConnectOrigins(apiRootUrl) {
+    if (!apiRootUrl) return [];
+    try {
+        const { protocol, host } = new URL(apiRootUrl);
+        const origins = [`${protocol}//${host}`];
+        if (protocol === 'https:') origins.push(`wss://${host}`);
+        if (protocol === 'http:') origins.push(`ws://${host}`);
+        return origins;
+    } catch {
+        return [];
+    }
+}
+
+const configuredApiOrigins = apiConnectOrigins(resolvedNoboxApiRootUrl);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     // Build optimizations
@@ -29,6 +45,7 @@ const nextConfig = {
     async headers() {
         const prodConnectSrc = [
             "connect-src 'self'",
+            ...configuredApiOrigins,
             'http://localhost:8000',
             'http://127.0.0.1:8000',
             'http://127.0.0.1:8001',
@@ -45,13 +62,16 @@ const nextConfig = {
             'https://api.nobox.cloud',
             'https://api.paystack.co',
             'https://api.aigenius.chat',
+            'https://aigenius-backend-production.up.railway.app',
             'https://cdn.jsdelivr.net',
             'wss://api.aigenius.chat',
+            'wss://ai-genius-copy-production.up.railway.app',
             vercelAnalyticsOrigin,
         ].join(' ');
 
         const devConnectSrc = [
             "connect-src 'self'",
+            ...configuredApiOrigins,
             'http://localhost:3000',
             'http://localhost:3001',
             'http://localhost:8000',
@@ -63,6 +83,7 @@ const nextConfig = {
             'https://api.nobox.cloud',
             'https://api.paystack.co',
             'https://api.aigenius.chat',
+            'https://aigenius-backend-production.up.railway.app',
             'ws://localhost:3001',
             'ws://127.0.0.1:3001',
             'ws://localhost:8000',

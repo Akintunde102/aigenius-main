@@ -49,5 +49,6 @@ playwright-report/
 *storybook.log
 storybook-static
 /public/monaco-editor
+/public/vad
 build_output.log
 
