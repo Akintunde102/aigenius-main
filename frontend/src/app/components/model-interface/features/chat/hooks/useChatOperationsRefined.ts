@@ -48,6 +48,8 @@ export function useChatOperationsRefined({
     updateSessionMessages,
     selectedPersonalityName,
     selectedPersonalityIconUrl,
+    selectedPersonalityId,
+    selectedSystemPrompt,
     pendingOrphanReply,
     clearPendingOrphanReply,
     onInsufficientFunds,
@@ -262,7 +264,22 @@ export function useChatOperationsRefined({
             console.log('[useChatOperationsRefined] Fetching nobox functions...');
             const { accessModel, accessModelStream } = await getNoboxFunctions({ project });
 
-            const rawMessages = orderMessagesForApi(updatedChat);
+            let rawMessages = orderMessagesForApi(updatedChat);
+            if (selectedSystemPrompt) {
+                const hasSystem = rawMessages.some(m => m.role === 'system');
+                if (!hasSystem) {
+                    rawMessages = [
+                        {
+                            role: 'system',
+                            content: selectedSystemPrompt,
+                            id: `system_${Date.now()}`,
+                            personaName: selectedPersonalityName,
+                            personaIconUrl: selectedPersonalityIconUrl,
+                        } as any,
+                        ...rawMessages
+                    ];
+                }
+            }
             const { messages, message: optimizationMsg } = optimizeMessagesForAPI(rawMessages);
             const requestOverrides = {
                 conversationId: sendingViewId,

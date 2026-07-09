@@ -137,6 +137,11 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     setSelectedPersonalityName,
     selectedPersonalityIconUrl,
     setSelectedPersonalityIconUrl,
+    selectedPersonalityId,
+    setSelectedPersonalityId,
+    selectedSystemPrompt,
+    setSelectedSystemPrompt,
+    applySessionPersonalityState,
   } = personalityState;
   const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, savedChats, currentSessionId, setCurrentSessionId, showTyping, setShowTyping, showScrollToBottom } = chatState;
   const { loading, setLoading, error, setError, streaming, setStreaming, streamingEnabled, setStreamingEnabled, imagePreview, setImagePreview, uploading, setUploading, uploadProgress, setUploadProgress, dragActive, setDragActive, showCosts, showNaira, showSaved, setShowSaved, setTotalSpent, optimizationMessage } = uiState;
@@ -146,7 +151,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
   const { chatEndRef, chatAreaRef } = refs;
   const { currentChatCostUSD, currentChatCostNaira } = computed;
   const { switchToSession, isSessionActive, project } = sessionState;
-  const { isAudioMode, isSTTActive, isDictationTranscribing, audioTranscription, audioStatus, audioNotice, audioVolume, handleAudioModeToggle, isMiniMode, handleMiniModeToggle, handleStartSTT, analyzer } = audioState;
+  const { isAudioMode, isSTTActive, isDictationTranscribing, audioTranscription, audioStatus, audioNotice, audioVolume, handleAudioModeToggle, isMiniMode, handleMiniModeToggle, handleStartSTT, handleCancelSTT, handleConfirmSTT, analyzer } = audioState;
   const { handleSend, handleStop, handleSave, handleInsertSaved, handleRemoveSaved } = actions;
 
   const chatContainerRef = useRef<ChatContainerHandle | null>(null);
@@ -172,21 +177,6 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     error: error || "",
     setShowWalletModal,
     refreshWalletFromBackend,
-  });
-
-  const {
-    selectedPersonalityId,
-    setSelectedPersonalityId,
-    selectedSystemPrompt,
-    setSelectedSystemPrompt,
-    applySessionPersonalityState,
-  } = useModelInterfacePersonality({
-    currentSessionId,
-    chatHistory,
-    personalities,
-    setSelectedPersonalityName,
-    setSelectedPersonalityIconUrl,
-    setChatHistory,
   });
 
   const {
@@ -636,6 +626,8 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     onAudioModeToggle={handleAudioModeToggle}
                     isAudioMode={isAudioMode}
                     onStartSTT={handleStartSTT}
+                    onCancelSTT={handleCancelSTT}
+                    onConfirmSTT={handleConfirmSTT}
                     isSTTActive={isSTTActive}
                     isDictationTranscribing={isDictationTranscribing}
                     audioTranscription={audioTranscription}

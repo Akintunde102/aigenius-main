@@ -1,6 +1,6 @@
 export const AUDIO_CONSTANTS = {
   // Voice Activity Detection (VAD)
-  SILENCE_THRESHOLD_MS: 520,
+  SILENCE_THRESHOLD_MS: 1200,
   VAD_POSITIVE_SPEECH_THRESHOLD: 0.65, // Increased from 0.5 to ignore background fan noise
   VAD_NEGATIVE_SPEECH_THRESHOLD: 0.45, // Increased from 0.35 to transition to silence quicker
   VAD_REDEMPTION_FRAMES: 30,           // Snappier silence finalization (900ms at 30ms frames)
@@ -50,7 +50,7 @@ export const AUDIO_CONSTANTS = {
   MIN_LOCAL_PARTIAL_STT_BYTES: 8000,
 
   // Developer switches for Browser Speech Engines (only applies in browser runtime)
-  BROWSER_STT_ENGINE: 'cloud' as 'native' | 'cloud',
-  BROWSER_TTS_ENGINE: 'cloud' as 'native' | 'cloud',
+  BROWSER_STT_ENGINE: 'native' as 'native' | 'cloud',
+  BROWSER_TTS_ENGINE: 'native' as 'native' | 'cloud',
 };
 

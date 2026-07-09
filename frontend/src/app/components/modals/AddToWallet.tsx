@@ -128,6 +128,94 @@ const AddToWallet = ({
         handleSubmit(amountInNaira.toString(), email);
     }
 
+    const pollingRef = React.useRef<string | null>(null);
+
+    // Cancel polling on unmount
+    useEffect(() => {
+        return () => {
+            pollingRef.current = null;
+        };
+    }, []);
+
+    // Rehydrate polling check on mount
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const stored = localStorage.getItem('aigenius_pending_payment');
+        if (stored) {
+            try {
+                const { reference, amountInNaira, createdAt } = JSON.parse(stored);
+                // If it's less than 10 minutes old, resume polling
+                if (Date.now() - createdAt < 10 * 60 * 1000) {
+                    console.log(`AddToWallet: Rehydrating pending payment polling for reference: ${reference}`);
+                    setUpdating(true);
+                    void startPolling(reference, amountInNaira);
+                } else {
+                    localStorage.removeItem('aigenius_pending_payment');
+                }
+            } catch (e) {
+                console.error("Failed to parse stored pending payment:", e);
+            }
+        }
+    }, []);
+
+    async function startPolling(reference: string, amountInNaira: string) {
+        pollingRef.current = reference;
+        const backoffDelays = [1000, 2000, 4000, 8000, 16000];
+        let attempt = 0;
+
+        while (pollingRef.current === reference) {
+            const delay = backoffDelays[attempt] || 16000;
+            await new Promise(resolve => setTimeout(resolve, delay));
+            if (pollingRef.current !== reference) return;
+
+            attempt++;
+            console.log(`AddToWallet: Polling status check iteration ${attempt} for reference: ${reference}`);
+
+            try {
+                const response = await serverCall({
+                    serverCallProps: {
+                        call: serverCalls.getGatewayPaystackTransactionStatus,
+                    },
+                    pathArgs: { reference },
+                    authorized: true,
+                }) as any;
+
+                const verification = response.dataReturned;
+                console.log(`AddToWallet: Polling status check result - Status: "${verification.status}"`);
+
+                if (verification.status === 'successful' || verification.status === 'success') {
+                    clearUserDetailsCache();
+                    const newBal = verification.newWalletBalance ?? null;
+                    if (typeof newBal === 'number') {
+                        setWallet(newBal);
+                    } else {
+                        void fetchWallet();
+                    }
+                    setShowSuccess(true);
+                    setUpdating(false);
+                    toast.success('Payment verified successfully. Your wallet has been updated.');
+                    void onSuccessfulPayment(amountInNaira, newBal, { keepModalOpen: true });
+                    localStorage.removeItem('aigenius_pending_payment');
+                    break;
+                } else if (verification.status === 'failed') {
+                    setUpdating(false);
+                    toast.error('Payment failed. Please try again.');
+                    localStorage.removeItem('aigenius_pending_payment');
+                    break;
+                }
+            } catch (err) {
+                console.warn(`AddToWallet: Polling status check failed:`, err);
+            }
+
+            if (attempt >= 20) {
+                console.warn("AddToWallet: Polling timed out. Keeping transaction state as pending.");
+                setUpdating(false);
+                toast.error("Verification is taking longer than expected. Your wallet will update automatically once Paystack confirms the payment.");
+                break;
+            }
+        }
+    }
+
     async function handleSubmit(amountInNaira: string, email: string) {
         setUpdating(true);
         try {
@@ -151,6 +239,15 @@ const AddToWallet = ({
             const { data } = response.dataReturned;
 
             if (data.authorization_url) {
+                if (data.reference) {
+                    console.log(`AddToWallet: Storing pending payment reference ${data.reference} and starting polling loop.`);
+                    localStorage.setItem('aigenius_pending_payment', JSON.stringify({
+                        reference: data.reference,
+                        amountInNaira,
+                        createdAt: Date.now()
+                    }));
+                    void startPolling(data.reference, amountInNaira);
+                }
                 window.location.assign(data.authorization_url);
                 return;
             }
@@ -184,9 +281,16 @@ const AddToWallet = ({
                 if (e.target === e.currentTarget) closeModal();
             }}
         >
-            <div className="bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl w-full max-w-[367px] max-[800px]:max-w-[320px] max-[800px]:mx-4 overflow-hidden flex flex-col border border-white/40 relative animate-slideUp">
+            <div
+                className="rounded-xl shadow-2xl w-full max-w-[367px] max-[800px]:max-w-[320px] max-[800px]:mx-4 overflow-hidden flex flex-col border relative animate-slideUp backdrop-blur-xl"
+                style={{
+                    background: "var(--modal-bg)",
+                    borderColor: "var(--modal-border)",
+                    color: "var(--modal-fg)",
+                }}
+            >
                 <button
-                    className="absolute top-1 right-1 text-gray-400 hover:text-red-500 transition-colors duration-200 p-0.5 z-10 rounded-full focus:outline-none focus:ring-2 focus:ring-red-300"
+                    className="absolute top-1 right-1 text-gray-400 hover:text-red-500 transition-colors duration-200 p-0.5 z-10 rounded-full focus:outline-none"
                     onClick={closeModal}
                     aria-label="Close modal"
                     tabIndex={0}
@@ -201,8 +305,8 @@ const AddToWallet = ({
                 )}
                 <div className="flex flex-col items-center justify-center w-full min-h-[210px] p-10 max-[800px]:p-6 max-[800px]:min-h-[180px]">
                     {/* Balance Section */}
-                    <div className="w-full flex flex-col items-center mb-3 bg-blue-50/60 border border-blue-100 rounded-lg py-3 max-[800px]:py-2 shadow-sm">
-                        <span className="text-[11px] text-gray-500 mb-0.5 flex items-center gap-1">
+                    <div className="w-full flex flex-col items-center mb-3 border rounded-lg py-3 max-[800px]:py-2 shadow-sm" style={{ background: "var(--modal-bg-muted)", borderColor: "var(--modal-border)" }}>
+                        <span className="text-[11px] mb-0.5 flex items-center gap-1" style={{ color: "var(--modal-muted-fg)" }}>
                             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block text-blue-400 mr-1" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 3v4" /><path d="M8 3v4" /></svg>
                             Present Credits
                         </span>
@@ -210,11 +314,11 @@ const AddToWallet = ({
                             {loadingCredits ? (
                                 <span className="text-blue-400 text-2xl font-bold animate-pulse">Loading...</span>
                             ) : (
-                                <span className="text-blue-700 text-3xl max-[800px]:text-2xl font-extrabold tracking-tight">{addCommas(wallet ?? 0)} credits</span>
+                                <span className="text-blue-600 dark:text-blue-400 text-3xl max-[800px]:text-2xl font-extrabold tracking-tight">{addCommas(wallet ?? 0)} credits</span>
                             )}
                         </div>
                         {/* Info line for credit/naira/dollar equivalence */}
-                        <span className="text-[12px] text-gray-700 font-medium bg-gray-100 rounded px-2 py-1 mt-2 mb-1 border border-gray-200 shadow-sm flex items-center gap-1" tabIndex={0} aria-label="Credit to Naira and Dollar equivalence">
+                        <span className="text-[12px] font-medium rounded px-2 py-1 mt-2 mb-1 border shadow-sm flex items-center gap-1" tabIndex={0} aria-label="Credit to Naira and Dollar equivalence" style={{ background: "var(--modal-bg)", borderColor: "var(--modal-border)", color: "var(--modal-fg)" }}>
                             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block text-blue-400 mr-1" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="8" /></svg>
                             1 credit = ₦1.00 ≈ $0.00063
                         </span>
@@ -230,7 +334,7 @@ const AddToWallet = ({
                     )}
                     {/* Input and Add Money always available */}
                     <form className="w-full flex flex-row items-center mb-2 mt-1" onSubmit={e => { e.preventDefault(); submit(parsedAmount); }}>
-                        <div style={{ flex: 1 }} className="max-[800px]:[&_input]:!h-[40px] max-[800px]:[&_input]:!text-sm">
+                        <div style={{ flex: 1 }} className="max-[800px]:[&_input]:!h-[40px] max-[800px]:[&_input]:!text-sm [&_input]:!bg-[var(--modal-bg)] [&_input]:!text-[var(--modal-fg)] [&_input]:!border-[var(--modal-border)]">
                             <InputField
                                 label=""
                                 name="amount"
@@ -255,7 +359,7 @@ const AddToWallet = ({
                         </div>
                         <button
                             type="submit"
-                            className="bg-blue-500 hover:bg-blue-700 focus:ring-2 focus:ring-blue-300 text-white font-semibold h-[44px] max-[800px]:h-[40px] px-5 max-[800px]:px-3 rounded-r-md transition disabled:opacity-60 text-base max-[800px]:text-sm whitespace-nowrap border border-l-0 border-[#DFE5EC] flex items-center justify-center"
+                            className="bg-blue-500 hover:bg-blue-700 focus:ring-2 focus:ring-blue-300 text-white font-semibold h-[44px] max-[800px]:h-[40px] px-5 max-[800px]:px-3 rounded-r-md transition disabled:opacity-60 text-base max-[800px]:text-sm whitespace-nowrap border border-l-0 border-[var(--modal-border)] flex items-center justify-center"
                             style={{
                                 borderTopLeftRadius: 0,
                                 borderBottomLeftRadius: 0,
@@ -272,8 +376,8 @@ const AddToWallet = ({
                         </button>
                     </form>
                     {/* Helper text for min amount */}
-                    <span className="text-[10px] text-gray-500 mt-0.5 mb-1">Minimum top-up: ₦200</span>
-                    {updating && <div className="mt-2 text-blue-600 text-xs">Please wait, updating your wallet...</div>}
+                    <span className="text-[10px] mt-0.5 mb-1" style={{ color: "var(--modal-muted-fg)" }}>Minimum top-up: ₦200</span>
+                    {updating && <div className="mt-2 text-xs" style={{ color: "var(--modal-muted-fg)" }}>Please wait, updating your wallet...</div>}
                 </div>
             </div>
             <style jsx>{`

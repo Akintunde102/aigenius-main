@@ -47,6 +47,8 @@ export interface UseAudioEngineOptions {
     onStatusChange?: (status: AudioStatus) => void;
     silenceThreshold?: number;
     interruptionThreshold?: number;
+    /** Disable automatic silence thresholds from stopping recording. */
+    disableAutoSilence?: boolean;
     /**
      * When true (default), load @ricky0123/vad-web MicVAD and finalize each utterance from VAD
      * (16 kHz WAV) instead of energy-timer + WebM. Requires `public/vad` assets from postinstall.
@@ -176,7 +178,7 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
             let interimText = '';
             let finalText = '';
 
-            for (let i = event.resultIndex; i < event.results.length; i += 1) {
+            for (let i = 0; i < event.results.length; i += 1) {
                 const result = event.results[i];
                 const transcript = result[0]?.transcript ?? '';
                 if (result.isFinal) {
@@ -191,9 +193,32 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
                 optionsRef.current.onLiveTranscript?.(text, Boolean(finalText));
             }
         };
-        recognition.onerror = () => {
+        recognition.onerror = (event: any) => {
+            const errName = event.error || 'unknown';
+            console.error('[AudioEngine] SpeechRecognition error:', errName);
+            import('react-hot-toast').then(({ toast }) => {
+                if (errName === 'not-allowed') {
+                    toast.error('Browser blocked voice recognition. Grant microphone permissions in browser.');
+                } else if (errName === 'network') {
+                    toast.error('Voice recognition network error. Please try again.');
+                } else {
+                    toast.error(`Voice recognition error: ${errName}`);
+                }
+            }).catch(() => {});
             stopLiveSpeechRecognition();
         };
+
+        recognition.onend = () => {
+            if (isRecordingRef.current && speechRecognitionRef.current === recognition) {
+                console.log('[AudioEngine] SpeechRecognition ended while recording, restarting...');
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.warn('[AudioEngine] Failed to restart SpeechRecognition:', e);
+                }
+            }
+        };
+
         recognition.start();
         speechRecognitionRef.current = recognition;
     }, [stopLiveSpeechRecognition]);
@@ -666,7 +691,7 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
 
     const startRecording = useCallback(async () => {
         try {
-            if (isRecordingRef.current) return;
+            if (isRecordingRef.current) return true;
             if (isPlayingRef.current) {
                 stopAISpeech();
             }
@@ -809,7 +834,8 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
                 if (
                     statusRef.current === 'listening' &&
                     !isCalibratingRef.current &&
-                    !neuralVadReadyRef.current
+                    !neuralVadReadyRef.current &&
+                    !optionsRef.current.disableAutoSilence
                 ) {
                     if (avg > noiseFloor) { // Speech detected
                         if (silenceTimerRef.current) {
@@ -844,11 +870,16 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
             isRecordingRef.current = true;
             setIsRecording(true);
             setStatus('listening');
+            return true;
         } catch (err) {
             console.error('[AudioEngine] Failed to start recording:', err);
+            import('react-hot-toast').then(({ toast }) => {
+                toast.error(`Failed to start recording: ${(err as Error).message || err}`);
+            }).catch(() => {});
             isRecordingRef.current = false;
             setIsRecording(false);
             setStatus('listening');
+            return false;
         }
     }, [silenceThreshold, interruptionThreshold, stopAISpeech, stopRecording, startLiveSpeechRecognition, getSharedContext, bindMediaRecorderEvents, finalizeNeuralUtteranceFromCallback]);
 

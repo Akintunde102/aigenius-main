@@ -60,6 +60,8 @@ export interface ChatBoxInputProps {
     onAudioModeToggle?: (enabled: boolean) => void;
     isAudioMode?: boolean;
     onStartSTT?: () => void;
+    onCancelSTT?: () => void;
+    onConfirmSTT?: () => void;
     isSTTActive?: boolean;
     /** Dictation pipeline only — not conversational status. */
     isDictationTranscribing?: boolean;
@@ -107,6 +109,8 @@ export interface ActionButtonsProps {
     onAudioModeToggle?: (enabled: boolean) => void;
     isAudioMode?: boolean;
     onStartSTT?: () => void;
+    onCancelSTT?: () => void;
+    onConfirmSTT?: () => void;
     isSTTActive?: boolean;
     /** Dictation pipeline only — not conversational status. */
     isDictationTranscribing?: boolean;
@@ -155,6 +159,8 @@ export interface ChatControlsProps {
     onAudioModeToggle?: (enabled: boolean) => void;
     isAudioMode?: boolean;
     onStartSTT?: () => void;
+    onCancelSTT?: () => void;
+    onConfirmSTT?: () => void;
     isSTTActive?: boolean;
     isDictationTranscribing?: boolean;
 }

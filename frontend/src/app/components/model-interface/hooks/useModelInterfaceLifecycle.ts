@@ -72,6 +72,14 @@ export function useModelInterfaceLifecycle({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleGlobalKeyDown);
+    };
+  }, [handleGlobalKeyDown]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
     let disposed = false;
     const onRequestModelPick = () => {
@@ -95,18 +103,16 @@ export function useModelInterfaceLifecycle({
       })();
     };
 
-    window.addEventListener("keydown", handleGlobalKeyDown);
     window.addEventListener("request-model-pick", onRequestModelPick as EventListener);
 
     return () => {
       disposed = true;
-      window.removeEventListener("keydown", handleGlobalKeyDown);
       window.removeEventListener(
         "request-model-pick",
         onRequestModelPick as EventListener,
       );
     };
-  }, [handleGlobalKeyDown, requestModelPick, setError]);
+  }, [requestModelPick, setError]);
 
   useEffect(() => {
     let cancelled = false;

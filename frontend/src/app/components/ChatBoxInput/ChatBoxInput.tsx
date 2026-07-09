@@ -60,6 +60,8 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     onAudioModeToggle,
     isAudioMode,
     onStartSTT,
+    onCancelSTT,
+    onConfirmSTT,
     isSTTActive,
     isDictationTranscribing,
     audioStatus,
@@ -265,7 +267,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                     )}
 
                     {/* STT status pill — minimal, non-intrusive */}
-                    {(audioStatus === 'transcribing' || audioStatus === 'interrupted') && !isAudioMode && (
+                    {(isSTTActive || isDictationTranscribing || ((audioStatus === 'transcribing' || audioStatus === 'interrupted') && !isAudioMode)) && (
                         <div
                             style={{
                                 position: 'absolute',
@@ -286,13 +288,14 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                                 whiteSpace: 'nowrap',
                             }}
                         >
-                            {audioStatus === 'transcribing' ? (
+                            {(isDictationTranscribing || audioStatus === 'transcribing') ? (
                                 <Loader2
                                     size={11}
                                     style={{ color: '#63b3ed', animation: 'spin 1s linear infinite', flexShrink: 0 }}
                                 />
                             ) : (
                                 <span
+                                    className="animate-pulse"
                                     style={{
                                         width: 7,
                                         height: 7,
@@ -304,7 +307,11 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                                 />
                             )}
                             <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#93c5fd', letterSpacing: '0.04em' }}>
-                                {audioStatus === 'interrupted' ? 'Interrupted' : 'Transcribing…'}
+                                {isDictationTranscribing || audioStatus === 'transcribing' 
+                                    ? 'Transcribing…' 
+                                    : audioStatus === 'interrupted' 
+                                        ? 'Interrupted' 
+                                        : 'Listening…'}
                             </span>
                             {audioTranscription && (
                                 <span style={{ fontSize: '0.68rem', color: '#60a5fa', opacity: 0.8, maxWidth: '14rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -337,8 +344,14 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                             onChange={handleInputChange}
                             onKeyDown={handleKeyDown}
                             onPaste={handlePaste}
-                            placeholder={placeholder}
-                            textareaDisabled={false}
+                            placeholder={
+                                isDictationTranscribing
+                                    ? "Transcribing your voice..."
+                                    : isSTTActive
+                                        ? "Listening... Speak now"
+                                        : placeholder
+                            }
+                            textareaDisabled={isDictationTranscribing}
                             uploading={uploading}
                             responseInProgress={responseInProgress}
                             onStopGeneration={onStopGeneration}
@@ -375,6 +388,8 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                         onAudioModeToggle={onAudioModeToggle}
                         isAudioMode={isAudioMode}
                         onStartSTT={onStartSTT}
+                        onCancelSTT={onCancelSTT}
+                        onConfirmSTT={onConfirmSTT}
                         isSTTActive={isSTTActive}
                         isDictationTranscribing={isDictationTranscribing}
                     />

@@ -20,7 +20,20 @@ def load_stt_model(model_size: str = "base"):
     if _stt_model_singleton is not None:
         return _stt_model_singleton
 
-    with log_timed_step(f"Import and load Faster-Whisper model: {model_size}"):
+    # Normalize model size for faster-whisper (GGML/GGUF names like small.en-q5_1 are for whisper.cpp)
+    model_size = model_size.lower()
+    if "tiny" in model_size:
+        norm_size = "tiny.en"
+    elif "base" in model_size:
+        norm_size = "tiny.en"  # Use tiny.en for lightweight and fast downloads
+    elif "small" in model_size:
+        norm_size = "tiny.en"  # Map small to tiny.en to avoid timeouts
+    elif "medium" in model_size:
+        norm_size = "tiny.en"
+    else:
+        norm_size = "tiny.en"
+
+    with log_timed_step(f"Import and load Faster-Whisper model: {norm_size}"):
         try:
             from faster_whisper import WhisperModel
 
@@ -39,7 +52,7 @@ def load_stt_model(model_size: str = "base"):
             except ImportError:
                 LOGGER.info("💻 PyTorch not available for device check. Faster-Whisper will use CPU (int8)")
 
-            model = WhisperModel(model_size, device=device, compute_type=compute_type)
+            model = WhisperModel(norm_size, device=device, compute_type=compute_type)
             _stt_model_singleton = model
             return model
         except ImportError:
