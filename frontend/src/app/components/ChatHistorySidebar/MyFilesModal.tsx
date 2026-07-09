@@ -56,20 +56,25 @@ const MyFilesModal: React.FC<MyFilesModalProps> = ({ onClose, library }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="my-files-modal-title"
-        className={`flex w-full flex-col overflow-hidden border border-white/40 bg-white/92 shadow-2xl backdrop-blur-md transform transition-all duration-200 ease-out ${
+        className={`flex w-full flex-col overflow-hidden border shadow-2xl backdrop-blur-md transform transition-all duration-200 ease-out ${
           isMobile
             ? "h-full max-h-none rounded-none"
             : "max-h-[min(94vh,900px)] max-w-6xl rounded-xl h-[85vh]"
         }`}
         onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--modal-bg)",
+          borderColor: "var(--modal-border)",
+          color: "var(--modal-fg)",
+        }}
       >
-        <div className="flex-shrink-0 border-b border-gray-200">
+        <div className="flex-shrink-0 border-b" style={{ borderColor: "var(--modal-border)" }}>
           <div
             className={`flex items-center justify-between ${isMobile ? "px-2 py-0.5" : "px-4 py-0.5"}`}
           >
             <h2
               id="my-files-modal-title"
-              className={`font-bold text-gray-900 ${isMobile ? "text-sm" : "text-lg"}`}
+              className={`font-bold ${isMobile ? "text-sm" : "text-lg"}`}
             >
               My files
             </h2>
@@ -77,7 +82,8 @@ const MyFilesModal: React.FC<MyFilesModalProps> = ({ onClose, library }) => {
               type="button"
               aria-label="Close"
               title="Close"
-              className="p-1 text-gray-400 transition-colors duration-200 hover:text-red-500"
+              className="p-1 transition-colors duration-200 hover:text-red-500"
+              style={{ color: "var(--modal-muted-fg)" }}
               onClick={onClose}
             >
               <FiX size={isMobile ? 20 : 22} aria-hidden />
@@ -85,7 +91,7 @@ const MyFilesModal: React.FC<MyFilesModalProps> = ({ onClose, library }) => {
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="my-files-browser-container flex min-h-0 flex-1 flex-col overflow-hidden">
           <UserFilesBrowser
             variant="modal"
             library={library}
@@ -94,6 +100,61 @@ const MyFilesModal: React.FC<MyFilesModalProps> = ({ onClose, library }) => {
           />
         </div>
       </div>
+      <style jsx>{`
+        .animate-fadeIn { animation: fadeIn 0.4s; }
+        .animate-slideUp { animation: slideUp 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* Dark mode overrides for internal UserFilesBrowser components */
+        :global(.dark) :global(.my-files-browser-container) {
+            background-color: var(--modal-bg) !important;
+            color: var(--modal-fg) !important;
+        }
+        :global(.dark) :global(.my-files-browser-container input) {
+            background-color: var(--modal-bg-muted) !important;
+            color: var(--modal-fg) !important;
+            border-color: var(--modal-border) !important;
+        }
+        :global(.dark) :global(.my-files-browser-container .sticky) {
+            background-color: var(--modal-bg) !important;
+            border-color: var(--modal-border) !important;
+        }
+        :global(.dark) :global(.my-files-browser-container button[role="tab"]:not([aria-selected="true"])) {
+            background-color: var(--modal-bg-muted) !important;
+            color: var(--modal-muted-fg) !important;
+            border-color: var(--modal-border) !important;
+        }
+        :global(.dark) :global(.my-files-browser-container button[role="tab"]:not([aria-selected="true"]):hover) {
+            background-color: var(--modal-bg) !important;
+            color: var(--modal-fg) !important;
+        }
+        :global(.dark) :global(.my-files-browser-container article),
+        :global(.dark) :global(.my-files-browser-container .border),
+        :global(.dark) :global(.my-files-browser-container [class*="border"]) {
+            border-color: var(--modal-border) !important;
+        }
+        :global(.dark) :global(.my-files-browser-container article),
+        :global(.dark) :global(.my-files-browser-container [class*="bg-white"]),
+        :global(.dark) :global(.my-files-browser-container [class*="bg-slate-50"]),
+        :global(.dark) :global(.my-files-browser-container [class*="bg-gray-50"]) {
+            background-color: var(--modal-bg-muted) !important;
+        }
+        :global(.dark) :global(.my-files-browser-container [class*="text-gray-900"]),
+        :global(.dark) :global(.my-files-browser-container [class*="text-gray-800"]) {
+            color: var(--modal-fg) !important;
+        }
+        :global(.dark) :global(.my-files-browser-container [class*="text-gray-700"]),
+        :global(.dark) :global(.my-files-browser-container [class*="text-gray-600"]),
+        :global(.dark) :global(.my-files-browser-container [class*="text-gray-500"]) {
+            color: var(--modal-muted-fg) !important;
+        }
+        :global(.dark) :global(.my-files-browser-container [class*="absolute"][class*="bg-white"]) {
+            background-color: var(--modal-bg) !important;
+            border-color: var(--modal-border) !important;
+            color: var(--modal-fg) !important;
+        }
+      `}</style>
     </div>
   );
 

@@ -52,6 +52,8 @@ export interface UseChatOperationsRefinedProps {
     updateSessionMessages?: (sessionId: string, messages: ChatMessage[], sessionData?: Partial<ChatSession>) => void;
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;
+    selectedPersonalityId?: string;
+    selectedSystemPrompt?: string;
     pendingOrphanReply?: OrphanReplyRequest | null;
     clearPendingOrphanReply?: () => void;
     /** When the API returns insufficient-funds, open credits modal / sync balance. */

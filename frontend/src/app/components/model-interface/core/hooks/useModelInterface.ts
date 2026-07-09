@@ -11,6 +11,7 @@ import {
 } from "../../features/chat/hooks";
 import { DRAFT_SESSION_KEY } from "../../features/chat/hooks/chatOperations.constants";
 import { useUIState, useScrollAndKeyboard } from "../../shared/hooks";
+import { useModelInterfacePersonality } from "../../hooks/useModelInterfacePersonality";
 import {
   AudioStatus,
 } from "../../features/chat/hooks/audioMode.utils";
@@ -188,6 +189,21 @@ export function useModelInterface(options?: {
   });
 
   const {
+    selectedPersonalityId,
+    setSelectedPersonalityId,
+    selectedSystemPrompt,
+    setSelectedSystemPrompt,
+    applySessionPersonalityState,
+  } = useModelInterfacePersonality({
+    currentSessionId,
+    chatHistory,
+    personalities,
+    setSelectedPersonalityName,
+    setSelectedPersonalityIconUrl,
+    setChatHistory,
+  });
+
+  const {
     input,
     setInput,
     wallet,
@@ -215,6 +231,8 @@ export function useModelInterface(options?: {
     updateSessionMessages,
     selectedPersonalityName,
     selectedPersonalityIconUrl,
+    selectedPersonalityId,
+    selectedSystemPrompt,
     pendingOrphanReply,
     clearPendingOrphanReply: () => setPendingOrphanReply(null),
     onInsufficientFunds: options?.onInsufficientFunds,
@@ -229,12 +247,16 @@ export function useModelInterface(options?: {
     isSTTActive,
     isTranscribing,
     toggleSTT,
+    cancelSTT,
+    confirmSTT,
     exitDictation,
     isRecording: isDictationRecording,
   } = useAudioSTT({
     input,
     setInput,
     socket: audioSession.socket,
+    connect: audioSession.connect,
+    disconnect: audioSession.disconnect,
     peerMicSuppressRef: conversationalMicLiveRef,
   });
 
@@ -401,6 +423,11 @@ export function useModelInterface(options?: {
       setSelectedPersonalityName,
       selectedPersonalityIconUrl,
       setSelectedPersonalityIconUrl,
+      selectedPersonalityId,
+      setSelectedPersonalityId,
+      selectedSystemPrompt,
+      setSelectedSystemPrompt,
+      applySessionPersonalityState,
     },
     chatState: {
       input,
@@ -520,6 +547,8 @@ export function useModelInterface(options?: {
       handleMiniModeToggle: toggleMiniMode,
       isSTTActive,
       handleStartSTT,
+      handleCancelSTT: cancelSTT,
+      handleConfirmSTT: confirmSTT,
       isDictationTranscribing: isTranscribing,
       analyzer,
     },

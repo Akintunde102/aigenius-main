@@ -26,9 +26,14 @@ export const GoogleSignIn = ({
 
     const handleDevLogin = () => {
         // Redirect to backend dev-login endpoint
-        let email = prompt("Enter email for dev login:", "test@example.com");
-        // Fallback for automated browser environments where prompt dialogs are auto-dismissed
-        if (email === null && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        let email: string | null = null;
+        try {
+            email = prompt("Enter email for dev login:", "test@example.com");
+        } catch (e) {
+            console.warn("prompt() is not supported in this environment, falling back to default dev email.");
+        }
+        // Fallback for automated browser environments or when prompt dialogs are not supported/cancelled
+        if (!email && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             email = "test@example.com";
         }
         if (email) {

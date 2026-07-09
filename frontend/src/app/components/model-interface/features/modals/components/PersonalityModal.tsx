@@ -37,10 +37,17 @@ export function PersonalityModal({ isOpen, onClose, onSelect, currentModelId, cu
 
     return (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/20 backdrop-blur-sm">
-            <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] overflow-hidden border border-white/40">
+            <div
+                className="rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] overflow-hidden border backdrop-blur-xl flex flex-col"
+                style={{
+                    background: "var(--modal-bg)",
+                    borderColor: "var(--modal-border)",
+                    color: "var(--modal-fg)",
+                }}
+            >
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
-                    <h2 className="text-lg font-bold text-gray-900">Select Personality</h2>
+                <div className="flex items-center justify-between px-4 py-2 border-b" style={{ borderColor: "var(--modal-border)" }}>
+                    <h2 className="text-lg font-bold">Select Personality</h2>
                     <div className="flex items-center gap-2">
                         <button
                             className="px-3 py-1 rounded bg-blue-600 text-white text-sm font-semibold shadow hover:bg-blue-700"
@@ -48,14 +55,14 @@ export function PersonalityModal({ isOpen, onClose, onSelect, currentModelId, cu
                         >
                             New
                         </button>
-                        <button className="text-gray-400 hover:text-red-500" onClick={onClose}><FiX size={20} /></button>
+                        <button className="hover:text-red-500 transition-colors" onClick={onClose} style={{ color: "var(--modal-muted-fg)" }}><FiX size={20} /></button>
                     </div>
                 </div>
 
                 {/* Search */}
-                <div className="p-3 border-b border-gray-200">
+                <div className="p-3 border-b" style={{ borderColor: "var(--modal-border)" }}>
                     <input
-                        className="w-full border border-gray-300 rounded-full bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent px-3 py-1.5 text-xs"
+                        className="app-modal-input w-full rounded-full focus:outline-none px-3 py-1.5 text-xs"
                         placeholder="Search personalities..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -67,14 +74,18 @@ export function PersonalityModal({ isOpen, onClose, onSelect, currentModelId, cu
                     {filtered.map(p => (
                         <div
                             key={p.id}
-                            className="group cursor-pointer border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow overflow-hidden h-[160px]"
+                            className="group cursor-pointer border rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden h-[160px]"
                             onClick={() => onSelect(p)}
+                            style={{
+                                background: "var(--modal-bg-muted)",
+                                borderColor: "var(--modal-border)",
+                            }}
                         >
                             <div className="flex flex-col h-full p-3">
                                 {/* Header with actions */}
                                 <div className="flex items-start justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs overflow-hidden">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className="w-6 h-6 rounded bg-gray-200/20 flex items-center justify-center text-xs overflow-hidden shrink-0">
                                             {p.icon
                                                 ? (p.icon.startsWith('http') || p.icon.startsWith('data:')
                                                     ? <img
@@ -89,23 +100,25 @@ export function PersonalityModal({ isOpen, onClose, onSelect, currentModelId, cu
                                                     : <span className="text-base">{p.icon}</span>)
                                                 : '🎭'}
                                         </div>
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-sm leading-tight text-gray-900">{p.name}</span>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="font-bold text-sm leading-tight truncate">{p.name}</span>
                                             {p.creator && (
-                                                <span className="text-xs text-gray-500">
+                                                <span className="text-xs truncate" style={{ color: "var(--modal-muted-fg)" }}>
                                                     by {p.creator.firstName} {p.creator.lastName || ''}
                                                 </span>
                                             )}
                                         </div>
                                     </div>
                                     {isCreator(p) && (
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 shrink-0">
                                             <button
-                                                className="flex items-center justify-center border border-gray-200 bg-white rounded-md p-1.5 hover:bg-gray-50 hover:border-gray-300 transition-all duration-150 text-blue-600 text-xs"
+                                                className="flex items-center justify-center border bg-transparent rounded-md p-1.5 hover:bg-blue-50/10 transition-all duration-150 text-blue-500 text-xs"
+                                                style={{ borderColor: "var(--modal-border)" }}
                                                 onClick={(e) => { e.stopPropagation(); setEditing(p); setShowEditor(true); }}
                                             >Edit</button>
                                             <button
-                                                className="flex items-center justify-center border border-gray-200 bg-white rounded-md p-1.5 hover:bg-red-50 hover:border-red-300 transition-all duration-150 text-red-600 text-xs"
+                                                className="flex items-center justify-center border bg-transparent rounded-md p-1.5 hover:bg-red-50/10 transition-all duration-150 text-red-500 text-xs"
+                                                style={{ borderColor: "var(--modal-border)" }}
                                                 onClick={async (e) => {
                                                     e.stopPropagation();
                                                     try {
@@ -124,16 +137,16 @@ export function PersonalityModal({ isOpen, onClose, onSelect, currentModelId, cu
                                 {/* Main Content */}
                                 <div className="flex-1 min-w-0">
                                     {p.description && (
-                                        <div className="text-xs text-gray-600 leading-tight line-clamp-2">{p.description}</div>
+                                        <div className="text-xs leading-tight line-clamp-2" style={{ color: "var(--modal-muted-fg)" }}>{p.description}</div>
                                     )}
-                                    <div className="text-[11px] text-gray-500 line-clamp-2 whitespace-pre-wrap mt-1">{p.prompt}</div>
+                                    <div className="text-[11px] line-clamp-2 whitespace-pre-wrap mt-1 opacity-70">{p.prompt}</div>
                                 </div>
 
                                 {/* Footer */}
                                 <div className="flex items-center justify-between mt-2">
                                     <div className="flex items-center gap-1">
                                         {isCreator(p) && (
-                                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">Your creation</span>
+                                            <span className="text-xs text-blue-500 bg-blue-500/10 px-2 py-1 rounded">Your creation</span>
                                         )}
                                     </div>
                                     <button className="px-2 py-1 rounded bg-blue-600 text-white text-xs" onClick={(e) => { e.stopPropagation(); onSelect(p); }}>Use</button>
@@ -142,16 +155,16 @@ export function PersonalityModal({ isOpen, onClose, onSelect, currentModelId, cu
                         </div>
                     ))}
                     {filtered.length === 0 && (
-                        <div className="text-gray-400 text-sm">No personalities yet. Create one.</div>
+                        <div className="text-sm" style={{ color: "var(--modal-muted-fg)" }}>No personalities yet. Create one.</div>
                     )}
                 </div>
                 {errorMessage && (
-                    <div className="px-3 pb-2 text-sm text-red-600">{errorMessage}</div>
+                    <div className="px-3 pb-2 text-sm text-red-500">{errorMessage}</div>
                 )}
 
                 {/* Editor Drawer */}
                 {showEditor && (
-                    <div className="absolute inset-x-0 bottom-0 bg-white/95 border-t border-gray-200 p-2 shadow-xl">
+                    <div className="absolute inset-x-0 bottom-0 border-t p-2 shadow-xl" style={{ background: "var(--modal-bg)", borderColor: "var(--modal-border)" }}>
                         <Editor
                             initial={editing || {}}
                             onCancel={() => { setErrorMessage(null); setShowEditor(false); setEditing(null); }}
@@ -188,12 +201,9 @@ function Editor({ initial, onCancel, onSave, currentModelId, currentModelName }:
     const [uploading, setUploading] = useState(false);
     const [uploadPercent, setUploadPercent] = useState(0);
     const [modelId, setModelId] = useState<string>(initial.modelId as string || currentModelId || '');
-    const [modelName, setModelName] = useState<string>(currentModelName || '');
-
-    useEffect(() => {
-        if (currentModelId) setModelId(currentModelId);
-        if (currentModelName) setModelName(currentModelName);
-    }, [currentModelId, currentModelName,]);
+    const [modelName, setModelName] = useState<string>(
+        initial.modelId && initial.modelId !== currentModelId ? (initial.modelId as string) : (currentModelName || currentModelId || '')
+    );
 
 
     // Reactively update when a model is picked from the ModelSelectionModal
@@ -240,7 +250,7 @@ function Editor({ initial, onCancel, onSave, currentModelId, currentModelName }:
             <div className="flex items-center justify-between">
                 <div className="font-semibold">{initial?.id ? 'Edit Personality' : 'Create Personality'}</div>
                 <div className="flex items-center gap-2">
-                    <button className="text-gray-600 text-sm" onClick={onCancel}>Cancel</button>
+                    <button className="text-sm hover:opacity-85 transition-opacity" onClick={onCancel} style={{ color: "var(--modal-muted-fg)" }}>Cancel</button>
                     <button
                         className="px-2.5 py-1 rounded bg-blue-600 text-white text-sm font-semibold"
                         onClick={() => onSave({ id: initial.id, name, description, prompt, icon })}
@@ -251,20 +261,20 @@ function Editor({ initial, onCancel, onSave, currentModelId, currentModelName }:
             {/* Row 1: Name and Description */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
-                    <div className="text-xs text-gray-600 mb-1">Name</div>
-                    <input className="w-full border border-gray-300 rounded px-2 py-1 text-xs" value={name} onChange={e => setName(e.target.value)} />
+                    <div className="text-xs mb-1" style={{ color: "var(--modal-muted-fg)" }}>Name</div>
+                    <input className="app-modal-input w-full rounded px-2 py-1 text-xs focus:outline-none" value={name} onChange={e => setName(e.target.value)} />
                 </div>
                 <div>
-                    <div className="text-xs text-gray-600 mb-1">Description (optional)</div>
-                    <input className="w-full border border-gray-300 rounded px-2 py-1 text-xs" value={description} onChange={e => setDescription(e.target.value)} />
+                    <div className="text-xs mb-1" style={{ color: "var(--modal-muted-fg)" }}>Description (optional)</div>
+                    <input className="app-modal-input w-full rounded px-2 py-1 text-xs focus:outline-none" value={description} onChange={e => setDescription(e.target.value)} />
                 </div>
             </div>
             {/* Row 2: Icon and Default Model */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
-                    <div className="text-xs text-gray-600 mb-1">Icon (optional)</div>
+                    <div className="text-xs mb-1" style={{ color: "var(--modal-muted-fg)" }}>Icon (optional)</div>
                     <div className="flex items-center gap-2">
-                        <input className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs" value={icon} onChange={e => setIcon(e.target.value)} placeholder="e.g. 🎯 or https://..." />
+                        <input className="app-modal-input flex-1 rounded px-2 py-1 text-xs focus:outline-none" value={icon} onChange={e => setIcon(e.target.value)} placeholder="e.g. 🎯 or https://..." />
                         <input
                             type="file"
                             accept="image/*"
@@ -272,7 +282,7 @@ function Editor({ initial, onCancel, onSave, currentModelId, currentModelName }:
                                 const f = e.target.files?.[0];
                                 if (f) handleIconFile(f);
                             }}
-                            className="text-xs"
+                            className="text-xs shrink-0"
                         />
                         {(icon?.startsWith('http') || icon?.startsWith('data:')) && (
                             <img
@@ -283,33 +293,35 @@ function Editor({ initial, onCancel, onSave, currentModelId, currentModelName }:
                                 height={24}
                                 loading="lazy"
                                 decoding="async"
+                                style={{ borderColor: "var(--modal-border)" }}
                             />
                         )}
                     </div>
                     {uploading && (
-                        <div className="mt-1 text-[11px] text-gray-600">Uploading {uploadPercent}%</div>
+                        <div className="mt-1 text-[11px]" style={{ color: "var(--modal-muted-fg)" }}>Uploading {uploadPercent}%</div>
                     )}
                 </div>
                 <div className="max-w-xs">
-                    <div className="text-xs text-gray-600 mb-1">Default Model <span className="text-red-500">*</span></div>
+                    <div className="text-xs mb-1" style={{ color: "var(--modal-muted-fg)" }}>Default Model <span className="text-red-500">*</span></div>
                     <button
                         type="button"
-                        className="w-full px-2.5 py-1.5 rounded border border-blue-300 text-xs hover:bg-blue-50 text-left bg-white flex items-center justify-between"
+                        className="w-full px-2.5 py-1.5 rounded border text-xs hover:bg-blue-50/5 text-left flex items-center justify-between"
+                        style={{ background: "var(--modal-bg)", borderColor: "var(--modal-border)", color: "var(--modal-fg)" }}
                         onClick={() => {
                             const evt = new CustomEvent('request-model-pick', { detail: {} });
                             window.dispatchEvent(evt);
                         }}
                     >
-                        <span className="text-gray-700">Pick Model:</span>
-                        <span className="font-semibold text-gray-900 truncate max-w-[70%]">
+                        <span style={{ color: "var(--modal-muted-fg)" }}>Pick Model:</span>
+                        <span className="font-semibold truncate max-w-[70%]">
                             {modelName || modelId || 'Select from list'}
                         </span>
                     </button>
                 </div>
             </div>
             <div>
-                <div className="text-xs text-gray-600 mb-1">System Prompt</div>
-                <textarea className="w-full border border-gray-300 rounded px-2 py-1 text-xs min-h-[96px]" value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Write the system prompt that defines this personality..." />
+                <div className="text-xs mb-1" style={{ color: "var(--modal-muted-fg)" }}>System Prompt</div>
+                <textarea className="app-modal-input w-full rounded px-2 py-1 text-xs min-h-[96px] focus:outline-none" value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Write the system prompt that defines this personality..." />
             </div>
             <div className="flex justify-end">
                 <button

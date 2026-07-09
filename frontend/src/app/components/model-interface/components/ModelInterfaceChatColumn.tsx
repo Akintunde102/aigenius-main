@@ -77,6 +77,8 @@ type Props = {
   onAudioModeToggle?: (enabled: boolean) => void;
   isAudioMode?: boolean;
   onStartSTT?: () => void;
+  onCancelSTT?: () => void;
+  onConfirmSTT?: () => void;
   isSTTActive?: boolean;
   isDictationTranscribing?: boolean;
   audioTranscription?: string;
@@ -140,6 +142,8 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   onAudioModeToggle,
   isAudioMode,
   onStartSTT,
+  onCancelSTT,
+  onConfirmSTT,
   isSTTActive,
   isDictationTranscribing,
   audioTranscription,
@@ -229,6 +233,8 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           onAudioModeToggle={onAudioModeToggle}
           isAudioMode={isAudioMode}
           onStartSTT={onStartSTT}
+          onCancelSTT={onCancelSTT}
+          onConfirmSTT={onConfirmSTT}
           isSTTActive={isSTTActive}
           isDictationTranscribing={isDictationTranscribing}
           audioTranscription={audioTranscription}

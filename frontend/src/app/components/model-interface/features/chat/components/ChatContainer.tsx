@@ -72,6 +72,8 @@ interface ChatContainerProps {
     onAudioModeToggle?: (enabled: boolean) => void;
     isAudioMode?: boolean;
     onStartSTT?: () => void;
+    onCancelSTT?: () => void;
+    onConfirmSTT?: () => void;
     isSTTActive?: boolean;
     isDictationTranscribing?: boolean;
     audioTranscription?: string;
@@ -139,6 +141,8 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     onAudioModeToggle,
     isAudioMode,
     onStartSTT,
+    onCancelSTT,
+    onConfirmSTT,
     isSTTActive,
     isDictationTranscribing = false,
     audioTranscription,
@@ -397,6 +401,8 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         onAudioModeToggle={onAudioModeToggle}
                         isAudioMode={isAudioMode}
                         onStartSTT={onStartSTT}
+                        onCancelSTT={onCancelSTT}
+                        onConfirmSTT={onConfirmSTT}
                         isSTTActive={isSTTActive}
                         isDictationTranscribing={isDictationTranscribing}
                         audioStatus={audioStatus}

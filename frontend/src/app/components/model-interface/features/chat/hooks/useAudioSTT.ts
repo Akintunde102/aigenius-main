@@ -15,14 +15,28 @@ interface UseAudioSTTProps {
   setInput: (text: string) => void;
   onTranscriptionComplete?: (text: string) => void;
   socket: Socket | null;
+  connect?: () => void;
+  disconnect?: () => void;
   /** When true, do not emit mic chunks / partial flushes (conversational mode owns capture). */
   peerMicSuppressRef?: MutableRefObject<boolean>;
 }
 
-export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, peerMicSuppressRef }: UseAudioSTTProps) {
+export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, connect, disconnect, peerMicSuppressRef }: UseAudioSTTProps) {
   const [isSTTActive, setIsSTTActive] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const voiceDraftBaseRef = useRef("");
+
+  // Handle connection/disconnection for STT/Dictation
+  useEffect(() => {
+    if (isSTTActive) {
+      voiceObs('dictation', 'socket_connect_requested', {});
+      connect?.();
+      return () => {
+        voiceObs('dictation', 'socket_disconnect_requested', { source: 'cleanup' });
+        disconnect?.();
+      };
+    }
+  }, [isSTTActive, connect, disconnect]);
 
   const partialTranscriptionInFlightRef = useRef(false);
   const desktopSessionIdRef = useRef<string | null>(null);
@@ -35,20 +49,27 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
    * (parallel `arrayBuffer()` completions can reorder chunks → invalid file → STT failures).
    */
   const socketChunkSendChainRef = useRef(Promise.resolve<void>(undefined));
+  const desktopChunkSendChainRef = useRef(Promise.resolve<void>(undefined));
 
   useEffect(() => {
     if (!isSTTActive) {
       socketChunkSendChainRef.current = Promise.resolve(undefined);
+      desktopChunkSendChainRef.current = Promise.resolve(undefined);
     }
   }, [isSTTActive]);
+
+  const isCancelledRef = useRef(false);
 
   const {
     isRecording,
     startRecording,
     stopRecording,
   } = useAudioEngine({
+    disableAutoSilence: true,
+    neuralVad: false,
     onLiveTranscript: useCallback((text: string) => {
       // Browser-native STT (webkitSpeechRecognition)
+      if (isCancelledRef.current) return;
       setInput(composeLiveVoiceDraft(voiceDraftBaseRef.current, text));
     }, [setInput]),
     onAudioChunk: useCallback((blob: Blob) => {
@@ -70,44 +91,48 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
 
       // Desktop: Stream to local sidecar
       if (isSTTActive && isAigeniusDesktopRuntime()) {
-        void blob.arrayBuffer().then(async (buffer) => {
-          // Ensure exactly one session-start is in-flight — concurrent chunks share the same promise.
-          if (!desktopSessionIdRef.current) {
-            if (!desktopSessionStartRef.current) {
-              desktopSessionStartRef.current = (async () => {
-                try {
-                  const res = await authorizedFetch(AUDIO_CONSTANTS.LOCAL_DESKTOP_STT_STREAM_START_URL, { method: 'POST' });
-                  if (res.ok) {
-                    const data = await res.json() as { sessionId: string };
-                    desktopSessionIdRef.current = data.sessionId;
-                    partialFlushErrorCountRef.current = 0;
-                    voiceObs('dictation', 'desktop_stt_session_started', {
-                      sessionIdPrefix: data.sessionId.slice(0, 8),
-                    });
-                    return data.sessionId;
+        desktopChunkSendChainRef.current = desktopChunkSendChainRef.current
+          .catch(() => undefined)
+          .then(async () => {
+            const buffer = await blob.arrayBuffer();
+
+            // Ensure exactly one session-start is in-flight — concurrent chunks share the same promise.
+            if (!desktopSessionIdRef.current) {
+              if (!desktopSessionStartRef.current) {
+                desktopSessionStartRef.current = (async () => {
+                  try {
+                    const res = await authorizedFetch(AUDIO_CONSTANTS.LOCAL_DESKTOP_STT_STREAM_START_URL, { method: 'POST' });
+                    if (res.ok) {
+                      const data = await res.json() as { sessionId: string };
+                      desktopSessionIdRef.current = data.sessionId;
+                      partialFlushErrorCountRef.current = 0;
+                      voiceObs('dictation', 'desktop_stt_session_started', {
+                        sessionIdPrefix: data.sessionId.slice(0, 8),
+                      });
+                      return data.sessionId;
+                    }
+                  } catch (e) {
+                    console.error('[AudioSTT] Failed to start desktop STT session:', e);
                   }
-                } catch (e) {
-                  console.error('[AudioSTT] Failed to start desktop STT session:', e);
-                }
-                return null;
-              })();
+                  return null;
+                })();
+              }
+              await desktopSessionStartRef.current;
             }
-            await desktopSessionStartRef.current;
-          }
 
-          const sid = desktopSessionIdRef.current;
-          if (!sid) return;
+            const sid = desktopSessionIdRef.current;
+            if (!sid) return;
 
-          try {
-            await authorizedFetch(AUDIO_CONSTANTS.LOCAL_DESKTOP_STT_STREAM_CHUNK_URL, {
-              method: 'POST',
-              headers: { 'X-Session-ID': sid },
-              body: buffer,
-            });
-          } catch (e) {
-            console.warn('[AudioSTT] Failed to send desktop STT chunk:', e);
-          }
-        });
+            try {
+              await authorizedFetch(AUDIO_CONSTANTS.LOCAL_DESKTOP_STT_STREAM_CHUNK_URL, {
+                method: 'POST',
+                headers: { 'X-Session-ID': sid },
+                body: buffer,
+              });
+            } catch (e) {
+              console.warn('[AudioSTT] Failed to send desktop STT chunk:', e);
+            }
+          });
       }
     }, [isSTTActive, socket, peerMicSuppressRef]),
     onSilence: useCallback(async (blob: Blob) => {
@@ -115,6 +140,22 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
       // would produce a ghost transcript in the conversational flow.
       if (peerMicSuppressRef?.current) {
         voiceObs('dictation', 'silence_peer_suppressed', { blobBytes: blob.size });
+        return;
+      }
+
+      if (isCancelledRef.current) {
+        isCancelledRef.current = false;
+        setIsTranscribing(false);
+        setIsSTTActive(false);
+        if (isAigeniusDesktopRuntime() && desktopSessionIdRef.current) {
+          const sid = desktopSessionIdRef.current;
+          desktopSessionIdRef.current = null;
+          desktopSessionStartRef.current = null;
+          void authorizedFetch(AUDIO_CONSTANTS.LOCAL_DESKTOP_STT_STREAM_END_URL, {
+            method: 'POST',
+            headers: { 'X-Session-ID': sid },
+          });
+        }
         return;
       }
 
@@ -142,6 +183,7 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
       setIsTranscribing(true);
 
       if (isAigeniusDesktopRuntime()) {
+        await desktopChunkSendChainRef.current.catch(() => undefined);
         const sid = desktopSessionIdRef.current;
         try {
           if (sid) {
@@ -190,6 +232,9 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
           }
         } catch (e) {
           console.warn('[AudioSTT] Local finalize STT failed', e);
+          import('react-hot-toast').then(({ toast }) => {
+              toast.error('Desktop Speech-to-Text service failed or is not running.');
+          }).catch(() => {});
         } finally {
           setIsTranscribing(false);
           setTimeout(() => {
@@ -200,6 +245,15 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
       }
 
       // Web fallback
+      if (AUDIO_CONSTANTS.BROWSER_STT_ENGINE === 'native') {
+        // Native mode writes everything in real-time. No need to call backend.
+        setIsTranscribing(false);
+        setTimeout(() => {
+          setIsSTTActive(false);
+        }, 500);
+        return;
+      }
+
       try {
         const formData = new FormData();
         const ext = blob.type.includes('wav') ? 'audio.wav' : 'audio.webm';
@@ -229,7 +283,7 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
         }, 500);
       }
     }, [socket, setInput, onTranscriptionComplete, peerMicSuppressRef]),
-    neuralVad: isAigeniusDesktopRuntime() ? true : (AUDIO_CONSTANTS.BROWSER_STT_ENGINE === 'cloud'),
+    neuralVad: false,
   });
 
   // Desktop socket transcription listener
@@ -275,16 +329,21 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
         partialTranscriptionInFlightRef.current = true;
         void (async () => {
           try {
+            await desktopChunkSendChainRef.current.catch(() => undefined);
+            const currentSid = desktopSessionIdRef.current;
+            if (!currentSid || currentSid !== sid || isCancelledRef.current) return;
+
             const res = await authorizedFetch(AUDIO_CONSTANTS.LOCAL_DESKTOP_STT_STREAM_TRANSCRIBE_URL, {
               method: 'POST',
-              headers: { 'X-Session-ID': sid },
+              headers: { 'X-Session-ID': currentSid },
               body: JSON.stringify({ beam_size: 1 }), // Fast partial
             });
             if (res.ok) {
+              if (isCancelledRef.current || !desktopSessionIdRef.current) return;
               partialFlushErrorCountRef.current = 0;
               const data = (await res.json()) as { text?: string };
               const text = data.text?.trim() ?? '';
-              if (text && isSTTActive) {
+              if (text && isSTTActive && !isCancelledRef.current) {
                 setInput(composeLiveVoiceDraft(voiceDraftBaseRef.current, text));
               }
             } else {
@@ -309,7 +368,7 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
     return () => window.clearInterval(id);
   }, [isSTTActive, isRecording, socket, setInput, peerMicSuppressRef]);
 
-  const toggleSTT = useCallback(() => {
+  const toggleSTT = useCallback(async () => {
     if (isRecording) {
       voiceObs('dictation', 'toggle_off', {});
       resetVoiceTraceSession();
@@ -319,8 +378,12 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
       resetVoiceTraceSession();
       voiceObs('dictation', 'toggle_on', {});
       voiceDraftBaseRef.current = input;
-      startRecording();
-      setIsSTTActive(true);
+      const success = await startRecording();
+      if (success) {
+        setIsSTTActive(true);
+      } else {
+        setIsSTTActive(false);
+      }
     }
   }, [input, isRecording, startRecording, stopRecording]);
 
@@ -346,11 +409,25 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
     setIsTranscribing(false);
   }, [isRecording, stopRecording]);
 
+  const cancelSTT = useCallback(() => {
+    isCancelledRef.current = true;
+    setInput(voiceDraftBaseRef.current);
+    stopRecording();
+    setIsSTTActive(false);
+  }, [setInput, stopRecording]);
+
+  const confirmSTT = useCallback(() => {
+    isCancelledRef.current = false;
+    stopRecording();
+  }, [stopRecording]);
+
   return {
     isSTTActive,
     isTranscribing,
     isRecording,
     toggleSTT,
+    cancelSTT,
+    confirmSTT,
     exitDictation,
   };
 }
