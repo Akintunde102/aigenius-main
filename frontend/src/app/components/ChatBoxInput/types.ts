@@ -12,9 +12,13 @@ export interface Model {
 }
 
 export interface UploadedFileInfo {
-    file: File;
+    file?: File;
     fileUrl: string;
     isImage: boolean;
+    displayName: string;
+    mimeType?: string;
+    source?: 'local' | 'library';
+    libraryFileId?: string;
 }
 
 /** Return `false` to keep the composer text (e.g. wallet modal without sending). Omitted/`true` clears after send is accepted. */
@@ -39,6 +43,8 @@ export interface ChatBoxInputProps {
     uploading?: boolean;
     uploadProgress?: number | null;
     supportsFileUpload?: boolean;
+    /** When set, paperclip opens this menu instead of the native file picker directly. */
+    onAttachmentMenuRequest?: () => void;
     uploadedFiles?: UploadedFileInfo[];
     onRemoveUploadedFile?: (index: number) => void;
     inputValue?: string;

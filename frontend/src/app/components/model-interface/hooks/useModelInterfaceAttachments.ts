@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import type { RefObject } from "react";
+import type { CloudFile } from "@/app/components/file/file.interface";
 import { useFileUpload } from "../features/file-upload/hooks";
 import {
   ATTACHMENT_INDEX_SYSTEM_MESSAGE_ID,
@@ -8,9 +9,16 @@ import {
   createSystemChatMessage,
   formatAttachmentIndexSystemMessage,
   getAssistantImageUrlsFromChat,
+  getUploadedFileDisplayName,
 } from "../ModelInterface.helpers";
 import type { ChatMessage, Model } from "../shared/types";
 import type { ChatContainerHandle } from "../features/chat/components/ChatContainer";
+import {
+  buildCloudFileDisplayName,
+  inferMimeTypeFromCloudFile,
+  isAttachableCloudFile,
+  isImageCloudFile,
+} from "@/app/components/user-files/user-files.utils";
 
 type Params = {
   chat: ChatMessage[];
@@ -48,13 +56,21 @@ export function useModelInterfaceAttachments({
     setError,
     conversationId: currentSessionId,
     onFileUploaded: (fileInfo) => {
-      setUploadedFiles((prev) => [...prev, fileInfo]);
+      const entry: UploadedFileEntry = {
+        file: fileInfo.file,
+        fileUrl: fileInfo.fileUrl,
+        isImage: fileInfo.isImage,
+        displayName: fileInfo.file.name,
+        mimeType: fileInfo.file.type,
+        source: "local",
+      };
+      setUploadedFiles((prev) => [...prev, entry]);
       setAttachmentIndex((prev) => {
         const nextItem: AttachmentIndexItem = {
-          name: fileInfo.file.name,
-          url: fileInfo.fileUrl,
-          isImage: fileInfo.isImage,
-          mimeType: fileInfo.file.type,
+          name: entry.displayName,
+          url: entry.fileUrl,
+          isImage: entry.isImage,
+          mimeType: entry.mimeType,
           uploadedAt: Date.now(),
         };
 
@@ -128,6 +144,54 @@ export function useModelInterfaceAttachments({
     currentSessionId,
   ]);
 
+  const handleAttachSavedFiles = useCallback((cloudFiles: CloudFile[]) => {
+    const attachable = cloudFiles.filter(isAttachableCloudFile);
+    if (attachable.length === 0) {
+      setError("None of the selected files can be attached to chat.");
+      return;
+    }
+
+    setUploadedFiles((prev) => {
+      const next = [...prev];
+      for (const cloudFile of attachable) {
+        const fileUrl = cloudFile.s3Link;
+        if (next.some((entry) => entry.fileUrl === fileUrl)) {
+          continue;
+        }
+
+        const displayName = buildCloudFileDisplayName(cloudFile);
+        const mimeType = inferMimeTypeFromCloudFile(cloudFile);
+        next.push({
+          fileUrl,
+          isImage: isImageCloudFile(cloudFile),
+          displayName,
+          mimeType,
+          source: "library",
+          libraryFileId: cloudFile.id,
+        });
+      }
+      return next;
+    });
+
+    setAttachmentIndex((prev) => {
+      const next = [...prev];
+      for (const cloudFile of attachable) {
+        const fileUrl = cloudFile.s3Link;
+        if (next.some((item) => item.url === fileUrl)) {
+          continue;
+        }
+        next.push({
+          name: buildCloudFileDisplayName(cloudFile),
+          url: fileUrl,
+          isImage: isImageCloudFile(cloudFile),
+          mimeType: inferMimeTypeFromCloudFile(cloudFile),
+          uploadedAt: Date.now(),
+        });
+      }
+      return next;
+    });
+  }, [setError]);
+
   const handleQueuedFiles = (files: File[]) => {
     if (!files || files.length === 0) {
       return;
@@ -142,6 +206,10 @@ export function useModelInterfaceAttachments({
     files.forEach((file) => handleFileUpload(file));
   };
 
+  const openLocalFilePicker = useCallback(() => {
+    chatContainerRef.current?.openLocalFilePicker?.();
+  }, [chatContainerRef]);
+
   return {
     uploadedFiles,
     setUploadedFiles,
@@ -150,5 +218,8 @@ export function useModelInterfaceAttachments({
     handleFileUpload,
     handleCancelUpload,
     handleQueuedFiles,
+    handleAttachSavedFiles,
+    openLocalFilePicker,
+    getUploadedFileDisplayName,
   };
 }

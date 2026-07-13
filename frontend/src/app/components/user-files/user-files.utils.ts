@@ -260,3 +260,38 @@ export function normalizeUploadFilesList(data: unknown): CloudFile[] {
   }
   return [];
 }
+
+const ATTACHABLE_MIME_BY_EXT: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  txt: "text/plain",
+  csv: "text/csv",
+  json: "application/json",
+  md: "text/markdown",
+  markdown: "text/markdown",
+  pdf: "application/pdf",
+  xml: "application/xml",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  ogg: "audio/ogg",
+  webm: "audio/webm",
+  m4a: "audio/m4a",
+  aac: "audio/aac",
+  flac: "audio/flac",
+  mp4: "audio/mp4",
+};
+
+export function inferMimeTypeFromCloudFile(file: CloudFile): string | undefined {
+  const ext = getFileExtensionFromCloudFile(file);
+  return ext ? ATTACHABLE_MIME_BY_EXT[ext] : undefined;
+}
+
+export function isAttachableCloudFile(file: CloudFile): boolean {
+  const ext = getFileExtensionFromCloudFile(file);
+  if (!ext) return false;
+  return ext in ATTACHABLE_MIME_BY_EXT;
+}
+

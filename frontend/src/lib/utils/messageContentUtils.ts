@@ -182,26 +182,36 @@ export function parseFileMessageFromString(raw: string): ParseFileMessageResult 
         return result;
     }
 
-    // File preview detection must be strict:
-    // - only one-line strings
-    // - full string must look like "<fileName>: <url>" (optionally markdown-bold)
-    // This prevents normal markdown summaries with labels like "View: https://..."
-    // from being incorrectly rendered as file messages.
-    if (normalized.includes('\n')) return result;
+    const looksLikeFileName = (fileName: string) => /\.[A-Za-z0-9]{1,10}$/.test(fileName);
 
-    const plainMatch = normalized.match(/^(.+?):\s*(https?:\/\/\S+)$/);
-    const boldMatch = normalized.match(/^\*\*(.+?)\*\*\s*(https?:\/\/\S+)$/);
+    const assignParsedFile = (fileNameRaw: string, fileUrl: string): boolean => {
+        const fileName = fileNameRaw.trim().replace(/:$/, '').replace(/^\*\*|\*\*$/g, '');
+        if (!looksLikeFileName(fileName)) return false;
+        result.isFileMsg = true;
+        result.fileName = fileName;
+        result.fileUrl = fileUrl.trim();
+        return true;
+    };
 
-    const fileNameRaw = plainMatch?.[1] ?? boldMatch?.[1];
-    const fileUrl = plainMatch?.[2] ?? boldMatch?.[2];
-    if (!fileNameRaw || !fileUrl) return result;
+    // Single-line: "<fileName>: <url>" (optionally markdown-bold).
+    if (!normalized.includes('\n')) {
+        const plainMatch = normalized.match(/^(.+?):\s*(https?:\/\/\S+)$/);
+        const boldMatch = normalized.match(/^\*\*(.+?)\*\*\s*(https?:\/\/\S+)$/);
+        const fileNameRaw = plainMatch?.[1] ?? boldMatch?.[1];
+        const fileUrl = plainMatch?.[2] ?? boldMatch?.[2];
+        if (fileNameRaw && fileUrl) {
+            assignParsedFile(fileNameRaw, fileUrl);
+        }
+        return result;
+    }
 
-    const fileName = fileNameRaw.trim().replace(/:$/, '').replace(/^\*\*|\*\*$/g, '');
-    const looksLikeFileName = /\.[A-Za-z0-9]{1,10}$/.test(fileName);
-    if (!looksLikeFileName) return result;
+    // Multiline file reference: "Resume.pdf:\nhttps://..." (common after API persistence).
+    const multilineMatch = normalized.match(/^(.+?\.\w{1,10}):?\s*\n\s*(https?:\/\/\S+)\s*$/);
+    if (multilineMatch) {
+        assignParsedFile(multilineMatch[1], multilineMatch[2]);
+        return result;
+    }
 
-    result.isFileMsg = true;
-    result.fileName = fileName;
-    result.fileUrl = fileUrl.trim();
+    // Generic multiline markdown summaries must not be treated as file messages.
     return result;
 }

@@ -1,15 +1,47 @@
 import React from 'react';
 import Image from 'next/image';
 import { MarkdownRenderer } from '@/app/components/model-interface/shared/components';
-import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
+import { MessageAttachmentCard } from './MessageAttachmentCard';
+import {
+    segmentStructuredContent,
+    type StructuredContentBlock,
+    type StructuredMessageSegment,
+    type MessageAttachment,
+} from './messageAttachment.utils';
 
-// Component for rendering structured content with text and images
+function mergeAttachmentSegments(
+    segments: StructuredMessageSegment[],
+): StructuredMessageSegment[] {
+    const merged: StructuredMessageSegment[] = [];
+    let pendingAttachments: MessageAttachment[] = [];
+
+    const flushAttachments = () => {
+        if (pendingAttachments.length === 0) {
+            return;
+        }
+        merged.push({
+            type: 'attachments',
+            items: pendingAttachments,
+            key: `attachments-${merged.length}`,
+        });
+        pendingAttachments = [];
+    };
+
+    segments.forEach((segment) => {
+        if (segment.type === 'attachments') {
+            pendingAttachments.push(...segment.items);
+            return;
+        }
+        flushAttachments();
+        merged.push(segment);
+    });
+
+    flushAttachments();
+    return merged;
+}
+
 interface StructuredMessageProps {
-    content: Array<{
-        type: string;
-        text?: string;
-        image_url?: { url: string };
-    }>;
+    content: StructuredContentBlock[];
     onImagePreview: (url: string) => void;
     imagePreview: string | null;
     setImagePreview: (url: string | null) => void;
@@ -21,76 +53,71 @@ export const StructuredMessage: React.FC<StructuredMessageProps> = ({
     onImagePreview,
     imagePreview,
     setImagePreview,
-    streaming = false
-}) => (
-    <div className="space-y-3 md:space-y-4">
-        {content.map((block, index) => {
-            const textForMd = textPartToPlainString(block.text);
-            const blockImageUrl = block.image_url?.url;
-            if (block.type === 'text' && textForMd) {
-                return (
-                    <div key={index} className="break-words">
-                        <MarkdownRenderer content={textForMd} />
-                        {streaming && index === content.length - 1 && (
-                            <span className="animate-pulse">▊</span>
-                        )}
-                    </div>
-                );
-            } else if (block.type === 'image_url' && blockImageUrl) {
-                return (
-                    <div key={index} className="space-y-2">
-                        {/* Display text if it exists alongside the image */}
-                        {textForMd && (
-                            <div className="break-words">
-                                <MarkdownRenderer content={textForMd} />
-                            </div>
-                        )}
-                        {/* Display the image */}
-                        <div>
-                            <img
-                                src={blockImageUrl}
-                                alt="generated"
-                                style={{
-                                    maxWidth: '100%',
-                                    height: 'auto',
-                                    borderRadius: 8,
-                                    cursor: 'pointer',
-                                    border: '2px solid #e6e8f9',
-                                    display: 'block'
-                                }}
-                                loading="lazy"
-                                decoding="async"
-                                onClick={() => setImagePreview(blockImageUrl)}
-                            />
-                            {imagePreview === blockImageUrl && (
-                                <div
-                                    className="fixed inset-0 z-[110] flex items-center justify-center bg-black bg-opacity-70"
-                                    onClick={() => setImagePreview(null)}
-                                >
-                                    <Image
-                                        src={blockImageUrl}
-                                        alt="preview"
-                                        width={600}
-                                        height={400}
-                                        style={{
-                                            maxWidth: '90%',
-                                            maxHeight: '90%',
-                                            width: 'auto',
-                                            height: 'auto',
-                                            borderRadius: 12,
-                                            boxShadow: '0 4px 32px rgba(0,0,0,0.3)'
-                                        }}
-                                    />
-                                </div>
+    streaming = false,
+}) => {
+    const segments = mergeAttachmentSegments(segmentStructuredContent(content));
+    const attachmentSegments = segments.filter((segment) => segment.type === "attachments");
+    const textSegments = segments.filter((segment) => segment.type === "text");
+    const orderedSegments = [...attachmentSegments, ...textSegments];
+
+    return (
+        <div className="space-y-3 md:space-y-4">
+            {orderedSegments.map((segment, segmentIndex) => {
+                if (segment.type === 'text') {
+                    const isLast = segmentIndex === segments.length - 1;
+                    return (
+                        <div key={segment.key} className="break-words">
+                            <MarkdownRenderer content={segment.text} />
+                            {streaming && isLast && (
+                                <span className="animate-pulse">▊</span>
                             )}
                         </div>
+                    );
+                }
+
+                return (
+                    <div key={segment.key} className="flex flex-row flex-wrap items-start gap-2">
+                        {segment.items.map((item) => (
+                            <MessageAttachmentCard
+                                key={`${item.fileUrl}-${item.fileName}`}
+                                kind={item.kind}
+                                fileName={item.fileName}
+                                fileUrl={item.fileUrl}
+                                onImagePreview={(url) => {
+                                    onImagePreview(url);
+                                    setImagePreview(url);
+                                }}
+                            />
+                        ))}
                     </div>
                 );
-            }
-            return null;
-        })}
-    </div>
-);
+            })}
+
+            {imagePreview && (
+                <div
+                    className="fixed inset-0 z-[110] flex items-center justify-center bg-black bg-opacity-70"
+                    onClick={() => setImagePreview(null)}
+                    role="presentation"
+                >
+                    <Image
+                        src={imagePreview}
+                        alt="preview"
+                        width={600}
+                        height={400}
+                        style={{
+                            maxWidth: '90%',
+                            maxHeight: '90%',
+                            width: 'auto',
+                            height: 'auto',
+                            borderRadius: 12,
+                            boxShadow: '0 4px 32px rgba(0,0,0,0.3)',
+                        }}
+                    />
+                </div>
+            )}
+        </div>
+    );
+};
 
 interface ImageMessageProps {
     imageUrl: string;
@@ -103,44 +130,38 @@ export const ImageMessage: React.FC<ImageMessageProps> = ({
     imageUrl,
     onImagePreview,
     imagePreview,
-    setImagePreview
+    setImagePreview,
 }) => (
-    <>
-        <img
-            src={imageUrl}
-            alt="uploaded"
-            style={{
-                maxWidth: '100%',
-                height: 'auto',
-                borderRadius: 8,
-                cursor: 'pointer',
-                border: '2px solid #e6e8f9',
-                display: 'block'
-            }}
-            loading="lazy"
-            decoding="async"
-            onClick={() => setImagePreview(imageUrl)}
+  <>
+    <MessageAttachmentCard
+      kind="image"
+      fileName="Image"
+      fileUrl={imageUrl}
+      onImagePreview={(url) => {
+        onImagePreview(url);
+        setImagePreview(url);
+      }}
+    />
+    {imagePreview === imageUrl && (
+      <div
+        className="fixed inset-0 z-[110] flex items-center justify-center bg-black bg-opacity-70"
+        onClick={() => setImagePreview(null)}
+      >
+        <Image
+          src={imageUrl}
+          alt="preview"
+          width={600}
+          height={400}
+          style={{
+            maxWidth: '90%',
+            maxHeight: '90%',
+            width: 'auto',
+            height: 'auto',
+            borderRadius: 12,
+            boxShadow: '0 4px 32px rgba(0,0,0,0.3)',
+          }}
         />
-        {imagePreview === imageUrl && (
-            <div
-                className="fixed inset-0 z-[110] flex items-center justify-center bg-black bg-opacity-70"
-                onClick={() => setImagePreview(null)}
-            >
-                <Image
-                    src={imageUrl}
-                    alt="preview"
-                    width={600}
-                    height={400}
-                    style={{
-                        maxWidth: '90%',
-                        maxHeight: '90%',
-                        width: 'auto',
-                        height: 'auto',
-                        borderRadius: 12,
-                        boxShadow: '0 4px 32px rgba(0,0,0,0.3)'
-                    }}
-                />
-            </div>
-        )}
-    </>
+      </div>
+    )}
+  </>
 );

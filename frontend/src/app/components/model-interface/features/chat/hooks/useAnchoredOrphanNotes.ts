@@ -280,7 +280,7 @@ export function useAnchoredOrphanNotes(params: {
       updatedAt: Date.now(),
       anchor: trigger.anchor,
       modelId: selectedModel?.id ?? trigger.message.modelId,
-      title: "Side note",
+      title: "Side thread",
       messages: [],
     };
 

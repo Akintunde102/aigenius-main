@@ -11,6 +11,7 @@ import path from 'path';
 import os from 'os';
 import {
   formatDirectoryListing,
+  formatApplyPatchResult,
   formatIndexRescan,
   formatIndexStatus,
   formatRagResults,
@@ -18,6 +19,11 @@ import {
   formatShellResult,
 } from './utils/tool-formatter';
 import { isIgnored } from './utils/exemptions';
+import { registerPreviewPath, registerPreviewPaths } from './preview-path-registry';
+
+function registerTrustedToolPaths(...paths: Array<string | undefined>): void {
+  registerPreviewPaths(paths.filter((p): p is string => typeof p === 'string' && path.isAbsolute(p)));
+}
 
 const MAX_CMD_LEN = 64_000;
 const MAX_SHELL_OUT = 512 * 1024;
@@ -183,13 +189,24 @@ export async function runLocalDesktopTool(
       try {
         const p = typeof rawArgs.path === 'string' ? rawArgs.path : '';
         if (!p) return { ok: false, error: 'Missing path' };
+        registerPreviewPath(p);
         await shell.openPath(p);
         return { ok: true, result: 'File opened in OS' };
       } catch (e: any) {
         return { ok: false, error: e.message };
       }
-    case 'local_apply_patch':
-      return applyLocalPatch(win, rawArgs);
+    case 'local_apply_patch': {
+      const patchResult = await applyLocalPatch(win, rawArgs);
+      if (!patchResult.ok) return patchResult;
+      try {
+        const parsed = JSON.parse(patchResult.result) as Parameters<typeof formatApplyPatchResult>[0];
+        registerTrustedToolPaths(...parsed.results.map((r) => r.path));
+        const formatted = formatApplyPatchResult(parsed);
+        return { ok: true, result: formatted.result, rawData: formatted.rawData };
+      } catch {
+        return patchResult;
+      }
+    }
     case 'local_ollama_status':
       return checkLocalOllamaStatus();
     case 'local_ollama_connect':
@@ -471,6 +488,7 @@ async function readBoundedFile(
         truncated: bytesRead === maxBytes,
         content: text,
       });
+      registerPreviewPath(p);
       return {
         ok: true,
         result: formatted.result,
@@ -545,6 +563,10 @@ async function listLocalDirectory(
 
     const hitLimit = results.length >= limit;
     const formatted = formatDirectoryListing({ path: dirPath, items: results, hitLimit });
+    registerTrustedToolPaths(
+      dirPath,
+      ...results.filter((item) => !item.isDir).map((item) => item.path),
+    );
     return {
       ok: true,
       result: formatted.result,

@@ -63,6 +63,16 @@ describe('parseFileMessageFromString (file message preview)', () => {
         expect(result.fileUrl).toBe('');
     });
 
+    it('parses multiline "fileName:\\nhttps://..." attachment references', () => {
+        const content = `Owoseni Clinton's Resume.pdf:
+https://res.cloudinary.com/demo/raw/upload/v1/resume.pdf`;
+        const result = parseFileMessageFromString(content);
+
+        expect(result.isFileMsg).toBe(true);
+        expect(result.fileName).toBe("Owoseni Clinton's Resume.pdf");
+        expect(result.fileUrl).toBe('https://res.cloudinary.com/demo/raw/upload/v1/resume.pdf');
+    });
+
     it('does not treat label-only URL (e.g. "View: https://...") as file message', () => {
         const content = 'View: https://example.com/path';
         const result = parseFileMessageFromString(content);

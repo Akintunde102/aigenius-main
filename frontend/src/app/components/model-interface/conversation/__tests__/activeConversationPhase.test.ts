@@ -13,18 +13,30 @@ describe("reduceNullRouteOrchestration", () => {
     ...overrides,
   });
 
-  it("waits while pending draft and session still set", () => {
+  it("clears pending draft when session is promoted from draft", () => {
     expect(
       reduceNullRouteOrchestration(
         base({ pendingDraftMode: true, currentSessionId: "s1" }),
       ),
+    ).toEqual({ kind: "clear_pending_draft_marker" });
+  });
+
+  it("waits for root navigation before clearing pending draft", () => {
+    expect(
+      reduceNullRouteOrchestration(
+        base({
+          pendingDraftMode: true,
+          currentSessionId: null,
+          pathnameIsRoot: false,
+        }),
+      ),
     ).toEqual({
       kind: "wait",
-      reason: "pending_draft_until_session_null",
+      reason: "pending_draft_until_root_navigation",
     });
   });
 
-  it("clears pending draft when session is null", () => {
+  it("clears pending draft when session is null and URL is root", () => {
     expect(
       reduceNullRouteOrchestration(
         base({ pendingDraftMode: true, currentSessionId: null }),

@@ -8,6 +8,7 @@ import {
   useChatOperationsRefined,
   useSessionSwitcher,
   useConversationEvents,
+  useActiveConversationSync,
 } from "../../features/chat/hooks";
 import { DRAFT_SESSION_KEY } from "../../features/chat/hooks/chatOperations.constants";
 import { useUIState, useScrollAndKeyboard } from "../../shared/hooks";
@@ -42,6 +43,7 @@ import { resolveViewSessionId } from "../../conversation/conversationViewSession
 export function useModelInterface(options?: {
   onInsufficientFunds?: () => void;
   routeConversationId?: string | null;
+  onPrefetchConversationRoute?: (conversationId: string) => void;
 }) {
   const routeConversationId = options?.routeConversationId ?? null;
 
@@ -113,6 +115,14 @@ export function useModelInterface(options?: {
   // Define currentSessionId here since it's not in useUIState
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
+  const isPassiveSyncBlocked = useCallback((sessionId: string) => {
+    return Boolean(
+      streamingMap[sessionId] ||
+      loadingMap[sessionId] ||
+      streamingMap[DRAFT_SESSION_KEY],
+    );
+  }, [streamingMap, loadingMap]);
+
   const {
     chatMap,
     setChatForSession,
@@ -121,7 +131,7 @@ export function useModelInterface(options?: {
     refreshChatHistory,
     populateFromBackend,
     updateSessionMessages,
-  } = useChatData();
+  } = useChatData({ isPassiveSyncBlocked });
 
   const viewSessionId = resolveViewSessionId(routeConversationId, currentSessionId);
   const activeKey = viewSessionId ?? DRAFT_SESSION_KEY;
@@ -129,9 +139,21 @@ export function useModelInterface(options?: {
   const loading = loadingMap[activeKey] || false;
   const streaming = streamingMap[activeKey] || false;
 
+  useActiveConversationSync({
+    conversationId: viewSessionId,
+    chat,
+    setChatForSession,
+    setChatHistory,
+    isSyncBlocked: viewSessionId ? isPassiveSyncBlocked(viewSessionId) : true,
+  });
+
   const setChat = useCallback((updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
     setChatForSession(activeKey, updater);
   }, [activeKey, setChatForSession]);
+
+  const getChatForSession = useCallback((sessionKey: string) => {
+    return chatMap[sessionKey] || [];
+  }, [chatMap]);
 
   const [modelError, setModelError] = useState("");
   const [personalities, setPersonalities] = useState<PersonaType[]>([]);
@@ -212,6 +234,8 @@ export function useModelInterface(options?: {
     optimizationMessage,
     handleSend,
     handleStop,
+    canRetryLastSend,
+    retryLastFailedSend,
   } = useChatOperationsRefined({
     selectedModel,
     chat,
@@ -236,6 +260,8 @@ export function useModelInterface(options?: {
     pendingOrphanReply,
     clearPendingOrphanReply: () => setPendingOrphanReply(null),
     onInsufficientFunds: options?.onInsufficientFunds,
+    onPrefetchConversationRoute: options?.onPrefetchConversationRoute,
+    getChatForSession,
   });
 
   const audioSession = useAudioSocket();
@@ -438,6 +464,7 @@ export function useModelInterface(options?: {
       clearPendingOrphanReply: () => setPendingOrphanReply(null),
       setChatForSession,
       assistantResponse,
+      chatMap,
       chatHistory,
       setChatHistory,
       savedChats,
@@ -460,6 +487,7 @@ export function useModelInterface(options?: {
       error: modelError,
       setError: setModelError,
       streaming,
+      streamingMap,
       setStreaming: (s: boolean) => setStreamingForSession(activeKey, s),
       streamingEnabled,
       setStreamingEnabled,
@@ -559,6 +587,8 @@ export function useModelInterface(options?: {
       handleSave: handleSaveWithUpdate,
       handleInsertSaved,
       handleRemoveSaved: handleRemoveSavedWithUpdate,
+      canRetryLastSend,
+      retryLastFailedSend,
     },
   };
 }

@@ -9,16 +9,6 @@ function isInsufficientFundsText(message: string | undefined): boolean {
     return /insufficient funds/i.test(message) || /wallet balance is zero or negative/i.test(message);
 }
 
-function extractAxiosStyleMessage(error: unknown): string | undefined {
-    const e = error as { response?: { data?: { message?: unknown } } };
-    const m = e?.response?.data?.message;
-    if (typeof m === 'string') return m;
-    if (m && typeof m === 'object' && 'message' in m && typeof (m as { message?: unknown }).message === 'string') {
-        return (m as { message: string }).message;
-    }
-    return undefined;
-}
-
 function extractAxiosWallet(error: unknown): number | undefined {
     const m = (error as { response?: { data?: { message?: unknown } } }).response?.data?.message;
     if (m && typeof m === 'object' && typeof (m as { wallet?: unknown }).wallet === 'number') {
@@ -49,6 +39,74 @@ export type HandleSendErrorOptions = {
     onInsufficientFunds?: () => void;
 };
 
+function resolveInsufficientFundsFromUnknown(error: unknown): {
+    isInsufficient: boolean;
+    wallet?: number;
+} {
+    if (error instanceof GatewayFetchError && isInsufficientFundsText(error.message)) {
+        return { isInsufficient: true, wallet: error.wallet };
+    }
+
+    const axiosStyle = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
+    const axiosMessage =
+        typeof axiosStyle === 'string'
+            ? axiosStyle
+            : axiosStyle && typeof axiosStyle === 'object' && 'message' in axiosStyle
+                && typeof (axiosStyle as { message?: unknown }).message === 'string'
+                ? (axiosStyle as { message: string }).message
+                : undefined;
+
+    if (
+        isInsufficientFundsText(axiosMessage)
+        || (typeof axiosStyle === 'string' && axiosStyle.includes('Insufficient funds'))
+    ) {
+        return { isInsufficient: true, wallet: extractAxiosWallet(error) };
+    }
+
+    return { isInsufficient: false };
+}
+
+export function isRequestCancellationError(error: unknown): boolean {
+    return (error as { message?: string })?.message === 'Request aborted';
+}
+
+export function isRequestCancellationMessage(message: string): boolean {
+    return message === ERROR_MESSAGES.REQUEST_CANCELLED;
+}
+
+/** True when the banner message is about credits/wallet — safe to auto-clear after top-up. */
+export function isWalletRelatedChatError(message: string): boolean {
+    if (!message.trim()) {
+        return false;
+    }
+    if (
+        message === ERROR_MESSAGES.REQUEST_ABORTED_LOW_BALANCE
+        || message === ERROR_MESSAGES.INSUFFICIENT_FUNDS
+        || message === ERROR_MESSAGES.INSUFFICIENT_WALLET_FUNDS
+    ) {
+        return true;
+    }
+    return /^You need at least \d+ credits/i.test(message);
+}
+
+/**
+ * Maps any send/stream failure to a safe user-facing message (never raw provider/server text).
+ */
+export function toUserFacingChatErrorMessage(error: unknown): string {
+    const err = error as { message?: string };
+
+    if (isRequestCancellationError(error)) {
+        return ERROR_MESSAGES.REQUEST_CANCELLED;
+    }
+
+    const { isInsufficient } = resolveInsufficientFundsFromUnknown(error);
+    if (isInsufficient) {
+        return ERROR_MESSAGES.REQUEST_ABORTED_LOW_BALANCE;
+    }
+
+    return ERROR_MESSAGES.GENERIC_CHAT_ERROR;
+}
+
 /**
  * Handles errors during message sending
  */
@@ -71,44 +129,18 @@ export function handleSendError(
         });
     }
 
-    if (error instanceof GatewayFetchError) {
-        if (typeof error.wallet === 'number' && options?.setWallet) {
+    const { isInsufficient, wallet } = resolveInsufficientFundsFromUnknown(error);
+    if (isInsufficient) {
+        if (typeof wallet === 'number' && options?.setWallet) {
             clearUserDetailsCache();
-            options.setWallet(error.wallet);
-        }
-        if (isInsufficientFundsText(error.message)) {
-            options?.onInsufficientFunds?.();
-            setError(ERROR_MESSAGES.REQUEST_ABORTED_LOW_BALANCE);
-            return;
-        }
-        setError(error.message || ERROR_MESSAGES.MODEL_RESPONSE_FAILED);
-        return;
-    }
-
-    const axiosStyle = extractAxiosStyleMessage(error);
-    const axiosWallet = extractAxiosWallet(error);
-    if (
-        isInsufficientFundsText(axiosStyle)
-        || (error as { response?: { data?: { message?: string } } })?.response?.data?.message?.includes?.('Insufficient funds')
-    ) {
-        if (typeof axiosWallet === 'number' && options?.setWallet) {
-            clearUserDetailsCache();
-            options.setWallet(axiosWallet);
+            options.setWallet(wallet);
         }
         options?.onInsufficientFunds?.();
         setError(ERROR_MESSAGES.REQUEST_ABORTED_LOW_BALANCE);
         return;
     }
 
-    const err = error as { message?: string };
-    if (err.message === 'Request aborted') {
-        setError(ERROR_MESSAGES.REQUEST_CANCELLED);
-    } else if (typeof err.message === 'string' && err.message.trim()) {
-        // Streaming path throws `Error(providerMessage)` for SSE `error` / provider failures — surface it.
-        setError(err.message.trim());
-    } else {
-        setError(ERROR_MESSAGES.MODEL_RESPONSE_FAILED);
-    }
+    setError(toUserFacingChatErrorMessage(error));
 }
 
 /**

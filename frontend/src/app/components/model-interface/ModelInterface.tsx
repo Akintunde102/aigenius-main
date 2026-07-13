@@ -36,20 +36,25 @@ import AddToWallet from "../modals/AddToWallet";
 import useTokenHandler from "@/lib/hooks/useTokenHandler";
 import { useWalletTopUpReturn } from "@/lib/hooks/useWalletTopUpReturn";
 import { useWalletManagement } from "./features/chat/hooks";
+import { ChatErrorMessage } from "./features/chat/components/ChatErrorMessage";
 import { useKeyboardShortcuts } from "./shared/hooks";
 import { publishConversation } from "@/lib/calls/model-chat-conversation";
 import { ChatMessage, ChatSession, Model } from "./shared/types";
 import { normalizeWalletForGating } from "./features/chat/hooks";
 import { ERROR_MESSAGES } from "./features/chat/hooks/chatOperations.constants";
+import { isRequestCancellationMessage } from "./features/chat/hooks/errorHandling.utils";
 import { clearAuthSession } from "@/lib/utils/auth-session";
 import type { ChatContainerHandle } from "./features/chat/components/ChatContainer";
 import {
   ModelPickResolver,
   scheduleNextTick,
+  getUploadedFileDisplayName,
 } from "./ModelInterface.helpers";
-import { buildConversationMessageSignature } from "@/lib/utils/conversationScrollMemory";
-import { useModelInterfacePersonality } from "./hooks/useModelInterfacePersonality";
 import { useModelInterfaceAttachments } from "./hooks/useModelInterfaceAttachments";
+import { AttachmentSourcePickerModal } from "./features/file-upload/components/AttachmentSourcePickerModal";
+import { AttachmentLibraryModal } from "./features/file-upload/components/AttachmentLibraryModal";
+import { useUploadedFilesList } from "@/app/components/user-files/useUploadedFilesList";
+import { buildConversationMessageSignature } from "@/lib/utils/conversationScrollMemory";
 import { useModelInterfaceWalletGate } from "./hooks/useModelInterfaceWalletGate";
 import { useModelInterfaceSessionRouting } from "./hooks/useModelInterfaceSessionRouting";
 import { useIsDesktopShell } from "@/lib/hooks/useIsDesktopShell";
@@ -113,6 +118,9 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
       setWalletModalFromServerAbort(true);
       setShowWalletModal(true);
     },
+    onPrefetchConversationRoute: (conversationId) => {
+      router.prefetch(`/chat/${conversationId}`);
+    },
   });
   const {
     modelState,
@@ -143,8 +151,8 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     setSelectedSystemPrompt,
     applySessionPersonalityState,
   } = personalityState;
-  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, savedChats, currentSessionId, setCurrentSessionId, showTyping, setShowTyping, showScrollToBottom } = chatState;
-  const { loading, setLoading, error, setError, streaming, setStreaming, streamingEnabled, setStreamingEnabled, imagePreview, setImagePreview, uploading, setUploading, uploadProgress, setUploadProgress, dragActive, setDragActive, showCosts, showNaira, showSaved, setShowSaved, setTotalSpent, optimizationMessage } = uiState;
+  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatMap, chatHistory, setChatHistory, savedChats, currentSessionId, setCurrentSessionId, showTyping, setShowTyping, showScrollToBottom } = chatState;
+  const { loading, setLoading, error, setError, streaming, streamingMap, setStreaming, streamingEnabled, setStreamingEnabled, imagePreview, setImagePreview, uploading, setUploading, uploadProgress, setUploadProgress, dragActive, setDragActive, showCosts, showNaira, showSaved, setShowSaved, setTotalSpent, optimizationMessage } = uiState;
   const { showModelDetailsModal, setShowModelDetailsModal, showModelSelectionModal, setShowModelSelectionModal } = modalState;
   const { search, setSearch, historySearch, setHistorySearch, orderByCost, setOrderByCost, allModalities, selectedModalities, allOutputModalities, selectedOutputModalities, showWebSearch, setShowWebSearch, showToolsOnly, setShowToolsOnly, pinnedModelIds, favoritesLoaded, orderBy, setOrderBy, orderDir, setOrderDir, selectedProviders, setSelectedProviders, imageFilterOnly, setImageFilterOnly, toggleModality, toggleOutputModality } = filterState;
   const { wallet, setWallet, refreshWalletFromBackend } = walletState;
@@ -152,9 +160,13 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
   const { currentChatCostUSD, currentChatCostNaira } = computed;
   const { switchToSession, isSessionActive, project } = sessionState;
   const { isAudioMode, isSTTActive, isDictationTranscribing, audioTranscription, audioStatus, audioNotice, audioVolume, handleAudioModeToggle, isMiniMode, handleMiniModeToggle, handleStartSTT, handleCancelSTT, handleConfirmSTT, analyzer } = audioState;
-  const { handleSend, handleStop, handleSave, handleInsertSaved, handleRemoveSaved } = actions;
+  const { handleSend, handleStop, handleSave, handleInsertSaved, handleRemoveSaved, canRetryLastSend, retryLastFailedSend } = actions;
 
   const chatContainerRef = useRef<ChatContainerHandle | null>(null);
+  const showRetryOnError =
+    canRetryLastSend && error !== ERROR_MESSAGES.REQUEST_CANCELLED;
+  const showSendErrorBanner =
+    Boolean(error) && !isRequestCancellationMessage(error);
   const [showPersonalityModal, setShowPersonalityModal] = useState(false);
   const [currentUser, setCurrentUser] = useState<Record<string, unknown> | null>(null);
   const [pendingModelPick, setPendingModelPick] =
@@ -186,6 +198,8 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     handleFileUpload,
     handleCancelUpload,
     handleQueuedFiles,
+    handleAttachSavedFiles,
+    openLocalFilePicker,
   } = useModelInterfaceAttachments({
     chat,
     setChat,
@@ -199,6 +213,28 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
 
   const handleQueuedFilesRef = useRef(handleQueuedFiles);
   handleQueuedFilesRef.current = handleQueuedFiles;
+
+  const [showAttachmentSourceModal, setShowAttachmentSourceModal] = useState(false);
+  const [showAttachmentLibraryModal, setShowAttachmentLibraryModal] = useState(false);
+  const attachmentFilesLibrary = useUploadedFilesList();
+
+  const handleAttachmentMenuRequest = useCallback(() => {
+    if (!supportsImageUpload) return;
+    setShowAttachmentSourceModal(true);
+    void attachmentFilesLibrary.refresh({
+      silent: attachmentFilesLibrary.files.length > 0,
+    });
+  }, [attachmentFilesLibrary, supportsImageUpload]);
+
+  const handlePickLocalAttachment = useCallback(() => {
+    setShowAttachmentSourceModal(false);
+    openLocalFilePicker();
+  }, [openLocalFilePicker]);
+
+  const handlePickLibraryAttachment = useCallback(() => {
+    setShowAttachmentSourceModal(false);
+    setShowAttachmentLibraryModal(true);
+  }, []);
 
   const currentChatSignature = useMemo(
     () => buildConversationMessageSignature(chat),
@@ -247,6 +283,8 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     setSelectedSystemPrompt,
     setSelectedPersonalityName,
     setSelectedPersonalityIconUrl,
+    streamingMap,
+    chatMap,
   });
 
   const { handleGlobalKeyDown } = useKeyboardShortcuts({
@@ -354,10 +392,6 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
         : never
         : never = [];
 
-      if (message.trim()) {
-        contentParts.push({ type: "text", text: message.trim() });
-      }
-
       for (const uploadedFile of uploadedFiles) {
         if (uploadedFile.isImage) {
           contentParts.push({
@@ -366,10 +400,17 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
           });
         } else {
           contentParts.push({
-            type: "text",
-            text: `${uploadedFile.file.name}: ${uploadedFile.fileUrl}`,
-          });
+            type: "file_url",
+            file_url: {
+              url: uploadedFile.fileUrl,
+              name: getUploadedFileDisplayName(uploadedFile),
+            },
+          } as (typeof contentParts)[number]);
         }
+      }
+
+      if (message.trim()) {
+        contentParts.push({ type: "text", text: message.trim() });
       }
 
       const userMsg = createChatMessage(
@@ -508,6 +549,15 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
         </div>
       )}
 
+      {showSendErrorBanner && (
+        <ChatErrorMessage
+          message={error}
+          canRetry={showRetryOnError}
+          onRetry={retryLastFailedSend}
+          onDismiss={() => setError("")}
+        />
+      )}
+
       <div
         className={
           isDesktopShell ? "flex min-h-0 flex-1 flex-col" : "flex flex-col"
@@ -593,6 +643,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     handleSave={handleSave}
                     handleChatBoxSend={handleChatBoxSend}
                     handleFileUpload={handleFileUpload}
+                    onAttachmentMenuRequest={handleAttachmentMenuRequest}
                     uploading={uploading}
                     uploadProgress={uploadProgress}
                     supportsImageUpload={supportsImageUpload || false}
@@ -699,6 +750,22 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
               setPublishState={setPublishState}
               onPublishConversation={handlePublishConversation}
             />
+
+            {showAttachmentSourceModal ? (
+              <AttachmentSourcePickerModal
+                onClose={() => setShowAttachmentSourceModal(false)}
+                onPickLocal={handlePickLocalAttachment}
+                onPickLibrary={handlePickLibraryAttachment}
+              />
+            ) : null}
+
+            {showAttachmentLibraryModal ? (
+              <AttachmentLibraryModal
+                onClose={() => setShowAttachmentLibraryModal(false)}
+                library={attachmentFilesLibrary}
+                onAttach={handleAttachSavedFiles}
+              />
+            ) : null}
           </div>
         </div>
       </div>

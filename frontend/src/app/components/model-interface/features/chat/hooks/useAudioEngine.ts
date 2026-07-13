@@ -838,16 +838,19 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
                     !optionsRef.current.disableAutoSilence
                 ) {
                     if (avg > noiseFloor) { // Speech detected
+                        isSpeechDetectedRef.current = true;
                         if (silenceTimerRef.current) {
                             clearTimeout(silenceTimerRef.current);
                             silenceTimerRef.current = null;
                         }
                     } else { // Silence detected
-                        if (!silenceTimerRef.current) {
-                            silenceTimerRef.current = setTimeout(() => {
-                                console.log('[AudioEngine] Silence threshold reached, submitting...');
-                                stopRecording();
-                            }, silenceThreshold);
+                        if (isSpeechDetectedRef.current) {
+                            if (!silenceTimerRef.current) {
+                                silenceTimerRef.current = setTimeout(() => {
+                                    console.log('[AudioEngine] Silence threshold reached, submitting...');
+                                    stopRecording();
+                                }, silenceThreshold);
+                            }
                         }
                     }
                 }

@@ -85,17 +85,6 @@ export const customUpload = async ({
     }
 };
 
-const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.includes(',') ? result.split(',')[1] : result;
-        resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-});
-
 /** @param fileUrl - URL of the uploaded file (from response.fileUrl or legacy s3Link) */
 export const createFileMessageAsync = async (file: File, fileUrl: string, selectedModel: any): Promise<ChatMessage> => {
     if (file.type.startsWith('image/')) {
@@ -107,22 +96,22 @@ export const createFileMessageAsync = async (file: File, fileUrl: string, select
         );
     }
     if (file.type.startsWith('audio/')) {
-        const base64 = await fileToBase64(file);
-        const ext = (file.name.split('.').pop() || 'wav').toLowerCase();
         return createChatMessage(
             'user',
-            [
-                { type: 'text', text: 'Please transcribe this audio file.' },
-                { type: 'input_audio', input_audio: { data: base64, format: ext } } as any,
-            ],
+            [{
+                type: 'file_url',
+                file_url: { url: fileUrl, name: file.name },
+            }],
             selectedModel?.id,
             selectedModel?.name || selectedModel?.id
         );
     }
-    // Generic file fallback stays as link
     return createChatMessage(
         'user',
-        `${file.name}: ${fileUrl}`,
+        [{
+            type: 'file_url',
+            file_url: { url: fileUrl, name: file.name },
+        }],
         selectedModel?.id,
         selectedModel?.name || selectedModel?.id
     );

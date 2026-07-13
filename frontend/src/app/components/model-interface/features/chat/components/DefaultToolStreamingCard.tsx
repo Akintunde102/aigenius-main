@@ -5,6 +5,7 @@ import { JsonSyntaxBlock } from '@/app/components/JsonSyntaxBlock';
 import { FiLoader, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { valueToDisplayString } from '@/lib/utils/messageTextUtils';
 import { getToolDisplayName } from './toolDisplayNames';
+import { ERROR_MESSAGES } from '../hooks/chatOperations.constants';
 import { WorkflowIntentTranscriptExpand } from './WorkflowIntentTranscriptExpand';
 import { MarkdownRenderer } from '@/app/components/model-interface/shared/components/MarkdownRenderer';
 import type { ToolStreamingCardProps } from './tool-streaming-card.types';
@@ -43,7 +44,7 @@ export function DefaultToolStreamingCard({
     if (typeof parsedResult !== 'object') {
       rawStr = valueToDisplayString(parsedResult);
     } else if (parsedResult.error) {
-      rawStr = valueToDisplayString(parsedResult.error);
+      rawStr = ERROR_MESSAGES.TOOL_EXECUTION_FAILED;
     } else if (parsedResult.message) {
       rawStr = valueToDisplayString(parsedResult.message);
     } else if (parsedResult.result) {

@@ -58,7 +58,17 @@ export interface UseChatOperationsRefinedProps {
     clearPendingOrphanReply?: () => void;
     /** When the API returns insufficient-funds, open credits modal / sync balance. */
     onInsufficientFunds?: () => void;
+    /** When the API returns a new conversation id, prefetch its route early (Claude-style). */
+    onPrefetchConversationRoute?: (conversationId: string) => void;
+    getChatForSession: (sessionKey: string) => ChatMessage[];
 }
+
+export type LastFailedSendPayload = {
+    chatSnapshot: ChatMessage[];
+    shouldStream: boolean;
+    preCreatedMessage?: ChatMessage;
+    sessionKey: string;
+};
 
 // Return type for the main hook
 export interface UseChatOperationsReturn {
@@ -76,6 +86,8 @@ export interface UseChatOperationsReturn {
     ) => Promise<void>;
     handleStop: () => void;
     refreshWalletBalance: () => Promise<number | null>;
+    canRetryLastSend: boolean;
+    retryLastFailedSend: () => Promise<void>;
 }
 
 // Props for streaming response handler
@@ -90,6 +102,7 @@ export interface UseStreamingResponseProps {
     updateSessionMessages?: (sessionId: string, messages: ChatMessage[], sessionData?: Partial<ChatSession>) => void;
     handleStreamResult: (result: StreamResult, streamingSessionId: string | null) => void;
     handleSendError: (error: unknown) => void;
+    onPrefetchConversationRoute?: (conversationId: string) => void;
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;
 }

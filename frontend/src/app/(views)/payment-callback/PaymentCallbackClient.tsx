@@ -13,9 +13,9 @@ import {
 } from '@/lib/wallet-payment-return';
 
 type VerifyPaymentResponse = {
-    status: 'success' | 'already_processed' | 'failed' | string;
+    status: string;
     message?: string;
-    amount?: number;
+    amount?: number | string;
     newWalletBalance?: number | null;
 };
 
@@ -23,20 +23,98 @@ type ServerCallEnvelope<T> = {
     dataReturned: T;
 };
 
+const VERIFY_TRIGGER_KEY_PREFIX = 'aigenius:payment-verify-triggered:';
+
+function isVerifiedPaymentStatus(status: string | undefined): boolean {
+    return status === 'success'
+        || status === 'successful'
+        || status === 'already_processed';
+}
+
+function extractServerData<T>(response: unknown): T | null {
+    if (!response || typeof response !== 'object') {
+        return null;
+    }
+    return (response as ServerCallEnvelope<T>).dataReturned ?? null;
+}
+
+async function fetchTransactionStatus(reference: string): Promise<VerifyPaymentResponse | null> {
+    const statusResponse = await serverCall({
+        serverCallProps: {
+            call: serverCalls.getGatewayPaystackTransactionStatus,
+        },
+        pathArgs: { reference },
+        authorized: true,
+    });
+    return extractServerData<VerifyPaymentResponse>(statusResponse);
+}
+
+async function triggerVerifyOnce(reference: string): Promise<VerifyPaymentResponse | null> {
+    if (typeof window !== 'undefined') {
+        const alreadyTriggered = window.sessionStorage.getItem(`${VERIFY_TRIGGER_KEY_PREFIX}${reference}`);
+        if (alreadyTriggered) {
+            return null;
+        }
+    }
+
+    try {
+        const verifyResponse = await serverCall({
+            serverCallProps: {
+                call: serverCalls.postGatewayPaystackTransactionVerify,
+            },
+            pathArgs: { reference },
+            authorized: true,
+        });
+        if (typeof window !== 'undefined') {
+            window.sessionStorage.setItem(`${VERIFY_TRIGGER_KEY_PREFIX}${reference}`, String(Date.now()));
+        }
+        return extractServerData<VerifyPaymentResponse>(verifyResponse);
+    } catch (verifyError) {
+        console.warn('PaymentCallback: verify endpoint error (may already be processed via webhook):', verifyError);
+        return null;
+    }
+}
+
 export default function PaymentCallbackClient() {
     const searchParams = useSearchParams();
     const [status, setStatus] = useState<'loading' | 'success' | 'failed' | 'confirming'>('loading');
 
     useEffect(() => {
-        let cancelled = false;
+        let mounted = true;
 
         async function verifyAndReturn() {
             const reference = searchParams.get('reference') || searchParams.get('trxref');
             const returnState = readWalletTopUpReturnState();
             const returnTo = searchParams.get('returnTo') || returnState?.returnTo || '/';
 
+            const finishSuccess = (finalVerification: VerifyPaymentResponse) => {
+                if (!mounted) return;
+
+                clearUserDetailsCache();
+                clearWalletTopUpReturnState();
+                saveWalletTopUpResultState({
+                    status: 'success',
+                    reference: reference!,
+                    amountInNaira: returnState?.amountInNaira ?? (
+                        finalVerification.amount != null ? String(finalVerification.amount) : undefined
+                    ),
+                    newWalletBalance: finalVerification.newWalletBalance ?? null,
+                    message: finalVerification.message || 'Payment verified. Your wallet has been updated.',
+                    verifiedAt: Date.now(),
+                    reopenTarget: returnState?.reopenTarget,
+                });
+
+                setStatus('success');
+                toast.success('Payment verified. Returning to your wallet.');
+                window.setTimeout(() => {
+                    if (mounted) {
+                        window.location.replace(returnTo);
+                    }
+                }, 900);
+            };
+
             if (!reference) {
-                console.error("PaymentCallback: No reference found in URL query parameters.");
+                console.error('PaymentCallback: No reference found in URL query parameters.');
                 saveWalletTopUpResultState({
                     status: 'failed',
                     reference: null,
@@ -45,114 +123,78 @@ export default function PaymentCallbackClient() {
                     verifiedAt: Date.now(),
                     reopenTarget: returnState?.reopenTarget,
                 });
-                setStatus('failed');
-                toast.error('Payment verification failed.');
-                window.setTimeout(() => window.location.replace(returnTo), 1200);
+                if (mounted) {
+                    setStatus('failed');
+                    toast.error('Payment verification failed.');
+                    window.setTimeout(() => window.location.replace(returnTo), 1200);
+                }
                 return;
             }
 
             console.log(`PaymentCallback: Landed on callback page with reference: ${reference}`);
 
             try {
-                // Step 1: Active reconciliation. Call verify endpoint once to trigger backend verification
-                try {
-                    console.log(`PaymentCallback: Triggering active verification check on backend for reference: ${reference}`);
-                    const activeVerifyRes = await serverCall({
-                        serverCallProps: {
-                            call: serverCalls.postGatewayPaystackTransactionVerify,
-                        },
-                        pathArgs: { reference },
-                        authorized: true,
-                    });
-                    console.log("PaymentCallback: Active verify trigger finished response:", activeVerifyRes);
-                } catch (verifyError) {
-                    console.warn("PaymentCallback: Active verify trigger endpoint threw error (might be resolved via webhook already or server issue):", verifyError);
+                const verifyData = await triggerVerifyOnce(reference);
+                if (verifyData && isVerifiedPaymentStatus(verifyData.status)) {
+                    console.log('PaymentCallback: Verify endpoint confirmed payment.', verifyData);
+                    finishSuccess(verifyData);
+                    return;
                 }
 
-                // Step 2: Exponential backoff polling on the read-only status endpoint
-                const backoffDelays = [1000, 2000, 4000, 8000, 16000];
-                let isConfirmed = false;
+                const backoffDelays = [0, 1000, 2000, 4000, 8000, 16000];
                 let finalVerification: VerifyPaymentResponse | null = null;
 
-                console.log(`PaymentCallback: Starting status polling checks. Delays: ${backoffDelays.join("ms, ")}ms`);
-
                 for (let i = 0; i < backoffDelays.length; i++) {
-                    if (cancelled) return;
-                    
-                    console.log(`PaymentCallback: Polling status check iteration ${i + 1}/${backoffDelays.length} in ${backoffDelays[i]}ms...`);
-                    // Wait for backoff delay before checking status
-                    await new Promise(resolve => setTimeout(resolve, backoffDelays[i]));
-                    if (cancelled) return;
+                    if (!mounted) return;
+
+                    if (backoffDelays[i] > 0) {
+                        await new Promise((resolve) => setTimeout(resolve, backoffDelays[i]));
+                    }
+                    if (!mounted) return;
 
                     try {
-                        const statusResponse = await serverCall({
-                            serverCallProps: {
-                                call: serverCalls.getGatewayPaystackTransactionStatus,
-                            },
-                            pathArgs: { reference },
-                            authorized: true,
-                        }) as ServerCallEnvelope<VerifyPaymentResponse>;
+                        const data = await fetchTransactionStatus(reference);
+                        if (!data) continue;
 
-                        const data = statusResponse.dataReturned;
-                        console.log(`PaymentCallback: Polling status check result - Status: "${data.status}"`, data);
+                        console.log(`PaymentCallback: Status poll ${i + 1} — "${data.status}"`, data);
 
-                        if (data.status === 'successful' || data.status === 'success') {
-                            console.log("PaymentCallback: Payment confirmed successfully!");
-                            isConfirmed = true;
+                        if (isVerifiedPaymentStatus(data.status)) {
                             finalVerification = data;
                             break;
-                        } else if (data.status === 'failed') {
-                            console.error("PaymentCallback: Transaction marked as FAILED in database.");
+                        }
+
+                        if (data.status === 'failed') {
                             throw new Error(data.message || 'Payment failed on Paystack.');
                         }
                     } catch (statusError) {
-                        // If it's a hard transaction failure, we throw
                         if (statusError instanceof Error && statusError.message.includes('failed')) {
                             throw statusError;
                         }
-                        // Otherwise, we log and keep polling
-                        console.warn(`PaymentCallback: Status check polling iteration ${i + 1} failed:`, statusError);
+                        console.warn(`PaymentCallback: Status poll ${i + 1} failed:`, statusError);
                     }
                 }
 
-                if (cancelled) return;
+                if (!mounted) return;
 
-                if (isConfirmed && finalVerification) {
-                    console.log("PaymentCallback: Saving wallet top up success state and returning.");
-                    clearUserDetailsCache();
-                    clearWalletTopUpReturnState();
-                    saveWalletTopUpResultState({
-                        status: 'success',
-                        reference,
-                        amountInNaira: returnState?.amountInNaira ?? (
-                            typeof finalVerification.amount === 'number' ? String(finalVerification.amount) : undefined
-                        ),
-                        newWalletBalance: finalVerification.newWalletBalance ?? null,
-                        message: finalVerification.message || 'Payment verified. Your wallet has been updated.',
-                        verifiedAt: Date.now(),
-                        reopenTarget: returnState?.reopenTarget,
-                    });
-
-                    setStatus('success');
-                    toast.success('Payment verified. Returning to your wallet.');
-                    window.setTimeout(() => window.location.replace(returnTo), 900);
-                } else {
-                    console.warn("PaymentCallback: Polling timed out. Transitioning to confirming state.");
-                    // Step 3: Still pending after backoff, show "Confirming" screen with a return button
-                    saveWalletTopUpResultState({
-                        status: 'pending',
-                        reference,
-                        amountInNaira: returnState?.amountInNaira,
-                        message: 'We are still confirming your payment with Paystack. Your wallet balance will update automatically.',
-                        verifiedAt: Date.now(),
-                        reopenTarget: returnState?.reopenTarget,
-                    });
-                    setStatus('confirming');
+                if (finalVerification) {
+                    finishSuccess(finalVerification);
+                    return;
                 }
-            } catch (error) {
-                if (cancelled) return;
 
-                console.error("PaymentCallback: Fatal verification error encountered:", error);
+                console.warn('PaymentCallback: Polling timed out. Transitioning to confirming state.');
+                saveWalletTopUpResultState({
+                    status: 'pending',
+                    reference,
+                    amountInNaira: returnState?.amountInNaira,
+                    message: 'We are still confirming your payment with Paystack. Your wallet balance will update automatically.',
+                    verifiedAt: Date.now(),
+                    reopenTarget: returnState?.reopenTarget,
+                });
+                setStatus('confirming');
+            } catch (error) {
+                if (!mounted) return;
+
+                console.error('PaymentCallback: Fatal verification error:', error);
                 const message = error instanceof Error
                     ? error.message
                     : typeof error === 'string'
@@ -177,7 +219,7 @@ export default function PaymentCallbackClient() {
         void verifyAndReturn();
 
         return () => {
-            cancelled = true;
+            mounted = false;
         };
     }, [searchParams]);
 
@@ -223,8 +265,8 @@ export default function PaymentCallbackClient() {
                     </div>
                     <h1 className="text-2xl font-bold text-gray-900 mb-2">Confirming Payment</h1>
                     <p className="text-gray-600 mb-6 leading-relaxed">
-                        We are still confirming your payment with Paystack. This usually takes a few minutes. 
-                        You don't need to wait on this page—your wallet balance will update automatically once confirmed.
+                        We are still confirming your payment with Paystack. This usually takes a few minutes.
+                        You don&apos;t need to wait on this page—your wallet balance will update automatically once confirmed.
                     </p>
                     <button
                         type="button"
