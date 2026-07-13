@@ -86,12 +86,14 @@ export function useSentenceStreaming({
             if (buffer.byteLength > 0) {
               voiceObs('sentenceStreaming', 'desktop_http_synthesize_ok', { bytes: buffer.byteLength });
               playAISpeech(buffer);
+              return;
             }
-          } else {
-            console.warn('[SentenceStreaming] Desktop HTTP TTS failed:', res.status);
           }
+          console.warn('[SentenceStreaming] Desktop HTTP TTS failed or returned empty. Falling back to native speech synthesis.');
+          speakTextNative(normalized);
         } catch (err) {
-          console.error('[SentenceStreaming] Desktop HTTP TTS error', err);
+          console.error('[SentenceStreaming] Desktop HTTP TTS error, falling back to native speech synthesis:', err);
+          speakTextNative(normalized);
         }
       });
 

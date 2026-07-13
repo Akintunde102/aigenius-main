@@ -11,12 +11,13 @@ import {
 
 /** Minimal Next.js app router surface used by session routing. */
 type AppNavigationRouter = {
-  push: (href: string) => void;
-  replace: (href: string) => void;
+  push: (href: string, options?: { scroll?: boolean }) => void;
+  replace: (href: string, options?: { scroll?: boolean }) => void;
+  prefetch: (href: string) => void;
 };
-import { getConversationById } from "@/lib/calls/model-chat-conversation";
 import { upsertChatHistorySession } from "@/lib/utils/modelChatConversationUtils";
 import { normalizeSessionMessages } from "@/lib/utils/messageContentUtils";
+import { useFetchConversation } from "@/lib/hooks/useConversationQuery";
 import {
   buildConversationMessageSignature,
   clearConversationScrollState,
@@ -27,6 +28,8 @@ import {
 import { useSyncRouteConversationId } from "../conversation/useSyncRouteConversationId";
 import { reduceNullRouteOrchestration } from "../conversation/activeConversationPhase";
 import {
+  conversationTargetRef,
+  isPendingDraftMode,
   setActiveRouteConversationTarget,
   setPendingDraftMode,
 } from "../conversation/conversationViewSession";
@@ -34,6 +37,16 @@ import { DRAFT_SESSION_KEY } from "../features/chat/hooks";
 import type { AttachmentIndexItem, UploadedFileEntry } from "../ModelInterface.helpers";
 import type { ChatMessage, ChatSession, Model } from "../shared/types";
 import { getConversationIdFromPath } from "../ModelInterface.types";
+
+function hasLocalTranscript(
+  chatMap: Record<string, ChatMessage[]>,
+  sessionId: string | null,
+): boolean {
+  if (!sessionId) {
+    return false;
+  }
+  return (chatMap[sessionId]?.length ?? 0) > 0;
+}
 
 
 
@@ -70,6 +83,8 @@ type Params = {
   setSelectedSystemPrompt: (p: string | undefined) => void;
   setSelectedPersonalityName: (n: string | undefined) => void;
   setSelectedPersonalityIconUrl: (u: string | undefined) => void;
+  streamingMap: Record<string, boolean>;
+  chatMap: Record<string, ChatMessage[]>;
 };
 
 export function useModelInterfaceSessionRouting({
@@ -100,13 +115,72 @@ export function useModelInterfaceSessionRouting({
   setSelectedSystemPrompt,
   setSelectedPersonalityName,
   setSelectedPersonalityIconUrl,
+  streamingMap,
+  chatMap,
 }: Params) {
+  const fetchConversation = useFetchConversation();
   const pendingScrollRestoreSessionIdRef = useRef<string | null>(null);
   const lastKnownConversationSignaturesRef = useRef<Record<string, string>>({});
   const pendingDraftModeRef = useRef(false);
   const lastAutoRoutedSessionIdRef = useRef<string | null>(null);
+  const pendingRouteAfterStreamRef = useRef<string | null>(null);
   const lastInitiatedSwitchIdRef = useRef<string | null>(null);
   const prevSessionIdRef = useRef<string | null | undefined>(undefined);
+
+  const isDraftOrSessionStreaming = useCallback(
+    (sessionId: string | null) => {
+      if (streamingMap[DRAFT_SESSION_KEY]) {
+        return true;
+      }
+      if (sessionId && streamingMap[sessionId]) {
+        return true;
+      }
+      return false;
+    },
+    [streamingMap],
+  );
+
+  const navigateToConversation = useCallback(
+    (sessionId: string) => {
+      if (lastAutoRoutedSessionIdRef.current === sessionId) {
+        return;
+      }
+      lastAutoRoutedSessionIdRef.current = sessionId;
+      router.prefetch(`/chat/${sessionId}`);
+      router.replace(`/chat/${sessionId}`, { scroll: false });
+    },
+    [router],
+  );
+
+  const adoptLocalTranscript = useCallback(
+    (sessionId: string) => {
+      if (currentSessionId !== sessionId) {
+        setCurrentSessionId(sessionId);
+      }
+      setActiveRouteConversationTarget(sessionId);
+      setActiveRouteConversationId(sessionId);
+      lastInitiatedSwitchIdRef.current = sessionId;
+
+      const localSession = chatHistory.find((session) => session.id === sessionId);
+      if (localSession) {
+        applySessionPersonalityState(localSession);
+        if (localSession.modelId) {
+          const sessionModel = models.find((m) => m.id === localSession.modelId);
+          if (sessionModel) {
+            setSelectedModel(sessionModel);
+          }
+        }
+      }
+    },
+    [
+      applySessionPersonalityState,
+      chatHistory,
+      currentSessionId,
+      models,
+      setCurrentSessionId,
+      setSelectedModel,
+    ],
+  );
 
   const [activeRouteConversationId, setActiveRouteConversationId] = useState<
     string | null
@@ -115,6 +189,13 @@ export function useModelInterfaceSessionRouting({
   useSyncRouteConversationId(routeConversationId, setActiveRouteConversationId);
 
   useEffect(() => {
+    if (
+      conversationTargetRef.current.routeTargetInitialized
+      && conversationTargetRef.current.activeRouteConversationId !== null
+      && activeRouteConversationId === null
+    ) {
+      return;
+    }
     setActiveRouteConversationTarget(activeRouteConversationId);
   }, [activeRouteConversationId]);
 
@@ -195,17 +276,56 @@ export function useModelInterfaceSessionRouting({
     }
     prevSessionIdRef.current = currentSessionId;
 
+    pendingDraftModeRef.current = false;
+    setPendingDraftMode(false);
+
     pendingScrollRestoreSessionIdRef.current = currentSessionId;
     setActiveRouteConversationId(currentSessionId);
 
-    if (
-      window.location.pathname === "/" &&
-      lastAutoRoutedSessionIdRef.current !== currentSessionId
-    ) {
-      lastAutoRoutedSessionIdRef.current = currentSessionId;
-      window.history.replaceState(null, "", `/chat/${currentSessionId}`);
+    if (routeConversationId === currentSessionId) {
+      pendingRouteAfterStreamRef.current = null;
+      return;
     }
-  }, [currentSessionId]);
+
+    if (isDraftOrSessionStreaming(currentSessionId)) {
+      pendingRouteAfterStreamRef.current = currentSessionId;
+      return;
+    }
+
+    if (routeConversationId === null) {
+      navigateToConversation(currentSessionId);
+      pendingRouteAfterStreamRef.current = null;
+    }
+  }, [
+    currentSessionId,
+    routeConversationId,
+    isDraftOrSessionStreaming,
+    navigateToConversation,
+  ]);
+
+  useEffect(() => {
+    const pending = pendingRouteAfterStreamRef.current;
+    if (!pending || !currentSessionId || pending !== currentSessionId) {
+      return;
+    }
+    if (isDraftOrSessionStreaming(currentSessionId)) {
+      return;
+    }
+    if (routeConversationId === currentSessionId) {
+      pendingRouteAfterStreamRef.current = null;
+      return;
+    }
+    if (routeConversationId === null) {
+      navigateToConversation(currentSessionId);
+      pendingRouteAfterStreamRef.current = null;
+    }
+  }, [
+    currentSessionId,
+    routeConversationId,
+    streamingMap,
+    isDraftOrSessionStreaming,
+    navigateToConversation,
+  ]);
 
   useEffect(() => {
     const chatArea = chatAreaRef.current;
@@ -352,13 +472,8 @@ export function useModelInterfaceSessionRouting({
       lastInitiatedSwitchIdRef.current = null;
       prevSessionIdRef.current = null;
 
-      // Force URL reset to ensure clean state
-      if (typeof window !== "undefined") {
-        // Use replace to avoid adding to browser history
-        router.replace("/");
-        // Also update the active route state immediately
-        window.history.replaceState(null, "", "/");
-      }
+      // Use replace (not history.replaceState) so Next's route prop stays in sync.
+      router.replace("/", { scroll: false });
     },
     [
       activeRouteConversationId,
@@ -428,12 +543,30 @@ export function useModelInterfaceSessionRouting({
   );
 
   useEffect(() => {
+    // New Chat clears the route target in a ref immediately; React state can lag one frame.
+    if (
+      conversationTargetRef.current.routeTargetInitialized
+      && conversationTargetRef.current.activeRouteConversationId === null
+      && activeRouteConversationId !== null
+    ) {
+      return;
+    }
+
+    // While a draft stream is in flight, ignore route-driven session switches.
+    if (
+      (streamingMap[DRAFT_SESSION_KEY] ?? false)
+      && currentSessionId === null
+      && activeRouteConversationId !== null
+    ) {
+      return;
+    }
+
     if (activeRouteConversationId === null) {
       const pathIsRoot =
         typeof window === "undefined" || window.location.pathname === "/";
       const action = reduceNullRouteOrchestration({
         currentSessionId,
-        pendingDraftMode: pendingDraftModeRef.current,
+        pendingDraftMode: isPendingDraftMode(),
         pathnameIsRoot: pathIsRoot,
       });
       switch (action.kind) {
@@ -454,11 +587,23 @@ export function useModelInterfaceSessionRouting({
       }
     }
 
-    pendingDraftModeRef.current = false;
-    setPendingDraftMode(false);
+    // Pending draft with no promoted session — only the null-route branch above may run.
+    if (isPendingDraftMode() && currentSessionId === null) {
+      return;
+    }
+
+    if (!pendingDraftModeRef.current && !isPendingDraftMode()) {
+      pendingDraftModeRef.current = false;
+      setPendingDraftMode(false);
+    }
 
     if (activeRouteConversationId === currentSessionId) {
       lastInitiatedSwitchIdRef.current = null;
+      return;
+    }
+
+    if (hasLocalTranscript(chatMap, activeRouteConversationId)) {
+      adoptLocalTranscript(activeRouteConversationId);
       return;
     }
 
@@ -487,7 +632,7 @@ export function useModelInterfaceSessionRouting({
 
     const loadConversation = async () => {
       try {
-        const conversation = await getConversationById(activeRouteConversationId);
+        const conversation = await fetchConversation(activeRouteConversationId);
         if (cancelled || !conversation?.session) {
           if (!cancelled) {
             setError("Conversation not found.");
@@ -519,7 +664,13 @@ export function useModelInterfaceSessionRouting({
         const loadedId = normalizedSession.id || null;
         setCurrentSessionId(loadedId);
         if (loadedId) {
-          setChatForSession(loadedId, (normalizedSession.messages || []) as ChatMessage[]);
+          const serverMessages = (normalizedSession.messages || []) as ChatMessage[];
+          setChatForSession(loadedId, (prev) => {
+            if (prev.length >= serverMessages.length) {
+              return prev;
+            }
+            return serverMessages;
+          });
         }
         setChatHistory((prevHistory) =>
           upsertChatHistorySession(prevHistory, normalizedSession),
@@ -551,8 +702,10 @@ export function useModelInterfaceSessionRouting({
     };
   }, [
     activeRouteConversationId,
+    adoptLocalTranscript,
     applySessionPersonalityState,
     chatHistory,
+    chatMap,
     currentSessionId,
     models,
     resetDraftConversation,
@@ -563,7 +716,9 @@ export function useModelInterfaceSessionRouting({
     setError,
     setSelectedModel,
     setAttachmentIndex,
+    streamingMap,
     switchToSession,
+    fetchConversation,
   ]);
 
   return {

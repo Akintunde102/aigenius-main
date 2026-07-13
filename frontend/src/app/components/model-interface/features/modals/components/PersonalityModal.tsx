@@ -126,7 +126,7 @@ export function PersonalityModal({ isOpen, onClose, onSelect, currentModelId, cu
                                                         setPersonalities(prev => prev.filter(x => x.id !== p.id));
                                                         setErrorMessage(null);
                                                     } catch (error) {
-                                                        setErrorMessage(error instanceof Error ? error.message : 'Failed to delete personality');
+                                                        setErrorMessage('Failed to delete personality. Please try again.');
                                                     }
                                                 }}
                                             >Delete</button>
@@ -180,7 +180,7 @@ export function PersonalityModal({ isOpen, onClose, onSelect, currentModelId, cu
                                     setShowEditor(false);
                                     setEditing(null);
                                 } catch (error) {
-                                    setErrorMessage(error instanceof Error ? error.message : 'Failed to save personality');
+                                    setErrorMessage('Failed to save personality. Please try again.');
                                 }
                             }}
                             currentModelId={currentModelId}

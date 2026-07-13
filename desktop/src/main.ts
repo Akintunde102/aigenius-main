@@ -20,6 +20,7 @@ import {
 import { runLocalDesktopTool } from './local-tool-executor';
 import { getChatRuntimeContextForIpc, USER_HOME_DIR_AT_STARTUP } from './chat-runtime-context';
 import { initLocalRetrievalMemory } from './local-retrieval-memory';
+import { isPreviewPathRegistered } from './preview-path-registry';
 import { attachMainShellNavigationGuards, deliverOpenExternalOrAuthUrl } from './navigation-guards';
 import { mainShellBrowserWindowOptions } from './shell-chrome';
 import { registerIpcHandlers } from './search';
@@ -755,6 +756,9 @@ if (!gotLock) {
       return { ok: false as const, error: 'invalid_path' };
     }
     const p = normalizeRendererFilesystemPath(filePath.trim());
+    if (!isPreviewPathRegistered(p)) {
+      return { ok: false as const, error: 'path_not_registered' };
+    }
     try {
       const st = await fs.promises.stat(p);
       if (!st.isFile()) {

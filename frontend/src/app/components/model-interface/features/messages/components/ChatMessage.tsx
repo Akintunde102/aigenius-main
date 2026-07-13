@@ -449,10 +449,12 @@ export function ChatMessage({
                             <button
                                 type="button"
                                 onClick={() => onToggleOrphanMarkers?.(msg.messageId ?? msg.id ?? `ts_${msg.timestamp}`)}
-                                className="absolute -right-1 top-7 z-20 rounded-full border border-[#D6E4F0] bg-white/95 px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-[#475569] shadow-sm transition hover:border-[#94A3B8] hover:text-[#0F172A] dark:border-zinc-600 dark:bg-zinc-900/95 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:text-zinc-100"
-                                title={orphanMarkersHidden ? 'Show anchored notes on this message' : 'Hide anchored notes on this message'}
+                                className="absolute -right-1 top-7 z-20 rounded-full border border-[#D6E4F0] bg-white/95 px-2 py-0.5 text-[10px] font-semibold tracking-[0.04em] text-[#475569] shadow-sm transition hover:border-[#94A3B8] hover:text-[#0F172A] dark:border-zinc-600 dark:bg-zinc-900/95 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:text-zinc-100"
+                                title={orphanMarkersHidden ? 'Show side threads on this message' : 'Hide side threads on this message'}
                             >
-                                {orphanMarkersHidden ? `Notes ${orphanMarkers.length}` : `•${orphanMarkers.length}`}
+                                {orphanMarkersHidden
+                                    ? `${orphanMarkers.length} side thread${orphanMarkers.length === 1 ? '' : 's'}`
+                                    : `Hide ${orphanMarkers.length}`}
                             </button>
                         ) : null}
                         {!orphanMarkersHidden && !disableOrphanThreads && (
@@ -540,7 +542,7 @@ export function ChatMessage({
                                     ) : messageContent.isAudioMsg ? (
                                         <AudioMessage
                                             fileUrl={messageContent.fileUrl}
-                                            onCopy={onCopy}
+                                            fileName={messageContent.fileName}
                                         />
                                     ) : messageContent.isFileMsg ? (
                                         <FileMessage

@@ -44,6 +44,7 @@ type Props = {
     model: Model | null,
   ) => Promise<boolean | void>;
   handleFileUpload: (file: File) => void;
+  onAttachmentMenuRequest?: () => void;
   uploading: boolean;
   uploadProgress: number | null;
   supportsImageUpload: boolean;
@@ -112,6 +113,7 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   handleSave,
   handleChatBoxSend,
   handleFileUpload,
+  onAttachmentMenuRequest,
   uploading,
   uploadProgress,
   supportsImageUpload,
@@ -189,6 +191,7 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           currentSessionId={currentSessionId}
           onSendMessage={handleChatBoxSend}
           onFileUpload={handleFileUpload}
+          onAttachmentMenuRequest={onAttachmentMenuRequest}
           uploading={uploading}
           uploadProgress={uploadProgress}
           supportsImageUpload={supportsImageUpload || false}

@@ -8,6 +8,7 @@ import { TextMessage } from '../../message-types';
 import { ToolStreamingCard } from './ToolStreamingCard';
 import { getAgentRunById } from '@/lib/calls/agent-run';
 import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
+import { ERROR_MESSAGES } from '../hooks/chatOperations.constants';
 
 function filterDisplayEvents(events: unknown[] | undefined): MessageEvent[] {
     if (!events?.length) {
@@ -106,9 +107,8 @@ export function WorkflowIntentTranscriptExpand({ agentRunId }: Props) {
         try {
             const run = await getAgentRunById(agentRunId);
             setMessages(Array.isArray(run.messages) ? run.messages : []);
-        } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : 'Could not load transcript';
-            setError(msg);
+        } catch {
+            setError(ERROR_MESSAGES.GENERIC_CHAT_ERROR);
         } finally {
             setLoading(false);
         }
