@@ -96,7 +96,10 @@ export function middleware(request: NextRequest) {
         return NextResponse.next();
     }
 
-    const loginUrl = new URL('/login', request.url);
+    const loginPath = (request.headers.get('user-agent') ?? '').includes('Electron')
+        ? '/desktop-login'
+        : '/login';
+    const loginUrl = new URL(loginPath, request.url);
     loginUrl.searchParams.set('next', pathname);
     return NextResponse.redirect(loginUrl);
 }
