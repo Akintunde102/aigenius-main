@@ -5,8 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { clearUserDetailsCache } from '@/lib/calls/get-logged-user-details';
-import { syncAuthSessionCookiesFromStorage } from '@/lib/utils/auth-session';
-import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
+import { hasAuthSession, syncAuthSessionCookiesFromStorage } from '@/lib/utils/auth-session';
+import { isAigeniusDesktopRuntime, isDesktopPaymentBrowserHandoff } from '@/lib/utils/desktop-runtime';
 import { serverCall } from '@/servercall/init';
 import { serverCalls } from '@/servercall/store';
 import {
@@ -16,16 +16,11 @@ import {
     resolveWalletPaymentReturnTarget,
     saveWalletTopUpResultState,
 } from '@/lib/wallet-payment-return';
-import { reconcilePaymentWithBackend } from '@/lib/wallet-pending-payment-poll';
+import { reconcilePaymentWithBackend, type WalletPaymentVerification } from '@/lib/wallet-pending-payment-poll';
 import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
 import { cn } from '@/lib/utils';
 
-type VerifyPaymentResponse = {
-    status: string;
-    message?: string;
-    amount?: number | string;
-    newWalletBalance?: number | null;
-};
+type VerifyPaymentResponse = WalletPaymentVerification;
 
 type ServerCallEnvelope<T> = {
     dataReturned: T;
@@ -167,11 +162,59 @@ export default function PaymentCallbackClient() {
         let mounted = true;
 
         async function verifyAndReturn() {
+            syncAuthSessionCookiesFromStorage();
+
             const reference = searchParams.get('reference') || searchParams.get('trxref');
             const returnState = readWalletTopUpReturnState();
             const returnTo = resolveWalletPaymentReturnTarget(
                 searchParams.get('returnTo') || returnState?.returnTo,
             );
+            const isDesktopHandoff = searchParams.get('desktop') === '1';
+            const lacksSessionForVerify = !hasAuthSession();
+            const shouldDeferVerifyToApp =
+                isDesktopPaymentBrowserHandoff(searchParams)
+                || (lacksSessionForVerify && Boolean(reference));
+            const shouldAutoReturn = !isDesktopHandoff && !shouldDeferVerifyToApp;
+
+            const redirectAfterPayment = (delayMs: number) => {
+                if (!shouldAutoReturn) {
+                    return;
+                }
+                window.setTimeout(() => {
+                    if (mounted) {
+                        window.location.replace(returnTo);
+                    }
+                }, delayMs);
+            };
+
+            // System browser (or any callback surface without tokens) cannot call authorized
+            // verify APIs — layout/getUserDetails or verify would trigger /login redirect.
+            if (shouldDeferVerifyToApp) {
+                if (!reference) {
+                    saveWalletTopUpResultState({
+                        status: 'failed',
+                        reference: null,
+                        amountInNaira: returnState?.amountInNaira,
+                        message: 'Paystack did not return a transaction reference.',
+                        verifiedAt: Date.now(),
+                        reopenTarget: returnState?.reopenTarget,
+                    });
+                    if (mounted) {
+                        setStatus('failed');
+                        toast.error('Payment verification failed.');
+                    }
+                    return;
+                }
+
+                console.log(
+                    `PaymentCallback: Deferring verify (reference=${reference}) — app polling or re-open with session.`,
+                );
+                if (mounted) {
+                    setStatus('confirming');
+                    toast.success('Payment received. Return to AIGenius to see your updated balance.');
+                }
+                return;
+            }
 
             const finishSuccess = (finalVerification: VerifyPaymentResponse) => {
                 if (!mounted) return;
@@ -199,11 +242,7 @@ export default function PaymentCallbackClient() {
                     toast.success('Payment verified. Returning to your wallet.');
                 }
                 if (!searchParams.get('desktop')) {
-                    window.setTimeout(() => {
-                        if (mounted) {
-                            window.location.replace(returnTo);
-                        }
-                    }, 900);
+                    redirectAfterPayment(900);
                 }
             };
 
@@ -220,14 +259,12 @@ export default function PaymentCallbackClient() {
                 if (mounted) {
                     setStatus('failed');
                     toast.error('Payment verification failed.');
-                    window.setTimeout(() => window.location.replace(returnTo), 1200);
+                    redirectAfterPayment(1200);
                 }
                 return;
             }
 
             console.log(`PaymentCallback: Landed on callback page with reference: ${reference}`);
-
-            const isDesktopHandoff = searchParams.get('desktop') === '1';
 
             try {
                 let verifyData = await triggerVerifyOnce(reference);
@@ -359,7 +396,7 @@ export default function PaymentCallbackClient() {
 
                 setStatus('failed');
                 toast.error(message);
-                window.setTimeout(() => window.location.replace(returnTo), 2500);
+                redirectAfterPayment(2500);
             }
         }
 

@@ -21,8 +21,10 @@ export type PendingPaymentPollCallbacks = {
   onTimedOut?: (message: string) => void;
 };
 
-type TransactionStatusResponse = {
+export type WalletPaymentVerification = {
   status?: string;
+  message?: string;
+  amount?: number | string;
   newWalletBalance?: number | null;
 };
 
@@ -112,7 +114,7 @@ export function hasPendingWalletPayment(): boolean {
 
 export async function fetchPendingPaymentStatus(
   reference: string,
-): Promise<TransactionStatusResponse | null> {
+): Promise<WalletPaymentVerification | null> {
   try {
     const response = (await serverCall({
       serverCallProps: {
@@ -120,7 +122,7 @@ export async function fetchPendingPaymentStatus(
       },
       pathArgs: { reference },
       authorized: true,
-    })) as { dataReturned?: TransactionStatusResponse };
+    })) as { dataReturned?: WalletPaymentVerification };
 
     return response?.dataReturned ?? null;
   } catch (error) {
@@ -131,7 +133,7 @@ export async function fetchPendingPaymentStatus(
 
 async function triggerPaymentVerify(
   reference: string,
-): Promise<TransactionStatusResponse | null> {
+): Promise<WalletPaymentVerification | null> {
   try {
     const response = (await serverCall({
       serverCallProps: {
@@ -139,7 +141,7 @@ async function triggerPaymentVerify(
       },
       pathArgs: { reference },
       authorized: true,
-    })) as { dataReturned?: TransactionStatusResponse };
+    })) as { dataReturned?: WalletPaymentVerification };
 
     return response?.dataReturned ?? null;
   } catch (error) {
@@ -151,7 +153,7 @@ async function triggerPaymentVerify(
 /** Status check with verify fallback — shared by app polling and the payment callback page. */
 export async function reconcilePaymentWithBackend(
   reference: string,
-): Promise<TransactionStatusResponse | null> {
+): Promise<WalletPaymentVerification | null> {
   let verification = await fetchPendingPaymentStatus(reference);
 
   if (!isSuccessfulTransactionStatus(verification?.status)) {
