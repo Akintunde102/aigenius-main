@@ -158,6 +158,9 @@ export type DesktopChatScreenshotPayload = {
 
 export type AigeniusDesktopBridgeSurface = {
   isDesktop?: boolean;
+  openExternal?: (url: string) => void;
+  /** Fires when the Electron main window regains OS focus (e.g. after system-browser payment). */
+  onMainWindowFocus?: (handler: () => void) => () => void;
   runLocalDesktopTool?: (
     payload: { tool: string; arguments: Record<string, unknown> },
     options?: { onShellStreamChunk?: (chunk: { stream: string; text: string }) => void },

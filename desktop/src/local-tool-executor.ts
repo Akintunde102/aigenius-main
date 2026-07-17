@@ -19,7 +19,7 @@ import {
   formatShellResult,
 } from './utils/tool-formatter';
 import { isIgnored } from './utils/exemptions';
-import { registerPreviewPath, registerPreviewPaths } from './preview-path-registry';
+import { registerPreviewPaths } from './preview-path-registry';
 
 function registerTrustedToolPaths(...paths: Array<string | undefined>): void {
   registerPreviewPaths(paths.filter((p): p is string => typeof p === 'string' && path.isAbsolute(p)));
@@ -109,6 +109,18 @@ export async function runLocalDesktopTool(
           throw new Error(`Sidecar returned ${res.status}: ${body}`);
         }
         const data = await res.json();
+        const hits = Array.isArray(data?.hits) ? data.hits : [];
+        const pathsToRegister: string[] = [];
+        for (const hit of hits) {
+          const hitPath = typeof hit?.path === 'string' ? hit.path : undefined;
+          if (!hitPath) continue;
+          pathsToRegister.push(hitPath);
+          const parent = path.dirname(hitPath);
+          if (parent && parent !== hitPath && path.isAbsolute(parent)) {
+            pathsToRegister.push(parent);
+          }
+        }
+        registerTrustedToolPaths(...pathsToRegister);
         const formatted = formatRagResults(data);
         return { ok: true, result: formatted.result, rawData: formatted.rawData };
       } catch (e) {
@@ -189,7 +201,10 @@ export async function runLocalDesktopTool(
       try {
         const p = typeof rawArgs.path === 'string' ? rawArgs.path : '';
         if (!p) return { ok: false, error: 'Missing path' };
-        registerPreviewPath(p);
+        if (!path.isAbsolute(p)) {
+          return { ok: false, error: 'path must be an absolute path' };
+        }
+        registerTrustedToolPaths(p);
         await shell.openPath(p);
         return { ok: true, result: 'File opened in OS' };
       } catch (e: any) {
@@ -200,7 +215,10 @@ export async function runLocalDesktopTool(
       if (!patchResult.ok) return patchResult;
       try {
         const parsed = JSON.parse(patchResult.result) as Parameters<typeof formatApplyPatchResult>[0];
-        registerTrustedToolPaths(...parsed.results.map((r) => r.path));
+        const patchPaths = Array.isArray(parsed.results)
+          ? parsed.results.map((r) => r.path)
+          : [];
+        registerTrustedToolPaths(...patchPaths);
         const formatted = formatApplyPatchResult(parsed);
         return { ok: true, result: formatted.result, rawData: formatted.rawData };
       } catch {
@@ -488,7 +506,7 @@ async function readBoundedFile(
         truncated: bytesRead === maxBytes,
         content: text,
       });
-      registerPreviewPath(p);
+      registerTrustedToolPaths(p);
       return {
         ok: true,
         result: formatted.result,

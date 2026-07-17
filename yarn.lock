@@ -6586,7 +6586,7 @@ electron-to-chromium@^1.5.328:
   resolved "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.343.tgz"
   integrity sha512-YHnQ3MXI08icvL9ZKnEBy05F2EQ8ob01UaMOuMbM8l+4UcAq6MPPbBTJBbsBUg3H8JeZNt+O4fjsoWth3p6IFg==
 
-electron@^33.2.1:
+electron@33.2.1:
   version "33.2.1"
   resolved "https://registry.npmjs.org/electron/-/electron-33.2.1.tgz"
   integrity sha512-SG/nmSsK9Qg1p6wAW+ZfqU+AV8cmXMTIklUL18NnOKfZLlum4ZsDoVdmmmlL39ZmeCaq27dr7CgslRPahfoVJg==

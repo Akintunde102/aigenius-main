@@ -13,6 +13,28 @@ from voice_sidecar_lib.timing import log_timed_step
 
 _stt_model_singleton = None
 
+# All configured whisper.cpp / env sizes map to tiny.en for fast local downloads.
+_FASTER_WHISPER_MODEL_SIZE = "tiny.en"
+
+
+def normalize_faster_whisper_model_size(model_size: str) -> str:
+    """
+    Map whisper.cpp / env model size strings to a faster-whisper model ID.
+
+    GGML/GGUF names (e.g. ``small.en-q5_1``) are for whisper.cpp; faster-whisper
+    uses CTranslate2 weights. We always load ``tiny.en`` for lightweight inference.
+    """
+    lowered = model_size.lower()
+    if "tiny" in lowered:
+        return _FASTER_WHISPER_MODEL_SIZE
+    if "base" in lowered:
+        return _FASTER_WHISPER_MODEL_SIZE
+    if "small" in lowered:
+        return _FASTER_WHISPER_MODEL_SIZE
+    if "medium" in lowered:
+        return _FASTER_WHISPER_MODEL_SIZE
+    return _FASTER_WHISPER_MODEL_SIZE
+
 
 def load_stt_model(model_size: str = "base"):
     """Load Faster-Whisper model with caching (single process-wide instance)."""
@@ -20,18 +42,7 @@ def load_stt_model(model_size: str = "base"):
     if _stt_model_singleton is not None:
         return _stt_model_singleton
 
-    # Normalize model size for faster-whisper (GGML/GGUF names like small.en-q5_1 are for whisper.cpp)
-    model_size = model_size.lower()
-    if "tiny" in model_size:
-        norm_size = "tiny.en"
-    elif "base" in model_size:
-        norm_size = "tiny.en"  # Use tiny.en for lightweight and fast downloads
-    elif "small" in model_size:
-        norm_size = "tiny.en"  # Map small to tiny.en to avoid timeouts
-    elif "medium" in model_size:
-        norm_size = "tiny.en"
-    else:
-        norm_size = "tiny.en"
+    norm_size = normalize_faster_whisper_model_size(model_size)
 
     with log_timed_step(f"Import and load Faster-Whisper model: {norm_size}"):
         try:

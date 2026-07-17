@@ -26,6 +26,7 @@ import {
   removeSavedChatItemById,
 } from "@/lib/utils/modelChatConversationUtils";
 import { getUserDetails } from "@/lib/calls/get-logged-user-details";
+import { FEATURE_FLAGS } from "@/lib/config/features";
 import {
   ChatMessage,
   PendingOrphanReply,
@@ -332,7 +333,10 @@ export function useModelInterface(options?: {
     streamFlushPendingRef,
   });
 
-  const handleAudioModeToggle = toggleAudioMode;
+  const handleAudioModeToggle = useCallback((enabled: boolean) => {
+    if (!FEATURE_FLAGS.AUDIO_CONVERSATION) return;
+    toggleAudioMode(enabled);
+  }, [toggleAudioMode]);
 
   const handleStartSTT = useCallback(() => {
     if (isAudioMode) {

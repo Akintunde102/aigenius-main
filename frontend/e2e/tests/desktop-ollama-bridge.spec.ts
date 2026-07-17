@@ -21,7 +21,7 @@ type DesktopToolOptions = {
   onShellStreamChunk?: (chunk: { stream: 'stdout' | 'stderr'; text: string }) => void;
 };
 
-type DesktopWindow = Window & {
+type DesktopWindow = Omit<Window, 'aigeniusDesktop'> & {
   __ollamaToolCalls: DesktopToolPayload[];
   aigeniusDesktop: {
     isDesktop: true;
@@ -41,7 +41,7 @@ test.describe('Desktop Ollama bridge', () => {
         get: () => false,
       });
 
-      const desktopWindow = window as DesktopWindow;
+      const desktopWindow = window as unknown as DesktopWindow;
       desktopWindow.__ollamaToolCalls = [];
       desktopWindow.aigeniusDesktop = {
         isDesktop: true,

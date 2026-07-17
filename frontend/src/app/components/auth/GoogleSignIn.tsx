@@ -55,6 +55,7 @@ export const GoogleSignIn = ({
                     alt="Google"
                     width={20}
                     height={20}
+                    unoptimized
                     className="mr-3"
                 />
                 {buttonText}

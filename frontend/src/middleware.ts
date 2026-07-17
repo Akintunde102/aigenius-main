@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeNextStaticChunkPath } from '@/lib/utils/normalize-next-static-chunk-path';
+import { FEATURE_FLAGS } from '@/lib/config/features';
 
 const PUBLIC_PATH_PREFIXES = [
     '/docs',
@@ -41,6 +42,28 @@ function isPublicPath(pathname: string): boolean {
     return PUBLIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
+function isDisabledFeaturePath(pathname: string): boolean {
+    if (!FEATURE_FLAGS.WORKFLOWS) {
+        if (
+            pathname === '/workflows' ||
+            pathname.startsWith('/workflows/') ||
+            pathname.startsWith('/workflow/') ||
+            pathname === '/schedules' ||
+            pathname.startsWith('/schedules/') ||
+            pathname === '/notifications' ||
+            pathname.startsWith('/notifications/')
+        ) {
+            return true;
+        }
+    }
+
+    if (!FEATURE_FLAGS.INTEGRATIONS && pathname.startsWith('/integrations')) {
+        return true;
+    }
+
+    return false;
+}
+
 export function middleware(request: NextRequest) {
     const { pathname, search } = request.nextUrl;
 
@@ -49,6 +72,10 @@ export function middleware(request: NextRequest) {
         const url = request.nextUrl.clone();
         url.pathname = staticChunkPath;
         return NextResponse.rewrite(url);
+    }
+
+    if (isDisabledFeaturePath(pathname)) {
+        return NextResponse.redirect(new URL('/', request.url));
     }
 
     console.log(`Middleware pathname: ${pathname}`);

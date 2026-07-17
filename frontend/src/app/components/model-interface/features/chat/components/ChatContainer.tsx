@@ -14,6 +14,7 @@ import type { AudioStatus } from '../hooks/audioMode.utils';
 import styles from './ChatContainer.module.scss';
 
 import type { UploadedFileEntry } from '@/app/components/model-interface/ModelInterface.helpers';
+import { FEATURE_FLAGS } from '@/lib/config/features';
 
 interface ChatContainerProps {
     chat: ChatMessage[];
@@ -473,7 +474,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                 />
             ) : null}
 
-            {isAudioMode && onAudioModeToggle && (
+            {FEATURE_FLAGS.AUDIO_CONVERSATION && isAudioMode && onAudioModeToggle && (
                 <AudioModeOverlay
                     onExit={() => onAudioModeToggle(false)}
                     status={audioStatus}

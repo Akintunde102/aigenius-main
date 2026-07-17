@@ -3,14 +3,22 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { AlertTriangle, CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { clearUserDetailsCache } from '@/lib/calls/get-logged-user-details';
+import { syncAuthSessionCookiesFromStorage } from '@/lib/utils/auth-session';
+import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
 import { serverCall } from '@/servercall/init';
 import { serverCalls } from '@/servercall/store';
 import {
     clearWalletTopUpReturnState,
+    clearPendingPaymentStorage,
     readWalletTopUpReturnState,
+    resolveWalletPaymentReturnTarget,
     saveWalletTopUpResultState,
 } from '@/lib/wallet-payment-return';
+import { reconcilePaymentWithBackend } from '@/lib/wallet-pending-payment-poll';
+import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
+import { cn } from '@/lib/utils';
 
 type VerifyPaymentResponse = {
     status: string;
@@ -25,10 +33,86 @@ type ServerCallEnvelope<T> = {
 
 const VERIFY_TRIGGER_KEY_PREFIX = 'aigenius:payment-verify-triggered:';
 
+const STATUS_CARD =
+    'mx-auto w-full max-w-md rounded-2xl border border-zinc-700/45 bg-zinc-950 px-8 py-10 text-center shadow-2xl shadow-black/35';
+
+const PRIMARY_BUTTON =
+    'inline-flex items-center justify-center rounded-lg bg-white px-6 py-2.5 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 active:scale-[0.99]';
+
+function StatusShell({ children }: { children: React.ReactNode }) {
+    return (
+        <div className="flex w-full flex-1 flex-col items-center justify-center px-5 py-16 sm:px-8">
+            {children}
+        </div>
+    );
+}
+
+function StatusIcon({
+    tone,
+    children,
+}: {
+    tone: 'loading' | 'success' | 'confirming' | 'failed';
+    children: React.ReactNode;
+}) {
+    const toneClass =
+        tone === 'success'
+            ? 'bg-emerald-500/10 text-emerald-400 shadow-[0_0_40px_-8px_rgba(16,185,129,0.35)]'
+            : tone === 'confirming'
+              ? 'bg-amber-500/10 text-amber-400 shadow-[0_0_40px_-8px_rgba(245,158,11,0.3)]'
+              : tone === 'failed'
+                ? 'bg-red-500/10 text-red-400 shadow-[0_0_40px_-8px_rgba(248,113,113,0.3)]'
+                : 'bg-cyan-500/10 text-cyan-400';
+
+    return (
+        <div className="relative mx-auto mb-6 flex h-16 w-16 items-center justify-center">
+            {tone === 'success' ? (
+                <div className="absolute inset-0 animate-ping rounded-full bg-emerald-500/20" aria-hidden />
+            ) : null}
+            <div
+                className={cn(
+                    'relative flex h-16 w-16 items-center justify-center rounded-full',
+                    toneClass,
+                )}
+            >
+                {children}
+            </div>
+        </div>
+    );
+}
+
+export function PaymentCallbackLoadingView() {
+    return (
+        <StatusShell>
+            <div className={STATUS_CARD}>
+                <StatusIcon tone="loading">
+                    <Loader2 className="h-8 w-8 animate-spin" aria-hidden />
+                </StatusIcon>
+                <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                    Processing payment
+                </h1>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                    Verifying your transaction with Paystack…
+                </p>
+            </div>
+        </StatusShell>
+    );
+}
+
 function isVerifiedPaymentStatus(status: string | undefined): boolean {
     return status === 'success'
         || status === 'successful'
         || status === 'already_processed';
+}
+
+function isRecordedPaymentFailure(status: string | undefined): boolean {
+    return status === 'failed' || status === 'cancelled';
+}
+
+class PaymentFailedError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'PaymentFailedError';
+    }
 }
 
 function extractServerData<T>(response: unknown): T | null {
@@ -53,7 +137,7 @@ async function triggerVerifyOnce(reference: string): Promise<VerifyPaymentRespon
     if (typeof window !== 'undefined') {
         const alreadyTriggered = window.sessionStorage.getItem(`${VERIFY_TRIGGER_KEY_PREFIX}${reference}`);
         if (alreadyTriggered) {
-            return null;
+            return fetchTransactionStatus(reference);
         }
     }
 
@@ -71,7 +155,7 @@ async function triggerVerifyOnce(reference: string): Promise<VerifyPaymentRespon
         return extractServerData<VerifyPaymentResponse>(verifyResponse);
     } catch (verifyError) {
         console.warn('PaymentCallback: verify endpoint error (may already be processed via webhook):', verifyError);
-        return null;
+        return fetchTransactionStatus(reference).catch(() => null);
     }
 }
 
@@ -85,13 +169,17 @@ export default function PaymentCallbackClient() {
         async function verifyAndReturn() {
             const reference = searchParams.get('reference') || searchParams.get('trxref');
             const returnState = readWalletTopUpReturnState();
-            const returnTo = searchParams.get('returnTo') || returnState?.returnTo || '/';
+            const returnTo = resolveWalletPaymentReturnTarget(
+                searchParams.get('returnTo') || returnState?.returnTo,
+            );
 
             const finishSuccess = (finalVerification: VerifyPaymentResponse) => {
                 if (!mounted) return;
 
                 clearUserDetailsCache();
+                syncAuthSessionCookiesFromStorage();
                 clearWalletTopUpReturnState();
+                clearPendingPaymentStorage();
                 saveWalletTopUpResultState({
                     status: 'success',
                     reference: reference!,
@@ -105,12 +193,18 @@ export default function PaymentCallbackClient() {
                 });
 
                 setStatus('success');
-                toast.success('Payment verified. Returning to your wallet.');
-                window.setTimeout(() => {
-                    if (mounted) {
-                        window.location.replace(returnTo);
-                    }
-                }, 900);
+                if (isAigeniusDesktopRuntime()) {
+                    toast.success('Payment verified. Return to the app to see your updated balance.');
+                } else {
+                    toast.success('Payment verified. Returning to your wallet.');
+                }
+                if (!searchParams.get('desktop')) {
+                    window.setTimeout(() => {
+                        if (mounted) {
+                            window.location.replace(returnTo);
+                        }
+                    }, 900);
+                }
             };
 
             if (!reference) {
@@ -133,15 +227,50 @@ export default function PaymentCallbackClient() {
 
             console.log(`PaymentCallback: Landed on callback page with reference: ${reference}`);
 
+            const isDesktopHandoff = searchParams.get('desktop') === '1';
+
             try {
-                const verifyData = await triggerVerifyOnce(reference);
+                let verifyData = await triggerVerifyOnce(reference);
+
+                if (verifyData && isRecordedPaymentFailure(verifyData.status)) {
+                    throw new PaymentFailedError(
+                        verifyData.message || 'Payment failed on Paystack.',
+                    );
+                }
+
+                if (!verifyData || !isVerifiedPaymentStatus(verifyData.status)) {
+                    verifyData = await reconcilePaymentWithBackend(reference);
+                }
+
+                if (verifyData && isRecordedPaymentFailure(verifyData.status)) {
+                    throw new PaymentFailedError(
+                        verifyData.message || 'Payment failed on Paystack.',
+                    );
+                }
+
                 if (verifyData && isVerifiedPaymentStatus(verifyData.status)) {
-                    console.log('PaymentCallback: Verify endpoint confirmed payment.', verifyData);
+                    console.log('PaymentCallback: Payment confirmed.', verifyData);
                     finishSuccess(verifyData);
                     return;
                 }
 
-                const backoffDelays = [0, 1000, 2000, 4000, 8000, 16000];
+                if (isDesktopHandoff) {
+                    console.log('PaymentCallback: Desktop handoff — payment not verified in browser yet.');
+                    saveWalletTopUpResultState({
+                        status: 'pending',
+                        reference,
+                        amountInNaira: returnState?.amountInNaira,
+                        message: 'Return to the app — your wallet will update once payment is confirmed.',
+                        verifiedAt: Date.now(),
+                        reopenTarget: returnState?.reopenTarget,
+                    });
+                    if (mounted) {
+                        setStatus('confirming');
+                    }
+                    return;
+                }
+
+                const backoffDelays = [0, 500, 1000, 2000, 4000, 8000];
                 let finalVerification: VerifyPaymentResponse | null = null;
 
                 for (let i = 0; i < backoffDelays.length; i++) {
@@ -153,7 +282,7 @@ export default function PaymentCallbackClient() {
                     if (!mounted) return;
 
                     try {
-                        const data = await fetchTransactionStatus(reference);
+                        const data = await reconcilePaymentWithBackend(reference);
                         if (!data) continue;
 
                         console.log(`PaymentCallback: Status poll ${i + 1} — "${data.status}"`, data);
@@ -163,11 +292,11 @@ export default function PaymentCallbackClient() {
                             break;
                         }
 
-                        if (data.status === 'failed') {
-                            throw new Error(data.message || 'Payment failed on Paystack.');
+                        if (isRecordedPaymentFailure(data.status)) {
+                            throw new PaymentFailedError(data.message || 'Payment failed on Paystack.');
                         }
                     } catch (statusError) {
-                        if (statusError instanceof Error && statusError.message.includes('failed')) {
+                        if (statusError instanceof PaymentFailedError) {
                             throw statusError;
                         }
                         console.warn(`PaymentCallback: Status poll ${i + 1} failed:`, statusError);
@@ -194,12 +323,30 @@ export default function PaymentCallbackClient() {
             } catch (error) {
                 if (!mounted) return;
 
+                try {
+                    const lastChance = await reconcilePaymentWithBackend(reference);
+                    if (lastChance && isVerifiedPaymentStatus(lastChance.status)) {
+                        finishSuccess(lastChance);
+                        return;
+                    }
+                    if (lastChance && isRecordedPaymentFailure(lastChance.status)) {
+                        throw new PaymentFailedError(lastChance.message || 'Payment failed on Paystack.');
+                    }
+                } catch (lastChanceError) {
+                    if (lastChanceError instanceof PaymentFailedError) {
+                        throw lastChanceError;
+                    }
+                    console.warn('PaymentCallback: Final status check failed:', lastChanceError);
+                }
+
                 console.error('PaymentCallback: Fatal verification error:', error);
-                const message = error instanceof Error
+                const message = error instanceof PaymentFailedError
                     ? error.message
-                    : typeof error === 'string'
-                        ? error
-                        : 'Payment verification failed.';
+                    : error instanceof Error
+                        ? error.message
+                        : typeof error === 'string'
+                            ? error
+                            : 'Payment verification failed.';
 
                 saveWalletTopUpResultState({
                     status: 'failed',
@@ -224,84 +371,93 @@ export default function PaymentCallbackClient() {
     }, [searchParams]);
 
     if (status === 'loading') {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Processing payment...</p>
-                </div>
-            </div>
-        );
+        return <PaymentCallbackLoadingView />;
     }
 
     if (status === 'success') {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                    </div>
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h1>
-                    <p className="text-gray-600 mb-4">Your wallet has been verified and updated.</p>
-                    <p className="text-sm text-gray-500">Returning you to your wallet...</p>
+            <StatusShell>
+                <div className={STATUS_CARD}>
+                    <StatusIcon tone="success">
+                        <CheckCircle2 className="h-8 w-8" aria-hidden />
+                    </StatusIcon>
+                    <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                        Payment successful
+                    </h1>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                        {searchParams.get('desktop') === '1'
+                            ? 'Return to the app — your wallet will update automatically.'
+                            : 'Your wallet has been verified and updated.'}
+                    </p>
+                    {searchParams.get('desktop') !== '1' ? (
+                        <p className="mt-4 text-sm text-zinc-500">Returning you to your wallet…</p>
+                    ) : null}
                 </div>
-            </div>
+            </StatusShell>
         );
     }
 
     if (status === 'confirming') {
         const returnState = readWalletTopUpReturnState();
-        const returnTo = searchParams.get('returnTo') || returnState?.returnTo || '/';
+        const returnTo = resolveWalletPaymentReturnTarget(
+            searchParams.get('returnTo') || returnState?.returnTo,
+        );
+        const isDesktopHandoff = searchParams.get('desktop') === '1';
 
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center max-w-md px-6">
-                    <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Confirming Payment</h1>
-                    <p className="text-gray-600 mb-6 leading-relaxed">
-                        We are still confirming your payment with Paystack. This usually takes a few minutes.
-                        You don&apos;t need to wait on this page—your wallet balance will update automatically once confirmed.
+            <StatusShell>
+                <div className={STATUS_CARD}>
+                    <StatusIcon tone="confirming">
+                        <AlertTriangle className="h-8 w-8" aria-hidden />
+                    </StatusIcon>
+                    <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                        Confirming payment
+                    </h1>
+                    <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+                        {isDesktopHandoff
+                            ? 'We could not verify your payment in this browser yet. Return to the app — it will confirm your payment and update your wallet automatically.'
+                            : 'We could not verify your payment yet. You can wait here or return to your wallet — your balance will update automatically once Paystack confirms the payment.'}
                     </p>
                     <button
                         type="button"
                         onClick={() => {
+                            if (isDesktopHandoff) {
+                                window.close();
+                                return;
+                            }
                             window.location.replace(returnTo);
                         }}
-                        className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 font-medium transition-colors"
+                        className={cn('mt-8', PRIMARY_BUTTON, FOCUS_RING)}
                     >
-                        Return to Wallet
+                        {isDesktopHandoff ? 'Close this tab' : 'Return to wallet'}
                     </button>
                 </div>
-            </div>
+            </StatusShell>
         );
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center">
-            <div className="text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment Failed</h1>
-                <p className="text-gray-600 mb-4">There was an issue processing your payment.</p>
+        <StatusShell>
+            <div className={STATUS_CARD}>
+                <StatusIcon tone="failed">
+                    <XCircle className="h-8 w-8" aria-hidden />
+                </StatusIcon>
+                <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                    Payment failed
+                </h1>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                    There was an issue processing your payment.
+                </p>
                 <button
                     type="button"
                     onClick={() => {
                         window.location.href = '/';
                     }}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                    className={cn('mt-8', PRIMARY_BUTTON, FOCUS_RING)}
                 >
-                    Return to App
+                    Return to app
                 </button>
             </div>
-        </div>
+        </StatusShell>
     );
 }

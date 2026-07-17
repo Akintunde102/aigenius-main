@@ -772,7 +772,8 @@ async function processStreamingData(
 export type OpenRouterContentBlock =
   | { type: 'text'; text: string }
   | { type: 'image_url'; image_url: { url: string } }
-  | { type: 'input_audio'; input_audio: { data: string; format: string } };
+  | { type: 'input_audio'; input_audio: { data: string; format: string } }
+  | { type: 'file_url'; file_url: { url: string; name?: string } };
 
 /** Per-tool billed amounts from the gateway (USD + ₦). */
 export interface ToolUsageCharge {
