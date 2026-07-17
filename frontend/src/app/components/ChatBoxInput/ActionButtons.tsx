@@ -1,6 +1,7 @@
 import React from 'react';
 import { Paperclip, Mic, Phone, Loader2, X, Check } from 'lucide-react';
 import { ActionButtonsProps } from './types';
+import { FEATURE_FLAGS } from '@/lib/config/features';
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
     disabled,
@@ -19,17 +20,19 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
     return (
         <div className="flex items-center space-x-1.5">
-            {/* Audio Mode Toggle */}
-            <button
-                type="button"
-                className={`p-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isAudioMode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:text-green-500 hover:bg-green-50'
-                    }`}
-                title="Enter Audio Mode"
-                disabled={disabled}
-                onClick={() => onAudioModeToggle?.(!isAudioMode)}
-            >
-                <Phone size={12} />
-            </button>
+            {/* Conversational audio mode (phone) — mic dictation stays available below */}
+            {FEATURE_FLAGS.AUDIO_CONVERSATION && onAudioModeToggle ? (
+                <button
+                    type="button"
+                    className={`p-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isAudioMode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:text-green-500 hover:bg-green-50'
+                        }`}
+                    title="Enter Audio Mode"
+                    disabled={disabled}
+                    onClick={() => onAudioModeToggle(!isAudioMode)}
+                >
+                    <Phone size={12} />
+                </button>
+            ) : null}
 
             {/* Mic / STT Toggle (or Cancel / Confirm) */}
             {micTranscribing ? (

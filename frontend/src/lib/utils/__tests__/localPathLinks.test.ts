@@ -23,6 +23,17 @@ describe('localPathLinks', () => {
     );
   });
 
+  it('does not treat tilde paths as local-file preview links', () => {
+    expect(
+      resolveMarkdownHrefForDesktop(
+        'local-file://' + encodeURIComponent('~/Documents/report.pdf'),
+      ),
+    ).toEqual({ kind: 'passthrough' });
+    expect(
+      resolveMarkdownHrefForDesktop('local-file://' + encodeURIComponent('~')),
+    ).toEqual({ kind: 'passthrough' });
+  });
+
   it('resolves only local-file:// preview links for desktop', () => {
     expect(
       resolveMarkdownHrefForDesktop(

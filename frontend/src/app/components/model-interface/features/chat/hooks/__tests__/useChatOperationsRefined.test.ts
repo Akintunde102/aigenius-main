@@ -286,6 +286,8 @@ describe('useChatOperationsRefined', () => {
                 selectedPersonalityName: undefined,
                 selectedPersonalityIconUrl: undefined,
                 clearPendingOrphanReply,
+                getChatForSession: (sessionKey) =>
+                    sessionKey === sessionProps.currentSessionId ? baseChat : [],
             });
             resultRef.current = result;
             return null;

@@ -35,6 +35,7 @@ import { useBrowserDetection } from "./shared/hooks";
 import AddToWallet from "../modals/AddToWallet";
 import useTokenHandler from "@/lib/hooks/useTokenHandler";
 import { useWalletTopUpReturn } from "@/lib/hooks/useWalletTopUpReturn";
+import { usePendingWalletPayment } from "@/lib/hooks/usePendingWalletPayment";
 import { useWalletManagement } from "./features/chat/hooks";
 import { ChatErrorMessage } from "./features/chat/components/ChatErrorMessage";
 import { useKeyboardShortcuts } from "./shared/hooks";
@@ -68,6 +69,7 @@ import { ChatShellLoadingSkeleton } from "@/app/components/ChatShellLoadingSkele
 import { useModelInterfaceSidebarActions } from "./hooks/useModelInterfaceSidebarActions";
 import { useModelInterfaceLifecycle } from "./hooks/useModelInterfaceLifecycle";
 import { useModelInterfacePersonalitySelection } from "./hooks/useModelInterfacePersonalitySelection";
+import { FEATURE_FLAGS } from "@/lib/config/features";
 
 interface ModelInterfaceProps {
   routeConversationId?: string | null;
@@ -98,10 +100,13 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
   }, [router]);
 
   useEffect(() => {
-    router.prefetch("/workflows");
+    if (FEATURE_FLAGS.WORKFLOWS) {
+      router.prefetch("/workflows");
+    }
   }, [router]);
 
   const handleOpenWorkflows = useCallback(() => {
+    if (!FEATURE_FLAGS.WORKFLOWS) return;
     startTransition(() => {
       router.push("/workflows");
     });
@@ -189,6 +194,10 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     error: error || "",
     setShowWalletModal,
     refreshWalletFromBackend,
+  });
+
+  usePendingWalletPayment((amountInNaira, newWalletBalance) => {
+    void handlePaymentSuccess(amountInNaira, newWalletBalance, { keepModalOpen: true });
   });
 
   const {
@@ -616,8 +625,12 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     onWalletUpdate={handleWalletUpdateFromSidebar}
                     onStarToggle={handleStarToggle}
                     onPublish={handlePublishFromSidebar}
-                    onOpenWorkflows={handleOpenWorkflows}
-                    onOpenNotifications={() => router.push("/notifications")}
+                    onOpenWorkflows={FEATURE_FLAGS.WORKFLOWS ? handleOpenWorkflows : undefined}
+                    onOpenNotifications={
+                      FEATURE_FLAGS.WORKFLOWS
+                        ? () => router.push("/notifications")
+                        : undefined
+                    }
                     switchToSession={handleSessionSwitch}
                     createNewSessionAndSwitch={createNewSessionAndSwitchWrapper}
                     isSessionActive={isSessionActive}
@@ -674,7 +687,9 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                       setWalletModalFromServerAbort(true);
                       setShowWalletModal(true);
                     }}
-                    onAudioModeToggle={handleAudioModeToggle}
+                    onAudioModeToggle={
+                      FEATURE_FLAGS.AUDIO_CONVERSATION ? handleAudioModeToggle : undefined
+                    }
                     isAudioMode={isAudioMode}
                     onStartSTT={handleStartSTT}
                     onCancelSTT={handleCancelSTT}

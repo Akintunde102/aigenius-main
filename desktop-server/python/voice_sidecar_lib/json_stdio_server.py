@@ -17,7 +17,7 @@ from typing import Optional
 from voice_sidecar_lib.log import LOGGER
 from voice_sidecar_lib.stt_runtime import transcribe_audio, warm_stt_at_sidecar_startup
 from voice_sidecar_lib.timing import log_timed_step
-from voice_sidecar_lib.tts_pocket import generate_speech, load_tts_model
+from voice_sidecar_lib.tts_pocket import generate_speech
 
 
 # Lock to ensure JSON strings are written cleanly to stdout without interleaving

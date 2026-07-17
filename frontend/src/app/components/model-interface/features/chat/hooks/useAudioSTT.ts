@@ -210,6 +210,11 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
                 setInput(finalDraft);
                 onTranscriptionComplete?.(text);
               }
+            } else {
+              console.warn('[AudioSTT] Local finalize STT HTTP error', res.status);
+              import('react-hot-toast').then(({ toast }) => {
+                toast.error('Speech recognition failed. Check ~/Library/Logs/AIGenius/mini-server.log');
+              }).catch(() => {});
             }
           } else if (blob.size > 0) {
             // Fallback to legacy single-upload if no session exists
@@ -283,7 +288,6 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
         }, 500);
       }
     }, [socket, setInput, onTranscriptionComplete, peerMicSuppressRef]),
-    neuralVad: false,
   });
 
   // Desktop socket transcription listener

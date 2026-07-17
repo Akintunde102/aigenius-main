@@ -17,7 +17,6 @@ export function isAbsoluteFilesystemPath(value: string): boolean {
   if (!t) return false;
   if (t.startsWith('/')) return true;
   if (/^[A-Za-z]:[\\/]/.test(t)) return true;
-  if (t.startsWith('~')) return true;
   return false;
 }
 

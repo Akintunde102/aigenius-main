@@ -12,6 +12,7 @@ export interface ContentBlock {
     image_url?: { url: string };
     imageText?: string;
     input_audio?: { data: string; format: string };
+    file_url?: { url: string; name?: string };
 }
 
 // Processed content type that can be string or structured array
