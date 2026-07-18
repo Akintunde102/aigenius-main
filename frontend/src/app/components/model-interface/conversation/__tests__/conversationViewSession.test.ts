@@ -41,6 +41,11 @@ describe("resolveViewSessionId", () => {
     expect(resolveViewSessionId("stale-conversation", "stale-conversation")).toBeNull();
   });
 
+  it("ignores a stale currentSessionId when the client route target was cleared", () => {
+    setActiveRouteConversationTarget(null);
+    expect(resolveViewSessionId(null, "stale-session")).toBeNull();
+  });
+
   it("keeps the client route target when navigation is ahead of the URL prop", () => {
     setActiveRouteConversationTarget("conversation-b");
     expect(resolveViewSessionId("conversation-a", null)).toBe("conversation-b");

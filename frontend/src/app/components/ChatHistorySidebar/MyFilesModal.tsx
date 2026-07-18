@@ -11,7 +11,6 @@ export interface MyFilesModalProps {
   library: UploadedFilesLibraryState;
 }
 
-/** Match `ModelSelectionModal` shell: overlay, frosted panel, header row, flex body. */
 const MyFilesModal: React.FC<MyFilesModalProps> = ({ onClose, library }) => {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -41,63 +40,83 @@ const MyFilesModal: React.FC<MyFilesModalProps> = ({ onClose, library }) => {
     return null;
   }
 
-  const portalTarget =
-    document.getElementById("modal-root") ?? document.body;
+  const portalTarget = document.getElementById("modal-root") ?? document.body;
 
-  const modalContent = (
-    <div
-      role="presentation"
-      className={`fixed inset-0 z-[100] flex justify-center bg-black/20 backdrop-blur-[2px] transition-all duration-200 ease-out p-0 ${
-        isMobile ? "items-stretch" : "items-center"
-      }`}
-      onClick={onClose}
-    >
+  return createPortal(
+    (
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="my-files-modal-title"
-        className={`flex w-full flex-col overflow-hidden border border-white/40 bg-white/92 shadow-2xl backdrop-blur-md transform transition-all duration-200 ease-out ${
-          isMobile
-            ? "h-full max-h-none rounded-none"
-            : "max-h-[min(94vh,900px)] max-w-6xl rounded-xl h-[85vh]"
+        role="presentation"
+        className={`fixed inset-0 z-[100] flex justify-center bg-black/30 p-0 ${
+          isMobile ? "items-stretch" : "items-center"
         }`}
-        onClick={(e) => e.stopPropagation()}
+        onClick={onClose}
       >
-        <div className="flex-shrink-0 border-b border-gray-200">
-          <div
-            className={`flex items-center justify-between ${isMobile ? "px-2 py-0.5" : "px-4 py-0.5"}`}
-          >
-            <h2
-              id="my-files-modal-title"
-              className={`font-bold text-gray-900 ${isMobile ? "text-sm" : "text-lg"}`}
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="my-files-modal-title"
+          className={`flex w-full flex-col overflow-hidden border shadow-2xl ${
+            isMobile
+              ? "h-full max-h-none rounded-none"
+              : "h-[min(85vh,720px)] max-h-[min(94vh,720px)] max-w-2xl rounded-xl"
+          }`}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: "var(--modal-bg)",
+            borderColor: "var(--modal-border)",
+            color: "var(--modal-fg)",
+          }}
+        >
+          <div className="flex-shrink-0 border-b" style={{ borderColor: "var(--modal-border)" }}>
+            <div
+              className={`flex items-center justify-between ${isMobile ? "px-3 py-2" : "px-4 py-3"}`}
             >
-              My files
-            </h2>
-            <button
-              type="button"
-              aria-label="Close"
-              title="Close"
-              className="p-1 text-gray-400 transition-colors duration-200 hover:text-red-500"
-              onClick={onClose}
-            >
-              <FiX size={isMobile ? 20 : 22} aria-hidden />
-            </button>
+              <h2
+                id="my-files-modal-title"
+                className={`font-semibold ${isMobile ? "text-base" : "text-lg"}`}
+              >
+                My files
+              </h2>
+              <button
+                type="button"
+                aria-label="Close"
+                className="rounded p-1 transition-colors hover:text-red-500"
+                style={{ color: "var(--modal-muted-fg)" }}
+                onClick={onClose}
+              >
+                <FiX size={isMobile ? 20 : 22} aria-hidden />
+              </button>
+            </div>
+          </div>
+
+          <div className="my-files-browser-container flex min-h-0 flex-1 flex-col overflow-hidden">
+            <UserFilesBrowser
+              variant="modal"
+              library={library}
+              onRequestClose={onClose}
+              isMobileLayout={isMobile}
+            />
           </div>
         </div>
-
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <UserFilesBrowser
-            variant="modal"
-            library={library}
-            onRequestClose={onClose}
-            isMobileLayout={isMobile}
-          />
-        </div>
+        <style jsx>{`
+          :global(.dark) :global(.my-files-browser-container) {
+            background-color: var(--modal-bg) !important;
+            color: var(--modal-fg) !important;
+          }
+          :global(.dark) :global(.my-files-browser-container input) {
+            background-color: var(--modal-bg-muted) !important;
+            color: var(--modal-fg) !important;
+            border-color: var(--modal-border) !important;
+          }
+          :global(.dark) :global(.my-files-browser-container .sticky) {
+            background-color: var(--modal-bg) !important;
+            border-color: var(--modal-border) !important;
+          }
+        `}</style>
       </div>
-    </div>
+    ) as any,
+    portalTarget,
   );
-
-  return createPortal(modalContent as any, portalTarget);
 };
 
 export default MyFilesModal;

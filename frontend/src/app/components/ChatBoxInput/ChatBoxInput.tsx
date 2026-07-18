@@ -39,6 +39,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     uploading = false,
     uploadProgress = null,
     supportsFileUpload = true,
+    onAttachmentMenuRequest,
     uploadedFiles = [],
     onRemoveUploadedFile,
     inputValue: externalInputValue,
@@ -60,6 +61,8 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     onAudioModeToggle,
     isAudioMode,
     onStartSTT,
+    onCancelSTT,
+    onConfirmSTT,
     isSTTActive,
     isDictationTranscribing,
     audioStatus,
@@ -86,10 +89,12 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
         resetFileInfo,
         pendingFiles,
         queueFiles,
-        removePendingFile
+        removePendingFile,
+        openLocalFilePicker,
     } = useFileUpload({
         onFileUpload,
         onCancelUpload,
+        onAttachmentMenuRequest,
         uploading,
         disabled: controlsDisabled,
         supportsFileUpload
@@ -102,7 +107,10 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
         },
         queueFiles: (files: File[]) => {
             queueFiles(files);
-        }
+        },
+        openLocalFilePicker: () => {
+            openLocalFilePicker();
+        },
     }));
 
     // Reset file info when not uploading
@@ -160,6 +168,99 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     const styles = getContainerStyles(sidebarStyle);
 
 
+    const attachmentPreviews =
+        uploadedFiles.length > 0 || pendingFiles.length > 0 ? (
+            <div className="mb-2 flex flex-wrap gap-2 px-1">
+                {uploadedFiles.map((item, idx) => {
+                    const displayName = item.displayName || item.file?.name || 'attachment';
+                    const sourceLabel = item.source === 'library' ? 'From My files' : 'Uploaded';
+                    return (
+                        <div
+                            key={`uploaded-${idx}`}
+                            className="relative flex items-center gap-2 rounded-lg border border-green-200 bg-green-50/80 px-2 py-1 max-w-full dark:border-emerald-800/50 dark:bg-emerald-950/40"
+                        >
+                            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-white border border-green-100 overflow-hidden dark:border-emerald-900 dark:bg-emerald-950">
+                                {item.isImage ? (
+                                    <img
+                                        src={item.fileUrl}
+                                        alt={displayName}
+                                        className="w-full h-full object-cover"
+                                        loading="lazy"
+                                        decoding="async"
+                                    />
+                                ) : (
+                                    <FileText size={16} className="text-green-500" />
+                                )}
+                            </div>
+                            <div className="min-w-0">
+                                <div className="text-xs text-green-900 truncate max-w-[160px] dark:text-emerald-100" title={displayName}>
+                                    {displayName}
+                                </div>
+                                <div className="text-[10px] text-green-600 dark:text-emerald-400">
+                                    {sourceLabel}
+                                </div>
+                            </div>
+                            {onRemoveUploadedFile && (
+                                <button
+                                    type="button"
+                                    onClick={() => onRemoveUploadedFile(idx)}
+                                    className="absolute -top-1 -right-1 p-0.5 rounded-full bg-red-500/90 hover:bg-red-600 text-white shadow-sm"
+                                    title="Remove"
+                                    aria-label="Remove file"
+                                >
+                                    <X size={10} />
+                                </button>
+                            )}
+                        </div>
+                    );
+                })}
+
+                {pendingFiles.map((item) => (
+                    <div
+                        key={item.id}
+                        className="relative flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50/80 px-2 py-1 max-w-full dark:border-sky-800/50 dark:bg-sky-950/40"
+                    >
+                        <div className="relative flex items-center justify-center w-8 h-8 rounded-md bg-white border border-blue-100 overflow-hidden dark:border-sky-900 dark:bg-sky-950">
+                            {item.isImage && item.previewUrl ? (
+                                <img
+                                    src={item.previewUrl}
+                                    alt={item.file.name}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                            ) : (
+                                <FileText size={16} className="text-blue-500" />
+                            )}
+                            {item.status === 'uploading' && (
+                                <div className="absolute inset-0 bg-white/70 flex items-center justify-center dark:bg-black/50">
+                                    <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="min-w-0">
+                            <div className="text-xs text-blue-900 truncate max-w-[160px] dark:text-sky-100" title={item.file.name}>
+                                {item.file.name}
+                            </div>
+                            <div className="text-[10px] text-blue-600 dark:text-sky-400">
+                                {item.status === 'uploading' ? 'Uploading' : 'Queued'}
+                                {item.status === 'uploading' && uploadProgress !== null ? ` • ${Math.round(uploadProgress)}%` : ''}
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => removePendingFile(item.id)}
+                            className="absolute -top-1 -right-1 p-0.5 rounded-full bg-red-500/90 hover:bg-red-600 text-white shadow-sm"
+                            title="Remove"
+                            aria-label="Remove file"
+                        >
+                            <X size={10} />
+                        </button>
+                    </div>
+                ))}
+            </div>
+        ) : null;
+
     return (
         <div id="chat-input" className={`w-full mx-auto ${className}`} style={{ position: 'relative', zIndex: 10 }}>
             {/* Upload progress bar at the very top edge */}
@@ -171,101 +272,12 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                 />
             )}
 
+            {attachmentPreviews}
+
             <div className={styles.container}>
-                <div className="relative">
-                    {/* File previews at the top */}
-                    {(uploadedFiles.length > 0 || pendingFiles.length > 0) && (
-                        <div className="flex flex-wrap gap-2 px-2 pt-2 pb-2 border-b border-[#dddddd] w-full">
-                            {/* Show uploaded files first */}
-                            {uploadedFiles.map((item, idx) => (
-                                <div
-                                    key={`uploaded-${idx}`}
-                                    className="relative flex items-center gap-2 rounded-lg border border-green-200 bg-green-50/80 px-2 py-1 max-w-full"
-                                >
-                                    <div className="flex items-center justify-center w-8 h-8 rounded-md bg-white border border-green-100 overflow-hidden">
-                                        {item.isImage ? (
-                                            <img
-                                                src={item.fileUrl}
-                                                alt={item.file.name}
-                                                className="w-full h-full object-cover"
-                                                loading="lazy"
-                                                decoding="async"
-                                            />
-                                        ) : (
-                                            <FileText size={16} className="text-green-500" />
-                                        )}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="text-xs text-green-900 truncate max-w-[160px]" title={item.file.name}>
-                                            {item.file.name}
-                                        </div>
-                                        <div className="text-[10px] text-green-600">
-                                            Uploaded
-                                        </div>
-                                    </div>
-                                    {onRemoveUploadedFile && (
-                                        <button
-                                            type="button"
-                                            onClick={() => onRemoveUploadedFile(idx)}
-                                            className="absolute -top-1 -right-1 p-0.5 rounded-full bg-red-500/90 hover:bg-red-600 text-white shadow-sm"
-                                            title="Remove"
-                                            aria-label="Remove file"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-
-                            {/* Show pending files */}
-                            {pendingFiles.map((item) => (
-                                <div
-                                    key={item.id}
-                                    className="relative flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50/80 px-2 py-1 max-w-full"
-                                >
-                                    <div className="relative flex items-center justify-center w-8 h-8 rounded-md bg-white border border-blue-100 overflow-hidden">
-                                        {item.isImage && item.previewUrl ? (
-                                            <img
-                                                src={item.previewUrl}
-                                                alt={item.file.name}
-                                                className="w-full h-full object-cover"
-                                                loading="lazy"
-                                                decoding="async"
-                                            />
-                                        ) : (
-                                            <FileText size={16} className="text-blue-500" />
-                                        )}
-                                        {item.status === 'uploading' && (
-                                            <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-                                                <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="text-xs text-blue-900 truncate max-w-[160px]" title={item.file.name}>
-                                            {item.file.name}
-                                        </div>
-                                        <div className="text-[10px] text-blue-600">
-                                            {item.status === 'uploading' ? 'Uploading' : 'Queued'}
-                                            {item.status === 'uploading' && uploadProgress !== null ? ` • ${Math.round(uploadProgress)}%` : ''}
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => removePendingFile(item.id)}
-                                        className="absolute -top-1 -right-1 p-0.5 rounded-full bg-red-500/90 hover:bg-red-600 text-white shadow-sm"
-                                        title="Remove"
-                                        aria-label="Remove file"
-                                    >
-                                        <X size={10} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
+                <div className="relative flex flex-col">
                     {/* STT status pill — minimal, non-intrusive */}
-                    {(audioStatus === 'transcribing' || audioStatus === 'interrupted') && !isAudioMode && (
+                    {(isSTTActive || isDictationTranscribing || ((audioStatus === 'transcribing' || audioStatus === 'interrupted') && !isAudioMode)) && (
                         <div
                             style={{
                                 position: 'absolute',
@@ -286,13 +298,14 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                                 whiteSpace: 'nowrap',
                             }}
                         >
-                            {audioStatus === 'transcribing' ? (
+                            {(isDictationTranscribing || audioStatus === 'transcribing') ? (
                                 <Loader2
                                     size={11}
                                     style={{ color: '#63b3ed', animation: 'spin 1s linear infinite', flexShrink: 0 }}
                                 />
                             ) : (
                                 <span
+                                    className="animate-pulse"
                                     style={{
                                         width: 7,
                                         height: 7,
@@ -304,7 +317,11 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                                 />
                             )}
                             <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#93c5fd', letterSpacing: '0.04em' }}>
-                                {audioStatus === 'interrupted' ? 'Interrupted' : 'Transcribing…'}
+                                {isDictationTranscribing || audioStatus === 'transcribing' 
+                                    ? 'Transcribing…' 
+                                    : audioStatus === 'interrupted' 
+                                        ? 'Interrupted' 
+                                        : 'Listening…'}
                             </span>
                             {audioTranscription && (
                                 <span style={{ fontSize: '0.68rem', color: '#60a5fa', opacity: 0.8, maxWidth: '14rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -337,8 +354,14 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                             onChange={handleInputChange}
                             onKeyDown={handleKeyDown}
                             onPaste={handlePaste}
-                            placeholder={placeholder}
-                            textareaDisabled={false}
+                            placeholder={
+                                isDictationTranscribing
+                                    ? "Transcribing your voice..."
+                                    : isSTTActive
+                                        ? "Listening... Speak now"
+                                        : placeholder
+                            }
+                            textareaDisabled={isDictationTranscribing}
                             uploading={uploading}
                             responseInProgress={responseInProgress}
                             onStopGeneration={onStopGeneration}
@@ -375,6 +398,8 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                         onAudioModeToggle={onAudioModeToggle}
                         isAudioMode={isAudioMode}
                         onStartSTT={onStartSTT}
+                        onCancelSTT={onCancelSTT}
+                        onConfirmSTT={onConfirmSTT}
                         isSTTActive={isSTTActive}
                         isDictationTranscribing={isDictationTranscribing}
                     />

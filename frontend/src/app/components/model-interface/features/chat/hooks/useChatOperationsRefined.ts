@@ -6,11 +6,11 @@ import {
     createDebouncedDraftPersist,
 } from '@/lib/utils/composerDraftStorage';
 
-import { UseChatOperationsRefinedProps, UseChatOperationsReturn } from './chatOperations.types';
+import { UseChatOperationsRefinedProps, UseChatOperationsReturn, LastFailedSendPayload } from './chatOperations.types';
 import { CHAT_CONFIG, DRAFT_SESSION_KEY } from './chatOperations.constants';
 import { optimizeMessagesForAPI } from './messageOptimization.utils';
 import { updateLastMessageWithMetrics } from './contentProcessing.utils';
-import { handleSendError, validateProject, logMetrics } from './errorHandling.utils';
+import { handleSendError, validateProject, logMetrics, isRequestCancellationError } from './errorHandling.utils';
 import { useWalletManagement } from './useWalletManagement';
 import { useStreamingResponse } from './useStreamingResponse';
 import { useNonStreamingResponse } from './useNonStreamingResponse';
@@ -22,7 +22,8 @@ import {
     resolveInputToSend,
 } from './sendFlow.utils';
 import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interface/conversation/streamTranscriptGuard';
-import { resolveViewSessionId } from '@/app/components/model-interface/conversation/conversationViewSession';
+import { resolveViewSessionId, isPendingDraftMode, setPendingDraftMode } from '@/app/components/model-interface/conversation/conversationViewSession';
+import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
 
 /**
  * Send/stop orchestration: wallet validation, composer drafts, message shaping for the API,
@@ -48,9 +49,13 @@ export function useChatOperationsRefined({
     updateSessionMessages,
     selectedPersonalityName,
     selectedPersonalityIconUrl,
+    selectedPersonalityId,
+    selectedSystemPrompt,
     pendingOrphanReply,
     clearPendingOrphanReply,
     onInsufficientFunds,
+    onPrefetchConversationRoute,
+    getChatForSession,
 }: UseChatOperationsRefinedProps): UseChatOperationsReturn {
 
     const viewSessionId = resolveViewSessionId(routeConversationId, currentSessionId ?? null);
@@ -90,6 +95,9 @@ export function useChatOperationsRefined({
     const [wallet, setWallet] = useState<number | null>(null);
     const [assistantResponse, setAssistantResponse] = useState('');
     const [optimizationMessage, setOptimizationMessage] = useState<string>('');
+    const [canRetryLastSend, setCanRetryLastSend] = useState(false);
+    const lastFailedSendRef = useRef<LastFailedSendPayload | null>(null);
+    const pendingSessionPromotionRef = useRef<string | null>(null);
     const project = CHAT_CONFIG.DEFAULT_PROJECT;
 
     const {
@@ -128,11 +136,19 @@ export function useChatOperationsRefined({
 
             if (ownsView && result.conversationId && setCurrentSessionId) {
                 if (streamingSessionId === null) {
-                    // New chat: atomically migrate draft → real slot before switching the key.
-                    setChatForSession(result.conversationId, currentChatRef.current);
+                    // useStreamingResponse already materialized sessionMessages under the real id.
                     setChatForSession(DRAFT_SESSION_KEY, []);
+                    pendingSessionPromotionRef.current = result.conversationId;
+                } else {
+                    setCurrentSessionId(result.conversationId);
                 }
-                setCurrentSessionId(result.conversationId);
+            } else if (
+                streamingSessionId === null
+                && result.conversationId
+                && setCurrentSessionId
+            ) {
+                // Background draft completion — still promote session id after streaming ends.
+                pendingSessionPromotionRef.current = result.conversationId;
             }
 
             if (
@@ -157,6 +173,7 @@ export function useChatOperationsRefined({
                 onInsufficientFunds,
             });
         },
+        onPrefetchConversationRoute,
         selectedPersonalityName,
         selectedPersonalityIconUrl
     });
@@ -176,7 +193,7 @@ export function useChatOperationsRefined({
             setCurrentSessionId?.(realId);
             updateSessionMessages?.(realId, draftMessages, {
                 modelId: selectedModel?.id,
-                title: draftMessages[0]?.content as string || 'New chat'
+                title: deriveChatSessionTitle(draftMessages[0]?.content),
             });
         },
         setWallet,
@@ -194,7 +211,14 @@ export function useChatOperationsRefined({
     ) => {
         const shouldStream = enableStreaming !== undefined ? enableStreaming : streamingEnabled;
         const inputToSend = resolveInputToSend(content, input);
-        const chatForBuild = chatSnapshot ?? chat;
+        const sendingViewId = isPendingDraftMode()
+            ? null
+            : resolveViewSessionId(routeConversationId, currentSessionId ?? null);
+        const sendingSessionId = sendingViewId ?? DRAFT_SESSION_KEY;
+        const chatForBuild = chatSnapshot ?? getChatForSession(sendingSessionId);
+        const isRetryFromSnapshot = Boolean(
+            chatSnapshot?.length && !preCreatedMessage && !inputToSend.trim(),
+        );
 
         console.log('[useChatOperationsRefined] handleSend entered', { hasSelectedModel: !!selectedModel, inputLength: inputToSend.length, shouldStream });
 
@@ -202,7 +226,7 @@ export function useChatOperationsRefined({
             console.warn('[useChatOperationsRefined] No selected model');
             return;
         }
-        if (!preCreatedMessage && !inputToSend.trim()) {
+        if (!preCreatedMessage && !inputToSend.trim() && !isRetryFromSnapshot) {
             console.log('[useChatOperationsRefined] Empty input, returning');
             return;
         }
@@ -223,26 +247,26 @@ export function useChatOperationsRefined({
 
         setError('');
 
-        const sendingViewId = resolveViewSessionId(routeConversationId, currentSessionId ?? null);
-        const sendingSessionId = sendingViewId ?? DRAFT_SESSION_KEY;
+        let updatedChat: ChatMessage[];
+        let userMsg: ChatMessage | undefined;
 
-        const { userMsg, updatedChat } = (
-            chatSnapshot && preCreatedMessage
-                ? {
-                    userMsg: preCreatedMessage,
-                    updatedChat: chatForBuild,
-                }
-                : buildUserMessageState({
-                    preCreatedMessage,
-                    inputToSend,
-                    selectedModel,
-                    currentSessionId: sendingViewId,
-                    chat: chatForBuild,
-                })
-        );
+        if (isRetryFromSnapshot) {
+            updatedChat = chatForBuild;
+        } else if (chatSnapshot && preCreatedMessage) {
+            userMsg = preCreatedMessage;
+            updatedChat = chatForBuild;
+        } else {
+            ({ userMsg, updatedChat } = buildUserMessageState({
+                preCreatedMessage,
+                inputToSend,
+                selectedModel,
+                currentSessionId: sendingViewId,
+                chat: chatForBuild,
+            }));
+        }
 
-        if (!preCreatedMessage) {
-            setChatForSession(sendingSessionId, prev => [...prev, userMsg]);
+        if (userMsg && !preCreatedMessage) {
+            setChatForSession(sendingSessionId, prev => [...prev, userMsg!]);
         }
 
         setInput('');
@@ -257,12 +281,35 @@ export function useChatOperationsRefined({
             setAssistantResponse('');
         }
 
+        const lastUserMsg = [...updatedChat].reverse().find((m) => m.role === 'user');
+        const retryPayload: LastFailedSendPayload = {
+            chatSnapshot: updatedChat,
+            shouldStream,
+            sessionKey: sendingSessionId,
+            preCreatedMessage: preCreatedMessage ?? lastUserMsg,
+        };
+
         let wasError = false;
         try {
             console.log('[useChatOperationsRefined] Fetching nobox functions...');
             const { accessModel, accessModelStream } = await getNoboxFunctions({ project });
 
-            const rawMessages = orderMessagesForApi(updatedChat);
+            let rawMessages = orderMessagesForApi(updatedChat);
+            if (selectedSystemPrompt) {
+                const hasSystem = rawMessages.some(m => m.role === 'system');
+                if (!hasSystem) {
+                    rawMessages = [
+                        {
+                            role: 'system',
+                            content: selectedSystemPrompt,
+                            id: `system_${Date.now()}`,
+                            personaName: selectedPersonalityName,
+                            personaIconUrl: selectedPersonalityIconUrl,
+                        } as any,
+                        ...rawMessages
+                    ];
+                }
+            }
             const { messages, message: optimizationMsg } = optimizeMessagesForAPI(rawMessages);
             const requestOverrides = {
                 conversationId: sendingViewId,
@@ -282,9 +329,18 @@ export function useChatOperationsRefined({
             }
             clearPendingOrphanReply?.();
             console.log('[useChatOperationsRefined] API call completed');
+            lastFailedSendRef.current = null;
+            setCanRetryLastSend(false);
         } catch (err: unknown) {
             wasError = true;
             console.error('[useChatOperationsRefined] Caught error in handleSend:', err);
+            if (isRequestCancellationError(err)) {
+                lastFailedSendRef.current = null;
+                setCanRetryLastSend(false);
+            } else {
+                lastFailedSendRef.current = retryPayload;
+                setCanRetryLastSend(true);
+            }
             handleSendError(err, chatForBuild, streaming, setChat, setError, {
                 setWallet,
                 onInsufficientFunds,
@@ -293,6 +349,15 @@ export function useChatOperationsRefined({
             console.log('[useChatOperationsRefined] handleSend finished', { sessionId: sendingSessionId });
             setLoadingForSession(sendingSessionId, false);
             setStreamingForSession(sendingSessionId, false);
+
+            if (pendingSessionPromotionRef.current && setCurrentSessionId) {
+                const promotedId = pendingSessionPromotionRef.current;
+                pendingSessionPromotionRef.current = null;
+                onPrefetchConversationRoute?.(promotedId);
+                // Clear before setState so the next render reads the real session id, not __draft__.
+                setPendingDraftMode(false);
+                setCurrentSessionId(promotedId);
+            }
 
             // Optimization: Only clear the live typing bubble if the stream finished successfully.
             // If it crashed, we leave the partial text visible so the user doesn't lose context
@@ -308,7 +373,7 @@ export function useChatOperationsRefined({
         streamingEnabled, chat, setChat, setChatForSession, setInput,
         setLoadingForSession, setStreamingForSession, setError,
         setAssistantResponse, chatEndRef,
-        handleStreamingResponse, handleNonStreamingResponse, pendingOrphanReply, clearPendingOrphanReply, onInsufficientFunds,
+        handleStreamingResponse, handleNonStreamingResponse, pendingOrphanReply, clearPendingOrphanReply, onInsufficientFunds, getChatForSession,
     ]);
 
     const handleStop = useCallback(() => {
@@ -318,7 +383,24 @@ export function useChatOperationsRefined({
         setLoadingForSession(sid, false);
         setStreamingForSession(sid, false);
         setAssistantResponse('');
+        lastFailedSendRef.current = null;
+        setCanRetryLastSend(false);
     }, [abortStreamingRequest, abortNonStreamingRequest, currentSessionId, routeConversationId, setLoadingForSession, setStreamingForSession]);
+
+    const retryLastFailedSend = useCallback(async () => {
+        const payload = lastFailedSendRef.current;
+        if (!payload) {
+            return;
+        }
+        setError('');
+        setChatForSession(payload.sessionKey, payload.chatSnapshot);
+        await handleSend(
+            undefined,
+            payload.shouldStream,
+            payload.preCreatedMessage,
+            payload.chatSnapshot,
+        );
+    }, [handleSend, setChatForSession, setError]);
 
     return {
         input,
@@ -329,6 +411,8 @@ export function useChatOperationsRefined({
         optimizationMessage,
         handleSend,
         handleStop,
+        canRetryLastSend,
+        retryLastFailedSend,
         refreshWalletBalance: useCallback(async () => {
             try {
                 const userDetails = await getUserDetails();

@@ -1,4 +1,5 @@
 import React from 'react';
+import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
 import { SessionInfo } from './components/SessionInfo';
 import { ActionButtons } from './components/ActionButtons';
 import { getListItemClassName } from './utils/styles';
@@ -46,13 +47,17 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
         onSelect(session);
     };
 
+    const displayTitle = typeof session.title === 'string' && session.title.trim()
+        ? session.title.trim()
+        : deriveChatSessionTitle(session.messages?.[0]?.content);
+
     return (
         <li
             className={getListItemClassName(isActive, isDeleting, isStarring, isStarred)}
             onClick={handleItemClick}
         >
             <SessionInfo
-                title={session.title || 'Untitled Chat'}
+                title={displayTitle || 'Untitled Chat'}
                 isActive={isActive}
             />
 

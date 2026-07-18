@@ -8,7 +8,7 @@
     "dev": "next dev -p 3001",
     "dev:e2e": "E2E_WALLET_BYPASS_TEST_CLIENT=1 next dev -p 3001",
     "build": "next build",
-    "build:desktop": "NEXT_PUBLIC_NOBOX_API_ROOT_URL=http://127.0.0.1:8000 next build",
+    "build:desktop": "NEXT_PUBLIC_NOBOX_API_ROOT_URL=http://127.0.0.1:8000 NEXT_PUBLIC_APP_ORIGIN=http://127.0.0.1:3001 next build",
     "start": "sh -c 'PORT=${PORT:-3000} node .next/standalone/server.js'",
     "lint": "next lint --max-warnings=10",
     "test": "npx jest",

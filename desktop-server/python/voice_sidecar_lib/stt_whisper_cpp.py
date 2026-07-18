@@ -50,15 +50,15 @@ def resolve_whisper_server_cli() -> Optional[str]:
     ]
     
     for cand in candidates:
-        for name in ("whisper-server.exe", "whisper-server", "server.exe", "server"):
+        for name in ("whisper-server.exe", "whisper-server"):
             local_bin = cand / name
             if local_bin.is_file():
                 return str(local_bin)
 
     # 2. Check PATH
-    for name in ("whisper-server", "server"):
+    for name in ("whisper-server",):
         found = shutil.which(name)
-        if found and not found.lower().endswith(".cpl"):
+        if found:
             return found
     return None
 

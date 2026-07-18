@@ -18,6 +18,7 @@ interface UseVoiceLoopMaintenanceProps {
   socketRef: React.MutableRefObject<Socket | null>;
   startRecording: () => void;
   setAudioTranscription: (text: string) => void;
+  desktopChunkSendChainRef: React.MutableRefObject<Promise<void>>;
 }
 
 export function useVoiceLoopMaintenance({
@@ -32,6 +33,7 @@ export function useVoiceLoopMaintenance({
   socketRef,
   startRecording,
   setAudioTranscription,
+  desktopChunkSendChainRef,
 }: UseVoiceLoopMaintenanceProps) {
   const partialTranscriptionInFlightRef = useRef(false);
   const partialFlushErrorCountRef = useRef(0);
@@ -56,9 +58,13 @@ export function useVoiceLoopMaintenance({
         partialTranscriptionInFlightRef.current = true;
         void (async () => {
           try {
+            await desktopChunkSendChainRef.current.catch(() => undefined);
+            const currentSid = desktopSessionIdRef.current;
+            if (!currentSid || currentSid !== sid || audioStatusRef.current !== 'listening') return;
+
             const res = await authorizedFetch(AUDIO_CONSTANTS.LOCAL_DESKTOP_STT_STREAM_TRANSCRIBE_URL, {
               method: 'POST',
-              headers: { 'X-Session-ID': sid },
+              headers: { 'X-Session-ID': currentSid },
               body: JSON.stringify({ beam_size: 1 }),
             });
             if (!res.ok) {

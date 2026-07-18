@@ -30,6 +30,7 @@ export function useTranscriptManager({
   ) => {
     const text = rawText.trim();
     const blobBytes = opts?.audioBlobBytes ?? 0;
+    console.log('[TranscriptManager] commitTranscript entered with text:', text, 'blobBytes:', blobBytes);
 
     if (!text) {
       voiceObs('conversational', 'commit_empty', { blobBytes });
@@ -40,7 +41,7 @@ export function useTranscriptManager({
     }
 
     if (isLikelyNoiseOnlyConversationalStt(text, blobBytes)) {
-      console.warn('[TranscriptManager] Dropping likely noise-only transcript');
+      console.warn('[TranscriptManager] Dropping likely noise-only transcript:', text);
       voiceObs('conversational', 'commit_noise_filtered', { blobBytes, charCount: text.length });
       setAudioTranscription("");
       setAudioStatus('listening');
@@ -49,6 +50,7 @@ export function useTranscriptManager({
     }
 
     const statusNow = audioStatusRef.current;
+    console.log('[TranscriptManager] commitTranscript current status:', statusNow);
     if (statusNow !== 'listening' && statusNow !== 'transcribing') {
       console.warn('[TranscriptManager] Ignoring final transcription, not in listening/transcribing state:', statusNow);
       voiceObs('conversational', 'commit_wrong_status', { statusNow, charCount: text.length });
@@ -58,7 +60,7 @@ export function useTranscriptManager({
     const last = lastCommittedTranscriptRef.current;
     const now = Date.now();
     if (last.text === text && now - last.atMs < 4500) {
-      console.warn('[TranscriptManager] Dropping duplicate final transcript');
+      console.warn('[TranscriptManager] Dropping duplicate final transcript:', text);
       voiceObs('conversational', 'commit_duplicate', { charCount: text.length, msSinceLast: now - last.atMs });
       setAudioStatus('listening');
       startRecording();
@@ -69,7 +71,9 @@ export function useTranscriptManager({
     setAudioTranscription(text);
     setAudioStatus('thinking');
     voiceObs('conversational', 'commit_send', { charCount: text.length, blobBytes });
+    console.log('[TranscriptManager] commitTranscript invoking onTranscriptionCompleteRef with text:', text);
     await onTranscriptionCompleteRef.current(text);
+    console.log('[TranscriptManager] commitTranscript finished invoking onTranscriptionCompleteRef');
   }, [startRecording, setAudioStatus, audioStatusRef]);
 
   return {

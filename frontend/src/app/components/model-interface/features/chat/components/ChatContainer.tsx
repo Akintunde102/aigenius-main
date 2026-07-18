@@ -13,11 +13,8 @@ import type { AudioStatus } from '../hooks/audioMode.utils';
 
 import styles from './ChatContainer.module.scss';
 
-interface UploadedFileInfo {
-    file: File;
-    fileUrl: string;
-    isImage: boolean;
-}
+import type { UploadedFileEntry } from '@/app/components/model-interface/ModelInterface.helpers';
+import { FEATURE_FLAGS } from '@/lib/config/features';
 
 interface ChatContainerProps {
     chat: ChatMessage[];
@@ -42,10 +39,11 @@ interface ChatContainerProps {
         model: Model,
     ) => boolean | void | Promise<boolean | void>;
     onFileUpload: (file: File) => void;
+    onAttachmentMenuRequest?: () => void;
     uploading: boolean;
     uploadProgress: number | null;
     supportsImageUpload: boolean;
-    uploadedFiles: UploadedFileInfo[];
+    uploadedFiles: UploadedFileEntry[];
     onRemoveUploadedFile?: (index: number) => void;
     onModelNameClick: () => void;
     onCancelUpload?: () => void;
@@ -72,6 +70,8 @@ interface ChatContainerProps {
     onAudioModeToggle?: (enabled: boolean) => void;
     isAudioMode?: boolean;
     onStartSTT?: () => void;
+    onCancelSTT?: () => void;
+    onConfirmSTT?: () => void;
     isSTTActive?: boolean;
     isDictationTranscribing?: boolean;
     audioTranscription?: string;
@@ -89,6 +89,7 @@ interface ChatContainerProps {
 export interface ChatContainerHandle {
     focusInput: () => void;
     queueFiles: (files: File[]) => void;
+    openLocalFilePicker: () => void;
 }
 
 const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onShowSavedChats?: () => void, sidebarStyle?: boolean }>(({
@@ -111,6 +112,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     currentSessionId,
     onSendMessage,
     onFileUpload,
+    onAttachmentMenuRequest,
     uploading,
     uploadProgress,
     supportsImageUpload,
@@ -139,6 +141,8 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     onAudioModeToggle,
     isAudioMode,
     onStartSTT,
+    onCancelSTT,
+    onConfirmSTT,
     isSTTActive,
     isDictationTranscribing = false,
     audioTranscription,
@@ -285,7 +289,10 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
         },
         queueFiles: (files: File[]) => {
             inputRef.current?.queueFiles?.(files);
-        }
+        },
+        openLocalFilePicker: () => {
+            inputRef.current?.openLocalFilePicker?.();
+        },
     }));
 
     const mainAreaClass = [
@@ -373,6 +380,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         ref={inputRef}
                         onSendMessage={onSendMessage}
                         onFileUpload={onFileUpload}
+                        onAttachmentMenuRequest={onAttachmentMenuRequest}
                         models={models}
                         selectedModel={selectedModel!}
                         onModelChange={() => { }}
@@ -397,6 +405,8 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         onAudioModeToggle={onAudioModeToggle}
                         isAudioMode={isAudioMode}
                         onStartSTT={onStartSTT}
+                        onCancelSTT={onCancelSTT}
+                        onConfirmSTT={onConfirmSTT}
                         isSTTActive={isSTTActive}
                         isDictationTranscribing={isDictationTranscribing}
                         audioStatus={audioStatus}
@@ -464,7 +474,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                 />
             ) : null}
 
-            {isAudioMode && onAudioModeToggle && (
+            {FEATURE_FLAGS.AUDIO_CONVERSATION && isAudioMode && onAudioModeToggle && (
                 <AudioModeOverlay
                     onExit={() => onAudioModeToggle(false)}
                     status={audioStatus}

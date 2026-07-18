@@ -11,6 +11,7 @@ import path from 'path';
 import os from 'os';
 import {
   formatDirectoryListing,
+  formatApplyPatchResult,
   formatIndexRescan,
   formatIndexStatus,
   formatRagResults,
@@ -18,6 +19,11 @@ import {
   formatShellResult,
 } from './utils/tool-formatter';
 import { isIgnored } from './utils/exemptions';
+import { registerPreviewPaths } from './preview-path-registry';
+
+function registerTrustedToolPaths(...paths: Array<string | undefined>): void {
+  registerPreviewPaths(paths.filter((p): p is string => typeof p === 'string' && path.isAbsolute(p)));
+}
 
 const MAX_CMD_LEN = 64_000;
 const MAX_SHELL_OUT = 512 * 1024;
@@ -103,6 +109,18 @@ export async function runLocalDesktopTool(
           throw new Error(`Sidecar returned ${res.status}: ${body}`);
         }
         const data = await res.json();
+        const hits = Array.isArray(data?.hits) ? data.hits : [];
+        const pathsToRegister: string[] = [];
+        for (const hit of hits) {
+          const hitPath = typeof hit?.path === 'string' ? hit.path : undefined;
+          if (!hitPath) continue;
+          pathsToRegister.push(hitPath);
+          const parent = path.dirname(hitPath);
+          if (parent && parent !== hitPath && path.isAbsolute(parent)) {
+            pathsToRegister.push(parent);
+          }
+        }
+        registerTrustedToolPaths(...pathsToRegister);
         const formatted = formatRagResults(data);
         return { ok: true, result: formatted.result, rawData: formatted.rawData };
       } catch (e) {
@@ -183,13 +201,30 @@ export async function runLocalDesktopTool(
       try {
         const p = typeof rawArgs.path === 'string' ? rawArgs.path : '';
         if (!p) return { ok: false, error: 'Missing path' };
+        if (!path.isAbsolute(p)) {
+          return { ok: false, error: 'path must be an absolute path' };
+        }
+        registerTrustedToolPaths(p);
         await shell.openPath(p);
         return { ok: true, result: 'File opened in OS' };
       } catch (e: any) {
         return { ok: false, error: e.message };
       }
-    case 'local_apply_patch':
-      return applyLocalPatch(win, rawArgs);
+    case 'local_apply_patch': {
+      const patchResult = await applyLocalPatch(win, rawArgs);
+      if (!patchResult.ok) return patchResult;
+      try {
+        const parsed = JSON.parse(patchResult.result) as Parameters<typeof formatApplyPatchResult>[0];
+        const patchPaths = Array.isArray(parsed.results)
+          ? parsed.results.map((r) => r.path)
+          : [];
+        registerTrustedToolPaths(...patchPaths);
+        const formatted = formatApplyPatchResult(parsed);
+        return { ok: true, result: formatted.result, rawData: formatted.rawData };
+      } catch {
+        return patchResult;
+      }
+    }
     case 'local_ollama_status':
       return checkLocalOllamaStatus();
     case 'local_ollama_connect':
@@ -471,6 +506,7 @@ async function readBoundedFile(
         truncated: bytesRead === maxBytes,
         content: text,
       });
+      registerTrustedToolPaths(p);
       return {
         ok: true,
         result: formatted.result,
@@ -545,6 +581,10 @@ async function listLocalDirectory(
 
     const hitLimit = results.length >= limit;
     const formatted = formatDirectoryListing({ path: dirPath, items: results, hitLimit });
+    registerTrustedToolPaths(
+      dirPath,
+      ...results.filter((item) => !item.isDir).map((item) => item.path),
+    );
     return {
       ok: true,
       result: formatted.result,

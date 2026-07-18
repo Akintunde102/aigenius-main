@@ -55,7 +55,7 @@ export function resetDesktopIpcRuntimeCacheForTests(): void {
 
 // Error messages
 const ERROR_MESSAGES = {
-  HTTP_ERROR: (status: number) => `HTTP error! status: ${status}`,
+  GENERIC_CHAT_ERROR: 'Something went wrong. Please try again.',
   NO_RESPONSE_BODY: 'No response body for streaming',
   REQUEST_ABORTED: 'Request aborted',
   MISSING_JWT_TOKEN: 'JWT token not found',
@@ -78,7 +78,7 @@ export class GatewayFetchError extends Error {
   }
 }
 
-/** Parses Nest AllExceptionsFilter JSON: `{ statusCode, path, message: string | { message, wallet? } }` */
+/** Parses Nest AllExceptionsFilter JSON: `{ statusCode, path, message: string | string[] | { message, wallet? } }` */
 function parseNestGatewayErrorBody(body: unknown): { message: string; wallet?: number } {
   if (!body || typeof body !== 'object') {
     return { message: 'Request failed' };
@@ -90,6 +90,12 @@ function parseNestGatewayErrorBody(body: unknown): { message: string; wallet?: n
       message: inner,
       wallet: typeof b.wallet === 'number' ? b.wallet : undefined,
     };
+  }
+  if (Array.isArray(inner)) {
+    const lines = inner.filter((line): line is string => typeof line === 'string' && line.trim().length > 0);
+    if (lines.length > 0) {
+      return { message: lines.join('; ') };
+    }
   }
   if (inner && typeof inner === 'object') {
     const m = inner as Record<string, unknown>;
@@ -107,8 +113,7 @@ async function parseGatewayFailedResponse(res: Response): Promise<{ message: str
     const body = JSON.parse(text) as unknown;
     return parseNestGatewayErrorBody(body);
   } catch {
-    const trimmed = text.trim();
-    return { message: trimmed || ERROR_MESSAGES.HTTP_ERROR(res.status) };
+    return { message: ERROR_MESSAGES.GENERIC_CHAT_ERROR };
   }
 }
 
@@ -333,7 +338,9 @@ async function mergeRuntimeContextIntoRequestBody(
  * Helper function to set up common API request configuration
  */
 async function setupApiRequest(config: Config, requestBody: Record<string, any>, isStreaming = false) {
-  console.log('[access-model] setupApiRequest started', { isStreaming, model: requestBody.model });
+  if (process.env.NODE_ENV === 'development') {
+    console.debug('[access-model] setupApiRequest started', { isStreaming, model: requestBody.model });
+  }
   const endpoint = `${config.endpoint}${OPENAI_CHAT_COMPLETIONS_PATH}`;
   const jwtToken = getAccessToken();
 
@@ -348,7 +355,7 @@ async function setupApiRequest(config: Config, requestBody: Record<string, any>,
     ...getE2eWalletBypassHeaders(),
   };
 
-  console.log('[access-model] Resolving desktop chat request context...');
+  console.debug('[access-model] Resolving desktop chat request context...');
   const desktopChat =
     typeof window !== 'undefined' ? await resolveDesktopChatRequestContext() : false;
 
@@ -369,7 +376,9 @@ async function setupApiRequest(config: Config, requestBody: Record<string, any>,
     headers[AIGENIUS_DESKTOP_CLIENT_HEADER] = AIGENIUS_DESKTOP_CLIENT_HEADER_VALUE;
   }
 
-  console.log('[access-model] Merging runtime context...');
+  if (process.env.NODE_ENV === 'development') {
+    console.debug('[access-model] Merging runtime context...');
+  }
   await mergeRuntimeContextIntoRequestBody(requestBody, desktopChat);
 
   const body = JSON.stringify({
@@ -377,14 +386,16 @@ async function setupApiRequest(config: Config, requestBody: Record<string, any>,
     ...(isStreaming && { stream: true }),
   });
 
-  console.log('[access-model] setupApiRequest finished', { endpoint, headerCount: Object.keys(headers).length });
+  if (process.env.NODE_ENV === 'development') {
+    console.debug('[access-model] setupApiRequest finished', { endpoint, headerCount: Object.keys(headers).length });
+  }
   return { endpoint, headers, body };
 }
 
 async function postDesktopToolDelegateResult(
   config: Config,
   delegateId: string,
-  payload: { result?: string; rawData?: any; error?: string },
+  payload: { result?: string; error?: string },
   signal?: AbortSignal,
 ): Promise<void> {
   const endpoint = `${config.endpoint}${OPENAI_DESKTOP_TOOL_RESULT_PATH}`;
@@ -404,7 +415,6 @@ async function postDesktopToolDelegateResult(
     body: JSON.stringify({
       delegate_id: delegateId,
       ...(payload.result !== undefined ? { result: payload.result } : {}),
-      ...(payload.rawData !== undefined ? { rawData: payload.rawData } : {}),
       ...(payload.error !== undefined ? { error: payload.error } : {}),
     }),
     signal,
@@ -500,7 +510,7 @@ async function fulfillDesktopToolDelegate(
       streamOpts,
     );
     if (out.ok) {
-      await postDesktopToolDelegateResult(config, ev.delegate_id, { result: out.result, rawData: out.rawData }, signal);
+      await postDesktopToolDelegateResult(config, ev.delegate_id, { result: out.result }, signal);
     } else {
       await postDesktopToolDelegateResult(config, ev.delegate_id, { error: out.error }, signal);
     }
@@ -572,6 +582,11 @@ function updateStreamingResult(result: StreamingResult, chunk: any): void {
   }
 }
 
+interface StreamState {
+  hasReceivedContent: boolean;
+  endedWithStreamError?: boolean;
+}
+
 /**
  * Processes a single streaming data chunk
  */
@@ -584,6 +599,7 @@ async function processStreamingChunk(
   }>, reasoning?: string, reasoningDetails?: any[]) => void,
   finalResult: StreamingResult,
   config: Config,
+  streamState: StreamState,
   onToolStreamEvent?: (event: ToolStreamEvent) => void,
   signal?: AbortSignal,
 ): Promise<boolean> {
@@ -601,16 +617,36 @@ async function processStreamingChunk(
 
     const errObj = chunk.error as { message?: string } | undefined;
     if (errObj && typeof errObj.message === 'string' && errObj.message.trim()) {
-      console.error('[access-model] Streaming error chunk detected:', chunk);
-      throw new Error(errObj.message.trim());
+      if (streamState.hasReceivedContent) {
+        console.warn(
+          '[access-model] Trailing error chunk after content already streamed — treating as end of stream:',
+          JSON.stringify(chunk),
+        );
+        streamState.endedWithStreamError = true;
+        return true; // end stream cleanly
+      }
+      console.error(
+        '[access-model] Streaming error chunk detected before any content:',
+        errObj.message.trim(),
+        JSON.stringify(chunk),
+      );
+      throw new Error(ERROR_MESSAGES.GENERIC_CHAT_ERROR);
     }
 
     const choice0 = (chunk.choices as Array<{ finish_reason?: string | null; delta?: { content?: string } }> | undefined)?.[0];
     if (choice0?.finish_reason === 'error') {
+      if (streamState.hasReceivedContent) {
+        console.warn(
+          '[access-model] Trailing finish_reason error after content already streamed — treating as end of stream.',
+        );
+        streamState.endedWithStreamError = true;
+        return true; // end stream cleanly
+      }
       const fromDelta = typeof choice0.delta?.content === 'string' ? choice0.delta.content.trim() : '';
-      throw new Error(
-        fromDelta || 'The model ended with an error. Try again or switch provider.',
-      );
+      if (fromDelta) {
+        console.error('[access-model] Stream finished with error before content:', fromDelta);
+      }
+      throw new Error(ERROR_MESSAGES.GENERIC_CHAT_ERROR);
     }
 
     const delta = choice0?.delta as Record<string, unknown> | undefined;
@@ -637,11 +673,14 @@ async function processStreamingChunk(
       // Preserve whitespace-only text chunks. Markdown structure often arrives as
       // newline-only deltas, and trimming them here collapses live formatting.
       if (typeof contentToSend === 'string' && contentToSend.length > 0) {
+        streamState.hasReceivedContent = true;
         onData(contentToSend, reasoning, reasoningDetails);
       } else if (Array.isArray(contentToSend) && contentToSend.length > 0) {
+        streamState.hasReceivedContent = true;
         onData(contentToSend, reasoning, reasoningDetails);
       } else if (reasoning) {
         // Send reasoning even without content (for thinking display)
+        streamState.hasReceivedContent = true;
         onData('', reasoning, reasoningDetails);
       }
     }
@@ -675,6 +714,7 @@ async function processStreamingData(
   onToolStreamEvent?: (event: ToolStreamEvent) => void,
 ): Promise<void> {
   let buffer = '';
+  const streamState: StreamState = { hasReceivedContent: false };
 
   while (true) {
     // Check if aborted
@@ -706,14 +746,22 @@ async function processStreamingData(
         onData,
         finalResult,
         config,
+        streamState,
         onToolStreamEvent,
         signal,
       );
 
       if (isDone) {
+        if (streamState.endedWithStreamError) {
+          finalResult.endedWithStreamError = true;
+        }
         return; // Stream completed
       }
     }
+  }
+
+  if (streamState.endedWithStreamError) {
+    finalResult.endedWithStreamError = true;
   }
 }
 
@@ -724,7 +772,8 @@ async function processStreamingData(
 export type OpenRouterContentBlock =
   | { type: 'text'; text: string }
   | { type: 'image_url'; image_url: { url: string } }
-  | { type: 'input_audio'; input_audio: { data: string; format: string } };
+  | { type: 'input_audio'; input_audio: { data: string; format: string } }
+  | { type: 'file_url'; file_url: { url: string; name?: string } };
 
 /** Per-tool billed amounts from the gateway (USD + ₦). */
 export interface ToolUsageCharge {
@@ -985,6 +1034,8 @@ export interface StreamingResult {
   conversationId?: string;
   /** Per-tool billed rows when tools incurred charges */
   tool_usage_charges?: ToolUsageCharge[];
+  /** Set when the stream ended with a provider error after partial content was delivered */
+  endedWithStreamError?: boolean;
 }
 
 /** Tool stream event sent during tool execution for live UI updates */
@@ -1046,10 +1097,12 @@ export const accessModelStream = async <T>(args: AccessModelArgs<T> & {
     image_url?: { url: string };
   }>, reasoning?: string, reasoningDetails?: any[]) => void;
   onToolStreamEvent?: (event: ToolStreamEvent) => void;
+  /** Fired as soon as X-Conversation-Id is available on the response headers. */
+  onConversationId?: (conversationId: string) => void;
   onComplete?: (result: StreamingResult) => void;
   signal?: AbortSignal;
 }): Promise<StreamingResult> => {
-  const { body, config, options, onData, onToolStreamEvent, onComplete, signal } = args;
+  const { body, config, options, onData, onToolStreamEvent, onConversationId, onComplete, signal } = args;
   const { model } = options;
 
   if (isOllamaModelId(model)) {
@@ -1120,6 +1173,9 @@ export const accessModelStream = async <T>(args: AccessModelArgs<T> & {
 
 
   const conversationId = res.headers.get('X-Conversation-Id') ?? undefined;
+  if (conversationId) {
+    onConversationId?.(conversationId);
+  }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let finalResult: StreamingResult = { ...(conversationId && { conversationId }) };

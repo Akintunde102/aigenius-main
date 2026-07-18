@@ -7,6 +7,7 @@
 
 export type NullRouteOrchestratorAction =
   | { kind: "wait"; reason: "pending_draft_until_session_null" }
+  | { kind: "wait"; reason: "pending_draft_until_root_navigation" }
   | { kind: "clear_pending_draft_marker" }
   | { kind: "reset_stale_session_on_root" }
   | { kind: "noop"; reason: "root_clean" }
@@ -27,7 +28,10 @@ export function reduceNullRouteOrchestration(
 ): NullRouteOrchestratorAction {
   if (ctx.pendingDraftMode) {
     if (ctx.currentSessionId !== null) {
-      return { kind: "wait", reason: "pending_draft_until_session_null" };
+      return { kind: "clear_pending_draft_marker" };
+    }
+    if (!ctx.pathnameIsRoot) {
+      return { kind: "wait", reason: "pending_draft_until_root_navigation" };
     }
     return { kind: "clear_pending_draft_marker" };
   }

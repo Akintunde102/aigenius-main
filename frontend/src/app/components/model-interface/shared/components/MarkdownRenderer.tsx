@@ -8,6 +8,7 @@ import clsx from 'clsx';
 
 import 'github-markdown-css/github-markdown.css';
 import 'highlight.js/styles/github.css';
+import './hljs-dark-theme.scss';
 import './markdown-renderer.scss';
 
 import {
@@ -16,6 +17,8 @@ import {
     PreWithCopy,
 } from './markdown-code-widgets';
 import { MermaidRenderer } from './MermaidRenderer';
+import { handleDesktopMarkdownLinkClick } from './localFilePreview';
+import { resolveMarkdownHrefForDesktop } from '@/lib/utils/localPathLinks';
 
 type MarkdownCodeElementProps = React.HTMLAttributes<HTMLElement> & {
     node?: unknown;
@@ -77,9 +80,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
         >
             <ReactMarkdown
                 urlTransform={(url) => {
-                    // Explicitly allow our custom protocol; react-markdown v9 strips unknown protocols by default.
                     if (url.startsWith('local-file://')) return url;
-                    // Let react-markdown apply its own default sanitisation for everything else.
                     return url;
                 }}
                 remarkPlugins={[remarkGfm]}
@@ -88,66 +89,21 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
                     a: ({ node, ...props }) => {
                         void node;
                         const href = typeof props.href === 'string' ? props.href : undefined;
-                        console.log('[aigenius-debug] a-tag href:', href);
 
-                        if (href?.startsWith('local-file://')) {
-                            const filePath = href.slice('local-file://'.length);
-                            console.log('[aigenius-desktop] local-file href detected:', href, '| filePath:', filePath);
-                            return (
-                                <a
-                                    {...props}
-                                    href="#"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        const decodedPath = decodeURIComponent(filePath);
-                                        console.log('[aigenius-desktop] Triggering file preview for:', decodedPath);
-                                        const bridge = (window as any).aigeniusDesktop;
-
-                                        const hasExtension = decodedPath.includes('.') && !decodedPath.endsWith('.') && !decodedPath.endsWith('/');
-                                        const ext = hasExtension ? decodedPath.split('.').pop()?.toLowerCase() || '' : '';
-
-                                        const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
-                                        const pdfExts = ['pdf'];
-                                        const videoExts = ['mp4', 'webm', 'ogg'];
-                                        const audioExts = ['mp3', 'wav', 'ogg'];
-
-                                        let type = 'code';
-                                        if (!hasExtension) {
-                                            type = 'folder';
-                                        } else if (imageExts.includes(ext)) {
-                                            type = 'image';
-                                        } else if (pdfExts.includes(ext)) {
-                                            type = 'pdf';
-                                        } else if (videoExts.includes(ext)) {
-                                            type = 'video';
-                                        } else if (audioExts.includes(ext)) {
-                                            type = 'audio';
-                                        }
-
-                                        const triggerPreview = (textContent?: string) => {
-                                            import('@/app/components/modals/FilePreviewManager').then(({ openFilePreview }) => {
-                                                openFilePreview({
-                                                    url: href,
-                                                    name: decodedPath.split(/[/\\]/).pop() || decodedPath,
-                                                    type: type as any,
-                                                    localPath: decodedPath,
-                                                    textContent
-                                                });
-                                            });
-                                        };
-
-                                        if (type === 'code') {
-                                            triggerPreview('// Loading code...');
-                                        } else {
-                                            triggerPreview();
-                                        }
-                                    }}
-                                    title={`Preview file: ${filePath}`}
-                                >
-                                    {props.children}
-                                </a>
-                            );
+                        if (href) {
+                            const resolved = resolveMarkdownHrefForDesktop(href);
+                            if (resolved.kind === 'local-file') {
+                                return (
+                                    <a
+                                        {...props}
+                                        href="#"
+                                        onClick={(e) => handleDesktopMarkdownLinkClick(href, e)}
+                                        title={`Open: ${resolved.path}`}
+                                    >
+                                        {props.children}
+                                    </a>
+                                );
+                            }
                         }
 
                         const isExternal = href && (href.startsWith('http://') || href.startsWith('https://')) &&

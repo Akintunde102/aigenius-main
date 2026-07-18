@@ -11,7 +11,7 @@ type DesktopToolCall = {
   arguments: Record<string, unknown>;
 };
 
-type DesktopWindow = Window & {
+type DesktopWindow = Omit<Window, 'aigeniusDesktop'> & {
   __desktopToolCalls: DesktopToolCall[];
   __chatRequests: number;
   aigeniusDesktop: {
@@ -24,7 +24,7 @@ test.describe('Desktop Ollama Cloud online', () => {
   test('connects the relay before gateway chat for a cloud catalog model', async ({ page }) => {
     await seedAuthenticatedSession(page);
     await page.addInitScript(() => {
-      const desktopWindow = window as DesktopWindow;
+      const desktopWindow = window as unknown as DesktopWindow;
       desktopWindow.__desktopToolCalls = [];
       desktopWindow.__chatRequests = 0;
       desktopWindow.aigeniusDesktop = {

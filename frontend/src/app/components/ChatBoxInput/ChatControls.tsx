@@ -26,6 +26,8 @@ const LeftControlsSection: React.FC<{
     onAudioModeToggle?: (enabled: boolean) => void;
     isAudioMode?: boolean;
     onStartSTT?: () => void;
+    onCancelSTT?: () => void;
+    onConfirmSTT?: () => void;
     isSTTActive?: boolean;
     isDictationTranscribing?: boolean;
 }> = ({
@@ -50,6 +52,8 @@ const LeftControlsSection: React.FC<{
     onAudioModeToggle,
     isAudioMode,
     onStartSTT,
+    onCancelSTT,
+    onConfirmSTT,
     isSTTActive,
     isDictationTranscribing,
 }) => {
@@ -146,6 +150,8 @@ const LeftControlsSection: React.FC<{
                         onAudioModeToggle={onAudioModeToggle}
                         isAudioMode={isAudioMode}
                         onStartSTT={onStartSTT}
+                        onCancelSTT={onCancelSTT}
+                        onConfirmSTT={onConfirmSTT}
                         isSTTActive={isSTTActive}
                         isDictationTranscribing={isDictationTranscribing}
                     />
@@ -246,6 +252,8 @@ export const ChatControls: React.FC<ChatControlsProps> = React.memo(({
     onAudioModeToggle,
     isAudioMode,
     onStartSTT,
+    onCancelSTT,
+    onConfirmSTT,
     isSTTActive,
     isDictationTranscribing,
 }) => {
@@ -274,6 +282,8 @@ export const ChatControls: React.FC<ChatControlsProps> = React.memo(({
                     onAudioModeToggle={onAudioModeToggle}
                     isAudioMode={isAudioMode}
                     onStartSTT={onStartSTT}
+                    onCancelSTT={onCancelSTT}
+                    onConfirmSTT={onConfirmSTT}
                     isSTTActive={isSTTActive}
                     isDictationTranscribing={isDictationTranscribing}
                 />

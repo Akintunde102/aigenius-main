@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { CHAT_CONFIG } from "../features/chat/hooks";
+import { isWalletRelatedChatError } from "../features/chat/hooks/errorHandling.utils";
 import { getModelAverageRequestPrice, USD_TO_NGN } from "../shared/utils";
 import { isE2eBrowserWalletBypassEnabled } from "@/lib/e2e-wallet-bypass";
 import type { Model } from "../shared/types";
@@ -58,7 +59,8 @@ export function useModelInterfaceWalletGate({
       wallet !== null &&
       Number.isFinite(wallet) &&
       wallet >= requiredWalletBalance &&
-      error
+      error &&
+      isWalletRelatedChatError(error)
     ) {
       setError("");
     }

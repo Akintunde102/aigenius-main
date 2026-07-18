@@ -19,6 +19,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     pathName === "/login" ||
     pathName === "/desktop-login" ||
     pathName === "/desktop-search-index" ||
+    pathName.startsWith("/payment-callback") ||
     pathName === LINKS.internalPages.login.github ||
     pathName === LINKS.internalPages.error.main ||
     pathName.startsWith("/docs") ||

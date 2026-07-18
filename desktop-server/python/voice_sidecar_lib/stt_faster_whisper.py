@@ -13,6 +13,28 @@ from voice_sidecar_lib.timing import log_timed_step
 
 _stt_model_singleton = None
 
+# All configured whisper.cpp / env sizes map to tiny.en for fast local downloads.
+_FASTER_WHISPER_MODEL_SIZE = "tiny.en"
+
+
+def normalize_faster_whisper_model_size(model_size: str) -> str:
+    """
+    Map whisper.cpp / env model size strings to a faster-whisper model ID.
+
+    GGML/GGUF names (e.g. ``small.en-q5_1``) are for whisper.cpp; faster-whisper
+    uses CTranslate2 weights. We always load ``tiny.en`` for lightweight inference.
+    """
+    lowered = model_size.lower()
+    if "tiny" in lowered:
+        return _FASTER_WHISPER_MODEL_SIZE
+    if "base" in lowered:
+        return _FASTER_WHISPER_MODEL_SIZE
+    if "small" in lowered:
+        return _FASTER_WHISPER_MODEL_SIZE
+    if "medium" in lowered:
+        return _FASTER_WHISPER_MODEL_SIZE
+    return _FASTER_WHISPER_MODEL_SIZE
+
 
 def load_stt_model(model_size: str = "base"):
     """Load Faster-Whisper model with caching (single process-wide instance)."""
@@ -20,7 +42,9 @@ def load_stt_model(model_size: str = "base"):
     if _stt_model_singleton is not None:
         return _stt_model_singleton
 
-    with log_timed_step(f"Import and load Faster-Whisper model: {model_size}"):
+    norm_size = normalize_faster_whisper_model_size(model_size)
+
+    with log_timed_step(f"Import and load Faster-Whisper model: {norm_size}"):
         try:
             from faster_whisper import WhisperModel
 
@@ -39,7 +63,7 @@ def load_stt_model(model_size: str = "base"):
             except ImportError:
                 LOGGER.info("💻 PyTorch not available for device check. Faster-Whisper will use CPU (int8)")
 
-            model = WhisperModel(model_size, device=device, compute_type=compute_type)
+            model = WhisperModel(norm_size, device=device, compute_type=compute_type)
             _stt_model_singleton = model
             return model
         except ImportError:
