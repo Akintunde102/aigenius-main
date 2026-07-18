@@ -72,7 +72,9 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     analyzer,
     streamFlushPendingRef,
   } = useConversationalMode({
-    onTranscriptionComplete: handleSend,
+    onTranscriptionComplete: async (text: string) => {
+      await handleSend(text);
+    },
     isLoading: isLoading,
     isStreaming: isStreaming,
     audioSession,

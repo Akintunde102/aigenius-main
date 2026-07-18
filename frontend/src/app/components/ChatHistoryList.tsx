@@ -3,7 +3,8 @@ import ChatHistoryListItem from "./ChatHistoryListItem";
 import { ChatSession } from '@/app/components/model-interface/shared/types';
 import { ConfirmationModal } from './ChatHistoryListItem/components/ConfirmationModal';
 import { ChatLoadingIndicator } from "./model-interface/features/chat/components";
-import { groupSidebarSessions } from "./ChatHistoryList/chatHistoryListGrouping";
+import { groupSidebarSessions, groupSidebarSessionsByProject } from "./ChatHistoryList/chatHistoryListGrouping";
+import type { CodeProject } from "@/lib/calls/code-projects";
 
 const RECENT_INITIAL_VISIBLE = 4;
 
@@ -47,6 +48,7 @@ interface ChatHistoryListProps {
     isSessionActive?: (sessionId: string) => boolean;
     onSessionSelect?: () => void;
     isInitialLoading?: boolean;
+    codeProjects?: CodeProject[];
 }
 
 const ChatHistoryList = React.memo<ChatHistoryListProps>(({
@@ -64,6 +66,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
     isSessionActive,
     onSessionSelect,
     isInitialLoading = false,
+    codeProjects = [],
 }) => {
     // Centralized Modal State
     const [actionSession, setActionSession] = useState<ChatSession | null>(null);
@@ -73,7 +76,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
 
     // Track processing IDs for local item loading states
     const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
-    const [recentExpanded, setRecentExpanded] = useState(false);
+    const [recentExpandedByKey, setRecentExpandedByKey] = useState<Record<string, boolean>>({});
 
     const rowIsActive = useCallback(
         (session: ChatSession) => {
@@ -102,11 +105,14 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
         [otherSessions],
     );
 
-    const recentSessions = groupedOthers.recent;
-    const recentVisible = recentExpanded
-        ? recentSessions
-        : recentSessions.slice(0, RECENT_INITIAL_VISIBLE);
-    const recentExtraCount = Math.max(0, recentSessions.length - RECENT_INITIAL_VISIBLE);
+    const projectBuckets = useMemo(
+        () => (codeProjects.length > 0
+            ? groupSidebarSessionsByProject(otherSessions, codeProjects)
+            : []),
+        [otherSessions, codeProjects],
+    );
+
+    const useProjectLayout = codeProjects.length > 0 && projectBuckets.length > 0;
 
     // Stable Handlers
     const handleSelect = useCallback((session: ChatSession) => {
@@ -215,24 +221,31 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
         );
     };
 
-    return (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            {pinnedSession ? (
-                <div className="shrink-0 px-0 pb-1">
-                    <SidebarSectionHeader label="Open now" />
-                    <ul className="m-0 list-none space-y-0.5 px-3 pb-0.5">
-                        {renderRow(pinnedSession, true)}
-                    </ul>
-                </div>
-            ) : null}
+    const renderGroupedSessions = (
+        grouped: ReturnType<typeof groupSidebarSessions>,
+        sectionKey: string,
+    ) => {
+        const recentExpanded = recentExpandedByKey[sectionKey] ?? false;
+        const setRecentExpanded = (updater: boolean | ((current: boolean) => boolean)) => {
+            setRecentExpandedByKey((prev) => {
+                const current = prev[sectionKey] ?? false;
+                const next = typeof updater === 'function' ? updater(current) : updater;
+                return { ...prev, [sectionKey]: next };
+            });
+        };
+        const recentSessions = grouped.recent;
+        const recentVisible = recentExpanded
+            ? recentSessions
+            : recentSessions.slice(0, RECENT_INITIAL_VISIBLE);
+        const recentExtraCount = Math.max(0, recentSessions.length - RECENT_INITIAL_VISIBLE);
 
-            <div className="conversation-list-scroll flex min-h-0 flex-1 flex-col overflow-y-auto pb-4">
-                <ChatLoadingIndicator isLoading={isInitialLoading} />
-                {groupedOthers.starred.length > 0 ? (
+        return (
+            <>
+                {grouped.starred.length > 0 ? (
                     <>
                         <SidebarSectionHeader label="Starred" />
                         <ul className="m-0 list-none space-y-0.5 px-3 pb-1.5">
-                            {groupedOthers.starred.map((session) => renderRow(session, false))}
+                            {grouped.starred.map((session) => renderRow(session, false))}
                         </ul>
                     </>
                 ) : null}
@@ -257,14 +270,41 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                     </>
                 ) : null}
 
-                {groupedOthers.earlier.length > 0 ? (
+                {grouped.earlier.length > 0 ? (
                     <>
                         <SidebarSectionHeader label="Earlier" />
                         <ul className="m-0 list-none space-y-0.5 px-3 pb-1">
-                            {groupedOthers.earlier.map((session) => renderRow(session, false))}
+                            {grouped.earlier.map((session) => renderRow(session, false))}
                         </ul>
                     </>
                 ) : null}
+            </>
+        );
+    };
+
+    return (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {pinnedSession ? (
+                <div className="shrink-0 px-0 pb-1">
+                    <SidebarSectionHeader label="Open now" />
+                    <ul className="m-0 list-none space-y-0.5 px-3 pb-0.5">
+                        {renderRow(pinnedSession, true)}
+                    </ul>
+                </div>
+            ) : null}
+
+            <div className="conversation-list-scroll flex min-h-0 flex-1 flex-col overflow-y-auto pb-4">
+                <ChatLoadingIndicator isLoading={isInitialLoading} />
+                {useProjectLayout ? (
+                    projectBuckets.map((bucket) => (
+                        <div key={bucket.projectId ?? "general"} className="mb-1">
+                            <SidebarSectionHeader label={bucket.label} />
+                            {renderGroupedSessions(bucket.sessions, bucket.projectId ?? 'general')}
+                        </div>
+                    ))
+                ) : (
+                    renderGroupedSessions(groupedOthers, 'default')
+                )}
             </div>
 
             <ConfirmationModal

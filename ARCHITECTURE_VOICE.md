@@ -2,7 +2,7 @@
 
 Authoritative guide for the voice pipeline: how speech-to-text (STT), text-to-speech (TTS), and real-time transport differ between **browser (web)** and **desktop (Electron)**.
 
-Use `isAigeniusDesktopRuntime()` in the frontend to branch behavior. Desktop talks to `http://127.0.0.1:8001` (`desktop-server`); the browser talks to the NestJS cloud API and browser Web APIs.
+Use `isAigeniusDesktopRuntime()` in the frontend to branch behavior. Desktop talks to `http://localhost:8001` (`desktop-server`); the browser talks to the NestJS cloud API and browser Web APIs.
 
 ---
 
@@ -13,7 +13,7 @@ Use `isAigeniusDesktopRuntime()` in the frontend to branch behavior. Desktop tal
 | **Browser** | Native APIs | `webkitSpeechRecognition` → composer | Google STT when `BROWSER_STT_ENGINE=native`; else cloud socket | `speechSynthesis` when `BROWSER_TTS_ENGINE=native`; else cloud socket |
 | **Browser** | Cloud | — | Socket.IO `/audio`: `audio:chunk` + `audio:finalize` | Socket.IO: `audio:synthesize` → `audio:data` |
 | **Desktop** | Local sidecar | HTTP `POST /stt/stream/*` (WebM accumulate) | **Same HTTP stream as dictation** (not socket STT) | HTTP `POST /tts/synthesize` → WAV → `playAISpeech` |
-| **Desktop** | Socket (TTS only) | — | — | Optional fallback: `audio:synthesize` on `ws://127.0.0.1:8001/audio` if HTTP fails |
+| **Desktop** | Socket (TTS only) | — | — | Optional fallback: `audio:synthesize` on `ws://localhost:8001/audio` if HTTP fails |
 
 ### Important split (desktop, 2026)
 
@@ -146,7 +146,7 @@ Browser cloud TTS uses separate presets in `backend/src/config/voice.config.ts` 
 | `useConversationalMode.ts` | Phone mode; desktop STT → HTTP; browser STT → socket / native |
 | `useSentenceStreaming.ts` | LLM text → TTS; desktop → HTTP; browser → socket / native |
 | `useVoiceLoopMaintenance.ts` | Partial STT: desktop HTTP / browser `audio:partialFlush` |
-| `useAudioSocket.ts` | Connects `/audio` (cloud URL or `127.0.0.1:8001`) |
+| `useAudioSocket.ts` | Connects `/audio` (cloud URL or `localhost:8001`) |
 | `useTranscriptManager.ts` | Conversation-only commit filters (noise, status, duplicates) |
 
 Wiring: `useModelInterface.ts` (production). Keep in sync with `AudioContext.tsx` if that path is used.

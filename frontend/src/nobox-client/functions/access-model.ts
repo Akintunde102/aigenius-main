@@ -11,10 +11,18 @@ import {
   resolveDesktopChatRequestContext,
   waitForLocalDesktopToolBridge,
 } from '../../lib/utils/desktop-runtime';
+import {
+  isToolApprovalExempt,
+  promptToolApproval,
+  shouldRequireToolApproval,
+} from '@/lib/tool-permissions';
+import { getActiveCodeProject } from '@/lib/code-projects/active-code-project';
+import { activeEditorForRuntime } from '@/lib/code-projects/active-editor-context';
 
 // Constants
 const OPENAI_CHAT_COMPLETIONS_PATH = '/gateway/*/openai/v1/chat/completions';
 const OPENAI_DESKTOP_TOOL_RESULT_PATH = '/gateway/*/openai/v1/chat/desktop-tool-result';
+const OPENAI_TOOL_APPROVAL_RESULT_PATH = '/gateway/*/openai/v1/chat/tool-approval-result';
 const CONTENT_TYPE_JSON = 'application/json';
 const AUTHORIZATION_BEARER_PREFIX = 'Bearer ';
 const STREAM_DONE_SIGNAL = '[DONE]';
@@ -78,7 +86,7 @@ export class GatewayFetchError extends Error {
   }
 }
 
-/** Parses Nest AllExceptionsFilter JSON: `{ statusCode, path, message: string | { message, wallet? } }` */
+/** Parses Nest AllExceptionsFilter JSON: `{ statusCode, path, message: string | string[] | { message, wallet? } }` */
 function parseNestGatewayErrorBody(body: unknown): { message: string; wallet?: number } {
   if (!body || typeof body !== 'object') {
     return { message: 'Request failed' };
@@ -88,6 +96,13 @@ function parseNestGatewayErrorBody(body: unknown): { message: string; wallet?: n
   if (typeof inner === 'string') {
     return {
       message: inner,
+      wallet: typeof b.wallet === 'number' ? b.wallet : undefined,
+    };
+  }
+  if (Array.isArray(inner)) {
+    const parts = inner.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    return {
+      message: parts.length > 0 ? parts.join('; ') : 'Request failed',
       wallet: typeof b.wallet === 'number' ? b.wallet : undefined,
     };
   }
@@ -121,6 +136,8 @@ type AigeniusDesktopBridge = {
       entries: Array<{ slug: string; name: string; description: string; tags: string[] }>;
     };
   }>;
+  pickProjectDirectory?: () => Promise<{ path: string } | null>;
+  setCodeProjectIndex?: (payload: { projectId: string; rootPath: string } | null) => Promise<{ ok: boolean }>;
   runLocalDesktopTool?: (
     payload: {
       tool: string;
@@ -273,6 +290,16 @@ async function mergeRuntimeContextIntoRequestBody(
     clientTimezone = 'UTC';
   }
   const base = { clientNowIso, clientTimezone };
+  const activeCodeProject = getActiveCodeProject();
+  const activeEditor = activeEditorForRuntime();
+  const activeProjectPayload = activeCodeProject
+    ? {
+        id: activeCodeProject.id,
+        name: activeCodeProject.name,
+        rootPath: activeCodeProject.rootPath,
+        ...(activeCodeProject.rules ? { rules: activeCodeProject.rules } : {}),
+      }
+    : undefined;
 
   const desktop = getAigeniusDesktopBridgeFromBrowsingContext() as
     | AigeniusDesktopBridge
@@ -296,7 +323,12 @@ async function mergeRuntimeContextIntoRequestBody(
         ...base,
         desktopHost: cachedDesktopIpcRuntime.desktopHost,
         retrievalMemoryCatalog: cachedDesktopIpcRuntime.retrievalMemoryCatalog,
+        ...(activeProjectPayload ? { activeCodeProject: activeProjectPayload } : {}),
+        ...(activeEditor ? { activeEditor } : {}),
       };
+      if (activeCodeProject?.id) {
+        requestBody.codeProjectId = activeCodeProject.id;
+      }
       return;
     }
     try {
@@ -319,14 +351,26 @@ async function mergeRuntimeContextIntoRequestBody(
         ...base,
         ...(dh ? { desktopHost: dh } : {}),
         ...(cat ? { retrievalMemoryCatalog: cat } : {}),
+        ...(activeProjectPayload ? { activeCodeProject: activeProjectPayload } : {}),
+        ...(activeEditor ? { activeEditor } : {}),
       };
+      if (activeCodeProject?.id) {
+        requestBody.codeProjectId = activeCodeProject.id;
+      }
       return;
     } catch {
       /* fall through: still desktop shell, but no host snapshot */
     }
   }
 
-  requestBody.runtimeContext = base;
+  requestBody.runtimeContext = {
+    ...base,
+    ...(activeProjectPayload ? { activeCodeProject: activeProjectPayload } : {}),
+    ...(activeEditor ? { activeEditor } : {}),
+  };
+  if (activeCodeProject?.id) {
+    requestBody.codeProjectId = activeCodeProject.id;
+  }
 }
 
 /**
@@ -384,7 +428,7 @@ async function setupApiRequest(config: Config, requestBody: Record<string, any>,
 async function postDesktopToolDelegateResult(
   config: Config,
   delegateId: string,
-  payload: { result?: string; rawData?: any; error?: string },
+  payload: { result?: string; error?: string },
   signal?: AbortSignal,
 ): Promise<void> {
   const endpoint = `${config.endpoint}${OPENAI_DESKTOP_TOOL_RESULT_PATH}`;
@@ -404,7 +448,6 @@ async function postDesktopToolDelegateResult(
     body: JSON.stringify({
       delegate_id: delegateId,
       ...(payload.result !== undefined ? { result: payload.result } : {}),
-      ...(payload.rawData !== undefined ? { rawData: payload.rawData } : {}),
       ...(payload.error !== undefined ? { error: payload.error } : {}),
     }),
     signal,
@@ -412,6 +455,77 @@ async function postDesktopToolDelegateResult(
   if (!res.ok) {
     const parsed = await parseGatewayFailedResponse(res);
     throw new Error(parsed.message);
+  }
+}
+
+async function postToolApprovalResult(
+  config: Config,
+  delegateId: string,
+  payload: { result?: string; error?: string },
+  signal?: AbortSignal,
+): Promise<void> {
+  const endpoint = `${config.endpoint}${OPENAI_TOOL_APPROVAL_RESULT_PATH}`;
+  const jwtToken = getAccessToken();
+  if (!jwtToken) {
+    throw new Error(ERROR_MESSAGES.MISSING_JWT_TOKEN);
+  }
+  const headers: Record<string, string> = {
+    'Content-Type': CONTENT_TYPE_JSON,
+    'Authorization': `${AUTHORIZATION_BEARER_PREFIX}${jwtToken}`,
+    ...getE2eWalletBypassHeaders(),
+  };
+  const res = await authorizedFetch(endpoint, {
+    method: HTTP_METHOD_POST,
+    headers,
+    body: JSON.stringify({
+      delegate_id: delegateId,
+      ...(payload.result !== undefined ? { result: payload.result } : {}),
+      ...(payload.error !== undefined ? { error: payload.error } : {}),
+    }),
+    signal,
+  });
+  if (!res.ok) {
+    const parsed = await parseGatewayFailedResponse(res);
+    throw new Error(parsed.message);
+  }
+}
+
+async function fulfillToolApprovalRequest(
+  ev: {
+    type: 'approval_request';
+    delegate_id: string;
+    tool: string;
+    displayName: string;
+    arguments?: Record<string, unknown>;
+  },
+  config: Config,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (isToolApprovalExempt(ev.tool)) {
+    await postToolApprovalResult(config, ev.delegate_id, { result: 'approved' }, signal);
+    return;
+  }
+
+  if (!shouldRequireToolApproval(ev.tool)) {
+    await postToolApprovalResult(config, ev.delegate_id, { result: 'approved' }, signal);
+    return;
+  }
+
+  const approved = await promptToolApproval({
+    tool: ev.tool,
+    displayName: ev.displayName,
+    arguments: ev.arguments,
+  });
+
+  if (approved) {
+    await postToolApprovalResult(config, ev.delegate_id, { result: 'approved' }, signal);
+  } else {
+    await postToolApprovalResult(
+      config,
+      ev.delegate_id,
+      { error: 'User declined tool execution' },
+      signal,
+    );
   }
 }
 
@@ -500,7 +614,7 @@ async function fulfillDesktopToolDelegate(
       streamOpts,
     );
     if (out.ok) {
-      await postDesktopToolDelegateResult(config, ev.delegate_id, { result: out.result, rawData: out.rawData }, signal);
+      await postDesktopToolDelegateResult(config, ev.delegate_id, { result: out.result }, signal);
     } else {
       await postDesktopToolDelegateResult(config, ev.delegate_id, { error: out.error }, signal);
     }
@@ -623,6 +737,10 @@ async function processStreamingChunk(
 
       if (toolStreamEvent?.type === 'client_delegate') {
         await fulfillDesktopToolDelegate(toolStreamEvent, config, signal, onToolStreamEvent);
+      }
+
+      if (toolStreamEvent?.type === 'approval_request') {
+        await fulfillToolApprovalRequest(toolStreamEvent, config, signal);
       }
 
       const contentToSend = processStreamingContent(delta);
@@ -998,6 +1116,13 @@ export type ToolStreamEvent =
     displayName: string;
     arguments?: Record<string, unknown>;
     tool_call_id: string;
+  }
+  | {
+    type: 'approval_request';
+    delegate_id: string;
+    tool: string;
+    displayName: string;
+    arguments?: Record<string, unknown>;
   }
   | { type: 'end'; tool: string; success: boolean; result?: string; invokeCode?: string };
 

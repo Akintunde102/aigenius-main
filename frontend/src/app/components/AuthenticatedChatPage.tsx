@@ -18,6 +18,7 @@ import { prefetchPublicRoutes } from "@/lib/public-route-prefetch";
 import { ChatShellLoadingSkeleton } from "@/app/components/ChatShellLoadingSkeleton";
 import { importModelInterfaceWithRetry } from "@/app/components/model-interface/modelInterfaceDynamicImport";
 import { AllProviders } from "@/app/components/model-interface/contexts";
+import { ToolApprovalProvider } from "@/lib/tool-permissions/ToolApprovalProvider";
 
 const ModelInterface = dynamic(importModelInterfaceWithRetry, {
   ssr: false,
@@ -117,9 +118,11 @@ export default function AuthenticatedChatPage({
 
   if (token) {
     return (
-      <AllProviders>
-        <ModelInterface routeConversationId={routeConversationId} />
-      </AllProviders>
+      <ToolApprovalProvider>
+        <AllProviders>
+          <ModelInterface routeConversationId={routeConversationId} />
+        </AllProviders>
+      </ToolApprovalProvider>
     );
   }
 

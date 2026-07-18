@@ -6,6 +6,7 @@ import { DRAFT_SESSION_KEY } from './chatOperations.constants';
 import { createChatMessage, processBackendContent, generateMessageId } from './contentProcessing.utils';
 import { addOrMergeSessionToLocalHistory } from '@/lib/utils/modelChatConversationUtils';
 import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interface/conversation/streamTranscriptGuard';
+import { getDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { clearUserDetailsCache } from '@/lib/calls/get-logged-user-details';
 import { resolveRequestConversationId } from './requestConversationId.utils';
 
@@ -87,7 +88,13 @@ export function useNonStreamingResponse({
                 signal: abortController.signal
             });
 
-            const ownsView = shouldApplyStreamToOpenTranscript(requestSessionId, activeViewSessionIdRef.current);
+            // Draft sends also require the draft generation to be unchanged — a New
+            // Chat reset since dispatch means this response belongs to an older draft.
+            const sameDraftGeneration = requestSessionId !== null
+                || requestOverrides?.draftEpoch === undefined
+                || requestOverrides.draftEpoch === getDraftConversationEpoch();
+            const ownsView = sameDraftGeneration
+                && shouldApplyStreamToOpenTranscript(requestSessionId, activeViewSessionIdRef.current);
 
             const processedContent = processBackendContent(result.content);
 
@@ -135,8 +142,10 @@ export function useNonStreamingResponse({
                 if (ownsView) {
                     onDraftCompleted?.(result.conversationId, assistantMsg);
                 }
-            } else {
-                // Existing session (or background new chat — write to draft slot and leave it).
+            } else if (requestSessionId !== null || sameDraftGeneration) {
+                // Existing session (or background new chat — write to draft slot and
+                // leave it). A draft response from an older generation must not write
+                // into the freshly opened draft, so that case is skipped entirely.
                 if (uiChatBase) {
                     setChatForSession(chatMapKey, [...uiChatBase, assistantMsg]);
                 } else {

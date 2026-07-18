@@ -1,7 +1,12 @@
-# PostgreSQL + Redis + Nest API + Next.js (dev, hot reload).
+# Full-stack dev (API + web + sidecar). Postgres/Redis/Adminer live in backend/docker-compose.yml.
 #
-# From repo root (Docker Desktop running):
-#   docker compose up --build
+# Requires backend/ cloned at ./backend (aigenius-main layout). DB infra is included below.
+#
+# From client/ (Docker Desktop running):
+#   npm run dev:docker
+#
+# DB only (from backend/ or platform root npm run db:up):
+#   cd backend && npm run db:up
 #
 # First-time DB schema (after Postgres is up):
 #   docker compose run --rm api npm run db:migrate
@@ -9,61 +14,17 @@
 # App URLs (host browser):
 #   Frontend: http://localhost:3001
 #   API:      http://localhost:8000
-#   Adminer:  http://localhost:8080  (DB: System "PostgreSQL", Server "postgres", user/pass/db aigenius/ai_genius)
+#   Adminer:  http://localhost:8080
 #
-# Backend env: requires backend/env/.local.env (copy from .dev.env or .env.example if
-# you do not have it yet). Compose overrides PG/Redis for the Docker network.
+# Backend env: requires backend/env/.local.env. Compose overrides PG/Redis for the Docker network.
 #
 # Sidecar (search): set AIGENIUS_SECRET_TOKEN in the shell or repo-root `.env` before
-# `docker compose up` includes sidecar — compose allows it unset so partial stacks (e.g.
-# redis + postgres only) still parse; without it, /search on the sidecar returns 401.
+# `docker compose up` — without it, /search on the sidecar returns 401.
+
+include:
+  - path: backend/docker-compose.yml
 
 services:
-  postgres:
-    image: postgres:17-alpine
-    container_name: aigenius-postgres
-    restart: unless-stopped
-    ports:
-      - "5434:5432"
-    environment:
-      POSTGRES_USER: aigenius
-      POSTGRES_PASSWORD: aigenius
-      POSTGRES_DB: ai_genius
-    volumes:
-      - aigenius_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aigenius -d ai_genius"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  adminer:
-    image: adminer:4
-    container_name: aigenius-adminer
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "8080:8080"
-    environment:
-      # Pre-fills "Server" so you only pick PostgreSQL and enter user/password/db
-      ADMINER_DEFAULT_SERVER: postgres
-
-  redis:
-    image: redis:7-alpine
-    container_name: aigenius-redis
-    restart: unless-stopped
-    ports:
-      - "6380:6379"
-    volumes:
-      - aigenius_redisdata:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   api:
     build:
       context: .
@@ -146,8 +107,6 @@ services:
       - ./desktop-server/data:/app/data
 
 volumes:
-  aigenius_pgdata:
-  aigenius_redisdata:
   api_node_modules:
   web_node_modules:
   web_next:

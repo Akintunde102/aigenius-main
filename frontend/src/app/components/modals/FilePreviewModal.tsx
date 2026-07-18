@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { filePreviewEmitter, FilePreviewPayload, closeFilePreview } from './FilePreviewManager';
+import { setActiveEditorContext, clearActiveEditorContext } from '@/lib/code-projects/active-editor-context';
 import { X, PanelLeft, Folder } from 'lucide-react';
 import Editor, { loader } from '@monaco-editor/react';
 import { MarkdownRenderer } from '../model-interface/shared/components/MarkdownRenderer';
@@ -8,6 +9,7 @@ import { useTheme } from '@/lib/providers/ThemeProvider';
 import { defineMonacoAppThemes, getMonacoThemeId } from './monaco-app-theme';
 import { FilePreviewHeader } from './FilePreviewHeader';
 import { FilePreviewExplorer } from './FilePreviewExplorer';
+import { useDraggablePanel } from './useDraggablePanel';
 
 // Configure Monaco loader to use local files from public directory
 loader.config({
@@ -38,8 +40,46 @@ export const FilePreviewModal: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
-    const editorRef = useRef<any>(null);
     const blobUrlRef = useRef<string | null>(null);
+    const editorRef = useRef<any>(null);
+    const panelRef = useRef<HTMLDivElement | null>(null);
+    const syncEditorContext = useCallback((p: FilePreviewPayload, line = 1, character = 1, selection?: string) => {
+        if (p.type === 'code' && p.localPath) {
+            setActiveEditorContext({
+                path: p.localPath,
+                name: p.name,
+                line,
+                character,
+                ...(selection ? { selection } : {}),
+            });
+            const bridge = (window as { aigeniusDesktop?: { syncActiveEditor?: (x: unknown) => Promise<unknown> } }).aigeniusDesktop;
+            void bridge?.syncActiveEditor?.({
+                path: p.localPath,
+                name: p.name,
+                line,
+                character,
+                ...(selection ? { selection } : {}),
+            });
+        }
+    }, []);
+
+    const handleEditorMount = useCallback((editor: any) => {
+        editorRef.current = editor;
+        const updateCursor = () => {
+            if (!payload?.localPath || payload.type !== 'code') return;
+            const pos = editor.getPosition();
+            const sel = editor.getModel()?.getValueInRange(editor.getSelection());
+            syncEditorContext(
+                payload,
+                pos?.lineNumber ?? 1,
+                pos?.column ?? 1,
+                sel && sel !== editor.getModel()?.getLineContent(pos?.lineNumber ?? 1) ? sel : undefined,
+            );
+        };
+        editor.onDidChangeCursorPosition(updateCursor);
+        editor.onDidChangeCursorSelection(updateCursor);
+        updateCursor();
+    }, [payload, syncEditorContext]);
 
     // Explorer State (Internal Sidebar)
     const [explorerPath, setExplorerPath] = useState<string>('');
@@ -51,6 +91,13 @@ export const FilePreviewModal: React.FC = () => {
     const lastSyncedPathRef = useRef<string | null>(null);
 
     const isOpen = !!payload;
+    const isSidePanel = payload?.placement === 'side';
+    const isDraggableModal = isOpen && !isSidePanel;
+    const {
+        panelStyle: draggablePanelStyle,
+        isDragging,
+        onDragHandlePointerDown,
+    } = useDraggablePanel(isDraggableModal, panelRef, payload?.localPath ?? payload?.name ?? null);
     const isDirty = payload?.type === 'code' && editedContent !== (payload.textContent || '');
     const isMarkdown = Boolean(
         payload?.name.toLowerCase().endsWith('.md') || payload?.name.toLowerCase().endsWith('.markdown'),
@@ -325,12 +372,18 @@ export const FilePreviewModal: React.FC = () => {
             setForwardHistory([]);
             lastSyncedPathRef.current = null;
             cleanupBlob();
+            if (p.type === 'code' && p.localPath) {
+                syncEditorContext(p);
+            }
         };
         const handleClose = () => {
             setPayload(null);
             setOriginalPayload(null);
             setError(null);
             cleanupBlob();
+            clearActiveEditorContext();
+            const bridge = (window as { aigeniusDesktop?: { syncActiveEditor?: (x: null) => Promise<unknown> } }).aigeniusDesktop;
+            void bridge?.syncActiveEditor?.(null);
         };
 
         filePreviewEmitter.on('open', handleOpen);
@@ -340,7 +393,7 @@ export const FilePreviewModal: React.FC = () => {
             filePreviewEmitter.off('open', handleOpen);
             filePreviewEmitter.off('close', handleClose);
         };
-    }, [cleanupBlob]);
+    }, [cleanupBlob, syncEditorContext]);
 
     useEffect(() => {
         if (!isOpen || !payload) return;
@@ -456,7 +509,7 @@ export const FilePreviewModal: React.FC = () => {
                             path={payload.name}
                             value={payload.textContent}
                             onChange={(value) => setEditedContent(value || '')}
-                            onMount={(editor) => { editorRef.current = editor; }}
+                            onMount={handleEditorMount}
                             beforeMount={handleEditorWillMount}
                             options={{
                                 readOnly: false,
@@ -493,57 +546,92 @@ export const FilePreviewModal: React.FC = () => {
         }
     };
 
-    return (
-        <div className="app-modal-overlay backdrop-blur-md animate-in fade-in duration-300" onClick={closeFilePreview}>
-            <div
-                className="app-modal-panel relative flex w-full max-w-6xl h-[75vh] max-h-[75vh] flex-col overflow-hidden rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <FilePreviewHeader
-                    showSidebar={showSidebar}
-                    onToggleSidebar={() => setShowSidebar((v) => !v)}
-                    fileName={payload.name}
-                    filePath={payload.localPath}
-                    isDirty={isDirty}
-                    isMarkdown={isMarkdown}
-                    isCode={payload.type === 'code'}
-                    showMarkdownPreview={showMarkdownPreview}
-                    onToggleMarkdownPreview={() => setShowMarkdownPreview((v) => !v)}
-                    onSave={handleSave}
-                    isSaving={isSaving}
-                    canSave={isDirty}
-                    onOpenInOS={handleOpenInOS}
-                    onClose={closeFilePreview}
-                />
+    const panelBody = (
+        <div
+            ref={panelRef}
+            className={
+                isSidePanel
+                    ? 'file-preview-side-panel app-modal-panel relative flex h-full w-full flex-col overflow-hidden border-l shadow-2xl'
+                    : 'app-modal-panel relative flex w-full max-w-6xl h-[75vh] max-h-[75vh] flex-col overflow-hidden rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300'
+            }
+            onClick={(e) => e.stopPropagation()}
+            style={
+                isSidePanel
+                    ? {
+                          borderColor: 'var(--modal-border, rgba(255,255,255,0.08))',
+                          background: 'var(--modal-bg)',
+                      }
+                    : draggablePanelStyle
+            }
+        >
+            <FilePreviewHeader
+                showSidebar={showSidebar}
+                onToggleSidebar={() => setShowSidebar((v) => !v)}
+                fileName={payload.name}
+                filePath={payload.localPath}
+                isDirty={isDirty}
+                isMarkdown={isMarkdown}
+                isCode={payload.type === 'code'}
+                showMarkdownPreview={showMarkdownPreview}
+                onToggleMarkdownPreview={() => setShowMarkdownPreview((v) => !v)}
+                onSave={handleSave}
+                isSaving={isSaving}
+                canSave={isDirty}
+                onOpenInOS={handleOpenInOS}
+                onClose={closeFilePreview}
+                draggable={!isSidePanel}
+                isDragging={isDragging}
+                onDragHandlePointerDown={onDragHandlePointerDown}
+            />
 
-                <div className="flex min-h-0 flex-1 overflow-hidden">
-                    {showSidebar && explorerPath && (
-                        <FilePreviewExplorer
-                            explorerPath={explorerPath}
-                            explorerItems={explorerItems}
-                            explorerLoading={explorerLoading}
-                            activePath={payload.localPath}
-                            resolvedTheme={resolvedTheme}
-                            pathHistory={pathHistory}
-                            forwardHistory={forwardHistory}
-                            onNavigate={navigateTo}
-                            onGoBack={goBack}
-                            onGoForward={goForward}
-                            onGoUp={goUp}
-                            onGoToOriginal={goToOriginal}
-                            onRefresh={() => fetchExplorerItems(explorerPath)}
-                            onOpenItem={handleItemClick}
-                            onItemDeleted={handleItemDeleted}
-                            onItemRenamed={handleItemRenamed}
-                            onItemCreated={handleItemCreated}
-                            onError={setError}
-                        />
-                    )}
-                    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-                        {renderMainContent()}
-                    </div>
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+                {showSidebar && explorerPath && (
+                    <FilePreviewExplorer
+                        explorerPath={explorerPath}
+                        explorerItems={explorerItems}
+                        explorerLoading={explorerLoading}
+                        activePath={payload.localPath}
+                        resolvedTheme={resolvedTheme}
+                        pathHistory={pathHistory}
+                        forwardHistory={forwardHistory}
+                        onNavigate={navigateTo}
+                        onGoBack={goBack}
+                        onGoForward={goForward}
+                        onGoUp={goUp}
+                        onGoToOriginal={goToOriginal}
+                        onRefresh={() => fetchExplorerItems(explorerPath)}
+                        onOpenItem={handleItemClick}
+                        onItemDeleted={handleItemDeleted}
+                        onItemRenamed={handleItemRenamed}
+                        onItemCreated={handleItemCreated}
+                        onError={setError}
+                    />
+                )}
+                <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+                    {renderMainContent()}
                 </div>
             </div>
+        </div>
+    );
+
+    if (isSidePanel) {
+        return (
+            <div
+                className="file-preview-side-host fixed bottom-0 right-0 z-[120] flex w-[min(50vw,44rem)] animate-in slide-in-from-right duration-300"
+                style={{ top: 'var(--aigenius-desktop-titlebar-top, 0px)' }}
+            >
+                {panelBody}
+            </div>
+        );
+    }
+
+    return (
+        <div
+            className="fixed inset-0 z-[9999] backdrop-blur-md animate-in fade-in duration-300"
+            style={{ background: 'var(--modal-overlay)' }}
+            onClick={closeFilePreview}
+        >
+            {panelBody}
         </div>
     );
 };

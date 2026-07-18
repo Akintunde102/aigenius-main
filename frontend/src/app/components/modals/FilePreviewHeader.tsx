@@ -64,6 +64,9 @@ export function FilePreviewHeader({
   canSave,
   onOpenInOS,
   onClose,
+  draggable = false,
+  isDragging = false,
+  onDragHandlePointerDown,
 }: {
   showSidebar: boolean;
   onToggleSidebar: () => void;
@@ -79,11 +82,17 @@ export function FilePreviewHeader({
   canSave: boolean;
   onOpenInOS: () => void;
   onClose: () => void;
+  draggable?: boolean;
+  isDragging?: boolean;
+  onDragHandlePointerDown?: (event: React.PointerEvent<HTMLElement>) => void;
 }) {
   return (
     <header
-      className="flex h-11 shrink-0 items-center gap-2 border-b px-2 sm:px-3"
+      className={`flex h-11 shrink-0 items-center gap-2 border-b px-2 sm:px-3 ${
+        draggable ? (isDragging ? 'cursor-grabbing select-none' : 'cursor-grab') : ''
+      }`}
       style={{ borderColor: 'var(--modal-border)', background: 'var(--modal-bg-muted)' }}
+      onPointerDown={onDragHandlePointerDown}
     >
       <ToolbarButton
         onClick={onToggleSidebar}

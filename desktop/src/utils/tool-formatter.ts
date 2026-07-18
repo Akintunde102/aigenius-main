@@ -2,6 +2,8 @@
  * Utilities to format raw tool results into human-readable Markdown.
  */
 
+import { toLocalFileMarkdownLink } from './local-file-link';
+
 export interface FormattedToolResult {
   result: string;
   rawData?: any;
@@ -59,7 +61,7 @@ export function formatRagResults(data: any): FormattedToolResult {
   hits.forEach((hit, i) => {
     md += `${i + 1}. **${hit.name || pathBase(hit.path) || 'Unknown File'}**\n`;
     if (hit.path) {
-      md += `   - **Path**: \`${hit.path}\`\n`;
+      md += `   - **Path**: ${toLocalFileMarkdownLink(hit.path)}\n`;
     }
     if (typeof hit.score === 'number') {
       md += `   - **Relevance**: ${(hit.score * 100).toFixed(1)}%\n`;
@@ -68,9 +70,19 @@ export function formatRagResults(data: any): FormattedToolResult {
       const lastModified = new Date(hit.mtime).toLocaleString();
       md += `   - **Last modified**: ${lastModified}\n`;
     }
+    if (typeof hit.line_start === 'number') {
+      const range =
+        typeof hit.line_end === 'number' && hit.line_end !== hit.line_start
+          ? `lines ${hit.line_start}–${hit.line_end}`
+          : `line ${hit.line_start}`;
+      md += `   - **Location**: ${range}\n`;
+    }
+    if (typeof hit.symbol_name === 'string' && hit.symbol_name) {
+      md += `   - **Symbol**: \`${hit.symbol_name}\`\n`;
+    }
 
     // Add any unknown fields for compatibility
-    const knownKeys = ['path', 'name', 'score', 'snippet', 'mtime'];
+    const knownKeys = ['path', 'name', 'score', 'snippet', 'mtime', 'line_start', 'line_end', 'symbol_name', 'chunk_id'];
     const extraKeys = Object.keys(hit).filter(k => !knownKeys.includes(k));
     if (extraKeys.length > 0) {
       const extraInfo = extraKeys.map(k => {
@@ -150,7 +162,7 @@ export function formatDirectoryListing(payload: {
 }): FormattedToolResult {
   const { path: rootPath, items, hitLimit } = payload;
   let md = '### Directory listing\n\n';
-  md += `- **Directory**: \`${rootPath}\`\n`;
+  md += `- **Directory**: ${toLocalFileMarkdownLink(rootPath)}\n`;
   md += `- **Entries**: ${items.length}${hitLimit ? ' (limit reached)' : ''}\n\n`;
 
   if (items.length === 0) {
@@ -160,7 +172,7 @@ export function formatDirectoryListing(payload: {
 
   items.forEach((r, i) => {
     md += `${i + 1}. **${r.name}**\n`;
-    md += `   - **Path**: \`${r.path}\`\n`;
+    md += `   - **Path**: ${toLocalFileMarkdownLink(r.path)}\n`;
     md += `   - **Type**: ${r.isDir ? 'Directory' : 'File'}\n`;
     if (!r.isDir && typeof r.size === 'number') {
       md += `   - **Size (bytes)**: ${r.size.toLocaleString()}\n`;
@@ -195,7 +207,7 @@ export function formatReadFile(data: any): FormattedToolResult {
   const { path, bytes_read, truncated, content } = data;
 
   let md = `### Read file\n\n`;
-  md += `- **Path**: \`${path ?? ''}\`\n`;
+  md += `- **Path**: ${toLocalFileMarkdownLink(path ?? '')}\n`;
   md += `- **Bytes read**: ${bytes_read?.toLocaleString() ?? 0}\n`;
   if (truncated === true) {
     md += `- **Truncated**: Yes (size limits)\n`;

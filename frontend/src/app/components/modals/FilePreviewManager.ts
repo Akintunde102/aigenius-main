@@ -8,6 +8,8 @@ export interface FilePreviewPayload {
     type: 'image' | 'code' | 'pdf' | 'video' | 'audio' | 'folder' | 'unsupported';
     localPath?: string;
     textContent?: string;
+    /** `side` docks beside chat; `modal` is the centered overlay (default). */
+    placement?: 'modal' | 'side';
 }
 
 export const openFilePreview = (payload: FilePreviewPayload) => {

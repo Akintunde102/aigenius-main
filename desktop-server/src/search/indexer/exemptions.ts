@@ -4,6 +4,8 @@ export const DEFAULT_IGNORED_PATHS = [
   '.next',
   '.idea',
   '.vscode',
+  '.agent',
+  '.cursor',
   'dist',
   'build',
   'AppData',
@@ -29,4 +31,12 @@ export function shouldSkipSearchIndexing(filePath: string): boolean {
   if (!filePath) return true;
   if (isIgnored(filePath)) return true;
   return SEARCH_ASSET_PATH_PATTERNS.some((re) => re.test(filePath));
+}
+
+/** Like {@link shouldSkipSearchIndexing} but only inspects path relative to a project root. */
+export function shouldSkipSearchIndexingRelative(relativePath: string): boolean {
+  const norm = relativePath.replace(/\\/g, '/');
+  if (!norm || norm.startsWith('..')) return true;
+  if (isIgnored(norm)) return true;
+  return SEARCH_ASSET_PATH_PATTERNS.some((re) => re.test(norm));
 }

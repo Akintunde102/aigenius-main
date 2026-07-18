@@ -3,16 +3,18 @@ if (!API_LINK) {
     throw new Error("Server link not given");
 }
 
-export const sendUploadStream = `${API_LINK}/files/upload/stream`;
-export const sendUpload = `${API_LINK}/files/upload`;
-export const getUploadAccessUsers = `${API_LINK}/files/upload/access`;
-export const getFileUrl = (fileId: string) => `${API_LINK}/files/upload/${fileId}`;
-export const addFileDescriptionUrl = (fileId: string) => `${API_LINK}/files/upload/${fileId}/add-description`;
+const UPLOAD_GATEWAY = `${API_LINK}/gateway/*/upload`;
+
+export const sendUploadStream = `${UPLOAD_GATEWAY}/stream`;
+export const sendUpload = UPLOAD_GATEWAY;
+export const getUploadAccessUsers = `${UPLOAD_GATEWAY}/access/list`;
+export const getFileUrl = (fileId: string) => `${UPLOAD_GATEWAY}/${fileId}`;
+export const addFileDescriptionUrl = (fileId: string) => `${UPLOAD_GATEWAY}/${fileId}/add-description`;
 export const getFoldersUrl = (type: "all-files" | "folder") => {
-    return `${API_LINK}/upload/folders/list?type=${type}`
+    return `${UPLOAD_GATEWAY}/folders/list?type=${type}`
 }
 
-export const addFolderUrl = `${API_LINK}/upload/folders/add`;
+export const addFolderUrl = `${UPLOAD_GATEWAY}/folders/add`;
 
 export const getUploadedFiles = (args: { folderId?: string, userId?: string }) => {
 
@@ -33,7 +35,7 @@ export const getUploadedFiles = (args: { folderId?: string, userId?: string }) =
     return link;
 }
 
-export const getFolderDetailsUrl = (folderId: string) => `${API_LINK}/upload/folders/${folderId}`
+export const getFolderDetailsUrl = (folderId: string) => `${UPLOAD_GATEWAY}/folders/${folderId}`
 
 export const shareUploadAccessUrl = (folderId?: string, takerId?: string) => {
     const queryParams: string[] = [];
@@ -48,27 +50,27 @@ export const shareUploadAccessUrl = (folderId?: string, takerId?: string) => {
 
     const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
 
-    return `${API_LINK}/upload/access/share${queryString}`;
+    return `${UPLOAD_GATEWAY}/access/share${queryString}`;
 }
 
 export const getUploadAccessUrl = (folderId?: string) => {
 
     if (!folderId) {
-        return `${API_LINK}/upload/access/list`;
+        return `${UPLOAD_GATEWAY}/access/list`;
     }
 
-    return `${API_LINK}/upload/access/list?folderId=${folderId}`;
+    return `${UPLOAD_GATEWAY}/access/list?folderId=${folderId}`;
 }
 
-export const deleteFileUrl = (fileId: string) => `${API_LINK}/upload/${fileId}`;
+export const deleteFileUrl = (fileId: string) => `${UPLOAD_GATEWAY}/${fileId}`;
 
 export const listUploadAccessUrl = (folderId?: string) => {
 
     if (!folderId) {
-        return `${API_LINK}/upload/access/list`;
+        return `${UPLOAD_GATEWAY}/access/list`;
     }
 
-    return `${API_LINK}/upload/access/list?folderId=${folderId}`;
+    return `${UPLOAD_GATEWAY}/access/list?folderId=${folderId}`;
 }
 
 export const getUserDetails = (email: string) => `${API_LINK}/user-details?email=${email}`;

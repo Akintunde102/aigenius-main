@@ -35,7 +35,7 @@ export function formatOllamaCloudError(detail: string): string {
 }
 
 export const OLLAMA_LOCAL_BASE_URL =
-  (process.env.OLLAMA_HOST || 'http://127.0.0.1:11434').replace(/\/$/, '');
+  (process.env.OLLAMA_HOST || 'http://localhost:11434').replace(/\/$/, '');
 
 export type OllamaCloudLiveCase = {
   catalogId: string;

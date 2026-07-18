@@ -1,0 +1,11 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`active-editor-main (Phase 6–7 tool defaults) snapshot: typical editor context payload 1`] = `
+{
+  "character": 12,
+  "line": 15,
+  "name": "service.ts",
+  "path": "C:/Users/dev/project/src/service.ts",
+  "selection": "UserService",
+}
+`;

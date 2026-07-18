@@ -13,17 +13,22 @@ export function createIndexQueue<T>(
   push: (item: T) => void;
   flush: () => Promise<void>;
   stop: () => void;
+  pendingCount: () => number;
 } {
   let buffer: T[] = [];
   let timer: NodeJS.Timeout | null = null;
+  let processing = false;
 
   async function flush(): Promise<void> {
     if (buffer.length === 0) return;
     const batch = buffer.splice(0, buffer.length);
+    processing = true;
     try {
       await onBatch(batch);
     } catch (err) {
       console.error('[index-queue] batch callback error:', err);
+    } finally {
+      processing = false;
     }
   }
 
@@ -55,5 +60,5 @@ export function createIndexQueue<T>(
     }
   }
 
-  return { push, flush, stop };
+  return { push, flush, stop, pendingCount: () => buffer.length + (processing ? 1 : 0) };
 }

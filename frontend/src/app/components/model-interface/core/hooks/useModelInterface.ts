@@ -256,7 +256,9 @@ export function useModelInterface(options?: {
     isConversationalRecording,
     streamFlushPendingRef,
   } = useConversationalMode({
-    onTranscriptionComplete: handleSend,
+    onTranscriptionComplete: async (text: string) => {
+      await handleSend(text);
+    },
     isLoading: loading,
     isStreaming: streaming,
     audioSession,
@@ -315,7 +317,7 @@ export function useModelInterface(options?: {
     enableStreaming?: boolean,
     preCreatedMessage?: ChatMessage,
     chatSnapshot?: ChatMessage[],
-  ): Promise<void> => {
+  ): Promise<boolean> => {
     return handleSend(content, enableStreaming, preCreatedMessage, chatSnapshot);
   }, [handleSend]);
 

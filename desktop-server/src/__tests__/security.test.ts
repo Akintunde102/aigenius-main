@@ -7,7 +7,7 @@ import assert from 'node:assert';
  */
 test('Health endpoint should require authentication', async (t) => {
   try {
-     const resp = await fetch('http://127.0.0.1:8001/health');
+     const resp = await fetch('http://localhost:8001/health');
      assert.strictEqual(resp.status, 401, 'Status should be 401 Unauthorized');
   } catch (err) {
      // If server is not running, we count this as a failure anyway (RED state)

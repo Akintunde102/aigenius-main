@@ -46,6 +46,7 @@ export const useInputState = ({ externalInputValue, onInputChange }: UseInputSta
     const clearInput = useCallback(() => {
         if (debounceTimeoutRef.current) {
             clearTimeout(debounceTimeoutRef.current);
+            debounceTimeoutRef.current = null;
         }
         setInternalInputValue('');
         lastSentValueRef.current = '';
@@ -53,6 +54,18 @@ export const useInputState = ({ externalInputValue, onInputChange }: UseInputSta
             onInputChangeRef.current('');
         }
     }, []);
+
+    /** Push any pending debounced keystrokes to the parent before sending. */
+    const flushInputToParent = useCallback(() => {
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+            debounceTimeoutRef.current = null;
+        }
+        lastSentValueRef.current = internalInputValue;
+        if (onInputChangeRef.current) {
+            onInputChangeRef.current(internalInputValue);
+        }
+    }, [internalInputValue]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -66,6 +79,7 @@ export const useInputState = ({ externalInputValue, onInputChange }: UseInputSta
     return {
         inputValue: internalInputValue,
         handleInputChange,
-        clearInput
+        clearInput,
+        flushInputToParent,
     };
 };

@@ -63,7 +63,7 @@ describe('OllamaRelayClient inference relay', () => {
       stream: true,
     });
 
-    expect(global.fetch).toHaveBeenCalledWith('http://127.0.0.1:11434/api/chat', expect.objectContaining({
+    expect(global.fetch).toHaveBeenCalledWith('http://localhost:11434/api/chat', expect.objectContaining({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -144,7 +144,7 @@ describe('OllamaRelayClient inference relay', () => {
       stream: true,
     });
 
-    expect(global.fetch).toHaveBeenNthCalledWith(1, 'http://127.0.0.1:11434/api/pull', expect.objectContaining({
+    expect(global.fetch).toHaveBeenNthCalledWith(1, 'http://localhost:11434/api/pull', expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({ model: 'glm-5.1:cloud', stream: false }),
     }));

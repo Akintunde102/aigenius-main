@@ -22,7 +22,10 @@ import {
     resolveInputToSend,
 } from './sendFlow.utils';
 import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interface/conversation/streamTranscriptGuard';
-import { resolveViewSessionId } from '@/app/components/model-interface/conversation/conversationViewSession';
+import {
+    getDraftConversationEpoch,
+    resolveViewSessionId,
+} from '@/app/components/model-interface/conversation/conversationViewSession';
 
 /**
  * Send/stop orchestration: wallet validation, composer drafts, message shaping for the API,
@@ -66,6 +69,11 @@ export function useChatOperationsRefined({
     const currentChatRef = useRef(chat);
     currentChatRef.current = chat;
 
+    // Monotonic per-session send counter. A newer send to the same chatMap slot
+    // (e.g. after New Chat reuses __draft__) must not have its loading/streaming
+    // flags cleared by an older in-flight request's finally/completion handler.
+    const sessionSendGenerationRef = useRef<Map<string, number>>(new Map());
+
     // Per-session input drafts — switching sessions restores the in-progress text.
     // Hydrate from sessionStorage so drafts survive reloads (WhatsApp-style).
     const [inputMap, setInputMap] = useState<Record<string, string>>(
@@ -106,20 +114,30 @@ export function useChatOperationsRefined({
         currentSessionId,
         activeViewSessionId,
         updateSessionMessages,
-        handleStreamResult: (result, streamingSessionId) => {
+        handleStreamResult: (result, streamingSessionId, draftEpoch, sendGeneration) => {
             // streamingSessionId is null for new chats, string for existing sessions.
             updateWalletFromResponse(result.wallet);
 
+            // A draft stream only still owns the draft view if no New Chat reset
+            // happened since it was dispatched (`null === null` alone can't tell
+            // two different drafts apart).
+            const sameDraftGeneration = streamingSessionId !== null
+                || draftEpoch === undefined
+                || draftEpoch === getDraftConversationEpoch();
+
             // Only touch active-view UI state if this stream still owns the open session.
-            const ownsView = shouldApplyStreamToOpenTranscript(
+            const ownsView = sameDraftGeneration && shouldApplyStreamToOpenTranscript(
                 streamingSessionId,
                 activeViewSessionIdRef.current,
             );
 
             const chatMapKey = streamingSessionId ?? DRAFT_SESSION_KEY;
-            setStreamingForSession(chatMapKey, false);
-
-            // Only clear the live typing text when this stream owns the visible session.
+            const ownsSendGeneration = sendGeneration !== undefined
+                ? sessionSendGenerationRef.current.get(chatMapKey) === sendGeneration
+                : sameDraftGeneration;
+            if (ownsSendGeneration) {
+                setStreamingForSession(chatMapKey, false);
+            }
             if (ownsView) {
                 setTimeout(() => {
                     setAssistantResponse('');
@@ -128,8 +146,9 @@ export function useChatOperationsRefined({
 
             if (ownsView && result.conversationId && setCurrentSessionId) {
                 if (streamingSessionId === null) {
-                    // New chat: atomically migrate draft → real slot before switching the key.
-                    setChatForSession(result.conversationId, currentChatRef.current);
+                    // New chat: the stream already materialized the full transcript
+                    // under the real id — just clear the draft slot and switch the key.
+                    // (Re-writing from the committed view here could drop the final chunk.)
                     setChatForSession(DRAFT_SESSION_KEY, []);
                 }
                 setCurrentSessionId(result.conversationId);
@@ -168,16 +187,11 @@ export function useChatOperationsRefined({
         activeViewSessionId,
         updateSessionMessages,
         setCurrentSessionId,
-        onDraftCompleted: (realId, assistantMsg) => {
-            // Atomically migrate draft → real slot and update the session pointer.
-            const draftMessages = [...currentChatRef.current, assistantMsg];
-            setChatForSession(realId, draftMessages);
+        onDraftCompleted: (realId) => {
+            // The response handler already persisted the full transcript under the
+            // real id — just clear the draft slot and switch the session pointer.
             setChatForSession(DRAFT_SESSION_KEY, []);
             setCurrentSessionId?.(realId);
-            updateSessionMessages?.(realId, draftMessages, {
-                modelId: selectedModel?.id,
-                title: draftMessages[0]?.content as string || 'New chat'
-            });
         },
         setWallet,
         wallet,
@@ -191,40 +205,47 @@ export function useChatOperationsRefined({
         enableStreaming?: boolean,
         preCreatedMessage?: ChatMessage,
         chatSnapshot?: ChatMessage[],
-    ) => {
+    ): Promise<boolean> => {
         const shouldStream = enableStreaming !== undefined ? enableStreaming : streamingEnabled;
         const inputToSend = resolveInputToSend(content, input);
-        const chatForBuild = chatSnapshot ?? chat;
+        // Read the transcript through the ref so a send triggered from a stale
+        // closure (memoized composer, deferred tick) still uses the messages of
+        // the conversation that is open right now.
+        const chatForBuild = chatSnapshot ?? currentChatRef.current;
 
         console.log('[useChatOperationsRefined] handleSend entered', { hasSelectedModel: !!selectedModel, inputLength: inputToSend.length, shouldStream });
 
         if (!selectedModel) {
             console.warn('[useChatOperationsRefined] No selected model');
-            return;
+            return false;
         }
         if (!preCreatedMessage && !inputToSend.trim()) {
             console.log('[useChatOperationsRefined] Empty input, returning');
-            return;
+            return false;
         }
 
         const projectValidation = validateProject(project);
         if (!projectValidation.isValid) {
             console.error('[useChatOperationsRefined] Project validation failed', projectValidation.error);
             setError(projectValidation.error!);
-            return;
+            return false;
         }
 
         const requiredBalance = computeRequiredBalance(selectedModel);
         const walletValidation = validateBalance(wallet, requiredBalance, selectedModel?.name || selectedModel?.id);
         if (!walletValidation) {
             console.warn('[useChatOperationsRefined] Wallet validation failed');
-            return;
+            return false;
         }
 
         setError('');
 
         const sendingViewId = resolveViewSessionId(routeConversationId, currentSessionId ?? null);
         const sendingSessionId = sendingViewId ?? DRAFT_SESSION_KEY;
+        // For draft sends, remember which draft generation this request belongs to.
+        const draftEpochAtSend = sendingViewId === null ? getDraftConversationEpoch() : undefined;
+        const sendGeneration = (sessionSendGenerationRef.current.get(sendingSessionId) ?? 0) + 1;
+        sessionSendGenerationRef.current.set(sendingSessionId, sendGeneration);
 
         const { userMsg, updatedChat } = (
             chatSnapshot && preCreatedMessage
@@ -245,7 +266,9 @@ export function useChatOperationsRefined({
             setChatForSession(sendingSessionId, prev => [...prev, userMsg]);
         }
 
-        setInput('');
+        // Clear the composer draft for the session being sent (not whichever
+        // key a stale closure would resolve).
+        setInputMap(prev => ({ ...prev, [sendingSessionId]: '' }));
         setLoadingForSession(sendingSessionId, true);
 
         setTimeout(() => {
@@ -266,6 +289,8 @@ export function useChatOperationsRefined({
             const { messages, message: optimizationMsg } = optimizeMessagesForAPI(rawMessages);
             const requestOverrides = {
                 conversationId: sendingViewId,
+                sendGeneration,
+                ...(draftEpochAtSend !== undefined ? { draftEpoch: draftEpochAtSend } : {}),
                 ...(pendingOrphanReply ? { orphanReply: pendingOrphanReply } : {}),
             };
 
@@ -285,30 +310,54 @@ export function useChatOperationsRefined({
         } catch (err: unknown) {
             wasError = true;
             console.error('[useChatOperationsRefined] Caught error in handleSend:', err);
-            handleSendError(err, chatForBuild, streaming, setChat, setError, {
-                setWallet,
-                onInsufficientFunds,
-            });
+
+            const stillOwnsView = sendOwnsView();
+            const isAbort = (err as { name?: string })?.name === 'AbortError'
+                || (err as { message?: string })?.message === 'Request aborted';
+
+            // An abort after the user already moved to another chat (Stop on switch,
+            // New Chat reset) is intentional — don't surface it in the new view.
+            if (!(isAbort && !stillOwnsView)) {
+                // Clean up the session that actually errored, not whatever is open now.
+                const setChatForSendingSession: React.Dispatch<React.SetStateAction<ChatMessage[]>> =
+                    (updater) => setChatForSession(sendingSessionId, updater);
+                handleSendError(err, chatForBuild, shouldStream, setChatForSendingSession, setError, {
+                    setWallet,
+                    onInsufficientFunds,
+                });
+            }
         } finally {
             console.log('[useChatOperationsRefined] handleSend finished', { sessionId: sendingSessionId });
-            setLoadingForSession(sendingSessionId, false);
-            setStreamingForSession(sendingSessionId, false);
+            // Only clear in-flight indicators when no newer send has started on this slot.
+            if (sessionSendGenerationRef.current.get(sendingSessionId) === sendGeneration) {
+                setLoadingForSession(sendingSessionId, false);
+                setStreamingForSession(sendingSessionId, false);
+            }
 
             // Optimization: Only clear the live typing bubble if the stream finished successfully.
             // If it crashed, we leave the partial text visible so the user doesn't lose context
             // and the TTS engine can finish reading the last sentence.
-            if (!wasError && shouldApplyStreamToOpenTranscript(sendingViewId, activeViewSessionIdRef.current)) {
+            if (!wasError && sendOwnsView()) {
                 setTimeout(() => {
                     setAssistantResponse('');
                 }, 100);
             }
         }
+        return true;
+
+        function sendOwnsView(): boolean {
+            const sameDraftGeneration = draftEpochAtSend === undefined
+                || draftEpochAtSend === getDraftConversationEpoch();
+            return sameDraftGeneration
+                && shouldApplyStreamToOpenTranscript(sendingViewId, activeViewSessionIdRef.current);
+        }
     }, [
         selectedModel, input, project, wallet, currentSessionId, routeConversationId,
-        streamingEnabled, chat, setChat, setChatForSession, setInput,
+        streamingEnabled, setChatForSession,
         setLoadingForSession, setStreamingForSession, setError,
         setAssistantResponse, chatEndRef,
         handleStreamingResponse, handleNonStreamingResponse, pendingOrphanReply, clearPendingOrphanReply, onInsufficientFunds,
+        setWallet, validateBalance,
     ]);
 
     const handleStop = useCallback(() => {

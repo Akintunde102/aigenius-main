@@ -1,3 +1,5 @@
+import { devLoopbackUrl } from '@/lib/dev-loopback-host';
+
 export const AUDIO_CONSTANTS = {
   // Voice Activity Detection (VAD)
   SILENCE_THRESHOLD_MS: 520,
@@ -32,14 +34,14 @@ export const AUDIO_CONSTANTS = {
   INTERRUPTION_LOCKOUT_MS: 1200, // FIX: Reduced from 1800ms for more responsive feel
 
   /** Electron: Faster-Whisper via local desktop-server (default listen port). */
-  LOCAL_DESKTOP_STT_TRANSCRIBE_URL: 'http://127.0.0.1:8001/stt/transcribe',
-  LOCAL_DESKTOP_STT_STREAM_START_URL: 'http://127.0.0.1:8001/stt/stream/start',
-  LOCAL_DESKTOP_STT_STREAM_CHUNK_URL: 'http://127.0.0.1:8001/stt/stream/chunk',
-  LOCAL_DESKTOP_STT_STREAM_TRANSCRIBE_URL: 'http://127.0.0.1:8001/stt/stream/transcribe',
-  LOCAL_DESKTOP_STT_STREAM_END_URL: 'http://127.0.0.1:8001/stt/stream/end',
+  LOCAL_DESKTOP_STT_TRANSCRIBE_URL: devLoopbackUrl(8001, '/stt/transcribe'),
+  LOCAL_DESKTOP_STT_STREAM_START_URL: devLoopbackUrl(8001, '/stt/stream/start'),
+  LOCAL_DESKTOP_STT_STREAM_CHUNK_URL: devLoopbackUrl(8001, '/stt/stream/chunk'),
+  LOCAL_DESKTOP_STT_STREAM_TRANSCRIBE_URL: devLoopbackUrl(8001, '/stt/stream/transcribe'),
+  LOCAL_DESKTOP_STT_STREAM_END_URL: devLoopbackUrl(8001, '/stt/stream/end'),
 
   /** Electron: Pocket-TTS via local desktop-server. */
-  LOCAL_DESKTOP_TTS_SYNTHESIZE_URL: 'http://127.0.0.1:8001/tts/synthesize',
+  LOCAL_DESKTOP_TTS_SYNTHESIZE_URL: devLoopbackUrl(8001, '/tts/synthesize'),
   /**
    * Pocket-TTS preset passed on each synthesize request (server default is `AIGENIUS_TTS_VOICE` or `alba`).
    * Female presets: `alba`, `cosette`, `eponine`, `fantine`, `azelma`.

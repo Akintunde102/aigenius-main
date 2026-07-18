@@ -1,6 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
-import { FiBookmark, FiMoreVertical, FiLogOut, FiLink, FiGift, FiFolder, FiZap, FiBell, FiMoon, FiSun, FiPlus, FiMonitor } from 'react-icons/fi';
+'use client';
+
+import React, { useEffect, useRef, useState } from "react";
+import { FiBookmark, FiMoreVertical, FiLogOut, FiLink, FiGift, FiFolder, FiZap, FiBell, FiMoon, FiSun, FiPlus, FiMonitor, FiShield } from 'react-icons/fi';
+import { createPortal } from 'react-dom';
 import { useTheme } from "@/lib/providers/ThemeProvider";
+import { useToolPermissions } from "@/lib/hooks/useToolPermissions";
 
 /** Fixed slot so mixed Feather icons (diagonal link vs square folder) align in the menu column. */
 const MENU_ICON_SLOT =
@@ -8,6 +12,71 @@ const MENU_ICON_SLOT =
 
 const MENU_ROW_BASE =
     "sidebar-menu-row flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm transition-colors";
+
+function AutoApproveSafetyDialog({
+    onConfirm,
+    onCancel,
+}: {
+    onConfirm: () => void;
+    onCancel: () => void;
+}) {
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                onCancel();
+            }
+        };
+        window.addEventListener('keydown', onKeyDown, true);
+        return () => window.removeEventListener('keydown', onKeyDown, true);
+    }, [onCancel]);
+
+    const overlay = (
+        <div
+            role="presentation"
+            className="fixed inset-0 z-[10001] flex items-center justify-center bg-slate-900/50 backdrop-blur-[2px]"
+            onClick={onCancel}
+        >
+            <div
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="auto-approve-warning-title"
+                className="mx-4 w-full max-w-md rounded-xl bg-white p-5 shadow-2xl dark:bg-slate-900"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <h2 id="auto-approve-warning-title" className="text-lg font-semibold text-gray-900 dark:text-slate-50">
+                    Auto-approve all tools?
+                </h2>
+                <p className="mt-2 text-sm text-gray-600 dark:text-slate-300">
+                    The assistant will be able to run tools without asking — including commands on your
+                    device, file changes, emails, and other actions that alter data. Only turn this on if
+                    you trust the current session.
+                </p>
+                <div className="mt-5 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                        onClick={onCancel}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        className="rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+                        onClick={onConfirm}
+                    >
+                        Turn on auto-approve
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
+    if (typeof document === 'undefined') {
+        return null;
+    }
+    return createPortal(overlay, document.getElementById('modal-root') ?? document.body);
+}
 
 interface SidebarFooterProps {
     wallet?: number | null;
@@ -21,13 +90,16 @@ interface SidebarFooterProps {
     onLogout?: () => void;
     /** When incremented (e.g. from collapsed-rail avatar), opens the “more actions” menu. */
     openMenuSignal?: number;
+    onOpenToolPermissions?: () => void;
 }
 
-const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, onShowSavedChats, onOpenMyFiles, onOpenWorkflows, onOpenNotifications, onIntegrations, onGiveCredits, onLogout, openMenuSignal }) => {
+const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, onShowSavedChats, onOpenMyFiles, onOpenWorkflows, onOpenNotifications, onIntegrations, onGiveCredits, onLogout, openMenuSignal, onOpenToolPermissions }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const { theme, resolvedTheme, setTheme } = useTheme();
+    const [showAutoApproveWarning, setShowAutoApproveWarning] = useState(false);
+    const { theme, setTheme } = useTheme();
     const menuRef = useRef<HTMLDivElement>(null);
+    const { state: toolPermissionState, setAutoApproveAll } = useToolPermissions();
 
     useEffect(() => {
         if (openMenuSignal === undefined || openMenuSignal < 1) return;
@@ -43,6 +115,15 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
         document.addEventListener('click', handleClickOutside);
         return () => document.removeEventListener('click', handleClickOutside);
     }, []);
+
+    const handleAutoApproveToggle = () => {
+        const next = !(toolPermissionState?.autoApproveAll ?? false);
+        if (next) {
+            setShowAutoApproveWarning(true);
+            return;
+        }
+        setAutoApproveAll(false);
+    };
 
     const walletFormatted =
         typeof wallet === 'number'
@@ -64,7 +145,6 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                 }}
                 aria-label="Nobox"
             >
-                {/* Powered by Nobox left — unchanged presentation */}
                 <div className="relative">
                     <span
                         className="flex cursor-help items-center text-xs font-medium text-slate-400"
@@ -96,8 +176,42 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                     )}
                 </div>
 
-                {/* Credits live in the menu; footer shows menu trigger only */}
-                <div className="relative shrink-0" ref={menuRef}>
+                <div className="flex shrink-0 items-center gap-2" ref={menuRef}>
+                    <div
+                        className="flex items-center gap-1.5 rounded-md px-1 py-0.5"
+                        title="Auto-approve tools"
+                    >
+                        <span className="hidden text-[10px] font-medium sm:inline" style={{ color: "var(--sidebar-muted-fg)" }}>
+                            Auto
+                        </span>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={toolPermissionState?.autoApproveAll ?? false}
+                            aria-label="Auto-approve all tools"
+                            className={[
+                                "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
+                                "focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40",
+                                toolPermissionState?.autoApproveAll
+                                    ? "bg-sky-600"
+                                    : "bg-slate-300 dark:bg-slate-600",
+                            ].join(" ")}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleAutoApproveToggle();
+                            }}
+                        >
+                            <span
+                                className={[
+                                    "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform",
+                                    toolPermissionState?.autoApproveAll
+                                        ? "translate-x-4"
+                                        : "translate-x-0.5",
+                                ].join(" ")}
+                            />
+                        </button>
+                    </div>
+
                     <button
                         type="button"
                         aria-label="Sidebar menu"
@@ -113,6 +227,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                     >
                         <FiMoreVertical size={13} />
                     </button>
+
                     {isMenuOpen && (
                         <div
                             className="absolute bottom-full right-0 z-[999] mb-1 min-w-[12rem] rounded-lg shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
@@ -238,6 +353,23 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                     </button>
                                 )}
 
+                                {onOpenToolPermissions && (
+                                    <button
+                                        type="button"
+                                        className={MENU_ROW_BASE}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onOpenToolPermissions();
+                                            setIsMenuOpen(false);
+                                        }}
+                                    >
+                                        <span className={MENU_ICON_SLOT} aria-hidden>
+                                            <FiShield size={14} strokeWidth={2} />
+                                        </span>
+                                        <span>Tool permissions</span>
+                                    </button>
+                                )}
+
                                 <button
                                     type="button"
                                     className={MENU_ROW_BASE}
@@ -299,6 +431,16 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                     )}
                 </div>
             </div>
+
+            {showAutoApproveWarning && (
+                <AutoApproveSafetyDialog
+                    onCancel={() => setShowAutoApproveWarning(false)}
+                    onConfirm={() => {
+                        setAutoApproveAll(true);
+                        setShowAutoApproveWarning(false);
+                    }}
+                />
+            )}
         </div>
     );
 });

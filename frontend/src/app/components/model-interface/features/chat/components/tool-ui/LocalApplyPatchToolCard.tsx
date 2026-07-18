@@ -21,6 +21,8 @@ function opBadge(kind: ParsedPatchOperation['kind']): { label: string; className
       return { label: 'Create', className: 'bg-emerald-50 text-emerald-800 border-emerald-100' };
     case 'update_file':
       return { label: 'Update', className: 'bg-amber-50 text-amber-900 border-amber-100' };
+    case 'apply_hunk':
+      return { label: 'Hunk', className: 'bg-sky-50 text-sky-900 border-sky-100' };
     case 'delete_file':
       return { label: 'Delete', className: 'bg-orange-50 text-orange-900 border-orange-100' };
     default:

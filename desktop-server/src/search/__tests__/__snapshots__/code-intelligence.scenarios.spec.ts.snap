@@ -1,0 +1,37 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`code intelligence scenarios (Phases 5–7) Scenario B — import blast radius (transitive importers) walks reverse import graph from a leaf module 1`] = `
+"# Import blast radius
+
+**Seeds:** \`C:/Users/DELL5530/AppData/Local/Temp/aigenius-ci-RbhDkK/src/leaf.ts\`
+
+## Importers (transitive)
+
+- depth 1: \`C:/Users/DELL5530/AppData/Local/Temp/aigenius-ci-RbhDkK/src/mid.ts\` ← via \`C:/Users/DELL5530/AppData/Local/Temp/aigenius-ci-RbhDkK/src/leaf.ts\`
+- depth 2: \`C:/Users/DELL5530/AppData/Local/Temp/aigenius-ci-RbhDkK/src/top.ts\` ← via \`C:/Users/DELL5530/AppData/Local/Temp/aigenius-ci-RbhDkK/src/mid.ts\`"
+`;
+
+exports[`code intelligence scenarios (Phases 5–7) Scenario D — hybrid RRF ranking fuses FTS and vector lists with reciprocal rank fusion 1`] = `
+[
+  "chunk:2",
+  "chunk:1",
+  "chunk:3",
+]
+`;
+
+exports[`code intelligence scenarios (Phases 5–7) Scenario E — project architecture summary builds architecture markdown for indexed project 1`] = `
+"# Project architecture: Demo Project
+
+- Root: \`C:\\Users\\DELL5530\\AppData\\Local\\Temp\\aigenius-ci-JzcbEu\`
+- Indexed files: 2
+- Search chunks: 2
+
+## File types
+
+- .ts: 2 files
+
+## Key symbols (sample)
+
+- function \`main\` — src/index.ts:1
+- interface \`User\` — src/types.ts:1"
+`;

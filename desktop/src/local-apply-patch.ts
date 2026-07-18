@@ -4,6 +4,10 @@ import path from 'path';
 import os from 'os';
 import { showPatchApprovalDialog } from './patch-approval-dialog';
 import type { PatchOp } from './local-apply-patch-types';
+import { shouldRequireToolApproval } from './tool-permission-preferences';
+import { applySearchReplaceHunk } from './apply-hunk';
+import { recordTouchedFile } from './edit-session';
+import { loopbackHttpUrl } from './loopback-host';
 
 const MAX_OPERATIONS = 25;
 const MAX_CONTENT_BYTES = 1_500_000;
@@ -39,12 +43,13 @@ function resolveIfAbsolute(p: string): { ok: true; resolved: string } | { ok: fa
   return { ok: true, resolved };
 }
 
-function normalizeOpKind(raw: string): 'create_file' | 'update_file' | 'delete_file' | null {
+function normalizeOpKind(raw: string): 'create_file' | 'update_file' | 'apply_hunk' | 'delete_file' | null {
   const k = raw.trim().toLowerCase().replace(/-/g, '_');
   if (k === 'create_file' || k === 'create') return 'create_file';
   if (k === 'update_file' || k === 'update' || k === 'write_file' || k === 'write') {
     return 'update_file';
   }
+  if (k === 'apply_hunk' || k === 'hunk' || k === 'patch_hunk') return 'apply_hunk';
   if (k === 'delete_file' || k === 'delete' || k === 'unlink') return 'delete_file';
   return null;
 }
@@ -91,6 +96,22 @@ function parseOperations(rawArgs: Record<string, unknown>): { ok: true; ops: Pat
       continue;
     }
 
+    if (kind === 'apply_hunk') {
+      const search = typeof o.search === 'string' ? o.search : '';
+      const replace = typeof o.replace === 'string' ? o.replace : '';
+      if (!search) {
+        return { ok: false, error: `Operation ${i + 1}: apply_hunk requires search` };
+      }
+      ops.push({
+        kind: 'apply_hunk',
+        path: p,
+        search,
+        replace,
+        replaceAll: o.replace_all === true || o.replaceAll === true,
+      });
+      continue;
+    }
+
     const content = typeof o.content === 'string' ? o.content : '';
     if (Buffer.byteLength(content, 'utf8') > MAX_CONTENT_BYTES) {
       return { ok: false, error: `Operation ${i + 1}: content exceeds ${MAX_CONTENT_BYTES} bytes` };
@@ -109,6 +130,24 @@ async function ensureParentDir(filePath: string): Promise<void> {
   await fs.mkdir(parent, { recursive: true });
 }
 
+async function reindexFileQuiet(filePath: string): Promise<void> {
+  const token = process.env.AIGENIUS_SECRET_TOKEN;
+  const port = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
+  if (!token) return;
+  try {
+    await fetch(loopbackHttpUrl(port, '/search/reindex'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ paths: [filePath], force: true }),
+    });
+  } catch {
+    /* best-effort */
+  }
+}
+
 export async function applyLocalPatch(
   parent: BrowserWindow | undefined,
   rawArgs: Record<string, unknown>,
@@ -119,7 +158,7 @@ export async function applyLocalPatch(
   }
   const { ops } = parsed;
 
-  if (parent) {
+  if (parent && shouldRequireToolApproval('local_apply_patch')) {
     try {
       const approved = await showPatchApprovalDialog(parent, ops);
       if (!approved) {
@@ -157,6 +196,8 @@ export async function applyLocalPatch(
           throw new Error('Resolved path left allowed roots');
         }
         await fs.unlink(target);
+        recordTouchedFile(target);
+        void reindexFileQuiet(target);
         results.push({ path: target, op: 'delete_file', status: 'ok' });
         continue;
       }
@@ -178,6 +219,25 @@ export async function applyLocalPatch(
           throw e;
         }
         results.push({ path: op.path, op: 'create_file', status: 'ok' });
+        recordTouchedFile(op.path);
+        void reindexFileQuiet(op.path);
+        continue;
+      }
+
+      if (op.kind === 'apply_hunk') {
+        const existing = await fs.realpath(op.path);
+        if (!isUnderAllowedRoot(existing)) {
+          throw new Error('Resolved path left allowed roots');
+        }
+        const prior = await fs.readFile(existing, 'utf8');
+        const hunk = applySearchReplaceHunk(prior, op.search, op.replace, op.replaceAll);
+        if (!hunk.ok) {
+          throw new Error(hunk.error);
+        }
+        await fs.writeFile(existing, hunk.content, { encoding: 'utf8', flag: 'w' });
+        results.push({ path: existing, op: 'apply_hunk', status: 'ok' });
+        recordTouchedFile(existing);
+        void reindexFileQuiet(existing);
         continue;
       }
 
@@ -188,6 +248,8 @@ export async function applyLocalPatch(
       }
       await fs.writeFile(existing, op.content, { encoding: 'utf8', flag: 'w' });
       results.push({ path: existing, op: 'update_file', status: 'ok' });
+      recordTouchedFile(existing);
+      void reindexFileQuiet(existing);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'operation failed';
       results.push({

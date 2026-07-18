@@ -16,6 +16,7 @@ type Params = {
   createNewSessionAndSwitchWrapper: (modelId: string) => Promise<void> | void;
   refreshWalletFromBackend?: (() => Promise<unknown>) | null;
   refreshWalletBalance: () => Promise<unknown>;
+  setWallet?: (wallet: number | null) => void;
 };
 
 export function useModelInterfaceSidebarActions({
@@ -26,6 +27,7 @@ export function useModelInterfaceSidebarActions({
   createNewSessionAndSwitchWrapper,
   refreshWalletFromBackend,
   refreshWalletBalance,
+  setWallet,
 }: Params) {
   const removeFromHistory = useCallback(
     async (id: string, strategy: RemoveStrategy): Promise<boolean> => {
@@ -95,13 +97,20 @@ export function useModelInterfaceSidebarActions({
     [setChatHistory, setError],
   );
 
-  const handleWalletUpdateFromSidebar = useCallback(async () => {
+  const handleWalletUpdateFromSidebar = useCallback(async (
+    _amountInNaira?: string,
+    newWalletBalance?: number | null,
+  ) => {
+    if (typeof newWalletBalance === 'number' && setWallet) {
+      setWallet(newWalletBalance);
+      return;
+    }
     if (refreshWalletFromBackend) {
       await refreshWalletFromBackend();
       return;
     }
     await refreshWalletBalance();
-  }, [refreshWalletFromBackend, refreshWalletBalance]);
+  }, [refreshWalletFromBackend, refreshWalletBalance, setWallet]);
 
   return {
     handleStarToggle,

@@ -1,7 +1,9 @@
+import { DEV_LOOPBACK_HOST } from './loopback-host';
+
 /**
- * The desktop shell always opens Next at `http://127.0.0.1:<FRONTEND_PORT>`. Backend OAuth
- * redirects often use `FRONTEND_URL` with `localhost`, which is a different origin: `localStorage`
- * and cookies do not carry over, so the user appears logged out on every app restart.
+ * The desktop shell opens Next at `http://localhost:<FRONTEND_PORT>`. OAuth redirects
+ * may still arrive as `127.0.0.1` or `::1` — normalize those to `localhost` so
+ * `localStorage` and cookies stay on one origin.
  */
 export function normalizeLoopbackToShellOrigin(
   urlString: string,
@@ -13,17 +15,21 @@ export function normalizeLoopbackToShellOrigin(
       return urlString;
     }
     const hl = u.hostname.toLowerCase();
-    const isAlias =
+    const isLoopbackAlias =
       hl === 'localhost' ||
+      hl === '127.0.0.1' ||
       u.hostname === '::1' ||
       u.hostname === '[::1]';
-    if (!isAlias) {
+    if (!isLoopbackAlias) {
       return urlString;
     }
     if (u.port !== frontendPort) {
       return urlString;
     }
-    u.hostname = '127.0.0.1';
+    if (hl === DEV_LOOPBACK_HOST) {
+      return urlString;
+    }
+    u.hostname = DEV_LOOPBACK_HOST;
     return u.toString();
   } catch {
     return urlString;

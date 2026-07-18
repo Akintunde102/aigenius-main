@@ -16,6 +16,7 @@ import {
 } from './contentProcessing.utils';
 import { addOrMergeSessionToLocalHistory } from '@/lib/utils/modelChatConversationUtils';
 import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interface/conversation/streamTranscriptGuard';
+import { getDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { resolveRequestConversationId } from './requestConversationId.utils';
 
 /**
@@ -63,13 +64,21 @@ export function useStreamingResponse({
         content: string | any[],
         accumulatedContent: ProcessedContent,
         streamingSessionId: string | null,
-        setAssistantResponse: React.Dispatch<React.SetStateAction<string>>
+        setAssistantResponse: React.Dispatch<React.SetStateAction<string>>,
+        draftEpoch?: number,
     ): ProcessedContent => {
         const mergedContent = mergeContentBlocks(accumulatedContent, content);
 
+        // A draft stream only owns the draft view while no New Chat reset happened
+        // since dispatch (two different drafts both resolve to `null`).
+        const sameDraftGeneration = streamingSessionId !== null
+            || draftEpoch === undefined
+            || draftEpoch === getDraftConversationEpoch();
+
         // setAssistantResponse is visual-only (live typing animation) — only update
         // when the stream still owns the open view.
-        if (shouldApplyStreamToOpenTranscript(streamingSessionId, activeViewSessionIdRef.current)) {
+        if (sameDraftGeneration
+            && shouldApplyStreamToOpenTranscript(streamingSessionId, activeViewSessionIdRef.current)) {
             const responseText = contentToDisplayText(mergedContent);
             setAssistantResponse(responseText);
         }
@@ -85,6 +94,8 @@ export function useStreamingResponse({
         uiChatBase?: ChatMessage[],
         messageId?: string,
         timestamp?: number,
+        /** False when the stream no longer owns its chatMap slot (e.g. draft reset). */
+        slotWriteAllowed = true,
     ): ChatMessage => {
         const streamingMsg = createChatMessage(
             'assistant',
@@ -102,13 +113,16 @@ export function useStreamingResponse({
             timestamp
         );
 
-        // Always write to the stream's own session slot — no guard needed.
-        if (uiChatBase) {
-            setChatForSession(chatMapKey, [...uiChatBase, streamingMsg]);
-        } else {
-            setChatForSession(chatMapKey, prev => [...prev, streamingMsg]);
+        // Write to the stream's own session slot — unless the slot was handed to a
+        // newer draft since dispatch.
+        if (slotWriteAllowed) {
+            if (uiChatBase) {
+                setChatForSession(chatMapKey, [...uiChatBase, streamingMsg]);
+            } else {
+                setChatForSession(chatMapKey, prev => [...prev, streamingMsg]);
+            }
+            setLoadingForSession(chatMapKey, false);
         }
-        setLoadingForSession(chatMapKey, false);
 
         return streamingMsg;
     }, [selectedModel, selectedPersonalityName, selectedPersonalityIconUrl, setChatForSession]);
@@ -181,10 +195,22 @@ export function useStreamingResponse({
                 timestamp: m.timestamp ?? Date.now()
             }));
 
+        const draftEpochAtDispatch = requestOverrides?.draftEpoch;
+        const streamStillOwnsDraftSlot = () =>
+            streamingSessionId !== null
+            || draftEpochAtDispatch === undefined
+            || draftEpochAtDispatch === getDraftConversationEpoch();
+
         let lastUiUpdateTime = 0;
         const flushUiUpdate = (force = false) => {
             const now = Date.now();
             if (force || now - lastUiUpdateTime > 80) {
+                // Never write into the draft slot if a New Chat reset happened since
+                // this stream was dispatched — the slot now belongs to a newer draft.
+                if (!streamStillOwnsDraftSlot()) {
+                    lastUiUpdateTime = now;
+                    return;
+                }
                 setChatForSession(chatMapKey, sessionMessages);
                 if (chatMapKey !== DRAFT_SESSION_KEY && updateSessionMessages) {
                     updateSessionMessages(chatMapKey, sessionMessages, {
@@ -259,7 +285,9 @@ export function useStreamingResponse({
                         toolMsg.events = [...events];
                         sessionMessages = [...sessionMessages, toolMsg];
                         isFirstChunk = false;
-                        setLoadingForSession(chatMapKey, false);
+                        if (streamStillOwnsDraftSlot()) {
+                            setLoadingForSession(chatMapKey, false);
+                        }
                         flushUiUpdate(true);
                         return;
                     }
@@ -320,7 +348,8 @@ export function useStreamingResponse({
                         processedContent,
                         accumulatedContent,
                         streamingSessionId,
-                        setAssistantResponse
+                        setAssistantResponse,
+                        requestOverrides?.draftEpoch,
                     );
 
                     // Track this text chunk in the ordered event log.
@@ -353,7 +382,8 @@ export function useStreamingResponse({
                             setLoadingForSession,
                             uiChatBase,
                             assistantMessageId,
-                            assistantTimestamp
+                            assistantTimestamp,
+                            streamStillOwnsDraftSlot(),
                         );
                         // Attach events on creation (createInitialStreamingMessage already called
                         // setChatForSession, so we patch and re-set in one shot).
@@ -410,7 +440,7 @@ export function useStreamingResponse({
                 });
             }
 
-            handleStreamResult(result, streamingSessionId);
+            handleStreamResult(result, streamingSessionId, requestOverrides?.draftEpoch, requestOverrides?.sendGeneration);
         } finally {
             clearTimeout(timeoutId);
             const currentController = abortControllersRef.current.get(chatMapKey);

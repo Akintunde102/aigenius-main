@@ -1,7 +1,8 @@
 import { ipcMain } from 'electron';
+import { loopbackHttpOrigin } from '../loopback-host';
 
 const MINI_SERVER_PORT = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
-const SERVER_URL = `http://127.0.0.1:${MINI_SERVER_PORT}`;
+const SERVER_URL = loopbackHttpOrigin(MINI_SERVER_PORT);
 
 /** Returns the auth header value; throws if the token was never injected. */
 function authHeader(): { Authorization: string } {
@@ -59,6 +60,23 @@ export function registerIpcHandlers(): void {
         return await res.json();
       } catch (err) {
         console.error('[aigenius-desktop][proxy] search:reindex failed — is the sidecar running?', err);
+        return { queued: 0, error: true };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    'search:index-project',
+    async (_event, payload: { rootPath: string; force?: boolean }) => {
+      try {
+        const res = await fetch(`${SERVER_URL}/search/index-project`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeader() },
+          body: JSON.stringify(payload),
+        });
+        return await res.json();
+      } catch (err) {
+        console.error('[aigenius-desktop][proxy] search:index-project failed', err);
         return { queued: 0, error: true };
       }
     },

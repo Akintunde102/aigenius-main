@@ -5,8 +5,13 @@ import { normalizeChatMessages } from '@/lib/utils/messageContentUtils';
 import SidebarHeader from "./ChatHistorySidebar/SidebarHeader";
 import SidebarContent from "./ChatHistorySidebar/SidebarContent";
 import SidebarFooter from "./ChatHistorySidebar/SidebarFooter";
+import { CodeProjectRail } from "./ChatHistorySidebar/CodeProjectRail";
+import { CreateCodeProjectModal } from "./ChatHistorySidebar/CreateCodeProjectModal";
+import { useCodeProjects } from "@/lib/hooks/useCodeProjects";
+import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
 import WalletModal from "./ChatHistorySidebar/WalletModal";
 import IntegrationsModal from "./ChatHistorySidebar/IntegrationsModal";
+import ToolPermissionsModal from "./ChatHistorySidebar/ToolPermissionsModal";
 import MyFilesModal from "./ChatHistorySidebar/MyFilesModal";
 import GrantCreditsModal from "./modals/GrantCreditsModal";
 import { getAdminStatus } from "@/lib/calls/admin";
@@ -96,6 +101,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     const [paymentModalLoading, setPaymentModalLoading] = React.useState(false);
     useWalletTopUpReturn(setShowWalletModal, 'sidebar');
     const [showIntegrationsModal, setShowIntegrationsModal] = React.useState(false);
+    const [showToolPermissionsModal, setShowToolPermissionsModal] = React.useState(false);
     const [showMyFilesModal, setShowMyFilesModal] = React.useState(false);
     const myFilesLibrary = useUploadedFilesList();
     const { refresh: refreshMyFiles, files: myFilesCached } = myFilesLibrary;
@@ -111,6 +117,29 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     const [isMaster, setIsMaster] = React.useState(false);
     /** Bumped when the collapsed-rail avatar opens the sidebar so the footer “more” menu can open after expand. */
     const [accountMenuSignal, setAccountMenuSignal] = React.useState(0);
+    const [showCreateProjectModal, setShowCreateProjectModal] = React.useState(false);
+    const {
+        projects: codeProjects,
+        activeProject,
+        selectProject,
+        addProject,
+    } = useCodeProjects();
+
+    React.useEffect(() => {
+        if (!isAigeniusDesktopRuntime()) return;
+        const bridge = window.aigeniusDesktop;
+        if (!bridge || typeof bridge.setCodeProjectIndex !== "function") return;
+
+        if (activeProject?.rootPath) {
+            void bridge.setCodeProjectIndex({
+                projectId: activeProject.id,
+                rootPath: activeProject.rootPath,
+            });
+            return;
+        }
+
+        void bridge.setCodeProjectIndex(null);
+    }, [activeProject?.id, activeProject?.rootPath]);
 
     // Check if the logged-in user is the master admin — determines visibility of "Give Credits"
     React.useEffect(() => {
@@ -175,6 +204,10 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 <IntegrationsModal onClose={() => setShowIntegrationsModal(false)} />
             )}
 
+            {showToolPermissionsModal && (
+                <ToolPermissionsModal onClose={() => setShowToolPermissionsModal(false)} />
+            )}
+
             {showMyFilesModal && (
                 <MyFilesModal
                     library={myFilesLibrary}
@@ -185,6 +218,14 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
             {showGrantCreditsModal && (
                 <GrantCreditsModal onClose={() => setShowGrantCreditsModal(false)} onWalletUpdate={onWalletUpdate} />
             )}
+
+            <CreateCodeProjectModal
+                open={showCreateProjectModal}
+                onClose={() => setShowCreateProjectModal(false)}
+                onCreate={async (input) => {
+                    await addProject(input);
+                }}
+            />
 
             <WalletModal
                 showWalletModal={showWalletModal}
@@ -213,6 +254,13 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 onNewChat={handleNewChat}
             />
 
+            <CodeProjectRail
+                projects={codeProjects}
+                activeProject={activeProject}
+                onSelect={selectProject}
+                onCreateClick={() => setShowCreateProjectModal(true)}
+            />
+
             <SidebarContent
                 chatHistory={(chatHistory || []).filter(session => session.conversationKind !== 'orphan_question')}
                 currentSessionId={currentSessionId}
@@ -230,6 +278,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 handleSessionSwitch={handleSessionSwitch}
                 isSessionActive={isSessionActive}
                 isInitialLoading={isInitialLoading}
+                codeProjects={codeProjects}
             />
 
             <SidebarFooter
@@ -240,6 +289,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 onOpenWorkflows={onOpenWorkflows}
                 onOpenNotifications={onOpenNotifications}
                 onIntegrations={() => setShowIntegrationsModal(true)}
+                onOpenToolPermissions={() => setShowToolPermissionsModal(true)}
                 onGiveCredits={isMaster ? () => setShowGrantCreditsModal(true) : undefined}
                 onLogout={onLogout}
                 openMenuSignal={accountMenuSignal}

@@ -24,4 +24,4 @@ function catalogIdToWireModel(catalogId) {
 function getOllamaRegistryModelName(model) {
     return model;
 }
-exports.OLLAMA_LOCAL_BASE_URL = (process.env.OLLAMA_HOST || 'http://127.0.0.1:11434').replace(/\/$/, '');
+exports.OLLAMA_LOCAL_BASE_URL = (process.env.OLLAMA_HOST || 'http://localhost:11434').replace(/\/$/, '');

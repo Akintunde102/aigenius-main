@@ -1,12 +1,14 @@
 import { BrowserWindow, shell } from 'electron';
 import path from 'path';
 import { normalizeLoopbackToShellOrigin } from './loopback-frontend-url';
+import { resolveFrontendPort } from './frontend-port';
+import { DEV_LOOPBACK_HOST, loopbackHttpUrl } from './loopback-host';
 import { showExternalLinkApprovalDialog } from './external-link-approval-dialog';
 import { isNoboxAuthBackendFlowUrl, isOauthSignInUrl } from './oauth-allowlist';
 
-const FRONTEND_PORT = process.env.AIGENIUS_FRONTEND_PORT ?? '3001';
+const FRONTEND_PORT = resolveFrontendPort();
 const MINI_SERVER_PORT = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
-const API_PORT = process.env.AIGENIUS_API_PORT ?? '8000';
+const API_PORT = process.env.AIGENIUS_API_PORT ?? process.env.DEV_API_PORT ?? '8000';
 
 function parseExtraOrigins(): Set<string> {
   const raw = process.env.AIGENIUS_DESKTOP_ALLOWED_ORIGINS ?? '';
@@ -26,7 +28,8 @@ function parseExtraOrigins(): Set<string> {
 }
 
 function buildLocalAppOrigins(): Set<string> {
-  const hosts = ['127.0.0.1', 'localhost', '[::1]'];
+  // `127.0.0.1` kept during deprecation so legacy OAuth redirects still match.
+  const hosts = [DEV_LOOPBACK_HOST, '127.0.0.1', '[::1]'];
   const ports = [FRONTEND_PORT, MINI_SERVER_PORT, API_PORT];
   const set = new Set<string>();
   for (const host of hosts) {
@@ -57,7 +60,8 @@ function postOAuthHandoffUrl(completedUrl: string): string {
       return completedUrl;
     }
     const h = u.hostname.toLowerCase();
-    const onLoopback = h === '127.0.0.1' || h === 'localhost' || h === '[::1]';
+    const onLoopback =
+      h === DEV_LOOPBACK_HOST || h === '127.0.0.1' || u.hostname === '::1' || u.hostname === '[::1]';
     const onFrontend =
       onLoopback && u.protocol === 'http:' && u.port === String(FRONTEND_PORT);
     if (onFrontend) {
@@ -71,11 +75,11 @@ function postOAuthHandoffUrl(completedUrl: string): string {
       q.has('state') ||
       /callback|oauth|authorize|signin/i.test(path);
     if (looksOAuth) {
-      return `http://127.0.0.1:${FRONTEND_PORT}/desktop-login?aigenius_shell=1`;
+      return `${loopbackHttpUrl(FRONTEND_PORT, '/desktop-login')}?aigenius_shell=1`;
     }
     return completedUrl;
   } catch {
-    return `http://127.0.0.1:${FRONTEND_PORT}/desktop-login?aigenius_shell=1`;
+    return `${loopbackHttpUrl(FRONTEND_PORT, '/desktop-login')}?aigenius_shell=1`;
   }
 }
 

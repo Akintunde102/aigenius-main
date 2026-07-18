@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { MutableRefObject } from 'react';
 import { authorizedFetch } from '@/lib/api/auth-client';
-import { LINKS } from '@/lib/links';
 import { useAudioEngine } from './useAudioEngine';
 import { composeLiveVoiceDraft } from './audioMode.utils';
 import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
@@ -199,35 +198,12 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
         return;
       }
 
-      // Web fallback
-      try {
-        const formData = new FormData();
-        const ext = blob.type.includes('wav') ? 'audio.wav' : 'audio.webm';
-        formData.append('file', blob, ext);
-
-        const transcribeUrl = `${LINKS.noboxAPIRootUrl}/gateway/*/audio/transcribe`;
-
-        const sttResponse = await authorizedFetch(
-          transcribeUrl,
-          { method: 'POST', body: formData },
-        );
-
-        if (!sttResponse.ok) throw new Error('STT failed');
-
-        const { text } = await sttResponse.json();
-        if (text.trim()) {
-          const finalDraft = composeLiveVoiceDraft(voiceDraftBaseRef.current, text);
-          setInput(finalDraft);
-          onTranscriptionComplete?.(text);
-        }
-      } catch (err) {
-        console.error('[AudioSTT] Transcription failed', err);
-      } finally {
-        setIsTranscribing(false);
-        setTimeout(() => {
-          setIsSTTActive(false);
-        }, 500);
-      }
+      // Web fallback — no Nest audio route; browser STT handles live dictation via useAudioEngine.
+      console.warn('[AudioSTT] Web blob transcription is not available; use live dictation or desktop sidecar.');
+      setIsTranscribing(false);
+      setTimeout(() => {
+        setIsSTTActive(false);
+      }, 500);
     }, [socket, setInput, onTranscriptionComplete, peerMicSuppressRef]),
     neuralVad: isAigeniusDesktopRuntime() ? true : (AUDIO_CONSTANTS.BROWSER_STT_ENGINE === 'cloud'),
   });

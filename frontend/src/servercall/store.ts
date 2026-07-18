@@ -640,6 +640,31 @@ export const serverCalls: ServerCallsType<ServerCallsKeyType> = {
         name: "deleteGatewayModelChatsPublishedConversation",
         verb: ServerCallVerbs.Delete,
     },
+    getGatewayCodeProjects: {
+        path: "/gateway/*/code-projects",
+        name: "getGatewayCodeProjects",
+        verb: ServerCallVerbs.Get,
+    },
+    postGatewayCodeProjects: {
+        path: "/gateway/*/code-projects",
+        name: "postGatewayCodeProjects",
+        verb: ServerCallVerbs.Post,
+    },
+    putGatewayCodeProjects: {
+        path: (args: { id: string }) => `/gateway/*/code-projects/${args.id}`,
+        name: "putGatewayCodeProjects",
+        verb: ServerCallVerbs.Put,
+    },
+    deleteGatewayCodeProjects: {
+        path: (args: { id: string }) => `/gateway/*/code-projects/${args.id}`,
+        name: "deleteGatewayCodeProjects",
+        verb: ServerCallVerbs.Delete,
+    },
+    postGatewayModelChatsConversationCodeProject: {
+        path: (args: { id: string }) => `/gateway/*/model-chats/conversation/${args.id}/code-project`,
+        name: "postGatewayModelChatsConversationCodeProject",
+        verb: ServerCallVerbs.Post,
+    },
     getGatewayIntegrationsGmailConnect: {
         path: "/gateway/*/integrations/gmail/connect",
         name: "getGatewayIntegrationsGmailConnect",

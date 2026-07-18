@@ -20,6 +20,13 @@ declare global {
           entries: Array<{ slug: string; name: string; description: string; tags: string[] }>;
         };
       }>;
+      syncToolPermissionPreferences?: (prefs: {
+        autoApproveAll: boolean;
+        requireApprovalByTool: Record<string, boolean>;
+      }) => Promise<{
+        autoApproveAll: boolean;
+        requireApprovalByTool: Record<string, boolean>;
+      }>;
       runLocalDesktopTool?: (
         payload: { tool: string; arguments: Record<string, unknown> },
         options?: {

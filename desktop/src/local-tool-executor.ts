@@ -18,6 +18,16 @@ import {
   formatShellResult,
 } from './utils/tool-formatter';
 import { isIgnored } from './utils/exemptions';
+import { loopbackHttpOrigin } from './loopback-host';
+import { shouldRequireToolApproval, normalizeDesktopToolId, TOOL_PERMISSION_CATALOG } from './tool-permission-preferences';
+import { getActiveCodeProjectRootPath } from './active-code-project';
+import { extractSymbolOutline } from './symbol-outline';
+import { runGitDiff, runGitStatus } from './local-git';
+import { runFindReferences } from './local-find-references';
+import { runGoToDefinition } from './local-lsp';
+import { formatEditSessionHint, getTouchedFilesSnapshot } from './edit-session';
+import { applyEditorDefaultsToToolArgs } from './active-editor-main';
+import { sidecarFetch } from './sidecar-fetch';
 
 const MAX_CMD_LEN = 64_000;
 const MAX_SHELL_OUT = 512 * 1024;
@@ -59,7 +69,7 @@ function buildShellApprovalFallbackDetail(command: string): string {
 }
 
 const MINI_SERVER_PORT = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
-const SERVER_URL = `http://127.0.0.1:${MINI_SERVER_PORT}`;
+const SERVER_URL = loopbackHttpOrigin(MINI_SERVER_PORT);
 
 /** Builds the Authorization header for requests to the local sidecar. Fail-closed: throws if the token was never injected. */
 function sidecarAuthHeaders(): Record<string, string> {
@@ -69,6 +79,47 @@ function sidecarAuthHeaders(): Record<string, string> {
 }
 
 
+function toolHasDedicatedApprovalUi(tool: string): boolean {
+  const id = normalizeDesktopToolId(tool);
+  return id === 'local_shell' || id === 'local_apply_patch';
+}
+
+function toolApprovalLabel(tool: string): string {
+  const id = normalizeDesktopToolId(tool);
+  const entry = TOOL_PERMISSION_CATALOG.find((t) => t.id === id);
+  return entry?.label ?? id;
+}
+
+async function confirmGenericToolExecution(
+  parent: BrowserWindow | undefined,
+  tool: string,
+): Promise<boolean> {
+  const label = toolApprovalLabel(tool);
+  const detail = `The assistant wants to run "${label}" on your computer.`;
+  if (parent) {
+    const { response } = await dialog.showMessageBox(parent, {
+      type: 'question',
+      buttons: ['Cancel', 'Allow'],
+      defaultId: 1,
+      cancelId: 0,
+      title: 'Local tool',
+      message: `Allow ${label}?`,
+      detail,
+    });
+    return response === 1;
+  }
+  const { response } = await dialog.showMessageBox({
+    type: 'question',
+    buttons: ['Cancel', 'Allow'],
+    defaultId: 1,
+    cancelId: 0,
+    title: 'Local tool',
+    message: `Allow ${label}?`,
+    detail,
+  });
+  return response === 1;
+}
+
 export async function runLocalDesktopTool(
   sender: WebContents,
   tool: string,
@@ -76,6 +127,13 @@ export async function runLocalDesktopTool(
   shellStreamId?: string,
 ): Promise<{ ok: true; result: string; rawData?: any } | { ok: false; error: string }> {
   const win = resolveBrowserWindowForIpcSender(sender);
+
+  if (shouldRequireToolApproval(tool) && !toolHasDedicatedApprovalUi(tool)) {
+    const approved = await confirmGenericToolExecution(win, tool);
+    if (!approved) {
+      return { ok: false, error: 'User declined to run the tool' };
+    }
+  }
 
   switch (tool) {
     case 'run_command':
@@ -85,14 +143,21 @@ export async function runLocalDesktopTool(
       return readBoundedFile(rawArgs);
     case 'local_rag_query': {
       try {
-        const contentQuery = typeof rawArgs.content_query === 'string' ? rawArgs.content_query : '';
+        const contentQuery =
+          typeof rawArgs.content_query === 'string'
+            ? rawArgs.content_query
+            : typeof rawArgs.query === 'string'
+              ? rawArgs.query
+              : '';
         const pathQuery = typeof rawArgs.path_query === 'string' ? rawArgs.path_query : '';
         const topK = typeof rawArgs.top_k === 'number' ? rawArgs.top_k : 8;
         const prefix =
-          typeof rawArgs.path_prefix === 'string' ? rawArgs.path_prefix : '';
+          typeof rawArgs.path_prefix === 'string' && rawArgs.path_prefix.trim()
+            ? rawArgs.path_prefix.trim()
+            : (getActiveCodeProjectRootPath() ?? '');
 
         const extensions = Array.isArray(rawArgs.extensions) ? rawArgs.extensions : undefined;
-        const res = await fetch(`${SERVER_URL}/search/rag`, {
+        const res = await sidecarFetch(`${SERVER_URL}/search/rag`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...sidecarAuthHeaders() },
           body: JSON.stringify({ contentQuery, pathQuery, topK, pathPrefix: prefix, extensions }),
@@ -115,16 +180,19 @@ export async function runLocalDesktopTool(
     case 'local_index_status': {
       try {
         const extensions = Array.isArray(rawArgs.extensions) ? rawArgs.extensions : undefined;
-        const res = await fetch(`${SERVER_URL}/search/status`, {
+        const res = await sidecarFetch(`${SERVER_URL}/search/status`, {
           headers: sidecarAuthHeaders(),
-        });
+        }, 10_000);
         if (!res.ok) {
           const body = await res.text();
           console.error('[aigenius-desktop][mini-server] /search/status error:', res.status, body);
           throw new Error(`Sidecar returned ${res.status}: ${body}`);
         }
         const status = await res.json();
-        const formatted = formatIndexStatus({ ...status, scan_in_progress: false });
+        const formatted = formatIndexStatus({
+          ...status,
+          scan_in_progress: Boolean(status.scan_in_progress),
+        });
         return {
           ok: true,
           result: formatted.result,
@@ -141,7 +209,7 @@ export async function runLocalDesktopTool(
       try {
         const p = typeof rawArgs.path === 'string' ? rawArgs.path : undefined;
         const extensions = Array.isArray(rawArgs.extensions) ? rawArgs.extensions : undefined;
-        const res = await fetch(`${SERVER_URL}/search/reindex`, {
+        const res = await sidecarFetch(`${SERVER_URL}/search/reindex`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...sidecarAuthHeaders() },
           body: JSON.stringify({ paths: p ? [p] : undefined }),
@@ -167,6 +235,167 @@ export async function runLocalDesktopTool(
     }
     case 'local_list_directory':
       return listLocalDirectory(rawArgs);
+    case 'local_symbol_outline': {
+      try {
+        const args = applyEditorDefaultsToToolArgs(rawArgs, { path: true });
+        const p = typeof args.path === 'string' ? args.path : '';
+        if (!p) return { ok: false, error: 'Missing path' };
+        const content = await fs.readFile(p, 'utf8');
+        const outline = await extractSymbolOutline(p, content);
+        return { ok: true, result: outline };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : 'symbol outline failed' };
+      }
+    }
+    case 'local_list_symbols': {
+      try {
+        const filePath = typeof rawArgs.path === 'string' ? rawArgs.path.trim() : '';
+        const name = typeof rawArgs.name === 'string' ? rawArgs.name.trim() : '';
+        const pathPrefix =
+          typeof rawArgs.path_prefix === 'string' && rawArgs.path_prefix.trim()
+            ? rawArgs.path_prefix.trim()
+            : getActiveCodeProjectRootPath() ?? '';
+        const params = new URLSearchParams();
+        if (filePath) params.set('path', filePath);
+        else if (name) {
+          params.set('name', name);
+          if (pathPrefix) params.set('path_prefix', pathPrefix);
+        } else {
+          return { ok: false, error: 'path or name is required' };
+        }
+        const res = await sidecarFetch(`${SERVER_URL}/search/symbols?${params}`, {
+          headers: sidecarAuthHeaders(),
+        });
+        if (!res.ok) {
+          return { ok: false, error: `Sidecar returned ${res.status}` };
+        }
+        const data = await res.json();
+        if (data.outline) return { ok: true, result: data.outline };
+        const symbols = Array.isArray(data.symbols) ? data.symbols : [];
+        const body = symbols.length
+          ? symbols.map((s: { kind: string; name: string; path: string; line_start: number }) =>
+              `- ${s.kind} **${s.name}** — ${s.path}:${s.line_start}`).join('\n')
+          : 'No symbols found.';
+        return { ok: true, result: `# Symbols\n\n${body}` };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : 'symbol search failed' };
+      }
+    }
+    case 'local_git_status': {
+      const res = await runGitStatus(rawArgs);
+      if (!res.ok) return res;
+      const hint = formatEditSessionHint();
+      return {
+        ok: true,
+        result: hint ? `${res.result}\n\n${hint}` : res.result,
+      };
+    }
+    case 'local_git_diff': {
+      return runGitDiff(rawArgs);
+    }
+    case 'local_find_references': {
+      const args = applyEditorDefaultsToToolArgs(rawArgs, { symbol: true, path: true });
+      const symbol = typeof args.symbol === 'string' ? args.symbol.trim() : '';
+      const filePath = typeof args.path === 'string' ? args.path.trim() : '';
+      if (symbol && filePath) {
+        try {
+          const params = new URLSearchParams({ path: filePath, name: symbol });
+          const res = await sidecarFetch(`${SERVER_URL}/search/symbol-references?${params}`, {
+            headers: sidecarAuthHeaders(),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.references?.length) {
+              const lines = data.references.map(
+                (r: { path: string; name: string; line: number | null; kind: string }) =>
+                  `- ${r.path}:${r.line ?? '?'} (${r.kind})`,
+              );
+              const note = data.note ? `\n\n_${data.note}_` : '';
+              return { ok: true, result: `Structural references for \`${symbol}\`:\n${lines.join('\n')}${note}` };
+            }
+          }
+        } catch {
+          /* fall through to ripgrep */
+        }
+      }
+      return runFindReferences(args);
+    }
+    case 'local_get_context': {
+      try {
+        const args = applyEditorDefaultsToToolArgs(rawArgs, { path: true });
+        const input =
+          typeof rawArgs.input === 'string'
+            ? rawArgs.input.trim()
+            : typeof args.path === 'string'
+              ? args.path
+              : '';
+        if (!input) return { ok: false, error: 'input or path is required' };
+        const pathPrefix =
+          typeof rawArgs.path_prefix === 'string' && rawArgs.path_prefix.trim()
+            ? rawArgs.path_prefix.trim()
+            : getActiveCodeProjectRootPath() ?? '';
+        const activeFile = typeof args.path === 'string' ? args.path : undefined;
+        const res = await sidecarFetch(`${SERVER_URL}/search/context`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...sidecarAuthHeaders() },
+          body: JSON.stringify({
+            input,
+            includeSource: Boolean(rawArgs.include_source),
+            pathPrefix,
+            activeFile,
+          }),
+        });
+        if (!res.ok) {
+          return { ok: false, error: `Sidecar returned ${res.status}` };
+        }
+        const data = await res.json();
+        return { ok: true, result: JSON.stringify(data, null, 2), rawData: data };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : 'get_context failed' };
+      }
+    }
+    case 'local_go_to_definition': {
+      return runGoToDefinition(
+        applyEditorDefaultsToToolArgs(rawArgs, { path: true, line: true, character: true }),
+      );
+    }
+    case 'local_import_blast_radius': {
+      try {
+        const args = applyEditorDefaultsToToolArgs(rawArgs, { path: true });
+        const pathPrefix =
+          typeof args.path_prefix === 'string' && args.path_prefix.trim()
+            ? args.path_prefix.trim()
+            : getActiveCodeProjectRootPath() ?? '';
+        let paths: string[] = Array.isArray(args.paths)
+          ? args.paths.filter((p): p is string => typeof p === 'string')
+          : [];
+        if (!paths.length && typeof args.path === 'string' && args.path.trim()) {
+          paths = [args.path.trim()];
+        }
+        if (!paths.length) {
+          paths = getTouchedFilesSnapshot();
+        }
+        if (!paths.length) {
+          return { ok: false, error: 'paths, path, or edit-session files required' };
+        }
+        const res = await sidecarFetch(`${SERVER_URL}/search/import-graph`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...sidecarAuthHeaders() },
+          body: JSON.stringify({
+            paths,
+            pathPrefix,
+            maxDepth: typeof args.max_depth === 'number' ? args.max_depth : 4,
+          }),
+        });
+        if (!res.ok) {
+          return { ok: false, error: `Sidecar returned ${res.status}` };
+        }
+        const data = await res.json();
+        return { ok: true, result: data.outline ?? JSON.stringify(data, null, 2) };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : 'import blast radius failed' };
+      }
+    }
     case 'local_retrieval_memory_get':
       try {
         return await getRetrievalMemoryBySlugFromTool(rawArgs);
@@ -210,7 +439,7 @@ async function connectLocalOllamaRelay(
   }
 
   try {
-    const res = await fetch(`${SERVER_URL}/ollama/connect`, {
+    const res = await sidecarFetch(`${SERVER_URL}/ollama/connect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...sidecarAuthHeaders() },
       body: JSON.stringify({ token }),
@@ -238,6 +467,10 @@ async function confirmLocalShellExecution(
   cwdRaw: string,
   timeoutMs: number,
 ): Promise<boolean> {
+  if (!shouldRequireToolApproval('local_shell')) {
+    return true;
+  }
+
   const detailSuffix = buildShellApprovalFallbackDetail(command);
 
   if (parent) {

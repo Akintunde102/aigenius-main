@@ -6,7 +6,7 @@ const vercelAnalyticsOrigin = 'https://va.vercel-scripts.com';
 /** Local desktop mini-server default; override with NEXT_PUBLIC_NOBOX_API_ROOT_URL or `.env*.local`. */
 const resolvedNoboxApiRootUrl =
     process.env.NEXT_PUBLIC_NOBOX_API_ROOT_URL ||
-    (process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:8000' : undefined);
+    (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : undefined);
 
 /** Allow fetch/WebSocket to the configured API origin in CSP connect-src. */
 function apiConnectOrigins(apiRootUrl) {
@@ -47,18 +47,13 @@ const nextConfig = {
             "connect-src 'self'",
             ...configuredApiOrigins,
             'http://localhost:8000',
-            'http://127.0.0.1:8000',
-            'http://127.0.0.1:8001',
             'http://localhost:8001',
-            'http://127.0.0.1:3001',
             'http://localhost:3001',
-            'http://127.0.0.1:7486',
-            'ws://127.0.0.1:8000',
+            'http://localhost:7486',
             'ws://localhost:8000',
-            'ws://127.0.0.1:3001',
             'ws://localhost:3001',
-            'wss://127.0.0.1:8000',
-            'wss://127.0.0.1:3001',
+            'wss://localhost:8000',
+            'wss://localhost:3001',
             'https://api.nobox.cloud',
             'https://api.paystack.co',
             'https://api.aigenius.chat',
@@ -76,18 +71,14 @@ const nextConfig = {
             'http://localhost:3001',
             'http://localhost:8000',
             'http://localhost:5000',
-            'http://127.0.0.1:8000',
-            'http://127.0.0.1:8001',
-            'http://127.0.0.1:3001',
-            'http://127.0.0.1:7486',
+            'http://localhost:8001',
+            'http://localhost:7486',
             'https://api.nobox.cloud',
             'https://api.paystack.co',
             'https://api.aigenius.chat',
             'https://aigenius-backend-production.up.railway.app',
             'ws://localhost:3001',
-            'ws://127.0.0.1:3001',
             'ws://localhost:8000',
-            'ws://127.0.0.1:8000',
             'https://cdn.jsdelivr.net',
             'wss://api.aigenius.chat',
             vercelAnalyticsOrigin,
@@ -140,7 +131,7 @@ const nextConfig = {
                             "frame-src 'self' blob: data: https://checkout.paystack.com",
                             "media-src 'self' blob:",
                             process.env.NODE_ENV === 'development'
-                                ? // Include Next dev HMR websockets on loopback; Electron loads http://127.0.0.1:3001 (not localhost).
+                                ? // Include Next dev HMR websockets on loopback; Electron loads http://localhost:<port>.
                                 devConnectSrc
                                 : prodConnectSrc,
                         ].join('; '),

@@ -26,6 +26,7 @@ interface SidebarContentProps {
     handleSessionSwitch?: (session: ChatSession) => void;
     isSessionActive?: (sessionId: string) => boolean;
     isInitialLoading?: boolean;
+    codeProjects?: import("@/lib/calls/code-projects").CodeProject[];
 }
 
 const SidebarContent = React.memo<SidebarContentProps>(({
@@ -44,7 +45,8 @@ const SidebarContent = React.memo<SidebarContentProps>(({
     onPublish,
     handleSessionSwitch,
     isSessionActive,
-    isInitialLoading = false
+    isInitialLoading = false,
+    codeProjects = [],
 }) => {
     const deferredHistorySearch = React.useDeferredValue(historySearch);
 
@@ -92,6 +94,7 @@ const SidebarContent = React.memo<SidebarContentProps>(({
                         isSessionActive={isSessionActive}
                         onSessionSelect={handleSessionSelect}
                         isInitialLoading={isInitialLoading}
+                        codeProjects={codeProjects}
                     />
                 </div>
 

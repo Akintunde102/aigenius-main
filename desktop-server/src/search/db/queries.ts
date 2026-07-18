@@ -40,10 +40,6 @@ function runFtsQueryTwiceAfterRebuild<T>(
   }
 }
 
-/**
- * Cleans a search term for SQLite FTS5.
- * Balances double quotes and avoids syntax errors while preserving "*" for prefix search.
- */
 function cleanFtsTerm(term: string): string {
   let cleaned = term.normalize('NFC').trim();
   if (!cleaned) return '';
@@ -89,6 +85,9 @@ function cleanFtsTerm(term: string): string {
 
   return result.trim();
 }
+
+/** Exported for chunk-level FTS queries. */
+export { cleanFtsTerm };
 
 export type RagHit = {
   path: string;
@@ -373,14 +372,36 @@ export function searchFiles(
 /** INSERT OR REPLACE a file record (triggers keep FTS in sync). */
 export function upsertFile(db: Database.Database, file: IndexedFile): void {
   const stmt = db.prepare(`
-    INSERT OR REPLACE INTO file_index (path, name, mtime, content, tags, extension)
-    VALUES (@path, @name, @mtime, @content, @tags, @extension)
+    INSERT OR REPLACE INTO file_index (
+      path, name, mtime, content, tags, extension,
+      content_hash, language, index_status, is_generated, last_indexed
+    )
+    VALUES (
+      @path, @name, @mtime, @content, @tags, @extension,
+      @content_hash, @language, @index_status, @is_generated, @last_indexed
+    )
   `);
-  stmt.run(file);
+  stmt.run({
+    ...file,
+    content_hash: file.content_hash ?? null,
+    language: file.language ?? null,
+    index_status: file.index_status ?? null,
+    is_generated: file.is_generated ?? 0,
+    last_indexed: file.last_indexed ?? Date.now(),
+  });
 }
 
 /** Delete a file record — the AFTER DELETE trigger removes the FTS row. */
 export function deleteFile(db: Database.Database, filePath: string): void {
+  db.prepare(
+    'DELETE FROM symbol_search WHERE symbol_id IN (SELECT id FROM symbol_index WHERE path = ?)',
+  ).run(filePath);
+  db.prepare('DELETE FROM symbol_boundaries WHERE file_path = ?').run(filePath);
+  db.prepare('DELETE FROM makefile_targets WHERE file_path = ?').run(filePath);
+  db.prepare('DELETE FROM import_index WHERE importer_path = ? OR imported_path = ?').run(filePath, filePath);
+  db.prepare('DELETE FROM chunk_embeddings WHERE chunk_id IN (SELECT id FROM file_chunks WHERE path = ?)').run(filePath);
+  db.prepare('DELETE FROM file_chunks WHERE path = ?').run(filePath);
+  db.prepare('DELETE FROM symbol_index WHERE path = ?').run(filePath);
   db.prepare('DELETE FROM file_index WHERE path = ?').run(filePath);
 }
 
@@ -395,6 +416,19 @@ export function checkMtime(
     )
     .get(filePath);
   return row ? row.mtime : null;
+}
+
+/** Returns stored content hash, or null if not yet indexed. */
+export function checkContentHash(
+  db: Database.Database,
+  filePath: string,
+): string | null {
+  const row = db
+    .prepare<[string], { content_hash: string | null }>(
+      'SELECT content_hash FROM file_index WHERE path = ?',
+    )
+    .get(filePath);
+  return row?.content_hash ?? null;
 }
 
 /** Escapes `%`, `_`, `\` for `LIKE ... ESCAPE '\\'`. */

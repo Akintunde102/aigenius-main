@@ -16,6 +16,11 @@ export interface IndexedFile {
   content: string;
   tags: string;
   extension?: string;
+  content_hash?: string;
+  language?: string;
+  index_status?: string;
+  is_generated?: number;
+  last_indexed?: number;
 }
 
 /** Message sent to an extraction worker thread. */

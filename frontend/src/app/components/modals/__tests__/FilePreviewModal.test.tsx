@@ -12,7 +12,12 @@ jest.mock('lucide-react', () => ({
     FileIcon: () => <div data-testid="icon-file-icon" />,
     Folder: () => <div data-testid="icon-folder" />,
     ChevronRight: () => <div data-testid="icon-chevron-right" />,
-    File: () => <div data-testid="icon-file" />
+    File: () => <div data-testid="icon-file" />,
+    PanelLeft: () => <div data-testid="icon-panel-left" />,
+    ExternalLink: () => <div data-testid="icon-external-link" />,
+    Save: () => <div data-testid="icon-save" />,
+    Eye: () => <div data-testid="icon-eye" />,
+    Code2: () => <div data-testid="icon-code2" />,
 }));
 
 // Mock Monaco Editor

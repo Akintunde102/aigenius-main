@@ -3,18 +3,35 @@ import fs from 'fs';
 import os from 'os';
 import type { SearchModuleConfig } from './types.js';
 import { getDb, closeDb } from './db/connection.js';
-import { upsertFile, deleteFile, checkMtime, purgeExemptedFiles } from './db/queries.js';
+import { upsertFile, deleteFile, checkMtime, checkContentHash, purgeExemptedFiles } from './db/queries.js';
+import { upsertFileStructure } from './db/queries-chunks.js';
 import { WorkerPool } from './indexer/worker-pool.js';
 import { startWatcher, type WatchEvent } from './indexer/file-watcher.js';
 import { createIndexQueue } from './indexer/index-queue.js';
 import { shouldSkipSearchIndexing } from './indexer/exemptions.js';
+import { hashContent } from './indexer/content-hash.js';
+import { resetTsMorphProjects } from './indexer/ts-morph-indexer.js';
+import { languageForExtension } from './indexer/language-indexer.js';
+import {
+  refreshSearchStatusFromDb,
+  resetSearchStatusSnapshot,
+  setSearchStatusDbPath,
+  updateSearchStatusCache,
+} from './status-snapshot.js';
 
 type IndexQueue = ReturnType<typeof createIndexQueue<WatchEvent>>;
 let _queue: IndexQueue | null = null;
 let _watchPaths: string[] = [];
 let _pool: WorkerPool | null = null;
+let _modelsDir: string = '';
+let _skipImageSearch = false;
 let _stopWatcher: (() => Promise<void>) | null = null;
 
+function yieldEventLoop(): Promise<void> {
+  return new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+}
 
 /**
  * Registers the local file search module.
@@ -31,8 +48,12 @@ export function registerSearchModule(config: SearchModuleConfig): void {
   } = config;
 
   _watchPaths = watchPaths;
+  _modelsDir = modelsDir;
+  _skipImageSearch = skipImageSearch;
   const db = getDb(dbPath);
   purgeExemptedFiles(db);
+  setSearchStatusDbPath(dbPath);
+  refreshSearchStatusFromDb(db);
 
   // Migration: Populate empty extensions for existing indexed files
   try {
@@ -56,53 +77,92 @@ export function registerSearchModule(config: SearchModuleConfig): void {
 
   let stopWatcher: (() => Promise<void>) | null = null;
 
-  // Batch queue: receives watch events, runs extraction, writes to DB
+  // Batch queue: receives watch events, runs extraction, writes to DB.
+  // Process sequentially with event-loop yields so /health and /search/status stay responsive during heavy indexing.
   const queue = createIndexQueue<WatchEvent>(
     async (batch) => {
-      await Promise.all(
-        batch.map(async (event) => {
-          const filePath = event.path;
-          let mtime: number;
+      for (const event of batch) {
+        updateSearchStatusCache({
+          queue_depth: queue.pendingCount(),
+          scan_in_progress: true,
+        });
 
-          if (event.stats) {
-            // Use stats passed from watcher (saves a syscall)
-            mtime = Math.floor(event.stats.mtimeMs);
-          } else {
-            // Fallback for manual re-index or missing stats
-            try {
-              const stat = fs.statSync(filePath);
-              mtime = Math.floor(stat.mtimeMs);
-            } catch {
-              console.info('[search] File missing during indexing:', filePath);
-              deleteFile(db, filePath);
-              return;
-            }
+        const filePath = event.path;
+        let mtime: number;
+
+        if (event.stats) {
+          mtime = Math.floor(event.stats.mtimeMs);
+        } else {
+          try {
+            const stat = fs.statSync(filePath);
+            mtime = Math.floor(stat.mtimeMs);
+          } catch {
+            console.info('[search] File missing during indexing:', filePath);
+            deleteFile(db, filePath);
+            await yieldEventLoop();
+            continue;
           }
+        }
 
-          // Skip files that haven't changed since last index (unless forced)
-          const storedMtime = checkMtime(db, filePath);
-          if (storedMtime === mtime && !event.force) return;
+        const storedMtime = checkMtime(db, filePath);
+        if (storedMtime === mtime && !event.force) {
+          await yieldEventLoop();
+          continue;
+        }
 
-          if (shouldSkipSearchIndexing(filePath)) return;
+        if (shouldSkipSearchIndexing(filePath)) {
+          await yieldEventLoop();
+          continue;
+        }
 
-          console.info('\x1b[34m[search] Indexing:\x1b[0m', filePath);
-          const output = await pool.run({ path: filePath, mtime });
-          if (output.error) {
-            console.warn('[search] extract error for', filePath, output.error);
-          }
+        console.info('\x1b[34m[search] Indexing:\x1b[0m', filePath);
+        const output = await pool.run({ path: filePath, mtime });
+        if (output.error) {
+          console.warn('[search] extract error for', filePath, output.error);
+        }
 
-          const ext = path.extname(filePath).toLowerCase().replace(/^\./, '');
+        const contentHash = hashContent(output.content);
+        const storedHash = checkContentHash(db, filePath);
+        if (storedHash === contentHash && !event.force) {
+          await yieldEventLoop();
+          continue;
+        }
 
-          upsertFile(db, {
-            path: filePath,
-            name: path.basename(filePath),
-            mtime,
-            content: output.content,
-            tags: output.tags.join(' '),
-            extension: ext,
-          });
-        }),
-      );
+        const ext = path.extname(filePath).toLowerCase().replace(/^\./, '');
+
+        await yieldEventLoop();
+        upsertFile(db, {
+          path: filePath,
+          name: path.basename(filePath),
+          mtime,
+          content: output.content,
+          tags: output.tags.join(' '),
+          extension: ext,
+          content_hash: contentHash,
+          language: languageForExtension(ext),
+          index_status: output.error ? `extract_error: ${output.error}` : 'ok',
+          last_indexed: Date.now(),
+        });
+
+        await yieldEventLoop();
+        try {
+          await upsertFileStructure(db, filePath, output.content, ext, _modelsDir);
+        } catch (structErr) {
+          console.warn('[search] chunk/symbol index error for', filePath, structErr);
+          db.prepare('UPDATE file_index SET index_status = ? WHERE path = ?').run(
+            `structure_error: ${structErr instanceof Error ? structErr.message : String(structErr)}`,
+            filePath,
+          );
+        }
+
+        refreshSearchStatusFromDb(db);
+        updateSearchStatusCache({
+          queue_depth: queue.pendingCount(),
+          scan_in_progress: queue.pendingCount() > 0,
+        });
+
+        await yieldEventLoop();
+      }
     },
     batchSize,
     batchIntervalMs,
@@ -114,9 +174,28 @@ export function registerSearchModule(config: SearchModuleConfig): void {
   stopWatcher = startWatcher(watchPaths, (event) => {
     if (shouldSkipSearchIndexing(event.path)) return;
 
+    if (event.type === 'git_branch_switch') {
+      console.info('[search] Git branch switch detected — batch re-index');
+      resetTsMorphProjects();
+      void (async () => {
+        const { walkProjectFiles } = await import('./indexer/project-walk.js');
+        for (const root of watchPaths) {
+          for (const filePath of walkProjectFiles(root)) {
+            queue.push({ type: 'change', path: filePath, force: true });
+          }
+        }
+      })();
+      return;
+    }
+
     if (event.type === 'unlink') {
       console.info('[search] Watcher: file removed', event.path);
       deleteFile(db, event.path);
+      refreshSearchStatusFromDb(db);
+      updateSearchStatusCache({
+        queue_depth: queue.pendingCount(),
+        scan_in_progress: queue.pendingCount() > 0,
+      });
     } else {
       // For 'add' and 'change', push the full event (including stats)
       queue.push(event);
@@ -145,6 +224,8 @@ export async function closeSearchModule(): Promise<void> {
     _pool = null;
   }
   _watchPaths = [];
+  _modelsDir = '';
+  resetSearchStatusSnapshot();
   closeDb();
 }
 
@@ -162,4 +243,22 @@ export function getSearchQueue(): IndexQueue {
  */
 export function getSearchWatchPaths(): string[] {
   return _watchPaths;
+}
+
+/**
+ * Switch to a per-project SQLite index (closes watcher/queue, reopens DB).
+ */
+export async function switchSearchProject(config: {
+  dbPath: string;
+  watchPaths: string[];
+  modelsDir?: string;
+  skipImageSearch?: boolean;
+}): Promise<void> {
+  await closeSearchModule();
+  registerSearchModule({
+    dbPath: config.dbPath,
+    watchPaths: config.watchPaths,
+    modelsDir: config.modelsDir ?? _modelsDir,
+    skipImageSearch: config.skipImageSearch ?? _skipImageSearch,
+  });
 }

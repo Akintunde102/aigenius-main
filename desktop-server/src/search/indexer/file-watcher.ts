@@ -1,8 +1,10 @@
 import chokidar, { type FSWatcher } from 'chokidar';
 import type { Stats } from 'fs';
+import fs from 'fs';
+import path from 'path';
 import { shouldSkipSearchIndexing } from './exemptions.js';
 
-export type WatchEventType = 'add' | 'change' | 'unlink';
+export type WatchEventType = 'add' | 'change' | 'unlink' | 'git_branch_switch';
 export type WatchEvent = { type: WatchEventType; path: string; stats?: Stats; force?: boolean };
 
 const DEFAULT_IGNORED_PATTERNS = [
@@ -34,6 +36,7 @@ const DEFAULT_IGNORED_PATTERNS = [
   /Templates/,
   /SendTo/,
   /Start Menu/,
+  /[/\\]\.agent([/\\]|$)/,
 ];
 
 /**
@@ -81,6 +84,16 @@ export function startWatcher(
         console.error('[search-watcher] chokidar error:', err);
       }
     });
+
+  // Detect git branch switches via HEAD changes
+  for (const watchRoot of paths) {
+    const gitHead = path.join(watchRoot, '.git', 'HEAD');
+    if (!fs.existsSync(gitHead)) continue;
+    const headWatcher = chokidar.watch(gitHead, { persistent: true, ignoreInitial: true });
+    headWatcher.on('change', () => {
+      onEvent({ type: 'git_branch_switch', path: watchRoot });
+    });
+  }
 
   return () => watcher.close();
 }

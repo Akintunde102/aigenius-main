@@ -10,8 +10,10 @@
     "postinstall": "exit 0",
     "rebuild:better-sqlite3": "electron-rebuild -v 33.2.1 -f -m ../desktop-server -w better-sqlite3",
     "test": "cross-env NODE_ENV=test jest --config jest.config.cjs",
+    "test:tools:scenarios": "cross-env NODE_ENV=test jest --config jest.config.cjs --testPathPattern=local-desktop-tools\\.scenarios",
     "compile": "npm run sync-brand-icon && node scripts/compile-tsc.cjs",
-    "build:server": "cd ../desktop-server && npm run build",
+    "ensure:server-deps": "node scripts/ensure-server-deps.cjs",
+    "build:server": "npm run ensure:server-deps && cd ../desktop-server && npm run build",
     "sync-brand-icon": "node scripts/sync-brand-icon.cjs",
     "prepare:resources": "node scripts/prepare-desktop-resources.cjs",
     "prepackage": "npm run compile && npm run rebuild:better-sqlite3 && npm run build:server && cd ../frontend && npm run build:desktop && cd ../desktop && npm run prepare:resources",
@@ -20,11 +22,13 @@
     "package:deb:full": "npm run prepackage && electron-builder --linux deb",
     "package:flatpak": "electron-builder --linux flatpak",
     "dev:frontend": "cd ../frontend && npm run dev",
-    "dev:electron": "npm run compile && cross-env ELECTRON_DISABLE_SANDBOX=1 electron .",
+    "dev:electron:only": "cross-env ELECTRON_DISABLE_SANDBOX=1 electron .",
+    "dev:electron": "npm run compile && npm run dev:electron:only",
     "dev:electron:debug": "npm run compile && cross-env ELECTRON_DISABLE_SANDBOX=1 AIGENIUS_DESKTOP_DEVTOOLS=1 electron .",
-    "dev:quick": "npm run compile && npm run dev:electron",
+    "dev:quick": "npm run compile && npm run dev:electron:only",
+    "dev:tilt": "node scripts/dev-tilt.cjs",
     "download-models": "node scripts/download-search-models.cjs",
-    "dev": "npm run rebuild:better-sqlite3 && npm run build:server && npm run compile && npm run dev:electron"
+    "dev": "npm run rebuild:better-sqlite3 && npm run build:server && npm run compile && npm run dev:electron:only"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

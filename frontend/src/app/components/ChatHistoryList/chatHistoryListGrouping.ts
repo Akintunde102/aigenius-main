@@ -1,4 +1,5 @@
 import type { ChatSession } from "@/app/components/model-interface/shared/types";
+import type { CodeProject } from "@/lib/calls/code-projects";
 
 function lastMessageTimestamp(session: ChatSession): number {
   const msgs = session.messages;
@@ -47,4 +48,63 @@ export function groupSidebarSessions(
   earlier.sort(byRecent);
 
   return { starred, recent, earlier };
+}
+
+export type ProjectSidebarBucket = {
+  projectId: string | null;
+  label: string;
+  sessions: GroupedSidebarSessions;
+};
+
+/**
+ * Group sessions under project headers, then starred/recent/earlier within each.
+ */
+export function groupSidebarSessionsByProject(
+  sessions: ChatSession[],
+  projects: CodeProject[],
+  nowMs: number = Date.now(),
+): ProjectSidebarBucket[] {
+  const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
+  const byProject = new Map<string | null, ChatSession[]>();
+
+  for (const s of sessions) {
+    const pid = s.codeProjectId ?? null;
+    const list = byProject.get(pid) ?? [];
+    list.push(s);
+    byProject.set(pid, list);
+  }
+
+  const buckets: ProjectSidebarBucket[] = [];
+
+  for (const project of projects) {
+    const list = byProject.get(project.id);
+    if (!list?.length) continue;
+    buckets.push({
+      projectId: project.id,
+      label: project.name,
+      sessions: groupSidebarSessions(list, nowMs),
+    });
+    byProject.delete(project.id);
+  }
+
+  const general = byProject.get(null);
+  if (general?.length) {
+    buckets.push({
+      projectId: null,
+      label: "General",
+      sessions: groupSidebarSessions(general, nowMs),
+    });
+    byProject.delete(null);
+  }
+
+  for (const [projectId, list] of byProject.entries()) {
+    if (!list.length) continue;
+    buckets.push({
+      projectId,
+      label: projectNameById.get(projectId ?? '') ?? "Unknown project",
+      sessions: groupSidebarSessions(list, nowMs),
+    });
+  }
+
+  return buckets;
 }

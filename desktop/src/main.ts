@@ -19,6 +19,10 @@ import {
 } from 'electron';
 import { runLocalDesktopTool } from './local-tool-executor';
 import { getChatRuntimeContextForIpc, USER_HOME_DIR_AT_STARTUP } from './chat-runtime-context';
+import {
+  loadToolPermissionPreferences,
+  applySyncedToolPermissionPreferences,
+} from './tool-permission-preferences';
 import { initLocalRetrievalMemory } from './local-retrieval-memory';
 import { attachMainShellNavigationGuards, deliverOpenExternalOrAuthUrl } from './navigation-guards';
 import { mainShellBrowserWindowOptions } from './shell-chrome';
@@ -32,6 +36,11 @@ import { spawn, ChildProcess } from 'child_process';
 import http from 'http';
 import os from 'os';
 import crypto from 'crypto';
+import { resolveFrontendPort } from './frontend-port';
+import { DEV_LOOPBACK_HOST, loopbackHttpUrl } from './loopback-host';
+import { setActiveCodeProjectIndex } from './active-code-project';
+import { refreshProjectArchitectureMemory } from './project-architecture-memory';
+import { setMainActiveEditor } from './active-editor-main';
 
 function normalizeRendererFilesystemPath(filePath: string): string {
   let normalizedPath = filePath;
@@ -45,17 +54,21 @@ function normalizeRendererFilesystemPath(filePath: string): string {
 }
 
 const MINI_SERVER_PORT = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
-const FRONTEND_PORT = process.env.AIGENIUS_FRONTEND_PORT ?? '3001';
-/** Secure token for local sidecar communication. */
-const SECRET_TOKEN = crypto.randomBytes(32).toString('hex');
+const FRONTEND_PORT = resolveFrontendPort();
+/** Secure token for local sidecar communication (respect pre-set env for external sidecar / Tilt). */
+const SECRET_TOKEN =
+  (typeof process.env.AIGENIUS_SECRET_TOKEN === 'string' &&
+    process.env.AIGENIUS_SECRET_TOKEN.trim().length > 0 &&
+    process.env.AIGENIUS_SECRET_TOKEN) ||
+  crypto.randomBytes(32).toString('hex');
 process.env.AIGENIUS_SECRET_TOKEN = SECRET_TOKEN;
 
 if (!SECRET_TOKEN) {
   console.error('[aigenius-desktop] CRITICAL: Failed to generate SECRET_TOKEN. Local tools will be unavailable.');
 }
 /** Must match frontend `DESKTOP_SHELL_ENTRY_QUERY_PARAM` (longer preload poll on this route). */
-const FRONTEND_URL = `http://127.0.0.1:${FRONTEND_PORT}/desktop-login?aigenius_shell=1`;
-const WEBSITE_LOGIN_URL = 'http://localhost:3001/login';
+const FRONTEND_URL = `${loopbackHttpUrl(FRONTEND_PORT, '/desktop-login')}?aigenius_shell=1`;
+const WEBSITE_LOGIN_URL = loopbackHttpUrl(FRONTEND_PORT, '/login');
 
 const DESKTOP_BRIDGE_DEBUG = process.env.AIGENIUS_DESKTOP_BRIDGE_DEBUG === '1';
 
@@ -442,7 +455,7 @@ function createMenu(): void {
             }
             try {
               void w.loadURL(
-                `http://127.0.0.1:${FRONTEND_PORT}/desktop-search-index`,
+                loopbackHttpUrl(FRONTEND_PORT, '/desktop-search-index'),
               );
             } catch (err) {
               console.error('[aigenius-desktop] Open Local Search Index failed:', err);
@@ -496,10 +509,11 @@ async function startBackendProcesses(): Promise<void> {
       env: {
         ...process.env,
         PORT: miniPort,
-        HOST: '127.0.0.1',
+        HOST: DEV_LOOPBACK_HOST,
         AIGENIUS_USER_DATA_PATH: userDataPath,
         ...(process.env.AIGENIUS_SKIP_SEARCH === '1' ? {} : { AIGENIUS_DB_PATH: dbPath }),
         AIGENIUS_MODELS_DIR: modelsDir,
+        AIGENIUS_TREE_SITTER: '1',
         AIGENIUS_SEARCH_WORKERS: '1',
         AIGENIUS_SEARCH_IMAGES: process.env.AIGENIUS_SEARCH_IMAGES || '1',
         AIGENIUS_SECRET_TOKEN: token,
@@ -512,7 +526,7 @@ async function startBackendProcesses(): Promise<void> {
 
 
   await waitForHttpOk(
-    `http://127.0.0.1:${miniPort}/health`,
+    loopbackHttpUrl(miniPort, '/health'),
     60_000,
     1000,
   );
@@ -525,7 +539,7 @@ async function startBackendProcesses(): Promise<void> {
       env: {
         ...process.env,
         PORT: FRONTEND_PORT,
-        HOSTNAME: '127.0.0.1',
+        HOSTNAME: DEV_LOOPBACK_HOST,
         NODE_ENV: 'production',
       },
       logPath: path.join(logsDir, 'frontend.log'),
@@ -654,7 +668,7 @@ function createWindow(relativePath?: string): BrowserWindow {
   }
 
   const url = relativePath
-    ? `http://127.0.0.1:${FRONTEND_PORT}${relativePath.startsWith('/') ? relativePath : '/' + relativePath}`
+    ? loopbackHttpUrl(FRONTEND_PORT, relativePath.startsWith('/') ? relativePath : '/' + relativePath)
     : FRONTEND_URL;
 
   void win.loadURL(url);
@@ -693,7 +707,7 @@ if (!gotLock) {
     event.preventDefault();
     void (async () => {
       try {
-        await fetch(`http://127.0.0.1:${MINI_SERVER_PORT}/search/shutdown`, {
+        await fetch(loopbackHttpUrl(MINI_SERVER_PORT, '/search/shutdown'), {
           method: 'POST',
           headers: { Authorization: `Bearer ${SECRET_TOKEN}`, 'Content-Length': '0' },
           signal: AbortSignal.timeout(2000),
@@ -900,6 +914,117 @@ if (!gotLock) {
     }
   });
 
+  ipcMain.handle('tool-permissions:sync', async (_event, prefs: unknown) => {
+    return applySyncedToolPermissionPreferences(prefs);
+  });
+
+  ipcMain.handle('pick-project-directory', async () => {
+    const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+    const result = await dialog.showOpenDialog(win, {
+      properties: ['openDirectory'],
+      title: 'Select project folder',
+    });
+    if (result.canceled || !result.filePaths[0]) {
+      return null;
+    }
+    return { path: result.filePaths[0] };
+  });
+
+  ipcMain.handle('sync-active-editor', (_event, payload: unknown) => {
+    if (!payload || typeof payload !== 'object') {
+      setMainActiveEditor(null);
+      return { ok: true };
+    }
+    const p = payload as Record<string, unknown>;
+    const filePath = typeof p.path === 'string' ? p.path : '';
+    if (!filePath) {
+      setMainActiveEditor(null);
+      return { ok: true };
+    }
+    setMainActiveEditor({
+      path: filePath,
+      name: typeof p.name === 'string' ? p.name : path.basename(filePath),
+      line: typeof p.line === 'number' ? p.line : 1,
+      character: typeof p.character === 'number' ? p.character : 1,
+      selection: typeof p.selection === 'string' ? p.selection : undefined,
+    });
+    return { ok: true };
+  });
+
+  ipcMain.handle(
+    'set-code-project-index',
+    async (_event, payload: { projectId: string; rootPath: string } | null) => {
+      setActiveCodeProjectIndex(payload);
+      if (!payload?.rootPath) {
+        return { ok: true };
+      }
+
+      try {
+        const port = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
+        const token = process.env.AIGENIUS_SECRET_TOKEN;
+        if (!token) {
+          console.warn('[aigenius-desktop] set-code-project-index: missing AIGENIUS_SECRET_TOKEN');
+          return { ok: false, error: 'missing_secret_token' };
+        }
+
+        const switchRes = await fetch(loopbackHttpUrl(port, '/search/switch-project'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            projectId: payload.projectId,
+            rootPath: payload.rootPath,
+          }),
+        });
+        if (!switchRes.ok) {
+          console.warn('[aigenius-desktop] switch-project returned', switchRes.status);
+          return { ok: false, error: `switch-project:${switchRes.status}` };
+        }
+
+        const res = await fetch(loopbackHttpUrl(port, '/search/index-project'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ rootPath: payload.rootPath, force: true }),
+        });
+        if (!res.ok) {
+          console.warn('[aigenius-desktop] index-project returned', res.status);
+          return { ok: false, error: `index-project:${res.status}` };
+        }
+
+        if (payload.projectId) {
+          refreshProjectArchitectureMemory(
+            payload.projectId,
+            payload.rootPath,
+            path.basename(payload.rootPath) || payload.projectId,
+          );
+          setTimeout(() => {
+            void fetch(loopbackHttpUrl(port, '/search/embed-backfill'), {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ pathPrefix: payload.rootPath, limit: 2000 }),
+            }).catch(() => undefined);
+          }, 25_000).unref?.();
+        }
+
+        return { ok: true };
+      } catch (err) {
+        console.warn('[aigenius-desktop] index-project failed', err);
+        return {
+          ok: false,
+          error: err instanceof Error ? err.message : 'index-project_failed',
+        };
+      }
+    },
+  );
+
   ipcMain.handle(
     'local-desktop-tool',
     async (
@@ -1004,10 +1129,10 @@ if (!gotLock) {
         }
       });
 
-      server.listen(0, '127.0.0.1', () => {
+      server.listen(0, DEV_LOOPBACK_HOST, () => {
         const addr = server.address() as any;
         const port = addr.port;
-        const callbackUrl = `http://127.0.0.1:${port}/`;
+        const callbackUrl = loopbackHttpUrl(port, '/');
         const authUrl = `${WEBSITE_LOGIN_URL}?desktop_callback=${encodeURIComponent(callbackUrl)}`;
         void shell.openExternal(authUrl);
       });
@@ -1107,6 +1232,7 @@ if (!gotLock) {
     setupCrashHandlers();
 
     initLocalRetrievalMemory(app.getPath('userData'));
+    await loadToolPermissionPreferences();
     registerIpcHandlers();
     registerAudioRecorderHandlers();
 

@@ -71,7 +71,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     // Custom hooks
     const isPc = useIsPc();
     const glisten = useGlistenEffect();
-    const { inputValue, handleInputChange, clearInput } = useInputState({
+    const { inputValue, handleInputChange, clearInput, flushInputToParent } = useInputState({
         externalInputValue,
         onInputChange
     });
@@ -131,6 +131,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
             });
             if ((inputValue.trim() || uploadedFiles.length > 0) && !sendBlocked) {
                 console.log('[ChatBoxInput] Calling onSendMessage');
+                flushInputToParent();
                 const shouldClearComposer = await Promise.resolve(
                     onSendMessageRef.current(inputValue.trim(), selectedModel),
                 );
@@ -142,7 +143,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                 console.log('[ChatBoxInput] Submission blocked or empty input');
             }
         },
-        [inputValue, uploadedFiles.length, sendBlocked, selectedModel, clearInput],
+        [inputValue, uploadedFiles.length, sendBlocked, selectedModel, clearInput, flushInputToParent],
     );
 
     // PC: Enter = send, Shift+Enter = new line. Mobile: Enter and Shift+Enter = new line only (no keyboard submit).
@@ -389,6 +390,17 @@ ChatBoxInput.displayName = 'ChatBoxInput';
 
 export default React.memo(ChatBoxInput, (prevProps, nextProps) => {
     return (
+        // Function props that close over the active conversation MUST trigger a
+        // re-render when they change, otherwise the composer keeps sending with a
+        // handler captured on a previously open chat (stale conversation id and
+        // stale transcript). Parents memoize these, so comparing them is cheap.
+        prevProps.onSendMessage === nextProps.onSendMessage &&
+        prevProps.onStopGeneration === nextProps.onStopGeneration &&
+        prevProps.onFileUpload === nextProps.onFileUpload &&
+        prevProps.onCancelUpload === nextProps.onCancelUpload &&
+        prevProps.onRemoveUploadedFile === nextProps.onRemoveUploadedFile &&
+        prevProps.onInputChange === nextProps.onInputChange &&
+        prevProps.onStreamingToggle === nextProps.onStreamingToggle &&
         prevProps.inputValue === nextProps.inputValue &&
         prevProps.responseInProgress === nextProps.responseInProgress &&
         prevProps.uploading === nextProps.uploading &&
@@ -408,6 +420,7 @@ export default React.memo(ChatBoxInput, (prevProps, nextProps) => {
         prevProps.hideModelSelector === nextProps.hideModelSelector &&
         prevProps.hideUpload === nextProps.hideUpload &&
         prevProps.supportsFileUpload === nextProps.supportsFileUpload &&
-        (prevProps.uploadedFiles?.length || 0) === (nextProps.uploadedFiles?.length || 0)
+        // Reference equality: same-length but different files must still re-render.
+        prevProps.uploadedFiles === nextProps.uploadedFiles
     );
 });

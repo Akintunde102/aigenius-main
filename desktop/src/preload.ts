@@ -84,11 +84,30 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
       entries: Array<{ slug: string; name: string; description: string; tags: string[] }>;
     };
   }>,
+  syncToolPermissionPreferences: (prefs: {
+    autoApproveAll: boolean;
+    requireApprovalByTool: Record<string, boolean>;
+  }) => ipcRenderer.invoke('tool-permissions:sync', prefs) as Promise<{
+    autoApproveAll: boolean;
+    requireApprovalByTool: Record<string, boolean>;
+  }>,
   openExternal: (url: string) => {
     ipcRenderer.send('open-external', url);
   },
   openNewWindow: (relativePath?: string): Promise<void> =>
     ipcRenderer.invoke('shell-new-window', relativePath) as Promise<void>,
+  pickProjectDirectory: (): Promise<{ path: string } | null> =>
+    ipcRenderer.invoke('pick-project-directory') as Promise<{ path: string } | null>,
+  setCodeProjectIndex: (payload: { projectId: string; rootPath: string } | null): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke('set-code-project-index', payload) as Promise<{ ok: boolean }>,
+  syncActiveEditor: (payload: {
+    path: string;
+    name: string;
+    line: number;
+    character: number;
+    selection?: string;
+  } | null): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke('sync-active-editor', payload) as Promise<{ ok: boolean }>,
   runLocalDesktopTool: (
     payload: RunLocalPayload,
     options?: RunLocalOptions,

@@ -31,6 +31,7 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
     workflow_inner_generation: 'Workflow design (model)',
     local_rag_query: 'Local index search (desktop)',
     local_read_file: 'Read local file (desktop)',
+    local_shell: 'Local terminal (desktop)',
     run_command: 'Local terminal (desktop)',
     local_apply_patch: 'Apply local file patch (desktop)',
     local_index_status: 'Indexer status (desktop)',
@@ -107,7 +108,8 @@ export function getToolActivityHint(
             }
             return 'Preparing file patch…';
         }
-        case 'run_command': {
+        case 'run_command':
+        case 'local_shell': {
             const cmd = typeof args.command === 'string' ? args.command.trim() : '';
             if (!cmd) return 'Running a command on your computer…';
             const short = cmd.length > 48 ? `${cmd.slice(0, 47)}…` : cmd;

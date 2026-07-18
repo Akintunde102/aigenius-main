@@ -45,7 +45,6 @@ import { clearAuthSession } from "@/lib/utils/auth-session";
 import type { ChatContainerHandle } from "./features/chat/components/ChatContainer";
 import {
   ModelPickResolver,
-  scheduleNextTick,
 } from "./ModelInterface.helpers";
 import { buildConversationMessageSignature } from "@/lib/utils/conversationScrollMemory";
 import { useModelInterfacePersonality } from "./hooks/useModelInterfacePersonality";
@@ -138,7 +137,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     selectedPersonalityIconUrl,
     setSelectedPersonalityIconUrl,
   } = personalityState;
-  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, savedChats, currentSessionId, setCurrentSessionId, showTyping, setShowTyping, showScrollToBottom } = chatState;
+  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, showTyping, setShowTyping, showScrollToBottom } = chatState;
   const { loading, setLoading, error, setError, streaming, setStreaming, streamingEnabled, setStreamingEnabled, imagePreview, setImagePreview, uploading, setUploading, uploadProgress, setUploadProgress, dragActive, setDragActive, showCosts, showNaira, showSaved, setShowSaved, setTotalSpent, optimizationMessage } = uiState;
   const { showModelDetailsModal, setShowModelDetailsModal, showModelSelectionModal, setShowModelSelectionModal } = modalState;
   const { search, setSearch, historySearch, setHistorySearch, orderByCost, setOrderByCost, allModalities, selectedModalities, allOutputModalities, selectedOutputModalities, showWebSearch, setShowWebSearch, showToolsOnly, setShowToolsOnly, pinnedModelIds, favoritesLoaded, orderBy, setOrderBy, orderDir, setOrderDir, selectedProviders, setSelectedProviders, imageFilterOnly, setImageFilterOnly, toggleModality, toggleOutputModality } = filterState;
@@ -302,6 +301,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     createNewSessionAndSwitchWrapper,
     refreshWalletFromBackend,
     refreshWalletBalance,
+    setWallet,
   });
 
   useModelInterfaceLifecycle({
@@ -331,7 +331,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     createNewSessionAndSwitchWrapper,
   });
 
-  const handleChatBoxSend = async (
+  const handleChatBoxSend = useCallback(async (
     message: string,
     _model: Model | null,
   ): Promise<boolean | void> => {
@@ -387,19 +387,36 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
         contentParts,
         selectedModel.id,
         selectedModel.name || selectedModel.id,
-        currentSessionId,
+        viewSessionId ?? currentSessionId,
       );
 
+      const filesBeingSent = uploadedFiles;
       setChat((prev) => [...prev, userMsg]);
       setUploadedFiles([]);
 
-      scheduleNextTick(() => handleSend("", undefined, userMsg));
-      return true;
-    } else {
-      scheduleNextTick(() => handleSend(message));
-      return true;
+      const sent = await handleSend("", undefined, userMsg);
+      if (sent === false) {
+        setChat((prev) => prev.filter((m) => m !== userMsg));
+        setUploadedFiles(filesBeingSent);
+      }
+      return sent;
     }
-  };
+
+    return await handleSend(message);
+  }, [
+    selectedModel,
+    uploadedFiles,
+    project,
+    isInsufficientCredits,
+    requiredWalletBalance,
+    wallet,
+    viewSessionId,
+    currentSessionId,
+    handleSend,
+    setChat,
+    setUploadedFiles,
+    setError,
+  ]);
 
   const handlePublishFromSidebar = useCallback(
     (session: ChatSession, isRepublishing = false, existingUrl = "") => {

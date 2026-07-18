@@ -204,6 +204,7 @@ export interface StickyThreadMarker {
 
 export interface ChatSession {
     id?: string;
+    codeProjectId?: string | null;
     starred?: boolean;
     isPublished?: boolean;
     publishedAt?: string;

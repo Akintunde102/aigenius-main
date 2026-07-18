@@ -1,4 +1,4 @@
-import React, { type RefObject } from "react";
+import React, { useCallback, type RefObject } from "react";
 import {
   MessageHandlers,
   ChatContainer,
@@ -25,7 +25,7 @@ type Props = {
     enableStreaming?: boolean,
     preCreatedMessage?: ChatMessage,
     chatSnapshot?: ChatMessage[],
-  ) => void | Promise<void>;
+  ) => void | Promise<boolean | void>;
   chatEndRef: React.RefObject<HTMLDivElement | null>;
   chatContainerRef: RefObject<ChatContainerHandle | null>;
   selectedModel: Model | null;
@@ -152,6 +152,21 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   isMiniMode,
   analyzer = null,
 }: Props) {
+  const handleRemoveUploadedFile = useCallback(
+    (idx: number) => {
+      setUploadedFiles((prev) => {
+        const removed = prev[idx];
+        if (removed?.fileUrl) {
+          setAttachmentIndex((aiPrev) =>
+            aiPrev.filter((it) => it.url !== removed.fileUrl),
+          );
+        }
+        return prev.filter((_, i) => i !== idx);
+      });
+    },
+    [setUploadedFiles, setAttachmentIndex],
+  );
+
   return (
     <MessageHandlers
       chat={chat}
@@ -189,17 +204,7 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           uploadProgress={uploadProgress}
           supportsImageUpload={supportsImageUpload || false}
           uploadedFiles={uploadedFiles}
-          onRemoveUploadedFile={(idx) => {
-            setUploadedFiles((prev) => {
-              const removed = prev[idx];
-              if (removed?.fileUrl) {
-                setAttachmentIndex((aiPrev) =>
-                  aiPrev.filter((it) => it.url !== removed.fileUrl),
-                );
-              }
-              return prev.filter((_, i) => i !== idx);
-            });
-          }}
+          onRemoveUploadedFile={handleRemoveUploadedFile}
           onModelNameClick={() => setShowModelSelectionModal(true)}
           requestModelPick={requestModelPick}
           onPersonalityClick={() => setShowPersonalityModal(true)}

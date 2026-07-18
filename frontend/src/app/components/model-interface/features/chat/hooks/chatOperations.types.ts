@@ -66,12 +66,14 @@ export interface UseChatOperationsReturn {
     setWallet: React.Dispatch<React.SetStateAction<number | null>>;
     assistantResponse: string;
     optimizationMessage: string;
+    /** Resolves `true` when the message was dispatched, `false` when a
+     *  pre-dispatch validation failed (callers may restore the composer). */
     handleSend: (
         content?: string,
         enableStreaming?: boolean,
         preCreatedMessage?: ChatMessage,
         chatSnapshot?: ChatMessage[],
-    ) => Promise<void>;
+    ) => Promise<boolean>;
     handleStop: () => void;
     refreshWalletBalance: () => Promise<number | null>;
 }
@@ -86,7 +88,14 @@ export interface UseStreamingResponseProps {
     currentSessionId?: string | null;
     activeViewSessionId?: string | null;
     updateSessionMessages?: (sessionId: string, messages: ChatMessage[], sessionData?: Partial<ChatSession>) => void;
-    handleStreamResult: (result: StreamResult, streamingSessionId: string | null) => void;
+    handleStreamResult: (
+        result: StreamResult,
+        streamingSessionId: string | null,
+        /** Draft epoch captured when the send was dispatched (draft sends only). */
+        draftEpoch?: number,
+        /** Per-session send generation captured at dispatch. */
+        sendGeneration?: number,
+    ) => void;
     handleSendError: (error: unknown) => void;
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;
@@ -97,6 +106,12 @@ export interface ChatCompletionRequestOverrides {
     orphanReply?: OrphanReplyRequest | null;
     assistantMessageId?: string;
     assistantTimestamp?: number;
+    /** Draft generation captured at dispatch — set only when conversationId is null.
+     *  Completion callbacks compare it to the current epoch so a finished stream
+     *  from an older draft cannot hijack a freshly opened new chat. */
+    draftEpoch?: number;
+    /** Monotonic per-session send counter captured at dispatch. */
+    sendGeneration?: number;
 }
 
 // Props for non-streaming response handler

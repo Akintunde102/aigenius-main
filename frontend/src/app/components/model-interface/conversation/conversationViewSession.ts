@@ -29,6 +29,22 @@ export function isPendingDraftMode(): boolean {
   return conversationTargetRef.current.pendingDraft;
 }
 
+/**
+ * Draft generation counter. Every time the draft slot is reset (New Chat),
+ * the epoch bumps. In-flight draft sends capture the epoch at dispatch time so
+ * completion callbacks can tell "my draft" apart from "a newer draft" —
+ * `null === null` view comparison alone cannot distinguish two drafts.
+ */
+let draftConversationEpoch = 0;
+
+export function bumpDraftConversationEpoch(): void {
+  draftConversationEpoch += 1;
+}
+
+export function getDraftConversationEpoch(): number {
+  return draftConversationEpoch;
+}
+
 export function setActiveRouteConversationTarget(id: string | null): void {
   conversationTargetRef.current.activeRouteConversationId = id;
   conversationTargetRef.current.routeTargetInitialized = true;

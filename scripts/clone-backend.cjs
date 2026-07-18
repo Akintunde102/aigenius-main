@@ -7,7 +7,7 @@ const backendRoot = path.join(repoRoot, 'backend');
 const backendPkg = path.join(backendRoot, 'package.json');
 const repoUrl =
   process.env.BACKEND_REPO_URL ||
-  'https://github.com/Akintunde102/ai-backend.git';
+  'https://github.com/Akintunde102/aigenius-backend.git';
 
 if (fs.existsSync(backendPkg)) {
   console.log('backend/ already exists — nothing to clone.');

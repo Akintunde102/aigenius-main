@@ -29,11 +29,10 @@ jest.mock('../db/connection', () => {
       if (_db) return _db;
       const db = new Database(':memory:');
       db.pragma('journal_mode = WAL');
-      const schema = fs.readFileSync(
-        path.join(__dirname, '..', 'schema.sql'),
-        'utf8',
-      );
-      db.exec(schema);
+      const schemaFiles = ['schema.sql', 'schema-chunks.sql', 'schema-import-graph.sql'];
+      for (const file of schemaFiles) {
+        db.exec(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'));
+      }
       _db = db;
       return db;
     },
@@ -48,8 +47,9 @@ describe('search db queries', () => {
 
   beforeEach(() => {
     db = new Database(':memory:');
-    const schema = fs.readFileSync(path.join(__dirname, '..', 'schema.sql'), 'utf8');
-    db.exec(schema);
+    for (const file of ['schema.sql', 'schema-chunks.sql', 'schema-import-graph.sql']) {
+      db.exec(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'));
+    }
     ensureBrowseSqlFunctions(db);
   });
 

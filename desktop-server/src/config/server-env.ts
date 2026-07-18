@@ -7,13 +7,13 @@
  */
 
 export const serverPort = parseInt(process.env.PORT ?? '8001', 10);
-export const serverHostname = process.env.HOST ?? '127.0.0.1';
-export const upstreamApiUrl = process.env.AIGENIUS_UPSTREAM_API_URL ?? 'http://127.0.0.1:8000';
+export const serverHostname = process.env.HOST ?? 'localhost';
+export const upstreamApiUrl = process.env.AIGENIUS_UPSTREAM_API_URL ?? 'http://localhost:8000';
 
 /** Required for `/search/*` when mounted with bearer middleware. */
 export const aigeniusSecretToken = process.env.AIGENIUS_SECRET_TOKEN;
 
-/** Comma-separated origins; default matches Electron dev UI on 3001. */
+/** Comma-separated origins; default matches Electron dev UI (Tilt: 23001, legacy Next: 3001). */
 export function corsAllowedOrigins(): string[] {
   const raw = process.env.AIGENIUS_DESKTOP_CORS_ORIGINS;
   if (typeof raw === 'string' && raw.trim().length > 0) {
@@ -22,5 +22,9 @@ export function corsAllowedOrigins(): string[] {
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
   }
-  return ['http://127.0.0.1:3001', 'http://localhost:3001'];
+  const webPort = process.env.DEV_WEB_PORT ?? process.env.AIGENIUS_FRONTEND_PORT ?? '23001';
+  return [
+    `http://localhost:${webPort}`,
+    `http://127.0.0.1:${webPort}`,
+  ];
 }

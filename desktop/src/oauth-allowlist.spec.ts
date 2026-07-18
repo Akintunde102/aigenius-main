@@ -30,9 +30,9 @@ describe('urlMatchesOauthAllowlist', () => {
   });
 
   it('matches extra origin with http for local IdP', () => {
-    const origins = new Set(['http://127.0.0.1:8080']);
+    const origins = new Set(['http://localhost:8080']);
     expect(
-      urlMatchesOauthAllowlist('http://127.0.0.1:8080/realms/foo/protocol/openid-connect/auth', origins, []),
+      urlMatchesOauthAllowlist('http://localhost:8080/realms/foo/protocol/openid-connect/auth', origins, []),
     ).toBe(true);
   });
 

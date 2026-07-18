@@ -191,41 +191,48 @@
   .markdown-code-block-shell {
     min-width: 0;
     max-width: 100%;
+    margin: 0.35rem 0;
+  }
+
+  .markdown-code-copy-done {
+    font-size: 0.65rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--markdown-code-copy-done, #64748b);
   }
 
   .markdown-code-block-copy {
-    position: absolute;
-    top: 0.45rem;
-    right: 0.45rem;
-    z-index: 3;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
     padding: 0;
-    border-radius: 6px;
-    border: 1px solid rgba(58, 71, 87, 0.14);
-    background: rgba(255, 255, 255, 0.96);
-    color: #64748b;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    border: none;
+    background: transparent;
+    color: var(--markdown-code-copy-fg, rgba(71, 85, 105, 0.55));
     cursor: pointer;
     opacity: 0;
     transition:
-      opacity 0.15s ease,
-      color 0.12s ease,
-      background-color 0.12s ease;
+      opacity 0.18s ease,
+      color 0.15s ease,
+      background-color 0.15s ease;
+    position: absolute;
+    top: 0.245rem;
+    right: 0.245rem;
+    z-index: 3;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 5px;
   }
 
   .markdown-code-block-copy:hover {
-    color: #334155;
-    background: rgba(248, 250, 252, 1);
+    color: var(--markdown-code-copy-fg-hover, rgba(51, 65, 85, 0.85));
+    background: var(--markdown-code-copy-bg-hover, rgba(15, 23, 42, 0.06));
   }
 
   .markdown-code-block-copy:focus-visible {
     opacity: 1;
-    outline: 2px solid var(--app-brand-500, #4c7fd9);
-    outline-offset: 2px;
+    outline: 1.5px solid var(--app-brand-500, #4c7fd9);
+    outline-offset: 1px;
   }
 
   .markdown-code-block-shell:hover .markdown-code-block-copy,
@@ -235,29 +242,28 @@
 
   @media (hover: none) {
     .markdown-code-block-copy {
-      opacity: 0.5;
+      opacity: 0.35;
     }
 
     .markdown-code-block-shell:hover .markdown-code-block-copy,
     .markdown-code-block-shell:focus-within .markdown-code-block-copy {
-      opacity: 0.85;
+      opacity: 0.65;
     }
   }
 
   .markdown-code-block-pre {
     margin: 0;
-    padding: 0.85rem 2.35rem 0.85rem 1rem;
+    padding: 0.525rem 1.4rem 0.525rem 0.595rem;
     min-width: 0;
     max-width: 100%;
     overflow-x: hidden;
     font-size: 0.8125rem;
     line-height: 1.55;
-    border-radius: 10px;
-    /* Solid light surface + explicit ink — avoids “invisible” text on cream / bad inheritance */
-    color: #0f172a;
-    background: #f1f5f9;
-    border: 1px solid rgba(51, 65, 85, 0.22);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    border-radius: 8px;
+    color: var(--markdown-code-fg, #334155);
+    background: var(--markdown-code-bg, rgba(15, 23, 42, 0.045));
+    border: 1px solid var(--markdown-code-border, rgba(15, 23, 42, 0.08));
+    box-shadow: none;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -286,58 +292,16 @@
     background: transparent;
   }
 
-  .markdown-inline-code-shell {
-    max-width: 100%;
-    vertical-align: baseline;
-  }
-
-  .markdown-inline-code-copy {
-    position: absolute;
-    top: 0.1em;
-    right: 0.15em;
-    z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.35rem;
-    height: 1.35rem;
-    padding: 0;
-    border-radius: 4px;
-    border: 1px solid rgba(58, 71, 87, 0.12);
-    background: rgba(255, 255, 255, 0.95);
-    color: #64748b;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.15s ease;
-  }
-
-  .markdown-inline-code-copy:focus-visible {
-    opacity: 1;
-    outline: 2px solid var(--app-brand-500, #4c7fd9);
-    outline-offset: 1px;
-  }
-
-  .markdown-inline-code-shell:hover .markdown-inline-code-copy,
-  .markdown-inline-code-shell:focus-within .markdown-inline-code-copy {
-    opacity: 1;
-  }
-
-  @media (hover: none) {
-    .markdown-inline-code-copy {
-      opacity: 0.45;
-    }
-  }
-
   .markdown-inline-code {
     display: inline;
     max-width: 100%;
-    padding: 0.12em 1.65em 0.12em 0.4em;
-    font-size: 0.88em;
-    border-radius: 6px;
-    color: #0f172a;
-    background: #f1f5f9;
-    border: 1px solid rgba(51, 65, 85, 0.2);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+    padding: 0.07em 0.245em;
+    font-size: 0.875em;
+    border-radius: 4px;
+    color: var(--markdown-code-fg, #334155);
+    background: var(--markdown-code-bg, rgba(15, 23, 42, 0.06));
+    border: 1px solid var(--markdown-code-border, rgba(15, 23, 42, 0.07));
+    box-shadow: none;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -345,9 +309,9 @@
     vertical-align: 0.05em;
   }
 
-  .markdown-inline-code-shell:hover .markdown-inline-code,
-  .markdown-inline-code-shell:focus-within .markdown-inline-code {
-    border-color: rgba(58, 71, 87, 0.18);
+  .markdown-inline-code:hover {
+    background: var(--markdown-code-bg-hover, rgba(15, 23, 42, 0.085));
+    border-color: var(--markdown-code-border-hover, rgba(15, 23, 42, 0.11));
   }
 }
 
@@ -451,24 +415,22 @@
 
 .markdown-thinking-stream.markdown-chat-body.markdown-body .markdown-inline-code {
   font-size: 10px;
-  background: rgba(120, 120, 120, 0.08);
-  border-color: rgba(100, 100, 100, 0.12);
+  --markdown-code-bg: rgba(120, 120, 120, 0.06);
+  --markdown-code-border: rgba(100, 100, 100, 0.08);
+  --markdown-code-bg-hover: rgba(120, 120, 120, 0.09);
 }
 
 .markdown-thinking-stream.markdown-chat-body.markdown-body .markdown-code-block-pre {
   font-size: 10px;
-  padding: 0.5rem 1.85rem 0.5rem 0.45rem;
-  background: rgba(120, 120, 120, 0.06);
-  border-color: rgba(100, 100, 100, 0.1);
-  box-shadow: none;
+  padding: 0.35rem 1.225rem 0.35rem 0.315rem;
+  --markdown-code-bg: rgba(120, 120, 120, 0.05);
+  --markdown-code-border: rgba(100, 100, 100, 0.08);
 }
 
-.markdown-thinking-stream.markdown-chat-body.markdown-body .markdown-code-block-copy,
-.markdown-thinking-stream.markdown-chat-body.markdown-body .markdown-inline-code-copy {
-  width: 1.25rem;
-  height: 1.25rem;
-  border-color: rgba(100, 100, 100, 0.15);
-  background: rgba(245, 245, 245, 0.92);
+.markdown-thinking-stream.markdown-chat-body.markdown-body .markdown-code-block-copy {
+  width: 1.15rem;
+  height: 1.15rem;
+  --markdown-code-copy-fg: rgba(100, 100, 100, 0.45);
 }
 
 .markdown-thinking-stream.markdown-chat-body.markdown-body blockquote {
@@ -546,15 +508,32 @@
 
 .markdown-tool-result.markdown-chat-body.markdown-body .markdown-code-block-pre {
   font-size: 10.5px;
-  padding: 0.5rem 1.5rem 0.5rem 0.5rem;
+  padding: 0.35rem 1.155rem 0.35rem 0.35rem;
   border-radius: 6px;
 }
 
 .markdown-tool-result.markdown-chat-body.markdown-body .markdown-code-block-copy {
-  top: 0.25rem;
-  right: 0.25rem;
-  width: 1.5rem;
-  height: 1.5rem;
+  top: 0.14rem;
+  right: 0.14rem;
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.markdown-tool-result.markdown-chat-body.markdown-body .markdown-inline-code {
+  font-size: 0.84em;
+  --markdown-code-bg: rgba(15, 23, 42, 0.05);
+  --markdown-code-border: rgba(15, 23, 42, 0.07);
+}
+
+.markdown-chat-body.markdown-body a.local-file-link {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 500;
+}
+
+.markdown-chat-body.markdown-body a.local-file-link:hover {
+  color: #1d4ed8;
 }
 
 /* Dark chat canvas — `html.dark` from sidebar “Dark chat area” */
@@ -608,10 +587,13 @@
 }
 
 .dark .markdown-chat-body.markdown-body .markdown-code-block-pre {
-  color: #e4e4e7;
-  background: #18181b;
-  border-color: rgba(82, 82, 91, 0.85);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --markdown-code-fg: #d4d4d8;
+  --markdown-code-bg: rgba(255, 255, 255, 0.05);
+  --markdown-code-border: rgba(255, 255, 255, 0.08);
+  color: var(--markdown-code-fg);
+  background: var(--markdown-code-bg);
+  border-color: var(--markdown-code-border);
+  box-shadow: none;
 }
 
 .dark .markdown-chat-body.markdown-body .markdown-code-block-pre code.hljs {
@@ -619,15 +601,33 @@
 }
 
 .dark .markdown-chat-body.markdown-body .markdown-inline-code {
-  color: #e4e4e7;
-  background: #27272a;
-  border-color: rgba(82, 82, 91, 0.85);
+  --markdown-code-fg: #d4d4d8;
+  --markdown-code-bg: rgba(255, 255, 255, 0.06);
+  --markdown-code-border: rgba(255, 255, 255, 0.08);
+  --markdown-code-bg-hover: rgba(255, 255, 255, 0.09);
+  --markdown-code-border-hover: rgba(255, 255, 255, 0.12);
+  color: var(--markdown-code-fg);
+  background: var(--markdown-code-bg);
+  border-color: var(--markdown-code-border);
   box-shadow: none;
 }
 
-.dark .markdown-chat-body.markdown-body .markdown-code-block-copy,
-.dark .markdown-chat-body.markdown-body .markdown-inline-code-copy {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(39, 39, 42, 0.96);
-  color: #a1a1aa;
+.dark .markdown-chat-body.markdown-body .markdown-code-block-copy {
+  --markdown-code-copy-fg: rgba(212, 212, 216, 0.45);
+  --markdown-code-copy-fg-hover: rgba(228, 228, 231, 0.85);
+  --markdown-code-copy-bg-hover: rgba(255, 255, 255, 0.08);
+  --markdown-code-copy-done: #a1a1aa;
+}
+
+.dark .markdown-tool-result.markdown-chat-body.markdown-body .markdown-inline-code {
+  --markdown-code-bg: rgba(255, 255, 255, 0.05);
+  --markdown-code-border: rgba(255, 255, 255, 0.07);
+}
+
+.dark .markdown-chat-body.markdown-body a.local-file-link {
+  color: #60a5fa;
+}
+
+.dark .markdown-chat-body.markdown-body a.local-file-link:hover {
+  color: #93c5fd;
 }

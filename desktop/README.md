@@ -1,6 +1,6 @@
 # AIGenius desktop (Electron)
 
-Linux-focused shell that runs the Next.js app and a small **Hono** companion server (`../desktop-server`) on `127.0.0.1`. Packaged builds use **`ELECTRON_RUN_AS_NODE=1`** so the same Electron binary runs `server.js` and the mini-server without shipping a separate Node runtime.
+Linux-focused shell that runs the Next.js app and a small **Hono** companion server (`../desktop-server`) on `localhost`. Packaged builds use **`ELECTRON_RUN_AS_NODE=1`** so the same Electron binary runs `server.js` and the mini-server without shipping a separate Node runtime.
 
 ## Development
 
@@ -14,7 +14,7 @@ Linux-focused shell that runs the Next.js app and a small **Hono** companion ser
 
 3. **Two terminals** — Electron does not start Next for you.
 
-   - **Terminal 1** — Next (port **3001**, default API `http://127.0.0.1:8001` in dev via `frontend/next.config.js`):
+   - **Terminal 1** — Next (port **3001**, default API `http://localhost:8001` in dev via `frontend/next.config.js`):
 
      ```bash
      cd frontend && yarn dev
@@ -28,27 +28,29 @@ Linux-focused shell that runs the Next.js app and a small **Hono** companion ser
      cd desktop && npm run dev
      ```
 
-     Start Terminal 2 after Next is listening. Electron opens when `http://127.0.0.1:3001/desktop-login` responds.
+     Start Terminal 2 after Next is listening. Electron opens when `http://localhost:3001/desktop-login` responds.
 
    **Faster repeat runs:** `npm run dev:quick` in `desktop/` skips `build:server` if the server is already built.
 
    Override the UI port with `AIGENIUS_FRONTEND_PORT` (must match Next).
 
-   **Mini-server CORS:** set `AIGENIUS_DESKTOP_CORS_ORIGINS` to a comma-separated list if the UI origin is not `http://127.0.0.1:3001` / `http://localhost:3001` (must include the exact origin the renderer uses).
+   **Mini-server CORS:** set `AIGENIUS_DESKTOP_CORS_ORIGINS` to a comma-separated list if the UI origin is not `http://localhost:3001` / `http://localhost:3001` (must include the exact origin the renderer uses).
 
-   **Upstream API:** the mini-server proxies to `AIGENIUS_UPSTREAM_API_URL` (default `http://127.0.0.1:8000`). Point it at your Nest gateway if the API is not local.
+   **Upstream API:** the mini-server proxies to `AIGENIUS_UPSTREAM_API_URL` (default `http://localhost:8000`). Point it at your Nest gateway if the API is not local.
 
-   **OAuth return URL:** backend must send the browser back to the same origin/port as this Next app. Set `CLIENT_AUTH_PATH` and/or `FRONTEND_URL` / `DASHBOARD_URL` in `backend/env/.local.env` to `http://127.0.0.1:3001` (or `http://localhost:3001`). If those still pointed at port **3000** while Next runs on **3001**, you would see a failed load and then `/login` again.
+   **OAuth return URL:** backend must send the browser back to the same origin/port as this Next app. Set `CLIENT_AUTH_PATH` and/or `FRONTEND_URL` / `DASHBOARD_URL` in `backend/env/.local.env` to `http://localhost:3001` (or `http://localhost:3001`). If those still pointed at port **3000** while Next runs on **3001**, you would see a failed load and then `/login` again.
 
-   **Workflow deep links:** set backend `WORKFLOW_STUDIO_BASE_URL=http://127.0.0.1:3001` (or your UI origin) so `workflow_agent` returns `/workflow/:id` URLs that open in this app. The Next route `/(views)/workflow/[id]` loads the workflow from the API.
+   **Workflow deep links:** set backend `WORKFLOW_STUDIO_BASE_URL=http://localhost:3001` (or your UI origin) so `workflow_agent` returns `/workflow/:id` URLs that open in this app. The Next route `/(views)/workflow/[id]` loads the workflow from the API.
 
    **Local file index:** full-home auto-index on first launch is **off** by default. Set `AIGENIUS_AUTO_INDEX_IF_EMPTY=1` to restore the old “scan home when index empty” behavior after 15s. `AIGENIUS_SKIP_AUTO_INDEX=1` still disables that path entirely.
+
+   **Code intelligence (projects, symbols, hybrid RAG, import graph):** see [`../desktop-server/docs/CODE_INTELLIGENCE.md`](../desktop-server/docs/CODE_INTELLIGENCE.md). Select a project in the sidebar to scope indexing and `local_*` tools to that root.
 
    **Debug:** `npm run dev:electron:debug` or `AIGENIUS_DESKTOP_DEVTOOLS=1` before `electron .` (DevTools after first load).
 
    **Linux chrome-sandbox errors:** scripts set `ELECTRON_DISABLE_SANDBOX=1`. Packaged `.deb`: see `deb-after-install.sh`.
 
-The UI expects `http://127.0.0.1:3001` and API `http://127.0.0.1:8001` in dev (frontend default) or `yarn build:desktop` / `npm run build:desktop` for packaged builds.
+The UI expects `http://localhost:3001` and API `http://localhost:8001` in dev (frontend default) or `yarn build:desktop` / `npm run build:desktop` for packaged builds.
 
 ## Performance / profiling
 
@@ -109,4 +111,4 @@ This removes the manual post-install `chown/chmod` step for new installs/upgrade
 
 ## OAuth / Paystack
 
-Register Google (and later GitHub) redirect URIs for `http://127.0.0.1:3001/...`. Paystack flows that must open in the system browser can use `window.aigeniusDesktop?.openExternal(url)` from the renderer when `isDesktop` is available.
+Register Google (and later GitHub) redirect URIs for `http://localhost:3001/...`. Paystack flows that must open in the system browser can use `window.aigeniusDesktop?.openExternal(url)` from the renderer when `isDesktop` is available.

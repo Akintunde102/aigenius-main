@@ -1,4 +1,4 @@
-export type PatchOpKind = 'create_file' | 'update_file' | 'delete_file';
+export type PatchOpKind = 'create_file' | 'update_file' | 'apply_hunk' | 'delete_file';
 
 export type ParsedPatchOperation =
   | { kind: PatchOpKind; path: string; content: string | null }
@@ -13,6 +13,7 @@ function normalizeOpKind(raw: string): PatchOpKind | null {
   if (k === 'update_file' || k === 'update' || k === 'write_file' || k === 'write') {
     return 'update_file';
   }
+  if (k === 'apply_hunk' || k === 'hunk' || k === 'patch_hunk') return 'apply_hunk';
   if (k === 'delete_file' || k === 'delete' || k === 'unlink') return 'delete_file';
   return null;
 }
@@ -99,6 +100,17 @@ export function parsePatchOperationsForDisplay(
       continue;
     }
 
+    if (kind === 'apply_hunk') {
+      const search = typeof o.search === 'string' ? o.search : '';
+      const replace = typeof o.replace === 'string' ? o.replace : '';
+      operations.push({
+        kind: 'apply_hunk',
+        path: filePath,
+        content: truncateContent(`search:\n${search}\n\nreplace:\n${replace}`),
+      });
+      continue;
+    }
+
     const content = typeof o.content === 'string' ? truncateContent(o.content) : '';
     operations.push({ kind, path: filePath, content });
   }
@@ -109,16 +121,19 @@ export function parsePatchOperationsForDisplay(
 export function summarizePatchOperations(operations: ParsedPatchOperation[]): string {
   let creates = 0;
   let updates = 0;
+  let hunks = 0;
   let deletes = 0;
   let invalid = 0;
   for (const op of operations) {
     if (op.kind === 'invalid') invalid += 1;
     else if (op.kind === 'create_file') creates += 1;
     else if (op.kind === 'update_file') updates += 1;
+    else if (op.kind === 'apply_hunk') hunks += 1;
     else if (op.kind === 'delete_file') deletes += 1;
   }
   const parts: string[] = [];
   if (creates) parts.push(`${creates} create${creates === 1 ? '' : 's'}`);
+  if (hunks) parts.push(`${hunks} hunk${hunks === 1 ? '' : 's'}`);
   if (updates) parts.push(`${updates} update${updates === 1 ? '' : 's'}`);
   if (deletes) parts.push(`${deletes} delete${deletes === 1 ? '' : 's'}`);
   if (invalid) parts.push(`${invalid} invalid entr${invalid === 1 ? 'y' : 'ies'}`);

@@ -3,6 +3,7 @@ import { ChatMessage, ChatSession } from '@/app/components/model-interface/share
 import { normalizeSessionMessages } from '@/lib/utils/messageContentUtils';
 import { SetChatForSession } from './chatOperations.types';
 import { DRAFT_SESSION_KEY } from './chatOperations.constants';
+import { bumpDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
 
 interface UseSessionSwitcherOptions {
     currentSessionId: string | null;
@@ -91,6 +92,7 @@ export function useSessionSwitcher({ currentSessionId, chatMap, setChatForSessio
     const createAndSwitchToNewSession = useCallback((
         setCurrentSessionId: (id: string | null) => void
     ) => {
+        bumpDraftConversationEpoch();
         setCurrentSessionId(null);
         setChatForSession(DRAFT_SESSION_KEY, []);
     }, [setChatForSession]);

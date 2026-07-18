@@ -17,7 +17,7 @@ export interface ChatOperationsContextValue {
   setInput: React.Dispatch<React.SetStateAction<string>>;
   assistantResponse: string;
   optimizationMessage: string;
-  handleSend: (content?: string, enableStreaming?: boolean, preCreatedMessage?: ChatMessage, chatSnapshot?: ChatMessage[]) => Promise<void>;
+  handleSend: (content?: string, enableStreaming?: boolean, preCreatedMessage?: ChatMessage, chatSnapshot?: ChatMessage[]) => Promise<boolean>;
   handleStop: () => void;
   error: string;
   setError: React.Dispatch<React.SetStateAction<string>>;

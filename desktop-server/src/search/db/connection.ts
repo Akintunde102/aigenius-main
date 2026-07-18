@@ -7,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let _db: Database.Database | null = null;
+let _dbPath: string | null = null;
 
 /**
  * Returns the singleton better-sqlite3 connection, creating it on first call.
@@ -14,7 +15,8 @@ let _db: Database.Database | null = null;
  * MUST be called from the Electron main thread only.
  */
 export function getDb(dbPath: string): Database.Database {
-  if (_db) return _db;
+  if (_db && _dbPath === dbPath) return _db;
+  if (_db) closeDb();
 
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
@@ -53,6 +55,39 @@ export function getDb(dbPath: string): Database.Database {
   );
   db.exec(schema);
 
+  const chunkSchemaPath = path.join(__dirname, '..', 'schema-chunks.sql');
+  let needsChunkRebuild = false;
+  if (fs.existsSync(chunkSchemaPath)) {
+    const chunkSearchInfo = db.prepare('PRAGMA table_info(chunk_search)').all() as { name: string }[];
+    const expectedChunkColumns = ['path', 'symbol_name', 'line_start', 'line_end', 'content'];
+    if (
+      chunkSearchInfo.length > 0 &&
+      (chunkSearchInfo.length !== expectedChunkColumns.length ||
+        expectedChunkColumns.some((name, i) => chunkSearchInfo[i]?.name !== name))
+    ) {
+      console.info('[search-db] Migrating: Rebuilding chunk_search virtual table for schema alignment...');
+      db.exec('DROP TABLE IF EXISTS chunk_search');
+      needsChunkRebuild = true;
+    }
+    db.exec(fs.readFileSync(chunkSchemaPath, 'utf8'));
+    if (needsChunkRebuild) {
+      console.info('[search-db] Rebuilding chunk_search FTS index...');
+      db.exec("INSERT INTO chunk_search(chunk_search) VALUES('rebuild')");
+    }
+  }
+
+  const importSchemaPath = path.join(__dirname, '..', 'schema-import-graph.sql');
+  if (fs.existsSync(importSchemaPath)) {
+    db.exec(fs.readFileSync(importSchemaPath, 'utf8'));
+  }
+
+  const intelligenceSchemaPath = path.join(__dirname, '..', 'schema-intelligence.sql');
+  if (fs.existsSync(intelligenceSchemaPath)) {
+    db.exec(fs.readFileSync(intelligenceSchemaPath, 'utf8'));
+  }
+
+  migrateIntelligenceColumns(db);
+
   // If we dropped the search table, it's recreated empty by the schema. We must rebuild it from the content table.
   if (needsRebuild) {
     console.info('[search-db] Index rebuild started (this may take a few seconds)...');
@@ -61,7 +96,38 @@ export function getDb(dbPath: string): Database.Database {
   }
 
   _db = db;
+  _dbPath = dbPath;
   return db;
+}
+
+function migrateIntelligenceColumns(db: Database.Database): void {
+  const fileCols = db.prepare('PRAGMA table_info(file_index)').all() as { name: string }[];
+  if (fileCols.length > 0) {
+    const names = new Set(fileCols.map((c) => c.name));
+    const adds: Array<[string, string]> = [
+      ['content_hash', 'TEXT'],
+      ['language', 'TEXT'],
+      ['index_status', 'TEXT'],
+      ['is_generated', 'INTEGER DEFAULT 0'],
+      ['last_indexed', 'INTEGER'],
+    ];
+    for (const [col, type] of adds) {
+      if (!names.has(col)) {
+        db.exec(`ALTER TABLE file_index ADD COLUMN ${col} ${type}`);
+      }
+    }
+  }
+
+  const symCols = db.prepare('PRAGMA table_info(symbol_index)').all() as { name: string }[];
+  if (symCols.length > 0) {
+    const names = new Set(symCols.map((c) => c.name));
+    if (!names.has('confidence')) {
+      db.exec("ALTER TABLE symbol_index ADD COLUMN confidence TEXT NOT NULL DEFAULT 'high'");
+    }
+    if (!names.has('language')) {
+      db.exec('ALTER TABLE symbol_index ADD COLUMN language TEXT');
+    }
+  }
 }
 
 /**
@@ -78,5 +144,10 @@ export function closeDb(): void {
   if (_db) {
     _db.close();
     _db = null;
+    _dbPath = null;
   }
+}
+
+export function getActiveDbPath(): string | null {
+  return _dbPath;
 }

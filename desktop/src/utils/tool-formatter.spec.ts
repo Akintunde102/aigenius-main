@@ -54,7 +54,8 @@ describe('tool-formatter', () => {
       const { result } = formatReadFile(data);
 
       expect(result).toContain('### Read file');
-      expect(result).toContain('**Path**: `/tmp/test.txt`');
+      expect(result).toContain('**Path**: [test.txt](local-file://');
+      expect(result).toContain(encodeURIComponent('/tmp/test.txt'));
       expect(result).toContain('hello world');
       expect(result).not.toContain('- **Truncated**');
     });

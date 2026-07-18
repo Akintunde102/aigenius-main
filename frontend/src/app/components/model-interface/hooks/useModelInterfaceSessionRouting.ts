@@ -27,6 +27,7 @@ import {
 import { useSyncRouteConversationId } from "../conversation/useSyncRouteConversationId";
 import { reduceNullRouteOrchestration } from "../conversation/activeConversationPhase";
 import {
+  bumpDraftConversationEpoch,
   setActiveRouteConversationTarget,
   setPendingDraftMode,
 } from "../conversation/conversationViewSession";
@@ -153,6 +154,9 @@ export function useModelInterfaceSessionRouting({
 
   const resetDraftConversation = useCallback(() => {
     handleStop();
+    // Invalidate any in-flight draft sends so their completion callbacks
+    // cannot hijack the fresh draft (see conversationViewSession draft epoch).
+    bumpDraftConversationEpoch();
     setPendingDraftMode(false);
     setCurrentSessionId(null);
     lastInitiatedSwitchIdRef.current = null;

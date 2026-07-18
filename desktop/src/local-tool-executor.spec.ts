@@ -80,6 +80,13 @@ describe('local_rag_query formatting (TDD RED Phase)', () => {
 
     const out = await runLocalDesktopTool(mockSender, 'local_rag_query', { query: 'resume' });
 
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/search/rag'),
+      expect.objectContaining({
+        body: expect.stringContaining('"contentQuery":"resume"'),
+      }),
+    );
+
     expect(out.ok).toBe(true);
     if (out.ok) {
       // RED PHASE: This will fail because the current implementation returns JSON.stringify(mockData)
@@ -125,7 +132,8 @@ describe('local_rag_query formatting (TDD RED Phase)', () => {
     expect(out.ok).toBe(true);
     if (out.ok) {
       expect(out.result).toContain('### Read file');
-      expect(out.result).toContain('`/home/user/test.txt`');
+      expect(out.result).toContain('[test.txt](local-file://');
+      expect(out.result).toContain(encodeURIComponent('/home/user/test.txt'));
       expect(out.result).toContain('- **Bytes read**: 30');
       expect(out.result).not.toContain('- **Truncated**');
       expect(out.result).not.toContain('{"path":');
@@ -216,7 +224,7 @@ describe('local_ollama_chat desktop integration', () => {
       },
     );
 
-    expect(global.fetch).toHaveBeenCalledWith('http://127.0.0.1:11434/api/chat', expect.objectContaining({
+    expect(global.fetch).toHaveBeenCalledWith('http://localhost:11434/api/chat', expect.objectContaining({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -288,7 +296,7 @@ describe('local_ollama_chat desktop integration', () => {
       },
     );
 
-    expect(global.fetch).toHaveBeenNthCalledWith(1, 'http://127.0.0.1:11434/api/pull', {
+    expect(global.fetch).toHaveBeenNthCalledWith(1, 'http://localhost:11434/api/pull', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: 'gpt-oss:cloud', stream: false }),
@@ -336,5 +344,55 @@ describe('local_ollama_chat desktop integration', () => {
       ok: false,
       error: 'Ollama API error: {"error":"this model requires a subscription"}',
     });
+  });
+});
+
+describe('local_import_blast_radius (Phase 7)', () => {
+  const mockSender = {
+    isDestroyed: () => false,
+    send: jest.fn(),
+  } as any;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.AIGENIUS_SECRET_TOKEN = 'test-token';
+    global.fetch = jest.fn();
+  });
+
+  it('posts seed paths to sidecar import-graph and returns markdown outline', async () => {
+    const outline = '# Import blast radius\n\n**Seeds:** `src/util.ts`';
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ outline }),
+    });
+
+    const out = await runLocalDesktopTool(mockSender, 'local_import_blast_radius', {
+      paths: ['/home/dev/app/src/util.ts'],
+      path_prefix: '/home/dev/app',
+      max_depth: 3,
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://localhost:8001/search/import-graph',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          paths: ['/home/dev/app/src/util.ts'],
+          pathPrefix: '/home/dev/app',
+          maxDepth: 3,
+        }),
+      }),
+    );
+    expect(out).toEqual({ ok: true, result: outline });
+  });
+
+  it('returns error when sidecar responds non-OK', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 503 });
+
+    const out = await runLocalDesktopTool(mockSender, 'local_import_blast_radius', {
+      paths: ['/x.ts'],
+    });
+
+    expect(out).toEqual({ ok: false, error: 'Sidecar returned 503' });
   });
 });

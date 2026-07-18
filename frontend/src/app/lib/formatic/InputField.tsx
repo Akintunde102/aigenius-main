@@ -55,10 +55,11 @@ type InputDetails = {
   onChange: (name: string, value: any) => void;
   formValues?: any;
   style?: CSSProperties;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
 };
 
 export const InputField = (inputDetails: InputDetails) => {
-  const { name, placeholder, label, type, value, onChange, style } = inputDetails;
+  const { name, placeholder, label, type, value, onChange, style, inputMode } = inputDetails;
 
   return (
     <>
@@ -82,6 +83,7 @@ export const InputField = (inputDetails: InputDetails) => {
           name={name}
           placeholder={placeholder ?? ""}
           value={value ? String(value) : ""}
+          inputMode={inputMode}
           onChange={(e) => {
             const { name, value } = e.target;
             onChange(name, value)

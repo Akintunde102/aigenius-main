@@ -72,7 +72,8 @@ describe('tool-formatter', () => {
         ],
       });
       expect(res.result).toContain('### Directory listing');
-      expect(res.result).toContain('- **Directory**: `/proj`');
+      expect(res.result).toContain('- **Directory**: [proj](local-file://');
+      expect(res.result).toContain(encodeURIComponent('/proj'));
       expect(res.result).toContain('- **Entries**: 2');
       expect(res.result).toContain('**a.ts**');
       expect(res.result).toContain('**Type**: Directory');
@@ -98,7 +99,8 @@ describe('tool-formatter', () => {
 
       const res = formatReadFile(mockData);
       expect(res.result).toContain('### Read file');
-      expect(res.result).toContain('**Path**: `/test/file.txt`');
+      expect(res.result).toContain('**Path**: [file.txt](local-file://');
+      expect(res.result).toContain(encodeURIComponent('/test/file.txt'));
       expect(res.result).toContain('- **Bytes read**: 50');
       expect(res.result).toContain('```\nHello World\n```');
       expect(res.rawData).toEqual(mockData);

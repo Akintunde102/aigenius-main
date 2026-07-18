@@ -1,0 +1,25 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`hybrid search scenarios (RRF + hash embeddings) Scenario H1 — chunk appearing in both FTS and vector lists wins RRF 1`] = `
+[
+  {
+    "id": "chunk:2",
+    "rrf": 0.032522,
+  },
+  {
+    "id": "chunk:1",
+    "rrf": 0.016393,
+  },
+  {
+    "id": "chunk:3",
+    "rrf": 0.016129,
+  },
+]
+`;
+
+exports[`hybrid search scenarios (RRF + hash embeddings) Scenario H2 — semantically similar chunks score higher than unrelated text 1`] = `
+{
+  "auth_vs_recipe": 0,
+  "auth_vs_session": 0.5714,
+}
+`;

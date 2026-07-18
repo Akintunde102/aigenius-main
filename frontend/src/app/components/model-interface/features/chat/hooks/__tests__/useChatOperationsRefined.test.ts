@@ -4,7 +4,9 @@ import { createRoot, Root } from 'react-dom/client';
 import { useChatOperationsRefined } from '../useChatOperationsRefined';
 import { ChatMessage, MessageEvent, Model } from '@/app/components/model-interface/shared/types';
 import {
+    bumpDraftConversationEpoch,
     conversationTargetRef,
+    getDraftConversationEpoch,
     setPendingDraftMode,
 } from '@/app/components/model-interface/conversation/conversationViewSession';
 import getNoboxFunctions from '@/lib/calls/get-nobox-functions';
@@ -203,6 +205,7 @@ describe('useChatOperationsRefined', () => {
         expect(handleStreamingResponse).toHaveBeenCalledTimes(1);
         expect(handleStreamingResponse.mock.calls[0][3]).toEqual({
             conversationId: 'session-1',
+            sendGeneration: expect.any(Number),
             orphanReply: expect.objectContaining({
                 conversationKind: 'orphan_question',
                 parentConversationId: 'parent-conv-1',
@@ -222,6 +225,8 @@ describe('useChatOperationsRefined', () => {
         expect(handleStreamingResponse).toHaveBeenCalledTimes(1);
         expect(handleStreamingResponse.mock.calls[0][3]).toEqual({
             conversationId: null,
+            draftEpoch: expect.any(Number),
+            sendGeneration: expect.any(Number),
         });
     });
 
@@ -235,6 +240,8 @@ describe('useChatOperationsRefined', () => {
         expect(handleNonStreamingResponse).toHaveBeenCalledTimes(1);
         expect(handleNonStreamingResponse.mock.calls[0][3]).toEqual({
             conversationId: null,
+            draftEpoch: expect.any(Number),
+            sendGeneration: expect.any(Number),
         });
     });
 
@@ -253,6 +260,8 @@ describe('useChatOperationsRefined', () => {
         expect(handleStreamingResponse).toHaveBeenCalledTimes(1);
         expect(handleStreamingResponse.mock.calls[0][3]).toEqual({
             conversationId: null,
+            draftEpoch: expect.any(Number),
+            sendGeneration: expect.any(Number),
         });
     });
 
@@ -314,6 +323,35 @@ describe('useChatOperationsRefined', () => {
             root.render(React.createElement(Wrapper));
         });
         expect(resultRef.current!.input).toBe('draft for a');
+    });
+
+    it('applies a completed draft stream when the draft generation is unchanged', () => {
+        renderHookWithProps({ currentSessionId: null, streamingEnabled: true });
+
+        const streamingProps = (useStreamingResponse as jest.Mock).mock.calls.at(-1)![0];
+        const epochAtSend = getDraftConversationEpoch();
+
+        act(() => {
+            streamingProps.handleStreamResult({ conversationId: 'conv-real' }, null, epochAtSend);
+        });
+
+        expect(setCurrentSessionId).toHaveBeenCalledWith('conv-real');
+    });
+
+    it('does not let an older draft stream hijack a freshly opened new chat', () => {
+        renderHookWithProps({ currentSessionId: null, streamingEnabled: true });
+
+        const streamingProps = (useStreamingResponse as jest.Mock).mock.calls.at(-1)![0];
+        const epochAtSend = getDraftConversationEpoch();
+
+        // User pressed New Chat after the send was dispatched.
+        bumpDraftConversationEpoch();
+
+        act(() => {
+            streamingProps.handleStreamResult({ conversationId: 'conv-old' }, null, epochAtSend);
+        });
+
+        expect(setCurrentSessionId).not.toHaveBeenCalled();
     });
 
     it('keeps orphan side-thread state when the send fails', async () => {
