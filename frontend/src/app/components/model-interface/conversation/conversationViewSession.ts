@@ -66,5 +66,11 @@ export function resolveViewSessionId(
     return routeId;
   }
 
+  // New Chat clears the client route target synchronously; do not resurrect a stale
+  // currentSessionId while the URL/view is in draft mode.
+  if (conversationTargetRef.current.routeTargetInitialized) {
+    return null;
+  }
+
   return currentSessionId;
 }

@@ -8,6 +8,8 @@
       "desktop-server"
     ],
     "nohoist": [
+      "**/electron",
+      "**/electron/**",
       "**/better-sqlite3",
       "**/better-sqlite3/**",
       "**/onnxruntime-node",
@@ -32,7 +34,8 @@
     "dev:docker:db": "docker compose run --rm api npm run db:migrate",
     "sync:codex": "python3 .agent/scripts/generate_codex_agents.py",
     "desktop:dev": "node scripts/run-desktop-dev.cjs",
-    "desktop:package": "cd desktop && npm install && npm run package"
+    "desktop:package": "cd desktop && npm install && npm run package",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@neon-rs/cli": "^0.2.6",

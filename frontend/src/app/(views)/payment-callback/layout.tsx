@@ -5,5 +5,5 @@ export default function PaymentCallbackLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <PublicPageShell>{children}</PublicPageShell>;
+  return <PublicPageShell contentClassName="justify-center">{children}</PublicPageShell>;
 }

@@ -1,6 +1,10 @@
 import { runLocalDesktopTool, resolveShellProcessClose } from './local-tool-executor';
 import fs from 'fs/promises';
 import { ReadableStream } from 'stream/web';
+import {
+  clearPreviewPathRegistryForTests,
+  isPreviewPathRegistered,
+} from './preview-path-registry';
 
 // Mock fs/promises
 jest.mock('fs/promises', () => ({
@@ -13,6 +17,9 @@ jest.mock('fs/promises', () => ({
 jest.mock('electron', () => ({
   dialog: {
     showMessageBox: jest.fn(),
+  },
+  shell: {
+    openPath: jest.fn().mockResolvedValue(''),
   },
 }));
 
@@ -48,6 +55,7 @@ describe('local_rag_query formatting (TDD RED Phase)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    clearPreviewPathRegistryForTests();
     process.env.AIGENIUS_SECRET_TOKEN = 'test-token';
     global.fetch = jest.fn();
   });
@@ -94,6 +102,46 @@ describe('local_rag_query formatting (TDD RED Phase)', () => {
       expect(out.result).toContain('doc1.txt');
       expect(out.result).not.toContain('{"hits":');
     }
+  });
+
+  it('registers absolute RAG hit paths for local-file preview', async () => {
+    const mockData = {
+      hits: [
+        {
+          path: '/home/user/doc1.txt',
+          name: 'doc1.txt',
+          score: 0.95,
+          snippet: 'snippet one',
+        },
+        {
+          path: '/home/user/nested/doc2.pdf',
+          name: 'doc2.pdf',
+          score: 0.82,
+          snippet: 'snippet two',
+        },
+        {
+          path: 'relative/path.txt',
+          name: 'path.txt',
+          score: 0.5,
+          snippet: 'should not register',
+        },
+      ],
+      hit_count: 3,
+    };
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => mockData,
+    });
+
+    const out = await runLocalDesktopTool(mockSender, 'local_rag_query', { query: 'resume' });
+
+    expect(out.ok).toBe(true);
+    expect(isPreviewPathRegistered('/home/user/doc1.txt')).toBe(true);
+    expect(isPreviewPathRegistered('/home/user')).toBe(true);
+    expect(isPreviewPathRegistered('/home/user/nested/doc2.pdf')).toBe(true);
+    expect(isPreviewPathRegistered('/home/user/nested')).toBe(true);
+    expect(isPreviewPathRegistered('relative/path.txt')).toBe(false);
   });
 
   it('formats local_index_status as readable Markdown instead of raw JSON', async () => {
@@ -166,6 +214,27 @@ describe('local_rag_query formatting (TDD RED Phase)', () => {
       expect(out.result).toContain('Metadata');
       expect(out.result).toContain('new_api_field: surprised you!');
     }
+  });
+
+  it('rejects relative paths for local_open_in_os and does not register preview', async () => {
+    const { shell } = jest.requireMock('electron') as { shell: { openPath: jest.Mock } };
+
+    const out = await runLocalDesktopTool(mockSender, 'local_open_in_os', { path: 'relative/file.txt' });
+
+    expect(out).toEqual({ ok: false, error: 'path must be an absolute path' });
+    expect(shell.openPath).not.toHaveBeenCalled();
+    expect(isPreviewPathRegistered('relative/file.txt')).toBe(false);
+  });
+
+  it('opens absolute paths in the OS and registers them for preview', async () => {
+    const { shell } = jest.requireMock('electron') as { shell: { openPath: jest.Mock } };
+    shell.openPath.mockResolvedValue('');
+
+    const out = await runLocalDesktopTool(mockSender, 'local_open_in_os', { path: '/home/user/doc.txt' });
+
+    expect(out).toEqual({ ok: true, result: 'File opened in OS' });
+    expect(shell.openPath).toHaveBeenCalledWith('/home/user/doc.txt');
+    expect(isPreviewPathRegistered('/home/user/doc.txt')).toBe(true);
   });
 
   it('successfully lists a directory using local_list_directory', async () => {

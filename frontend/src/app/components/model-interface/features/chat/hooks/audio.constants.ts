@@ -2,10 +2,10 @@ import { devLoopbackUrl } from '@/lib/dev-loopback-host';
 
 export const AUDIO_CONSTANTS = {
   // Voice Activity Detection (VAD)
-  SILENCE_THRESHOLD_MS: 520,
+  SILENCE_THRESHOLD_MS: 2000,
   VAD_POSITIVE_SPEECH_THRESHOLD: 0.65, // Increased from 0.5 to ignore background fan noise
-  VAD_NEGATIVE_SPEECH_THRESHOLD: 0.45, // Increased from 0.35 to transition to silence quicker
-  VAD_REDEMPTION_FRAMES: 30,           // Snappier silence finalization (900ms at 30ms frames)
+  VAD_NEGATIVE_SPEECH_THRESHOLD: 0.35, // Decreased from 0.45 to prevent transitioning to silence too quickly
+  VAD_REDEMPTION_FRAMES: 50,           // Wait longer before finalizing speech (1500ms at 30ms frames)
 
   /** Server STT snapshots while the user is still talking (no silence required). */
   PARTIAL_TRANSCRIPTION_INTERVAL_MS: 750,
@@ -52,7 +52,7 @@ export const AUDIO_CONSTANTS = {
   MIN_LOCAL_PARTIAL_STT_BYTES: 8000,
 
   // Developer switches for Browser Speech Engines (only applies in browser runtime)
-  BROWSER_STT_ENGINE: 'cloud' as 'native' | 'cloud',
-  BROWSER_TTS_ENGINE: 'cloud' as 'native' | 'cloud',
+  BROWSER_STT_ENGINE: 'native' as 'native' | 'cloud',
+  BROWSER_TTS_ENGINE: 'native' as 'native' | 'cloud',
 };
 

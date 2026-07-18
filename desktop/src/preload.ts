@@ -94,6 +94,15 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
   openExternal: (url: string) => {
     ipcRenderer.send('open-external', url);
   },
+  onMainWindowFocus: (handler: () => void) => {
+    const listener = () => {
+      handler();
+    };
+    ipcRenderer.on('main-window-focus', listener);
+    return () => {
+      ipcRenderer.removeListener('main-window-focus', listener);
+    };
+  },
   openNewWindow: (relativePath?: string): Promise<void> =>
     ipcRenderer.invoke('shell-new-window', relativePath) as Promise<void>,
   pickProjectDirectory: (): Promise<{ path: string } | null> =>

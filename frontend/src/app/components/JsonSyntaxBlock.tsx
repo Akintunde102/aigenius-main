@@ -4,6 +4,7 @@ import { useMemo, type ReactNode } from "react";
 import hljs from "highlight.js/lib/core";
 import json from "highlight.js/lib/languages/json";
 import "highlight.js/styles/github.css";
+import "@/app/components/model-interface/shared/components/hljs-dark-theme.scss";
 import { cn } from "@/lib/utils";
 
 let jsonLanguageRegistered = false;
@@ -95,7 +96,8 @@ export function JsonOrPlainTextBlock({ text, className, preClassName, codeClassN
   return (
     <pre
       className={cn(
-        "m-0 whitespace-pre-wrap break-words font-mono text-[10px] leading-snug [overflow-wrap:anywhere]",
+        "m-0 whitespace-pre-wrap break-words font-mono text-[10px] leading-snug text-slate-800 [overflow-wrap:anywhere]",
+        "dark:text-zinc-200",
         preClassName,
         className,
       )}
@@ -133,7 +135,8 @@ export function JsonSyntaxBlock({
   return (
     <pre
       className={cn(
-        "m-0 overflow-auto rounded-md border border-slate-200/90 bg-white p-2.5 text-left",
+        "m-0 overflow-auto rounded-md border border-slate-200/90 bg-white p-2.5 text-left text-slate-900",
+        "dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200",
         preClassName,
         className,
       )}

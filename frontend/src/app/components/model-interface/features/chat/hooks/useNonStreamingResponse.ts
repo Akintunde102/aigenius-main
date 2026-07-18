@@ -9,6 +9,7 @@ import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interf
 import { getDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { clearUserDetailsCache } from '@/lib/calls/get-logged-user-details';
 import { resolveRequestConversationId } from './requestConversationId.utils';
+import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
 
 /**
  * Full-response (non-streaming) assistant path: single payload handling and session updates.
@@ -131,7 +132,7 @@ export function useNonStreamingResponse({
                 setChatForSession(result.conversationId, fullMessages);
                 updateSessionMessages?.(result.conversationId, fullMessages, {
                     modelId: selectedModel.id,
-                    title: messages[0]?.content as string || 'New chat'
+                    title: deriveChatSessionTitle(fullMessages[0]?.content),
                 });
                 void addOrMergeSessionToLocalHistory({
                     id: result.conversationId,
@@ -159,7 +160,7 @@ export function useNonStreamingResponse({
                 if (requestSessionId && updateSessionMessages) {
                     updateSessionMessages(requestSessionId, fullMessages, {
                         modelId: selectedModel.id,
-                        title: messages[0]?.content as string || 'New chat'
+                        title: deriveChatSessionTitle(fullMessages[0]?.content),
                     });
                 }
 

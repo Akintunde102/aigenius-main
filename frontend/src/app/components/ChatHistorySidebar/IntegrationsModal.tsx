@@ -314,29 +314,36 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
         role="dialog"
         aria-modal="true"
         aria-labelledby="integrations-modal-title"
-        className="max-h-[min(90vh,640px)] max-w-md w-full mx-4 flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl"
+        className="max-h-[min(90vh,640px)] max-w-md w-full mx-4 flex flex-col overflow-hidden rounded-xl border shadow-xl"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--modal-bg)",
+          borderColor: "var(--modal-border)",
+          color: "var(--modal-fg)",
+        }}
       >
-        <div className="shrink-0 border-b border-gray-100 bg-gray-50/80 px-5 py-4">
+        <div className="shrink-0 border-b px-5 py-4" style={{ background: "var(--modal-bg-muted)", borderColor: "var(--modal-border)" }}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border shadow-sm"
                 aria-hidden
+                style={{ background: "var(--modal-bg)", borderColor: "var(--modal-border)", color: "var(--modal-fg)" }}
               >
                 <FiMail size={20} />
               </div>
               <div className="min-w-0">
-                <h2 id="integrations-modal-title" className="text-base font-semibold text-gray-900">
+                <h2 id="integrations-modal-title" className="text-base font-semibold">
                   Integrations
                 </h2>
-                <p className="mt-0.5 text-xs text-gray-500">Connect external accounts for tools</p>
+                <p className="mt-0.5 text-xs" style={{ color: "var(--modal-muted-fg)" }}>Connect external accounts for tools</p>
               </div>
             </div>
             <button
               type="button"
               aria-label="Close"
-              className="shrink-0 rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-200/80 hover:text-gray-800 focus:outline-none"
+              className="shrink-0 rounded-lg p-2 transition-colors hover:bg-red-500/10 focus:outline-none"
+              style={{ color: "var(--modal-muted-fg)" }}
               onClick={onClose}
             >
               <FiX size={18} />
@@ -344,22 +351,22 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
           </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm mb-4" style={{ color: "var(--modal-muted-fg)" }}>
           Connect your accounts so AI models with tool support can use them (e.g. Gmail or your LinkedIn
           profile).
         </p>
         {loading ? (
-          <div className="py-6 text-center text-gray-500">Loading…</div>
+          <div className="py-6 text-center" style={{ color: "var(--modal-muted-fg)" }}>Loading…</div>
         ) : (
           <div className="space-y-4">
             {/* Gmail */}
-            <div className="border border-gray-200 rounded-lg">
+            <div className="border rounded-lg" style={{ borderColor: "var(--modal-border)" }}>
               <div className="flex items-center justify-between p-3">
                 <div className="flex items-center gap-3">
                   <FiMail className="text-red-500" size={24} />
                   <div>
-                    <p className="font-medium text-gray-800">Gmail</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="font-medium" style={{ color: "var(--modal-fg)" }}>Gmail</p>
+                    <p className="text-xs" style={{ color: "var(--modal-muted-fg)" }}>
                       {gmailConnected ? 'Connected' : 'Not connected'}
                     </p>
                   </div>
@@ -367,8 +374,9 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowGmailInfo(!showGmailInfo)}
-                    className="p-1 text-gray-400 hover:text-gray-600"
+                    className="p-1 hover:text-red-500 transition-colors"
                     aria-label="Info"
+                    style={{ color: "var(--modal-muted-fg)" }}
                   >
                     {showGmailInfo ? <FiChevronUp size={18} /> : <FiInfo size={18} />}
                   </button>
@@ -394,9 +402,9 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
               
               {/* Info section */}
               {showGmailInfo && (
-                <div className="px-3 pb-3 pt-1 border-t border-gray-100 bg-gray-50">
-                  <p className="text-xs font-medium text-gray-700 mb-2">What Gmail integration enables:</p>
-                  <ul className="space-y-1 text-xs text-gray-600">
+                <div className="px-3 pb-3 pt-1 border-t text-xs" style={{ background: "var(--modal-bg-muted)", borderColor: "var(--modal-border)" }}>
+                  <p className="font-medium mb-2" style={{ color: "var(--modal-fg)" }}>What Gmail integration enables:</p>
+                  <ul className="space-y-1" style={{ color: "var(--modal-muted-fg)" }}>
                     <li className="flex items-start gap-1.5">
                       <span className="text-green-600 mt-0.5">✓</span>
                       <span><strong>List emails:</strong> AI can see your recent emails</span>
@@ -414,7 +422,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                       <span><strong>Search inbox:</strong> AI can search your emails with Gmail syntax</span>
                     </li>
                   </ul>
-                  <p className="mt-2 text-xs text-gray-500 italic">
+                  <p className="mt-2 italic opacity-85" style={{ color: "var(--modal-muted-fg)" }}>
                     Only works with AI models that support tools (e.g. GPT-4, Claude Opus, Gemini Pro)
                   </p>
                 </div>
@@ -422,13 +430,13 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
             </div>
 
             {/* LinkedIn */}
-            <div className="border border-gray-200 rounded-lg">
+            <div className="border rounded-lg" style={{ borderColor: "var(--modal-border)" }}>
               <div className="flex items-center justify-between p-3">
                 <div className="flex items-center gap-3">
                   <SiLinkedin className="text-[#0A66C2]" size={24} aria-hidden />
                   <div>
-                    <p className="font-medium text-gray-800">LinkedIn</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="font-medium" style={{ color: "var(--modal-fg)" }}>LinkedIn</p>
+                    <p className="text-xs" style={{ color: "var(--modal-muted-fg)" }}>
                       {linkedinConnected ? 'Connected' : 'Not connected'}
                     </p>
                   </div>
@@ -437,8 +445,9 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                   <button
                     type="button"
                     onClick={() => setShowLinkedInInfo(!showLinkedInInfo)}
-                    className="p-1 text-gray-400 hover:text-gray-600"
+                    className="p-1 hover:text-blue-500 transition-colors"
                     aria-label="LinkedIn info"
+                    style={{ color: "var(--modal-muted-fg)" }}
                   >
                     {showLinkedInInfo ? <FiChevronUp size={18} /> : <FiInfo size={18} />}
                   </button>
@@ -475,9 +484,9 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                 </div>
               </div>
               {showLinkedInInfo && (
-                <div className="px-3 pb-3 pt-1 border-t border-gray-100 bg-gray-50">
-                  <p className="text-xs font-medium text-gray-700 mb-2">What LinkedIn integration enables:</p>
-                  <ul className="space-y-1 text-xs text-gray-600">
+                <div className="px-3 pb-3 pt-1 border-t text-xs" style={{ background: "var(--modal-bg-muted)", borderColor: "var(--modal-border)" }}>
+                  <p className="font-medium mb-2" style={{ color: "var(--modal-fg)" }}>What LinkedIn integration enables:</p>
+                  <ul className="space-y-1" style={{ color: "var(--modal-muted-fg)" }}>
                     <li className="flex items-start gap-1.5">
                       <span className="text-green-600 mt-0.5">✓</span>
                       <span>
@@ -493,7 +502,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                       </span>
                     </li>
                   </ul>
-                  <p className="mt-2 text-xs text-gray-500 italic">
+                  <p className="mt-2 italic opacity-85" style={{ color: "var(--modal-muted-fg)" }}>
                     Only works with AI models that support tools. Requires LinkedIn app with Sign In with
                     LinkedIn (OpenID Connect).
                   </p>
@@ -503,22 +512,22 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
           </div>
         )}
         {successMessage && (
-          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-700 font-medium" role="status">
+          <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+            <p className="text-sm text-green-500 font-medium" role="status">
               ✓ {successMessage}
             </p>
           </div>
         )}
         {error && (
           <div className="mt-4 space-y-2">
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-red-500" role="alert">
               {error}
             </p>
             {connectInWindowUrl && (
               <button
                 type="button"
                 onClick={handleConnectInWindow}
-                className="text-sm font-medium text-primary hover:underline"
+                className="text-sm font-medium text-blue-500 hover:underline"
               >
                 Connect in this window instead
               </button>

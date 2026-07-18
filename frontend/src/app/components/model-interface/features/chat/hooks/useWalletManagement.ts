@@ -131,12 +131,13 @@ export function useWalletManagement({
         options?: WalletPaymentSuccessOptions,
     ) => {
         void amountInNaira;
+        clearUserDetailsCache();
 
         if (newWalletBalance !== undefined && newWalletBalance !== null) {
             setWallet(newWalletBalance);
-        } else {
-            await refreshWalletBalance();
         }
+
+        await refreshWalletBalance();
 
         setPaymentModalLoading(false);
         if (!options?.keepModalOpen && setShowWalletModal) {

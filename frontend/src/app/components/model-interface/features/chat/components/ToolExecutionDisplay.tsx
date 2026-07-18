@@ -3,6 +3,7 @@ import { ToolExecution } from '@/app/components/model-interface/shared/types';
 import { FiTool, FiChevronDown, FiChevronUp, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
 import { valueToDisplayString } from '@/lib/utils/messageTextUtils';
 import { getToolDisplayName } from './toolDisplayNames';
+import { ERROR_MESSAGES } from '../hooks/chatOperations.constants';
 
 interface ToolExecutionDisplayProps {
     tool_executions: ToolExecution[];
@@ -107,7 +108,7 @@ export function ToolExecutionDisplay({ tool_executions }: ToolExecutionDisplayPr
                                     }`}>
                                         {parsed.error ? (
                                             <div className="text-red-700 font-medium">
-                                                Error: {valueToDisplayString(parsed.error)}
+                                                {ERROR_MESSAGES.TOOL_EXECUTION_FAILED}
                                             </div>
                                         ) : parsed.message ? (
                                             <div className="text-green-700 font-medium">

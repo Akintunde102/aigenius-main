@@ -476,6 +476,13 @@
   color: rgba(190, 190, 190, 0.4);
 }
 
+.dark .markdown-thinking-stream.markdown-chat-body.markdown-body .markdown-code-block-pre {
+  color: #d4d4d8;
+  background: rgba(24, 24, 27, 0.9);
+  border-color: rgba(82, 82, 91, 0.55);
+  box-shadow: none;
+}
+
 /* Tool execution results: compact, smaller font, less whitespace */
 .markdown-tool-result.markdown-chat-body.markdown-body {
   font-size: 11.5px;
@@ -534,6 +541,12 @@
 
 .markdown-chat-body.markdown-body a.local-file-link:hover {
   color: #1d4ed8;
+}
+
+.dark .markdown-tool-result.markdown-chat-body.markdown-body .markdown-code-block-pre {
+  color: #e4e4e7;
+  background: #18181b;
+  border-color: rgba(82, 82, 91, 0.85);
 }
 
 /* Dark chat canvas — `html.dark` from sidebar “Dark chat area” */
@@ -596,8 +609,98 @@
   box-shadow: none;
 }
 
+/* Higher specificity than github.css — must follow highlight.js light theme import order. */
+html.dark .markdown-chat-body.markdown-body .markdown-code-block-pre code.hljs,
 .dark .markdown-chat-body.markdown-body .markdown-code-block-pre code.hljs {
-  color: #e2e8f0;
+  color: #c9d1d9;
+  background: transparent;
+
+  .hljs-doctag,
+  .hljs-keyword,
+  .hljs-meta .hljs-keyword,
+  .hljs-template-tag,
+  .hljs-template-variable,
+  .hljs-type,
+  .hljs-variable.language_ {
+    color: #ff7b72;
+  }
+
+  .hljs-title,
+  .hljs-title.class_,
+  .hljs-title.class_.inherited__,
+  .hljs-title.function_ {
+    color: #d2a8ff;
+  }
+
+  .hljs-attr,
+  .hljs-attribute,
+  .hljs-literal,
+  .hljs-meta,
+  .hljs-number,
+  .hljs-operator,
+  .hljs-variable,
+  .hljs-selector-attr,
+  .hljs-selector-class,
+  .hljs-selector-id {
+    color: #79c0ff;
+  }
+
+  .hljs-regexp,
+  .hljs-string,
+  .hljs-meta .hljs-string {
+    color: #a5d6ff;
+  }
+
+  .hljs-built_in,
+  .hljs-symbol {
+    color: #ffa657;
+  }
+
+  .hljs-comment,
+  .hljs-code,
+  .hljs-formula {
+    color: #8b949e;
+  }
+
+  .hljs-name,
+  .hljs-quote,
+  .hljs-selector-tag,
+  .hljs-selector-pseudo {
+    color: #7ee787;
+  }
+
+  .hljs-subst {
+    color: #c9d1d9;
+  }
+
+  .hljs-section {
+    color: #79c0ff;
+    font-weight: bold;
+  }
+
+  .hljs-bullet {
+    color: #f2cc60;
+  }
+
+  .hljs-emphasis {
+    color: #c9d1d9;
+    font-style: italic;
+  }
+
+  .hljs-strong {
+    color: #c9d1d9;
+    font-weight: bold;
+  }
+
+  .hljs-addition {
+    color: #aff5b4;
+    background-color: #033a16;
+  }
+
+  .hljs-deletion {
+    color: #ffdcd7;
+    background-color: #67060c;
+  }
 }
 
 .dark .markdown-chat-body.markdown-body .markdown-inline-code {

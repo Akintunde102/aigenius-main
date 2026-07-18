@@ -47,6 +47,8 @@ export default function AuthenticatedChatPage({
   const redirectPathRef = React.useRef(redirectPath);
   redirectPathRef.current = redirectPath;
 
+  // Keep SSR and the first client paint identical; resolve auth in useLayoutEffect only.
+  const [authReady, setAuthReady] = useState(false);
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -60,6 +62,7 @@ export default function AuthenticatedChatPage({
         setToken("authenticated");
       }
       setLoading(false);
+      setAuthReady(true);
       return;
     }
 
@@ -80,6 +83,7 @@ export default function AuthenticatedChatPage({
 
         if (!token) {
           setLoading(false);
+          setAuthReady(true);
           return;
         }
 
@@ -89,10 +93,12 @@ export default function AuthenticatedChatPage({
         });
         setToken(token);
         setLoading(false);
+        setAuthReady(true);
         window.location.replace(redirectPathRef.current);
       } catch (error) {
         console.error("Error getting auth connection token:", error);
         setLoading(false);
+        setAuthReady(true);
       }
     };
 
@@ -112,7 +118,7 @@ export default function AuthenticatedChatPage({
     prefetchPublicRoutes(router);
   }, [token, router]);
 
-  if (loading) {
+  if (!authReady || loading) {
     return <ChatShellLoadingSkeleton />;
   }
 

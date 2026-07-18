@@ -2,7 +2,7 @@
   "name": "aigenius-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "AIGenius Electron shell (Linux .deb + Flatpak)",
+  "description": "AIGenius Electron shell (Linux, macOS, Windows)",
   "author": "AIGenius",
   "homepage": "https://aigenius.chat",
   "main": "dist/main.js",
@@ -16,11 +16,22 @@
     "build:server": "npm run ensure:server-deps && cd ../desktop-server && npm run build",
     "sync-brand-icon": "node scripts/sync-brand-icon.cjs",
     "prepare:resources": "node scripts/prepare-desktop-resources.cjs",
-    "prepackage": "npm run compile && npm run rebuild:better-sqlite3 && npm run build:server && cd ../frontend && npm run build:desktop && cd ../desktop && npm run prepare:resources",
+    "install:server-deps": "node scripts/install-server-deps-for-platform.cjs",
+    "install:server-deps:win32": "node scripts/install-server-deps-for-platform.cjs win32 x64",
+    "install:python-venv": "node scripts/prepare-python-venv.cjs",
+    "prepackage": "node scripts/ensure-electron-dist.cjs && npm run compile && npm run build:server && cd ../frontend && npm run build:desktop && cd ../desktop && npm run install:server-deps && npm run install:python-venv && npm run prepare:resources",
+    "prepackage:mac": "npm run prepackage",
+    "prepackage:win": "npm run compile && npm run install:server-deps:win32 && npm run build:server && cd ../frontend && npm run build:desktop && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 npm run prepare:resources",
     "package": "electron-builder --linux deb flatpak",
     "package:deb": "electron-builder --linux deb",
     "package:deb:full": "npm run prepackage && electron-builder --linux deb",
     "package:flatpak": "electron-builder --linux flatpak",
+    "package:mac": "electron-builder --mac",
+    "package:mac:dir": "electron-builder --mac dir",
+    "package:mac:full": "npm run prepackage:mac && electron-builder --mac",
+    "package:win": "electron-builder --win",
+    "package:win:dir": "electron-builder --win dir",
+    "package:win:full": "npm run prepackage:win && electron-builder --win",
     "dev:frontend": "cd ../frontend && npm run dev",
     "dev:electron:only": "cross-env ELECTRON_DISABLE_SANDBOX=1 electron .",
     "dev:electron": "npm run compile && npm run dev:electron:only",
@@ -35,7 +46,8 @@
     "@types/node": "^20.14.0",
     "@types/sharp": "^0.31.1",
     "cross-env": "^7.0.3",
-    "electron": "^33.2.1",
+    "dotenv": "^16.4.5",
+    "electron": "33.2.1",
     "electron-builder": "^25.1.8",
     "electron-rebuild": "^3.2.9",
     "jest": "^29.7.0",
@@ -45,6 +57,8 @@
   "build": {
     "appId": "chat.aigenius.desktop",
     "productName": "AIGenius",
+    "electronVersion": "33.2.1",
+    "electronDist": "../node_modules/electron/dist",
     "directories": {
       "output": "release"
     },
@@ -74,6 +88,10 @@
       {
         "from": "resources",
         "to": "aigenius-desktop-ui"
+      },
+      {
+        "from": "dist-resources/python-venv",
+        "to": "python-venv"
       }
     ],
     "linux": {
@@ -99,6 +117,31 @@
         "--share=network",
         "--device=dri"
       ]
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "AIGenius uses the microphone for voice dictation and conversation."
+      }
+    },
+    "dmg": {
+      "sign": false
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   }
 }

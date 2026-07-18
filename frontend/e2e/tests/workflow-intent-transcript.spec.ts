@@ -201,7 +201,7 @@ test.describe('Workflow intent — transcript expand', () => {
         await page.getByRole('button', { name: /^Details$/i }).first().click();
         await page.getByRole('button', { name: /Sub-agent transcript/i }).click();
 
-        await expect(page.getByText(/Could not load transcript|Network Error|Failed to fetch/i).first()).toBeVisible({
+        await expect(page.getByText(/Something went wrong\. Please try again\./i).first()).toBeVisible({
             timeout: 15_000,
         });
     });

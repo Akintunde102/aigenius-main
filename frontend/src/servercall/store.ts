@@ -47,6 +47,7 @@ export type ServerCallsKeyType =
     | "postGatewayPaystackTransferFinalize"
     | "postGatewayPaystackTransactionInitiate"
     | "postGatewayPaystackTransactionVerify"
+    | "getGatewayPaystackTransactionStatus"
     | "postGatewayWalletUpdateBalance"
     | "getGatewayViews"
     | "postGatewayViews"
@@ -345,9 +346,14 @@ export const serverCalls: ServerCallsType<ServerCallsKeyType> = {
         verb: ServerCallVerbs.Post,
     },
     postGatewayPaystackTransactionVerify: {
-        path: "/gateway/*/paystack/transaction/verify",
+        path: (args: { reference: string }) => `/gateway/*/paystack/transaction/${args.reference}/verify`,
         name: "postGatewayPaystackTransactionVerify",
         verb: ServerCallVerbs.Post,
+    },
+    getGatewayPaystackTransactionStatus: {
+        path: (args: { reference: string }) => `/gateway/*/paystack/transaction/${args.reference}`,
+        name: "getGatewayPaystackTransactionStatus",
+        verb: ServerCallVerbs.Get,
     },
     postGatewayWalletUpdateBalance: {
         path: "/gateway/*/wallet/update_balance",

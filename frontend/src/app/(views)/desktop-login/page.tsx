@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { BrandLogo } from "@/app/components/BrandLogo";
 import { GoogleSignIn } from "@/app/components/auth/GoogleSignIn";
+import { DesktopSessionRestoringView } from "@/app/components/DesktopSessionRestoringView";
 import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
 import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-details";
 import { setAccessToken } from "@/lib/api/auth-client";
@@ -27,6 +28,7 @@ export default function DesktopLoginPage() {
   const pathname = usePathname();
   const didSessionRedirectRef = useRef(false);
   const [storedFirstName, setStoredFirstName] = useState<string | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
     try {
@@ -55,8 +57,9 @@ export default function DesktopLoginPage() {
     }
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!hasAuthSession()) {
+      setShowLogin(true);
       return;
     }
     if (didSessionRedirectRef.current) {
@@ -71,6 +74,14 @@ export default function DesktopLoginPage() {
     /** Full navigation so the next request includes synced cookies (middleware is cookie-only). */
     window.location.assign(target);
   }, [pathname]);
+
+  if (!showLogin) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0c0d0f]">
+        <DesktopSessionRestoringView />
+      </div>
+    );
+  }
 
   const headline = storedFirstName
     ? `Welcome back, ${storedFirstName}`

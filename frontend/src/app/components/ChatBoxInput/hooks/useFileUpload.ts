@@ -15,6 +15,7 @@ const FILE_VALIDATION = {
 interface UseFileUploadProps {
     onFileUpload?: (file: File) => void;
     onCancelUpload?: () => void;
+    onAttachmentMenuRequest?: () => void;
     uploading?: boolean;
     disabled?: boolean;
     supportsFileUpload?: boolean;
@@ -34,6 +35,7 @@ interface PendingFile extends UploadItem {
 export const useFileUpload = ({
     onFileUpload,
     onCancelUpload,
+    onAttachmentMenuRequest,
     uploading = false,
     disabled = false,
     supportsFileUpload = true
@@ -158,8 +160,20 @@ export const useFileUpload = ({
             return;
         }
 
+        if (onAttachmentMenuRequest) {
+            onAttachmentMenuRequest();
+            return;
+        }
+
         // Must be synchronous: browsers require file dialog to be triggered directly from user gesture.
         // Using setTimeout breaks the gesture chain and causes upload to silently fail.
+        fileInputRef.current?.click();
+    }, [supportsFileUpload, disabled, onFileUpload, onAttachmentMenuRequest]);
+
+    const openLocalFilePicker = useCallback(() => {
+        if (!supportsFileUpload || disabled || !onFileUpload) {
+            return;
+        }
         fileInputRef.current?.click();
     }, [supportsFileUpload, disabled, onFileUpload]);
 
@@ -226,6 +240,7 @@ export const useFileUpload = ({
         validateFile,
         pendingFiles,
         queueFiles,
-        removePendingFile
+        removePendingFile,
+        openLocalFilePicker,
     };
 };

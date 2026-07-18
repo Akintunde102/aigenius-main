@@ -87,6 +87,7 @@ export function ChatOperationsProvider({ children }: { children: ReactNode }) {
     selectedPersonalityIconUrl,
     pendingOrphanReply,
     clearPendingOrphanReply: () => setPendingOrphanReply(null),
+    getChatForSession: (sessionKey) => chatMap[sessionKey] || [],
   });
 
   const value = {
