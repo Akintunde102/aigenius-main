@@ -105,18 +105,26 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between p-4 border-b">
+            <div
+                className="rounded-lg shadow-xl max-w-md w-full max-h-[95vh] overflow-y-auto border flex flex-col"
+                style={{
+                    background: "var(--modal-bg)",
+                    borderColor: "var(--modal-border)",
+                    color: "var(--modal-fg)",
+                }}
+            >
+                <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: "var(--modal-border)" }}>
                     <div className="flex items-center gap-2">
                         <FiGlobe className="text-blue-500" size={20} />
-                        <h2 className="text-lg font-semibold text-gray-900">
+                        <h2 className="text-lg font-semibold">
                             {isRepublishing ? 'Republish Conversation' : 'Publish Conversation'}
                         </h2>
                     </div>
                     <button
                         onClick={handleClose}
                         disabled={isPublishing}
-                        className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                        className="hover:text-red-500 disabled:opacity-50 transition-colors"
+                        style={{ color: "var(--modal-muted-fg)" }}
                     >
                         <FiX size={20} />
                     </button>
@@ -124,11 +132,11 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
 
                 <form onSubmit={handleSubmit} className="p-4">
                     <div className="mb-4">
-                        <div className="flex items-center gap-2 mb-2 p-3 bg-blue-50 rounded-lg">
-                            <FiGlobe className="text-blue-600" size={16} />
-                            <div className="text-sm text-blue-800">
+                        <div className="flex items-center gap-2 mb-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                            <FiGlobe className="text-blue-500 shrink-0" size={16} />
+                            <div className="text-sm">
                                 <strong>Publishing this conversation will make it publicly accessible.</strong>
-                                <p className="text-blue-700 mt-1">
+                                <p className="opacity-80 mt-1">
                                     Anyone with the link will be able to view the entire conversation.
                                 </p>
                             </div>
@@ -136,7 +144,7 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
                     </div>
 
                     <div className="mb-4">
-                        <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="title" className="block text-sm font-medium mb-2" style={{ color: "var(--modal-muted-fg)" }}>
                             Title *
                         </label>
                         <input
@@ -144,7 +152,7 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
                             id="title"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="app-modal-input w-full px-3 py-2 rounded-md focus:outline-none"
                             placeholder="Enter a title for your conversation..."
                             required
                             disabled={isPublishing}
@@ -152,7 +160,7 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
                     </div>
 
                     <div className="mb-6">
-                        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="description" className="block text-sm font-medium mb-2" style={{ color: "var(--modal-muted-fg)" }}>
                             Description (optional)
                         </label>
                         <textarea
@@ -160,7 +168,7 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows={3}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                            className="app-modal-input w-full px-3 py-2 rounded-md focus:outline-none resize-none"
                             placeholder="Add a brief description of what this conversation is about..."
                             disabled={isPublishing}
                         />
@@ -168,19 +176,20 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
 
                     {/* URL Display Section */}
                     {(isPublished || (isRepublishing && existingUrl)) && (
-                        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
                             <div className="flex items-center gap-2 mb-2">
-                                <FiGlobe className="text-green-600" size={14} />
-                                <span className="text-sm font-medium text-green-800">
+                                <FiGlobe className="text-green-500" size={14} />
+                                <span className="text-sm font-medium">
                                     {isRepublishing ? 'Previously Published URL' : 'Published URL'}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-2 p-2 bg-white border border-green-300 rounded">
+                            <div className="flex items-center gap-2 p-2 rounded border" style={{ background: "var(--modal-bg-muted)", borderColor: "var(--modal-border)" }}>
                                 <input
                                     type="text"
                                     value={publishedUrl || existingUrl}
                                     readOnly
-                                    className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none"
+                                    className="flex-1 text-sm bg-transparent border-none outline-none"
+                                    style={{ color: "var(--modal-fg)" }}
                                 />
                                 <button
                                     type="button"
@@ -202,8 +211,8 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
                         </div>
                     )}
 
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="mb-4 p-3 rounded-lg" style={{ background: "var(--modal-bg-muted)", color: "var(--modal-muted-fg)" }}>
+                        <div className="flex items-center gap-2 text-sm">
                             <FiLock size={14} />
                             <span>
                                 Conversation contains {session.messages.length} message{session.messages.length !== 1 ? 's' : ''}
@@ -216,7 +225,8 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
                             type="button"
                             onClick={handleClose}
                             disabled={isPublishing}
-                            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="flex-1 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            style={{ background: "var(--modal-bg)", borderColor: "var(--modal-border)", color: "var(--modal-muted-fg)" }}
                         >
                             Cancel
                         </button>

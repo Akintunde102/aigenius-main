@@ -82,12 +82,35 @@ describe("UserFilesBrowser", () => {
 
     render(
       <UserFilesBrowser
+        variant="page"
+        library={libraryState({ files })}
+      />,
+    );
+
+    expect(screen.getByText("photo.png")).toBeInTheDocument();
+  });
+
+  it("modal browse uses library list rows", () => {
+    const files = [
+      file({
+        id: "a",
+        name: "photo.png",
+        originalName: "photo",
+        s3Link: "https://cdn.example.com/photo.png",
+        createdAt: "2020-01-01T00:00:00.000Z",
+      }),
+    ];
+
+    render(
+      <UserFilesBrowser
         variant="modal"
         library={libraryState({ files })}
       />,
     );
 
     expect(screen.getByText("photo.png")).toBeInTheDocument();
+    expect(screen.getByText("Name")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /copy link/i })).not.toBeInTheDocument();
   });
 
   it("filters by search query", () => {
@@ -120,7 +143,7 @@ describe("UserFilesBrowser", () => {
     expect(screen.queryByText("alpha.png")).not.toBeInTheDocument();
   });
 
-  it("primary Copy link on a card copies that file URL", () => {
+  it("page browse copies link from card action menu", () => {
     const files = [
       file({
         id: "x",
@@ -133,7 +156,7 @@ describe("UserFilesBrowser", () => {
 
     render(
       <UserFilesBrowser
-        variant="modal"
+        variant="page"
         library={libraryState({ files })}
       />,
     );
@@ -141,5 +164,39 @@ describe("UserFilesBrowser", () => {
     fireEvent.click(screen.getByRole("button", { name: /copy link/i }));
 
     expect(copyMock).toHaveBeenCalledWith("https://cdn.example.com/a.png");
+  });
+
+  it("pick mode shows selection feedback and top attach toolbar", () => {
+    const files = [
+      file({
+        id: "img-1",
+        name: "photo.png",
+        originalName: "photo.png",
+        s3Link: "https://cdn.example.com/photo.png",
+        createdAt: "2020-01-01T00:00:00.000Z",
+      }),
+    ];
+    const onConfirmPick = jest.fn();
+
+    render(
+      <UserFilesBrowser
+        variant="modal"
+        mode="pick"
+        library={libraryState({ files })}
+        onConfirmPick={onConfirmPick}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /^attach$/i })).toBeDisabled();
+    expect(screen.getByText("0 selected")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("option", { name: /photo\.png/i }));
+
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+    expect(screen.getByRole("option", { selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^attach$/i })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("button", { name: /^attach$/i }));
+    expect(onConfirmPick).toHaveBeenCalledWith([expect.objectContaining({ id: "img-1" })]);
   });
 });

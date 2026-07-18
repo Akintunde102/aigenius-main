@@ -5,6 +5,7 @@ import {
   getConversationScrollState,
   getStaleConversationIds,
   saveConversationScrollState,
+  shouldAcceptRemoteConversationSync,
 } from "../conversationScrollMemory";
 import type { ChatMessage } from "@/app/components/model-interface/shared/types";
 
@@ -60,6 +61,25 @@ describe("conversationScrollMemory", () => {
     ]);
 
     expect(signature).toBe("0:::");
+  });
+
+  it("shouldAcceptRemoteConversationSync only merges when the server is strictly ahead", () => {
+    const local = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1 }),
+      createMessage({ id: "assistant-1", role: "assistant", timestamp: 2 }),
+    ];
+    const equalCountServer = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1 }),
+      createMessage({ id: "assistant-1", role: "assistant", timestamp: 99, content: "edited" }),
+    ];
+    const aheadServer = [
+      ...local,
+      createMessage({ id: "assistant-2", role: "assistant", timestamp: 3 }),
+    ];
+
+    expect(shouldAcceptRemoteConversationSync(local, local)).toBe(false);
+    expect(shouldAcceptRemoteConversationSync(local, equalCountServer)).toBe(false);
+    expect(shouldAcceptRemoteConversationSync(local, aheadServer)).toBe(true);
   });
 
   it("persists and restores scroll state per conversation", () => {

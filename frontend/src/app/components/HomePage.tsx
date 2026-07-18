@@ -1,4 +1,8 @@
-import Link from "next/link";
+import { GoogleSignIn } from "@/app/components/auth/GoogleSignIn";
+import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
+import { PublicPageShell } from "@/app/components/PublicPageShell";
+import { FEATURE_FLAGS } from "@/lib/config/features";
+import { cn } from "@/lib/utils";
 import {
   ArrowRight,
   Blocks,
@@ -10,10 +14,7 @@ import {
   Megaphone,
   Wrench,
 } from "lucide-react";
-import { GoogleSignIn } from "@/app/components/auth/GoogleSignIn";
-import { PublicPageShell } from "@/app/components/PublicPageShell";
-import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
-import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 const HERO_SIGNUP_SURFACE =
   "rounded-2xl border border-zinc-700/45 bg-zinc-950 text-zinc-100 shadow-2xl shadow-black/35";
@@ -63,11 +64,18 @@ const AUDIENCE_BLOCKS = [
   },
 ] as const;
 
-const HERO_BULLETS = [
+const HERO_BULLETS_WITH_WORKFLOWS = [
   "Google sign-in",
   "Top models, one balance",
   "Describe it, we build it",
   "Edit every step",
+] as const;
+
+const HERO_BULLETS_CHAT_ONLY = [
+  "Google sign-in",
+  "Top models, one balance",
+  "Pay only for what you use",
+  "Voice dictation in chat",
 ] as const;
 
 function SectionIntro({
@@ -111,25 +119,46 @@ function SectionIntro({
 }
 
 const HomePage = () => {
+  const workflowsEnabled = FEATURE_FLAGS.WORKFLOWS;
+  const heroBullets = workflowsEnabled
+    ? HERO_BULLETS_WITH_WORKFLOWS
+    : HERO_BULLETS_CHAT_ONLY;
+  const productFeatures = workflowsEnabled
+    ? PRODUCT_FEATURES
+    : PRODUCT_FEATURES.filter(
+        (feature) => feature.title === "All the best models",
+      );
+
   return (
     <PublicPageShell>
       <section className="relative border-b border-white/[0.06] lg:min-h-[calc(100vh-4.5rem)] lg:flex lg:flex-col lg:justify-center">
         <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-12 sm:px-6 sm:py-14 lg:grid-cols-12 lg:items-center lg:gap-16 lg:px-8 lg:py-16">
           <div className="relative z-[1] order-2 lg:order-1 lg:col-span-7">
             <p className="mb-4 inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium text-zinc-300">
-              AI chat + workflows · pay as you go
+              {workflowsEnabled
+                ? "AI chat + workflows · pay as you go"
+                : "AI chat · pay as you go"}
             </p>
             <h1 className="max-w-2xl text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-[3.25rem] lg:leading-[1.08]">
               Talk to top AI models.
-              <span className="mt-1 block text-zinc-400">Automate in plain English.</span>
+              {workflowsEnabled ? (
+                <span className="mt-1 block text-zinc-400">
+                  Automate in plain English.
+                </span>
+              ) : (
+                <span className="mt-1 block text-zinc-400">
+                  One workspace. Every model.
+                </span>
+              )}
             </h1>
             <p className="mt-4 max-w-lg text-base leading-7 text-zinc-400 sm:text-lg">
-              One workspace for chat and visual automations. No subscription—pay only
-              for what you use.
+              {workflowsEnabled
+                ? "One workspace for chat and visual automations. No subscription—pay only for what you use."
+                : "Chat with GPT, Claude, Gemini, and more. No subscription—pay only for what you use."}
             </p>
 
             <ul className="mt-6 grid gap-2.5 text-sm text-zinc-300 sm:grid-cols-2">
-              {HERO_BULLETS.map((item) => (
+              {heroBullets.map((item) => (
                 <li key={item} className="flex items-center gap-2">
                   <CheckCircle2
                     className="h-4 w-4 shrink-0 text-emerald-400/90"
@@ -172,7 +201,9 @@ const HomePage = () => {
                   <span className="w-full border-t border-white/10" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase tracking-wide">
-                  <span className="bg-zinc-950 px-3 text-zinc-500">Secure authentication</span>
+                  <span className="bg-zinc-950 px-3 text-zinc-500">
+                    Secure authentication
+                  </span>
                 </div>
               </div>
 
@@ -192,72 +223,84 @@ const HomePage = () => {
         </div>
       </section>
 
-      <section className="relative border-b border-white/[0.06] py-16 sm:py-20 lg:py-24">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-          <SectionIntro
-            centered
-            eyebrow="Product preview"
-            title="Chat your idea. Get a workflow you can run."
-            description="Describe a task in the chat—AIGenius builds an editable automation on the canvas."
-          />
+      {workflowsEnabled ? (
+        <section className="relative border-b border-white/[0.06] py-16 sm:py-20 lg:py-24">
+          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+            <SectionIntro
+              centered
+              eyebrow="Product preview"
+              title="Chat your idea. Get a workflow you can run."
+              description="Describe a task in the chat—AIGenius builds an editable automation on the canvas."
+            />
 
-          <div className="relative mx-auto mt-12 max-w-5xl overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-950 shadow-2xl shadow-black/40">
-            <div className="flex items-center gap-2 border-b border-white/[0.06] bg-zinc-900/50 px-4 py-3">
-              <div className="flex items-center gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
-                <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
-                <div className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
-              </div>
-              <div className="mx-auto hidden h-6 w-64 items-center justify-center rounded-md border border-white/[0.06] bg-black/40 text-[11px] text-zinc-500 sm:flex">
-                app.aigenius.com
-              </div>
-            </div>
-
-            <div className="grid min-h-[420px] divide-y divide-white/[0.06] bg-zinc-950/80 lg:grid-cols-12 lg:divide-x lg:divide-y-0">
-              <div className="flex flex-col p-5 lg:col-span-5">
-                <p className="mb-4 text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-                  Chat
-                </p>
-                <div className="flex-1 space-y-3 text-sm">
-                  <div className="rounded-lg border border-white/[0.06] bg-zinc-900/60 p-3">
-                    <p className="text-zinc-300">
-                      Send me a daily sales summary to Slack at 6pm.
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] p-3">
-                    <p className="text-zinc-300">
-                      Done—I built a scheduled workflow. Edit it on the right.
-                    </p>
-                  </div>
+            <div className="relative mx-auto mt-12 max-w-5xl overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-950 shadow-2xl shadow-black/40">
+              <div className="flex items-center gap-2 border-b border-white/[0.06] bg-zinc-900/50 px-4 py-3">
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
+                </div>
+                <div className="mx-auto hidden h-6 w-64 items-center justify-center rounded-md border border-white/[0.06] bg-black/40 text-[11px] text-zinc-500 sm:flex">
+                  app.aigenius.com
                 </div>
               </div>
 
-              <div className="flex flex-col p-5 lg:col-span-7">
-                <p className="mb-4 text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-                  Workflow
-                </p>
-                <div className="flex flex-1 flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-                  {[
-                    { label: "Schedule", detail: "Daily · 6:00 PM" },
-                    { label: "Summarize", detail: "AI step" },
-                    { label: "Slack", detail: "#sales" },
-                  ].map((node, index) => (
-                    <div key={node.label} className="flex items-center gap-3 sm:flex-col sm:gap-2">
-                      {index > 0 ? (
-                        <ArrowRight className="hidden h-4 w-4 text-zinc-600 sm:block" aria-hidden />
-                      ) : null}
-                      <div className="w-36 rounded-lg border border-white/[0.08] bg-zinc-900/80 p-3 text-center">
-                        <p className="text-xs font-medium text-white">{node.label}</p>
-                        <p className="mt-1 text-[11px] text-zinc-500">{node.detail}</p>
-                      </div>
+              <div className="grid min-h-[420px] divide-y divide-white/[0.06] bg-zinc-950/80 lg:grid-cols-12 lg:divide-x lg:divide-y-0">
+                <div className="flex flex-col p-5 lg:col-span-5">
+                  <p className="mb-4 text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                    Chat
+                  </p>
+                  <div className="flex-1 space-y-3 text-sm">
+                    <div className="rounded-lg border border-white/[0.06] bg-zinc-900/60 p-3">
+                      <p className="text-zinc-300">
+                        Send me a daily sales summary to Slack at 6pm.
+                      </p>
                     </div>
-                  ))}
+                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] p-3">
+                      <p className="text-zinc-300">
+                        Done—I built a scheduled workflow. Edit it on the right.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col p-5 lg:col-span-7">
+                  <p className="mb-4 text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                    Workflow
+                  </p>
+                  <div className="flex flex-1 flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+                    {[
+                      { label: "Schedule", detail: "Daily · 6:00 PM" },
+                      { label: "Summarize", detail: "AI step" },
+                      { label: "Slack", detail: "#sales" },
+                    ].map((node, index) => (
+                      <div
+                        key={node.label}
+                        className="flex items-center gap-3 sm:flex-col sm:gap-2"
+                      >
+                        {index > 0 ? (
+                          <ArrowRight
+                            className="hidden h-4 w-4 text-zinc-600 sm:block"
+                            aria-hidden
+                          />
+                        ) : null}
+                        <div className="w-36 rounded-lg border border-white/[0.08] bg-zinc-900/80 p-3 text-center">
+                          <p className="text-xs font-medium text-white">
+                            {node.label}
+                          </p>
+                          <p className="mt-1 text-[11px] text-zinc-500">
+                            {node.detail}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <section
         aria-labelledby="what-you-get"
@@ -267,31 +310,42 @@ const HomePage = () => {
           <SectionIntro
             id="what-you-get"
             title="Everything included"
-            description="Chat, automate, and schedule—from day one."
+            description={
+              workflowsEnabled
+                ? "Chat, automate, and schedule—from day one."
+                : "Everything you need for AI chat—from day one."
+            }
           />
           <div className="mt-10 grid gap-4 sm:grid-cols-2">
-            {PRODUCT_FEATURES.map(({ title, description, icon: Icon, iconClass }) => (
-              <article
-                key={title}
-                className="rounded-xl border border-white/[0.06] bg-zinc-900/40 p-5 transition-colors hover:border-white/10 hover:bg-zinc-900/60"
-              >
-                <div
-                  className={cn(
-                    "mb-4 inline-flex h-9 w-9 items-center justify-center rounded-lg",
-                    iconClass,
-                  )}
+            {productFeatures.map(
+              ({ title, description, icon: Icon, iconClass }) => (
+                <article
+                  key={title}
+                  className="rounded-xl border border-white/[0.06] bg-zinc-900/40 p-5 transition-colors hover:border-white/10 hover:bg-zinc-900/60"
                 >
-                  <Icon className="h-4 w-4" aria-hidden />
-                </div>
-                <h3 className="text-base font-medium text-white">{title}</h3>
-                <p className="mt-1.5 text-sm leading-6 text-zinc-400">{description}</p>
-              </article>
-            ))}
+                  <div
+                    className={cn(
+                      "mb-4 inline-flex h-9 w-9 items-center justify-center rounded-lg",
+                      iconClass,
+                    )}
+                  >
+                    <Icon className="h-4 w-4" aria-hidden />
+                  </div>
+                  <h3 className="text-base font-medium text-white">{title}</h3>
+                  <p className="mt-1.5 text-sm leading-6 text-zinc-400">
+                    {description}
+                  </p>
+                </article>
+              ),
+            )}
           </div>
         </div>
       </section>
 
-      <section aria-labelledby="for-whom" className="border-b border-white/[0.06] py-16 sm:py-20 lg:py-24">
+      <section
+        aria-labelledby="for-whom"
+        className="border-b border-white/[0.06] py-16 sm:py-20 lg:py-24"
+      >
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
           <SectionIntro
             id="for-whom"
@@ -305,8 +359,12 @@ const HomePage = () => {
                 className="rounded-xl border border-white/[0.06] bg-zinc-900/30 p-5"
               >
                 <Icon className="h-5 w-5 text-zinc-400" aria-hidden />
-                <h3 className="mt-4 text-base font-medium text-white">{title}</h3>
-                <p className="mt-1.5 text-sm leading-6 text-zinc-400">{description}</p>
+                <h3 className="mt-4 text-base font-medium text-white">
+                  {title}
+                </h3>
+                <p className="mt-1.5 text-sm leading-6 text-zinc-400">
+                  {description}
+                </p>
               </article>
             ))}
           </div>

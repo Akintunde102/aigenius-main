@@ -10,8 +10,20 @@
 export function shouldApplyStreamToOpenTranscript(
   streamSessionId: string | null | undefined,
   openViewSessionId: string | null | undefined,
+  /** When a draft stream receives X-Conversation-Id before the view promotes. */
+  streamPromotedConversationId?: string | null,
 ): boolean {
   const a = streamSessionId ?? null;
   const b = openViewSessionId ?? null;
-  return a === b;
+  if (a === b) {
+    return true;
+  }
+  if (
+    a === null
+    && streamPromotedConversationId
+    && b === streamPromotedConversationId
+  ) {
+    return true;
+  }
+  return false;
 }

@@ -17,7 +17,7 @@ from typing import Optional
 from voice_sidecar_lib.log import LOGGER
 from voice_sidecar_lib.stt_runtime import transcribe_audio, warm_stt_at_sidecar_startup
 from voice_sidecar_lib.timing import log_timed_step
-from voice_sidecar_lib.tts_pocket import generate_speech, load_tts_model
+from voice_sidecar_lib.tts_pocket import generate_speech
 
 
 # Lock to ensure JSON strings are written cleanly to stdout without interleaving
@@ -95,7 +95,8 @@ async def run_stdio_json_command_loop() -> None:
     LOGGER.info("🚀 Starting server mode (model will stay loaded)...")
     with log_timed_step("Initial model load"):
         # We run these synchronously at startup since they only happen once
-        load_tts_model()
+        # Skip loading TTS model at startup to prevent network/Hugging Face hangs.
+        # It will be loaded lazily on-demand when the first TTS generation is called.
         warm_stt_at_sidecar_startup()
 
     LOGGER.info("✅ Model ready! Waiting for commands...")

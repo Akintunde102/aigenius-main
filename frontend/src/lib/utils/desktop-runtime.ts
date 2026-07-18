@@ -4,13 +4,13 @@
  */
 const DESKTOP_SHELL_HTML_FLAG = "data-aigenius-desktop-shell";
 
+const isDevBridgeDiag =
+  typeof process !== "undefined" && process.env.NODE_ENV === "development";
+
 /**
  * True when the renderer is the AIGenius Electron shell (preload exposes `aigeniusDesktop`).
  * Used to route auth to `/desktop-login` instead of the web `/login` surface.
  */
-const isDevBridgeDiag =
-  typeof process !== "undefined" && process.env.NODE_ENV === "development";
-
 export function isAigeniusDesktopRuntime(): boolean {
   if (typeof window === "undefined") {
     return false;
@@ -24,6 +24,16 @@ export function isAigeniusDesktopRuntime(): boolean {
     };
   }
   return isDesktop;
+}
+
+/**
+ * Paystack returned in the system browser after a desktop top-up (`?desktop=1`).
+ * That browser has no app auth tokens — verification runs in the Electron app via polling.
+ */
+export function isDesktopPaymentBrowserHandoff(
+  searchParams: Pick<URLSearchParams, "get">,
+): boolean {
+  return searchParams.get("desktop") === "1" && !isAigeniusDesktopRuntime();
 }
 
 /**
@@ -158,6 +168,9 @@ export type DesktopChatScreenshotPayload = {
 
 export type AigeniusDesktopBridgeSurface = {
   isDesktop?: boolean;
+  openExternal?: (url: string) => void;
+  /** Fires when the Electron main window regains OS focus (e.g. after system-browser payment). */
+  onMainWindowFocus?: (handler: () => void) => () => void;
   runLocalDesktopTool?: (
     payload: { tool: string; arguments: Record<string, unknown> },
     options?: { onShellStreamChunk?: (chunk: { stream: string; text: string }) => void },

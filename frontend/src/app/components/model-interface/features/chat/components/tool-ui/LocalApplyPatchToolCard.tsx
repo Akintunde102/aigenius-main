@@ -5,6 +5,7 @@ import { JsonSyntaxBlock } from '@/app/components/JsonSyntaxBlock';
 import { FiLoader, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { valueToDisplayString } from '@/lib/utils/messageTextUtils';
 import { getToolDisplayName } from '../toolDisplayNames';
+import { ERROR_MESSAGES } from '../../hooks/chatOperations.constants';
 import type { ToolStreamingCardProps } from '../tool-streaming-card.types';
 import { toolStreamingInlineStatus } from '../tool-streaming-inline-status';
 import { MarkdownRenderer } from '@/app/components/model-interface/shared/components/MarkdownRenderer';
@@ -63,7 +64,7 @@ export function LocalApplyPatchToolCard({ streaming_tool, result, arguments: too
     if (typeof parsedResult !== 'object') {
       rawStr = valueToDisplayString(parsedResult);
     } else if (parsedResult.error) {
-      rawStr = valueToDisplayString(parsedResult.error);
+      rawStr = ERROR_MESSAGES.TOOL_EXECUTION_FAILED;
     } else if (parsedResult.message) {
       rawStr = valueToDisplayString(parsedResult.message);
     } else if (parsedResult.result) {

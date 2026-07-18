@@ -58,6 +58,33 @@ export function buildConversationMessageSignature(
   ].join(":");
 }
 
+function countVisibleMessages(messages: ChatMessage[]): number {
+  return messages.filter((message) => message.role !== "system").length;
+}
+
+/**
+ * Whether passive server sync may replace the live local transcript.
+ * Only accepts merges when the server snapshot is strictly ahead on message count.
+ */
+export function shouldAcceptRemoteConversationSync(
+  localMessages: ChatMessage[],
+  serverMessages: ChatMessage[],
+): boolean {
+  const serverVisibleCount = countVisibleMessages(serverMessages);
+  if (serverVisibleCount === 0) {
+    return false;
+  }
+
+  const localSignature = buildConversationMessageSignature(localMessages);
+  const serverSignature = buildConversationMessageSignature(serverMessages);
+  if (localSignature === serverSignature) {
+    return false;
+  }
+
+  const localVisibleCount = countVisibleMessages(localMessages);
+  return serverVisibleCount > localVisibleCount;
+}
+
 export function getConversationScrollState(
   conversationId: string,
 ): ConversationScrollState | null {

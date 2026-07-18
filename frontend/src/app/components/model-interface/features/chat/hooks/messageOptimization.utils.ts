@@ -69,6 +69,19 @@ function processStructuredContent(
             const result = processTextBlock(block, contentSize);
             optimizedBlocks.push(result.block);
             contentSize = result.size;
+        } else if (block.type === 'file_url') {
+            const fileUrlBlock = block as OpenRouterContentBlock & {
+                file_url?: { url?: string; name?: string };
+            };
+            const name = fileUrlBlock.file_url?.name?.trim() || 'File';
+            const url = fileUrlBlock.file_url?.url?.trim() || '';
+            const textBlock = {
+                type: CONTENT_TYPES.TEXT,
+                text: url ? `${name}: ${url}` : name,
+            } as OpenRouterContentBlock;
+            const result = processTextBlock(textBlock, contentSize);
+            optimizedBlocks.push(result.block);
+            contentSize = result.size;
         } else if (block.type === CONTENT_TYPES.IMAGE_URL) {
             const result = processImageBlock(block, isRecent, totalSize + contentSize, imagesRemoved);
             if (result.block) {

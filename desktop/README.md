@@ -109,6 +109,65 @@ The Debian package now runs `scripts/linux/deb-after-install.sh` during install.
 
 This removes the manual post-install `chown/chmod` step for new installs/upgrades.
 
+## macOS packages (build on a Mac)
+
+Install workspace deps once from `client/` so Electron is present (hoisted to `client/node_modules/electron`):
+
+```bash
+cd client && npm install
+```
+
+Packaging uses the local Electron binary (`electronDist` → `../node_modules/electron/dist`) and does **not** re-download from GitHub.
+
+`prepackage` also runs **`npm run install:server-deps`**, which installs a complete isolated `node_modules` tree under `desktop-server/pack-deps/<platform>-<arch>/`. This is required because workspace hoisting leaves `desktop-server/node_modules` incomplete (e.g. missing `@hono/node-server`), which causes `Timeout waiting for http://127.0.0.1:8001/health` at launch.
+
+**If you still see the health timeout after packaging:** quit all AIGenius instances, free ports `8001` and `3001` (`lsof -ti :8001 | xargs kill` if needed), and check `~/Library/Logs/AIGenius/mini-server.log`. Child servers use `utilityProcess.fork` (no Dock icon); `ELECTRON_RUN_AS_NODE` spawn is only a fallback when utility processes are unavailable. A stale `mini-server.log` over ~5 MB is rotated automatically on the next launch.
+
+From `desktop/`:
+
+```bash
+npm run package:mac:full
+```
+
+Or unpack only (faster smoke test, no `.dmg`):
+
+```bash
+npm run prepackage:mac && npm run package:mac:dir
+```
+
+Artifacts land in `desktop/release/`.
+
+**Distribution:** unsigned builds are fine for local testing (right-click → Open). For other users, plan **Apple code signing + notarization** (Developer ID certificate).
+
+## Windows packages (from macOS)
+
+**NSIS `.exe` requires Wine** on the build Mac:
+
+```bash
+brew install --cask wine-stable
+```
+
+Without Wine, `electron-builder --win` fails when creating the installer (use `package:win:dir` to test the unpacked app without Wine).
+
+Native modules (`better-sqlite3`, `sharp`, `onnxruntime-node`) ship **prebuilt win32 binaries** — the real issue is bundling the right `node_modules`, not cross-compiling from source. `prepackage:win` installs an isolated **win32-x64** tree under `desktop-server/pack-deps/` before `prepare:resources` copies it.
+
+```bash
+npm run package:win:full
+```
+
+Steps inside `prepackage:win`:
+
+1. `install:server-deps:win32` — `npm install --os=win32 --cpu=x64` + `electron-rebuild` for the three native modules
+2. `prepare:resources` with `AIGENIUS_PACKAGE_PLATFORM=win32` (copies that tree, not your Mac `node_modules`)
+
+Unpacked smoke test (no Wine):
+
+```bash
+npm run prepackage:win && npm run package:win:dir
+```
+
+**Distribution:** Windows code signing is separate from the build machine (Authenticode cert). CI on `windows-latest` is still the lowest-maintenance path for release builds, but local Mac → Windows is viable with Wine + the win32 deps step above.
+
 ## OAuth / Paystack
 
 Register Google (and later GitHub) redirect URIs for `http://localhost:3001/...`. Paystack flows that must open in the system browser can use `window.aigeniusDesktop?.openExternal(url)` from the renderer when `isDesktop` is available.

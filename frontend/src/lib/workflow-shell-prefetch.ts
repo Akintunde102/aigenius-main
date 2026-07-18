@@ -1,3 +1,5 @@
+import { FEATURE_FLAGS } from "@/lib/config/features";
+
 type AppRouterLike = { prefetch: (href: string) => void };
 
 function runWhenIdle(fn: () => void): void {
@@ -19,6 +21,9 @@ export function scheduleWorkflowShellPrefetch(
   router: AppRouterLike,
   workflowIds: string[] = [],
 ): void {
+  if (!FEATURE_FLAGS.WORKFLOWS) {
+    return;
+  }
   runWhenIdle(() => {
     const routes = ["/notifications", "/schedules"];
     for (const id of workflowIds.slice(0, 8)) {

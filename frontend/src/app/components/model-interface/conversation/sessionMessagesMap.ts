@@ -1,4 +1,5 @@
 import type { ChatMessage, ChatSession } from "@/app/components/model-interface/shared/types";
+import { deriveChatSessionTitle } from "@/lib/utils/messageTextUtils";
 
 /**
  * Logical per-conversation message lists (T4). `chatHistory` is the canonical
@@ -42,20 +43,22 @@ export function upsertSessionMessagesInHistory(
   messages: ChatMessage[],
   sessionData?: Partial<ChatSession>,
 ): ChatSession[] {
+  const resolvedTitle = deriveChatSessionTitle(sessionData?.title ?? messages[0]?.content);
+
   const exists = prev.some((s) => s.id === sessionId);
   if (exists) {
     return prev.map((session) =>
       session.id === sessionId
-        ? { ...session, ...sessionData, messages }
+        ? { ...session, ...sessionData, title: resolvedTitle, messages }
         : session,
     );
   }
   const newSession: ChatSession = {
     id: sessionId,
-    title: sessionData?.title || "New chat",
     messages,
     modelId: sessionData?.modelId || "",
     ...sessionData,
+    title: resolvedTitle,
   };
   return [newSession, ...prev];
 }

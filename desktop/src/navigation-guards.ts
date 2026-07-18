@@ -5,6 +5,7 @@ import { resolveFrontendPort } from './frontend-port';
 import { DEV_LOOPBACK_HOST, loopbackHttpUrl } from './loopback-host';
 import { showExternalLinkApprovalDialog } from './external-link-approval-dialog';
 import { isNoboxAuthBackendFlowUrl, isOauthSignInUrl } from './oauth-allowlist';
+import { isHostedPaymentUrl } from './payment-allowlist';
 
 const FRONTEND_PORT = resolveFrontendPort();
 const MINI_SERVER_PORT = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
@@ -69,11 +70,16 @@ function postOAuthHandoffUrl(completedUrl: string): string {
     }
     const q = u.searchParams;
     const path = u.pathname.toLowerCase();
+    if (path === '/payment-callback' || path.startsWith('/payment-callback/')) {
+      return completedUrl;
+    }
     const looksOAuth =
       q.has('code') ||
       q.has('error') ||
       q.has('state') ||
-      /callback|oauth|authorize|signin/i.test(path);
+      /(?:^|\/)oauth(?:\/|$)/i.test(path) ||
+      /(?:^|\/)(?:auth\/|signin)/i.test(path) ||
+      /\/callback$/i.test(path);
     if (looksOAuth) {
       return `${loopbackHttpUrl(FRONTEND_PORT, '/desktop-login')}?aigenius_shell=1`;
     }
@@ -190,18 +196,29 @@ function oauthChildWindowOptions(parent: BrowserWindow): Electron.BrowserWindowC
 }
 
 /**
- * Top-level window: never host IdP in the main shell — open a child so callbacks can hand off via registerLocalOriginHandoff.
+ * OAuth handoff child window — callbacks return to the main shell via registerLocalOriginHandoff.
+ * Paystack checkout intentionally uses the system browser (approval modal), not this window.
  */
-function openIdpChildWindow(parent: BrowserWindow, url: string): void {
+function openHandoffChildWindow(parent: BrowserWindow, url: string): void {
   if (!isHttpOrHttpsUrl(url) || !isOauthSignInUrl(url)) {
     return;
   }
-  const child = new BrowserWindow(oauthChildWindowOptions(parent));
+  const child = new BrowserWindow({
+    ...oauthChildWindowOptions(parent),
+    title: 'Sign in',
+  });
   attachMainShellNavigationGuards(child);
   child.once('ready-to-show', () => {
     child.show();
   });
   void child.loadURL(url);
+}
+
+function openHostedPaymentInSystemBrowser(parent: BrowserWindow, url: string): void {
+  if (!isHttpOrHttpsUrl(url) || !isHostedPaymentUrl(url)) {
+    return;
+  }
+  openExternalInSystemBrowserAfterApproval(parent, url);
 }
 
 function isTopLevelShellWindow(win: BrowserWindow): boolean {
@@ -249,10 +266,17 @@ export function attachMainShellNavigationGuards(win: BrowserWindow): void {
     if (isUrlAllowedInMainShell(url)) {
       return;
     }
+    if (isHostedPaymentUrl(url)) {
+      if (isTopLevelShellWindow(win)) {
+        event.preventDefault();
+        openHostedPaymentInSystemBrowser(win, url);
+      }
+      return;
+    }
     if (isOauthSignInUrl(url)) {
       if (isTopLevelShellWindow(win)) {
         event.preventDefault();
-        openIdpChildWindow(win, url);
+        openHandoffChildWindow(win, url);
       }
       return;
     }
@@ -283,6 +307,11 @@ export function attachMainShellNavigationGuards(win: BrowserWindow): void {
           },
         },
       };
+    }
+
+    if (isHostedPaymentUrl(url)) {
+      blockAndEscalate(url);
+      return { action: 'deny' };
     }
 
     if (isOauthSignInUrl(url)) {
@@ -319,7 +348,7 @@ export function deliverOpenExternalOrAuthUrl(sender: Electron.WebContents, url: 
   }
   if (isOauthSignInUrl(url)) {
     if (isTopLevelShellWindow(win)) {
-      openIdpChildWindow(win, url);
+      openHandoffChildWindow(win, url);
     } else {
       void win.loadURL(url);
     }

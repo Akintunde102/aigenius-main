@@ -59,6 +59,8 @@ export function useConversationalMode({
    * Parallel emits reorder chunks on the server → invalid WebM → Groq "not a valid media file" on later turns.
    */
   const socketChunkSendChainRef = useRef(Promise.resolve<void>(undefined));
+  const desktopChunkSendChainRef = useRef(Promise.resolve<void>(undefined));
+  const desktopFinalizeInFlightRef = useRef(false);
   const onBargeInRef = useRef(onBargeIn);
   const partialTranscriptionInFlightRef = useRef(false);
   const partialFlushErrorCountRef = useRef(0);
@@ -74,6 +76,8 @@ export function useConversationalMode({
   useEffect(() => {
     if (!isAudioMode) {
       socketChunkSendChainRef.current = Promise.resolve(undefined);
+      desktopChunkSendChainRef.current = Promise.resolve(undefined);
+      desktopFinalizeInFlightRef.current = false;
     }
   }, [isAudioMode]);
 
@@ -99,19 +103,25 @@ export function useConversationalMode({
    * stream was empty (e.g. chunks never reached the server).
    */
   const finalizeDesktopStt = useCallback(async (wavBlob: Blob): Promise<string> => {
+    console.log('[ConversationalMode] finalizeDesktopStt entered. Waiting for chunk uploads...');
+    await desktopChunkSendChainRef.current.catch(() => undefined);
     const sid = desktopSessionIdRef.current;
     let text = '';
 
     if (sid) {
+      console.log('[ConversationalMode] Finalizing stream STT for session:', sid);
       try {
         const res = await authorizedFetch(AUDIO_CONSTANTS.LOCAL_DESKTOP_STT_STREAM_TRANSCRIBE_URL, {
           method: 'POST',
           headers: { 'X-Session-ID': sid },
-          body: JSON.stringify({ beam_size: 5 }),
+          body: JSON.stringify({ beam_size: 5 }), // Restore to 5 for high transcription accuracy
         });
         if (res.ok) {
           const data = (await res.json()) as { text?: string };
           text = data.text?.trim() ?? '';
+          console.log('[ConversationalMode] Stream finalize STT returned:', text);
+        } else {
+          console.warn('[ConversationalMode] Stream finalize STT failed with status:', res.status);
         }
       } catch (e) {
         console.warn('[ConversationalMode] Stream finalize STT failed', e);
@@ -120,6 +130,7 @@ export function useConversationalMode({
     }
 
     if (!text && wavBlob.size > 0) {
+      console.log('[ConversationalMode] Stream STT returned empty. Falling back to WAV upload...', wavBlob.size);
       voiceObs('conversational', 'silence_desktop_wav_fallback', { blobBytes: wavBlob.size });
       try {
         const formData = new FormData();
@@ -132,6 +143,9 @@ export function useConversationalMode({
         if (res.ok) {
           const data = (await res.json()) as { text?: string };
           text = data.text?.trim() ?? '';
+          console.log('[ConversationalMode] WAV fallback STT returned:', text);
+        } else {
+          console.warn('[ConversationalMode] WAV fallback STT failed with status:', res.status);
         }
       } catch (e) {
         console.warn('[ConversationalMode] WAV fallback STT failed', e);
@@ -266,43 +280,47 @@ export function useConversationalMode({
 
       // Desktop (Electron): HTTP /stt/stream/* only — same pipeline as dictation.
       if (isAigeniusDesktopRuntime()) {
-        void blob.arrayBuffer().then(async (buffer) => {
-          if (!desktopSessionIdRef.current) {
-            if (!desktopSessionStartRef.current) {
-              desktopSessionStartRef.current = (async () => {
-                try {
-                  const res = await authorizedFetch(AUDIO_CONSTANTS.LOCAL_DESKTOP_STT_STREAM_START_URL, { method: 'POST' });
-                  if (res.ok) {
-                    const data = await res.json() as { sessionId: string };
-                    desktopSessionIdRef.current = data.sessionId;
-                    partialFlushErrorCountRef.current = 0;
-                    voiceObs('conversational', 'desktop_stt_session_started', {
-                      sessionIdPrefix: data.sessionId.slice(0, 8),
-                    });
-                    return data.sessionId;
+        desktopChunkSendChainRef.current = desktopChunkSendChainRef.current
+          .catch(() => undefined)
+          .then(async () => {
+            const buffer = await blob.arrayBuffer();
+
+            if (!desktopSessionIdRef.current) {
+              if (!desktopSessionStartRef.current) {
+                desktopSessionStartRef.current = (async () => {
+                  try {
+                    const res = await authorizedFetch(AUDIO_CONSTANTS.LOCAL_DESKTOP_STT_STREAM_START_URL, { method: 'POST' });
+                    if (res.ok) {
+                      const data = await res.json() as { sessionId: string };
+                      desktopSessionIdRef.current = data.sessionId;
+                      partialFlushErrorCountRef.current = 0;
+                      voiceObs('conversational', 'desktop_stt_session_started', {
+                        sessionIdPrefix: data.sessionId.slice(0, 8),
+                      });
+                      return data.sessionId;
+                    }
+                  } catch (e) {
+                    console.error('[ConversationalMode] Failed to start desktop STT session:', e);
                   }
-                } catch (e) {
-                  console.error('[ConversationalMode] Failed to start desktop STT session:', e);
-                }
-                return null;
-              })();
+                  return null;
+                })();
+              }
+              await desktopSessionStartRef.current;
             }
-            await desktopSessionStartRef.current;
-          }
 
-          const sid = desktopSessionIdRef.current;
-          if (!sid) return;
+            const sid = desktopSessionIdRef.current;
+            if (!sid) return;
 
-          try {
-            await authorizedFetch(AUDIO_CONSTANTS.LOCAL_DESKTOP_STT_STREAM_CHUNK_URL, {
-              method: 'POST',
-              headers: { 'X-Session-ID': sid },
-              body: buffer,
-            });
-          } catch (e) {
-            console.warn('[ConversationalMode] Failed to send desktop STT chunk:', e);
-          }
-        });
+            try {
+              await authorizedFetch(AUDIO_CONSTANTS.LOCAL_DESKTOP_STT_STREAM_CHUNK_URL, {
+                method: 'POST',
+                headers: { 'X-Session-ID': sid },
+                body: buffer,
+              });
+            } catch (e) {
+              console.warn('[ConversationalMode] Failed to send desktop STT chunk:', e);
+            }
+          });
       }
     }, [peerMicSuppressRef]),
     onSilence: useCallback(async (blob: Blob) => {
@@ -315,6 +333,13 @@ export function useConversationalMode({
 
       if (blob.size === 0) {
         voiceObs('conversational', 'silence_vad_no_speech', {});
+        setAudioStatus('listening');
+        startRecordingRef.current();
+        return;
+      }
+
+      if (blob.size > 0 && blob.size < AUDIO_CONSTANTS.MIN_LOCAL_PARTIAL_STT_BYTES) {
+        voiceObs('conversational', 'silence_desktop_ignored_tiny_blob', { blobBytes: blob.size });
         setAudioStatus('listening');
         startRecordingRef.current();
         return;
@@ -333,15 +358,29 @@ export function useConversationalMode({
 
       // Desktop (Electron): finalize via HTTP stream (+ VAD WAV fallback).
       if (isAigeniusDesktopRuntime()) {
+        if (desktopFinalizeInFlightRef.current) {
+          console.log('[ConversationalMode] onSilence: desktop finalize already in flight, ignoring duplicate.');
+          voiceObs('conversational', 'silence_desktop_finalize_already_inflight', { blobBytes: blob.size });
+          return;
+        }
+        desktopFinalizeInFlightRef.current = true;
+        console.log('[ConversationalMode] onSilence: desktop runtime detected. Finalizing audio, blob size:', blob.size);
         voiceObs('conversational', 'silence_desktop_finalize', {
           blobBytes: blob.size,
           hasSession: Boolean(desktopSessionIdRef.current),
         });
         setAudioStatus('transcribing');
-        const text = await finalizeDesktopStt(blob);
-        if (text) {
-          await commitTranscript(text, { audioBlobBytes: blob.size });
-          return;
+        try {
+          const text = await finalizeDesktopStt(blob);
+          console.log('[ConversationalMode] onSilence: finalizeDesktopStt result text:', text);
+          if (text) {
+            await commitTranscript(text, { audioBlobBytes: blob.size });
+            return;
+          } else {
+            console.log('[ConversationalMode] onSilence: finalizeDesktopStt returned empty text, returning back to listening.');
+          }
+        } finally {
+          desktopFinalizeInFlightRef.current = false;
         }
       }
 
@@ -412,19 +451,20 @@ export function useConversationalMode({
     stopRecordingRef.current = stopRecording;
   }, [stopRecording]);
 
-  useVoiceLoopMaintenance({
-    isAudioMode,
-    isRecording,
-    isLoading,
-    isStreaming,
-    audioStatus,
-    audioStatusRef,
-    peerMicSuppressRef,
-    desktopSessionIdRef,
-    socketRef,
-    startRecording: () => startRecordingRef.current(),
-    setAudioTranscription,
-  });
+    useVoiceLoopMaintenance({
+      isAudioMode,
+      isRecording,
+      isLoading,
+      isStreaming,
+      audioStatus,
+      audioStatusRef,
+      peerMicSuppressRef,
+      desktopSessionIdRef,
+      socketRef,
+      startRecording: () => startRecordingRef.current(),
+      setAudioTranscription,
+      desktopChunkSendChainRef,
+    });
 
   const [isMiniMode, setIsMiniMode] = useState(false);
 

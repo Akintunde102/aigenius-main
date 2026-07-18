@@ -11,10 +11,18 @@ export type AttachmentIndexItem = {
 };
 
 export type UploadedFileEntry = {
-    file: File;
+    file?: File;
     fileUrl: string;
     isImage: boolean;
+    displayName: string;
+    mimeType?: string;
+    source: 'local' | 'library';
+    libraryFileId?: string;
 };
+
+export function getUploadedFileDisplayName(entry: UploadedFileEntry): string {
+    return entry.displayName || entry.file?.name || 'attachment';
+}
 
 export type PublishableSession = ChatSession & {
     id: string;

@@ -22,6 +22,13 @@ export function useSyncRouteConversationId(
     if (result.kind === "unchanged") {
       return;
     }
+    if (process.env.NODE_ENV === "development") {
+      console.debug("[useSyncRouteConversationId] route prop changed", {
+        routeConversationId,
+        lastSyncedProp: lastSyncedPropRef.current,
+        nextActiveId: result.nextActiveId,
+      });
+    }
     lastSyncedPropRef.current = result.lastSyncedProp;
     setActiveRouteConversationId(result.nextActiveId);
   }, [routeConversationId, setActiveRouteConversationId]);

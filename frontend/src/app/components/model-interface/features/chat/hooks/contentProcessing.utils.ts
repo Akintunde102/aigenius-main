@@ -28,6 +28,7 @@ export function processBackendContent(content: any): ProcessedContent {
             type: block.type,
             text: block.text,
             image_url: block.image_url,
+            file_url: block.file_url,
             imageText: block.imageText,
             input_audio: block.input_audio
         }));

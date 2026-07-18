@@ -1,6 +1,9 @@
 import { useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChatMessage, ChatSession } from '@/app/components/model-interface/shared/types';
 import { normalizeSessionMessages } from '@/lib/utils/messageContentUtils';
+import { getConversationById } from '@/lib/calls/model-chat-conversation';
+import { CHAT_CONVERSATION_STALE_MS, chatQueryKeys } from '@/lib/hooks/chat-query-keys';
 import { SetChatForSession } from './chatOperations.types';
 import { DRAFT_SESSION_KEY } from './chatOperations.constants';
 import { bumpDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
@@ -19,6 +22,7 @@ interface UseSessionSwitcherOptions {
  * afterward to reconcile with the server, writing silently into the map.
  */
 export function useSessionSwitcher({ currentSessionId, chatMap, setChatForSession }: UseSessionSwitcherOptions) {
+    const queryClient = useQueryClient();
 
     const ensureSystemPromptMessage = useCallback((session: ChatSession): ChatSession => {
         if (!session.systemPrompt) return session;
@@ -67,13 +71,22 @@ export function useSessionSwitcher({ currentSessionId, chatMap, setChatForSessio
         (async () => {
             const sid = session.id!;
             try {
-                const updatedSession = await loadSessionFromBackend(sid);
+                const updatedSession = await loadSessionFromBackend(queryClient, sid);
                 if (!updatedSession?.messages) return;
 
                 const normalized = normalizeSessionMessages(ensureSystemPromptMessage(updatedSession));
                 const messages = (normalized.messages || []) as ChatMessage[];
 
-                setChatForSession(sid, messages);
+                setChatForSession(sid, (prev) => {
+                    if (!messages.length) {
+                        return prev;
+                    }
+                    // Do not clobber a just-streamed local transcript with a lagging server snapshot.
+                    if (prev.length > messages.length) {
+                        return prev;
+                    }
+                    return messages;
+                });
 
                 if (setChatHistory) {
                     setChatHistory(prev =>
@@ -84,7 +97,7 @@ export function useSessionSwitcher({ currentSessionId, chatMap, setChatForSessio
                 // Silently ignore — local data is already shown.
             }
         })();
-    }, [chatMap, setChatForSession, ensureSystemPromptMessage]);
+    }, [chatMap, setChatForSession, ensureSystemPromptMessage, queryClient]);
 
     /**
      * Create a new draft session (clears the draft slot).
@@ -109,26 +122,39 @@ export function useSessionSwitcher({ currentSessionId, chatMap, setChatForSessio
     };
 }
 
-async function loadSessionFromBackend(sessionId: string): Promise<ChatSession | null> {
-    try {
-        const { getConversationById } = await import('@/lib/calls/model-chat-conversation');
-        const conversation = await getConversationById(sessionId);
-        if (!conversation?.session) return null;
+function conversationToSession(
+    conversation: NonNullable<Awaited<ReturnType<typeof getConversationById>>>,
+): ChatSession {
+    return {
+        id: conversation.id,
+        title: conversation.session.title,
+        modelId: conversation.session.modelId,
+        messages: conversation.session.messages,
+        metadata: conversation.metadata,
+        personalityId: conversation.personalityId,
+        systemPrompt: conversation.systemPrompt,
+        starred: conversation.starred,
+        isPublished: conversation.isPublished,
+        publishedAt: conversation.publishedAt,
+        publishedTitle: conversation.publishedTitle,
+        publishedDescription: conversation.publishedDescription,
+    };
+}
 
-        return {
-            id: conversation.id,
-            title: conversation.session.title,
-            modelId: conversation.session.modelId,
-            messages: conversation.session.messages,
-            metadata: conversation.metadata,
-            personalityId: conversation.personalityId,
-            systemPrompt: conversation.systemPrompt,
-            starred: conversation.starred,
-            isPublished: conversation.isPublished,
-            publishedAt: conversation.publishedAt,
-            publishedTitle: conversation.publishedTitle,
-            publishedDescription: conversation.publishedDescription,
-        };
+async function loadSessionFromBackend(
+    queryClient: ReturnType<typeof useQueryClient>,
+    sessionId: string,
+): Promise<ChatSession | null> {
+    try {
+        const conversation = await queryClient.fetchQuery({
+            queryKey: chatQueryKeys.conversation(sessionId),
+            queryFn: () => getConversationById(sessionId),
+            staleTime: CHAT_CONVERSATION_STALE_MS,
+            retry: 3,
+            retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30_000),
+        });
+        if (!conversation?.session) return null;
+        return conversationToSession(conversation);
     } catch {
         return null;
     }
