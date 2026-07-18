@@ -112,6 +112,7 @@ export interface ChatMessage {
         type: string;
         text?: string;
         image_url?: { url: string };
+        file_url?: { url: string; name?: string };
         imageText?: string; // Optional text associated with images
         input_audio?: { data: string; format: string };
     }>;

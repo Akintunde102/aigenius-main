@@ -2,6 +2,12 @@
  * Utilities to format raw tool results into human-readable Markdown.
  */
 
+import path from 'path';
+import {
+  formatLocalPathMarkdownLink,
+  formatPathField,
+} from './local-path-links';
+
 export interface FormattedToolResult {
   result: string;
   rawData?: any;
@@ -59,7 +65,7 @@ export function formatRagResults(data: any): FormattedToolResult {
   hits.forEach((hit, i) => {
     md += `${i + 1}. **${hit.name || pathBase(hit.path) || 'Unknown File'}**\n`;
     if (hit.path) {
-      md += `   - **Path**: \`${hit.path}\`\n`;
+      md += `   - **Path**: ${formatPathField(hit.path)}\n`;
     }
     if (typeof hit.score === 'number') {
       md += `   - **Relevance**: ${(hit.score * 100).toFixed(1)}%\n`;
@@ -150,7 +156,7 @@ export function formatDirectoryListing(payload: {
 }): FormattedToolResult {
   const { path: rootPath, items, hitLimit } = payload;
   let md = '### Directory listing\n\n';
-  md += `- **Directory**: \`${rootPath}\`\n`;
+  md += `- **Directory**: ${formatPathField(rootPath)}\n`;
   md += `- **Entries**: ${items.length}${hitLimit ? ' (limit reached)' : ''}\n\n`;
 
   if (items.length === 0) {
@@ -160,7 +166,7 @@ export function formatDirectoryListing(payload: {
 
   items.forEach((r, i) => {
     md += `${i + 1}. **${r.name}**\n`;
-    md += `   - **Path**: \`${r.path}\`\n`;
+    md += `   - **Path**: ${formatPathField(r.path)}\n`;
     md += `   - **Type**: ${r.isDir ? 'Directory' : 'File'}\n`;
     if (!r.isDir && typeof r.size === 'number') {
       md += `   - **Size (bytes)**: ${r.size.toLocaleString()}\n`;
@@ -195,7 +201,7 @@ export function formatReadFile(data: any): FormattedToolResult {
   const { path, bytes_read, truncated, content } = data;
 
   let md = `### Read file\n\n`;
-  md += `- **Path**: \`${path ?? ''}\`\n`;
+  md += `- **Path**: ${formatPathField(path ?? '')}\n`;
   md += `- **Bytes read**: ${bytes_read?.toLocaleString() ?? 0}\n`;
   if (truncated === true) {
     md += `- **Truncated**: Yes (size limits)\n`;
@@ -225,6 +231,69 @@ export function formatShellResult(data: any): FormattedToolResult {
 
   if (!stdout?.trim() && !stderr?.trim()) {
     md += '*Command produced no output.*\n';
+  }
+
+  return { result: md.trimEnd() + '\n', rawData: data };
+}
+
+type PatchResultRow = {
+  path: string;
+  op: string;
+  status: string;
+  error?: string;
+};
+
+/**
+ * Formats local_apply_patch JSON into markdown with cross-platform preview links.
+ */
+export function formatApplyPatchResult(data: {
+  partial?: boolean;
+  results?: PatchResultRow[];
+  error?: string;
+}): FormattedToolResult {
+  const rows = Array.isArray(data.results) ? data.results : [];
+  let md = '### Local file changes\n\n';
+  if (data.partial) {
+    md += `- **Status**: Partial (stopped on error)\n`;
+    if (data.error) {
+      md += `- **Error**: ${data.error}\n`;
+    }
+  } else {
+    md += `- **Status**: Complete\n`;
+  }
+  md += '\n';
+
+  if (rows.length === 0) {
+    md += '*No operations recorded.*\n';
+    return { result: md, rawData: data };
+  }
+
+  const previewPaths = new Set<string>();
+  for (const row of rows) {
+    md += `- **${row.op}** (${row.status}): ${formatPathField(row.path)}\n`;
+    if (row.error) {
+      md += `  - Error: ${row.error}\n`;
+    }
+    if (row.status === 'ok') {
+      previewPaths.add(row.path);
+      const parent = path.dirname(row.path);
+      if (parent && parent !== row.path) {
+        previewPaths.add(parent);
+      }
+    }
+  }
+
+  const htmlFiles = [...previewPaths].filter((p) => /\.html?$/i.test(p));
+  const indexFiles = htmlFiles.length > 0
+    ? htmlFiles
+    : [...previewPaths].filter((p) => /index\.html?$/i.test(p));
+
+  if (indexFiles.length > 0 || previewPaths.size > 0) {
+    md += '\n**Preview**\n\n';
+    for (const p of indexFiles.length > 0 ? indexFiles : [...previewPaths].slice(0, 3)) {
+      const label = path.basename(p) || p;
+      md += `- ${formatLocalPathMarkdownLink(p, `Open ${label}`)}\n`;
+    }
   }
 
   return { result: md.trimEnd() + '\n', rawData: data };

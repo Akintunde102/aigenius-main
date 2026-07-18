@@ -180,7 +180,7 @@ class VoiceSidecar {
         HF_HUB_DISABLE_SYMLINKS_WARNING: '1',
         // Ensure STT environment variables are available with fallbacks
         AIGENIUS_STT_MODEL_SIZE: process.env.AIGENIUS_STT_MODEL_SIZE || envVars.AIGENIUS_STT_MODEL_SIZE || 'small',
-        AIGENIUS_STT_BACKEND: process.env.AIGENIUS_STT_BACKEND || envVars.AIGENIUS_STT_BACKEND || 'whisper_cpp',
+        AIGENIUS_STT_BACKEND: process.env.AIGENIUS_STT_BACKEND || envVars.AIGENIUS_STT_BACKEND || 'auto',
         AIGENIUS_VOICE_OBS: process.env.AIGENIUS_VOICE_OBS || envVars.AIGENIUS_VOICE_OBS || '1',
       },
       windowsHide: true,

@@ -1,0 +1,4 @@
+# Minimal Python deps bundled for packaged desktop STT (dictation).
+# Full voice stack (PocketTTS etc.) stays in requirements-tts.txt for dev installs.
+av
+faster-whisper

@@ -25,6 +25,37 @@ export function textPartToPlainString(value: unknown): string {
 }
 
 /**
+ * Derive a sidebar-safe chat title from message content (plain string or structured blocks).
+ * Avoids passing content arrays/objects into React text nodes when the first message has attachments.
+ */
+export function deriveChatSessionTitle(content: unknown, fallback = 'New chat'): string {
+    const plain = textPartToPlainString(content).trim();
+    if (plain) {
+        return plain.length > 80 ? `${plain.slice(0, 77)}…` : plain;
+    }
+
+    if (Array.isArray(content)) {
+        const hasAttachment = content.some((block) => {
+            if (!block || typeof block !== 'object') return false;
+            const type = (block as { type?: string }).type;
+            return type === 'image_url' || type === 'file_url' || type === 'input_audio';
+        });
+        if (hasAttachment) {
+            const fileBlock = content.find(
+                (block) => block && typeof block === 'object' && (block as { type?: string }).type === 'file_url',
+            ) as { file_url?: { name?: string } } | undefined;
+            const fileName = fileBlock?.file_url?.name?.trim();
+            if (fileName) {
+                return fileName.length > 80 ? `${fileName.slice(0, 77)}…` : fileName;
+            }
+            return 'Attachment';
+        }
+    }
+
+    return fallback;
+}
+
+/**
  * Coerce values that may be plain strings, OpenAI-style `{ type, text }` parts, or arbitrary JSON
  * to a string safe for React text nodes (tool logs, parsed API results, etc.).
  */

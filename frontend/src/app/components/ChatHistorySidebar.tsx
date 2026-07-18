@@ -13,6 +13,7 @@ import { getAdminStatus } from "@/lib/calls/admin";
 import { SidebarCollapsedRail } from "./ChatHistorySidebar/SidebarCollapsedRail";
 import { useUploadedFilesList } from "@/app/components/user-files/useUploadedFilesList";
 import { useWalletTopUpReturn } from "@/lib/hooks/useWalletTopUpReturn";
+import { FEATURE_FLAGS } from "@/lib/config/features";
 
 interface Model {
     id: string;
@@ -171,7 +172,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
 
     const modals = (
         <>
-            {showIntegrationsModal && (
+            {FEATURE_FLAGS.INTEGRATIONS && showIntegrationsModal && (
                 <IntegrationsModal onClose={() => setShowIntegrationsModal(false)} />
             )}
 
@@ -239,7 +240,11 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 onOpenMyFiles={() => setShowMyFilesModal(true)}
                 onOpenWorkflows={onOpenWorkflows}
                 onOpenNotifications={onOpenNotifications}
-                onIntegrations={() => setShowIntegrationsModal(true)}
+                onIntegrations={
+                    FEATURE_FLAGS.INTEGRATIONS
+                        ? () => setShowIntegrationsModal(true)
+                        : undefined
+                }
                 onGiveCredits={isMaster ? () => setShowGrantCreditsModal(true) : undefined}
                 onLogout={onLogout}
                 openMenuSignal={accountMenuSignal}

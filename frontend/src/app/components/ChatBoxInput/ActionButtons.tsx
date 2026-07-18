@@ -1,6 +1,7 @@
 import React from 'react';
-import { Paperclip, Mic, Phone, Loader2 } from 'lucide-react';
+import { Paperclip, Mic, Phone, Loader2, X, Check } from 'lucide-react';
 import { ActionButtonsProps } from './types';
+import { FEATURE_FLAGS } from '@/lib/config/features';
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
     disabled,
@@ -9,6 +10,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     onAudioModeToggle,
     isAudioMode,
     onStartSTT,
+    onCancelSTT,
+    onConfirmSTT,
     isSTTActive,
     isDictationTranscribing = false,
 }) => {
@@ -17,37 +20,62 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
     return (
         <div className="flex items-center space-x-1.5">
-            {/* Audio Mode Toggle */}
-            <button
-                type="button"
-                className={`p-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isAudioMode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:text-green-500 hover:bg-green-50'
-                    }`}
-                title="Enter Audio Mode"
-                disabled={disabled}
-                onClick={() => onAudioModeToggle?.(!isAudioMode)}
-            >
-                <Phone size={12} />
-            </button>
+            {/* Conversational audio mode (phone) — mic dictation stays available below */}
+            {FEATURE_FLAGS.AUDIO_CONVERSATION && onAudioModeToggle ? (
+                <button
+                    type="button"
+                    className={`p-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isAudioMode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:text-green-500 hover:bg-green-50'
+                        }`}
+                    title="Enter Audio Mode"
+                    disabled={disabled}
+                    onClick={() => onAudioModeToggle(!isAudioMode)}
+                >
+                    <Phone size={12} />
+                </button>
+            ) : null}
 
-            {/* Mic / STT Toggle */}
-            <button
-                type="button"
-                className={`p-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${micTranscribing
-                        ? 'text-blue-500 bg-blue-50'
-                        : isSTTActive
-                            ? 'text-red-500 bg-red-50 animate-pulse'
-                            : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'
-                    }`}
-                title={micTranscribing ? "Transcribing..." : "Voice Input"}
-                disabled={disabled || micTranscribing}
-                onClick={onStartSTT}
-            >
-                {micTranscribing ? (
+            {/* Mic / STT Toggle (or Cancel / Confirm) */}
+            {micTranscribing ? (
+                <button
+                    type="button"
+                    className="p-1.5 rounded-full text-blue-500 bg-blue-50 disabled:opacity-50 cursor-not-allowed"
+                    title="Transcribing..."
+                    disabled
+                >
                     <Loader2 size={12} className="animate-spin" />
-                ) : (
+                </button>
+            ) : isSTTActive ? (
+                <div className="flex items-center space-x-1">
+                    {/* Cancel Button (Outline Style - matches other composer controls) */}
+                    <button
+                        type="button"
+                        className="p-1.5 rounded-full [color:var(--chat-muted-fg)] hover:[color:var(--sidebar-fg)] hover:bg-black/[0.05] dark:hover:bg-white/[0.06] transition-colors"
+                        title="Cancel recording"
+                        onClick={onCancelSTT}
+                    >
+                        <X size={12} />
+                    </button>
+                    {/* Confirm Button (Solid Accent Style - matches main send button) */}
+                    <button
+                        type="button"
+                        className="p-1.5 rounded-full text-white bg-[var(--chat-accent)] hover:opacity-90 transition-colors animate-pulse"
+                        title="Keep transcription"
+                        onClick={onConfirmSTT}
+                    >
+                        <Check size={12} />
+                    </button>
+                </div>
+            ) : (
+                <button
+                    type="button"
+                    className="p-1.5 rounded-full text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Voice Input"
+                    disabled={disabled}
+                    onClick={onStartSTT}
+                >
                     <Mic size={12} />
-                )}
-            </button>
+                </button>
+            )}
 
             {/* File attachment button */}
             <button

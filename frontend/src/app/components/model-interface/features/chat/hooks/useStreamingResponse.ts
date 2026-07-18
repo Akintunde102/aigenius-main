@@ -6,7 +6,7 @@ import {
     ProcessedContent,
     ChatCompletionRequestOverrides,
 } from './chatOperations.types';
-import { CHAT_CONFIG, DRAFT_SESSION_KEY } from './chatOperations.constants';
+import { CHAT_CONFIG, DRAFT_SESSION_KEY, ERROR_MESSAGES } from './chatOperations.constants';
 import {
     contentToDisplayText,
     mergeContentBlocks,
@@ -17,6 +17,7 @@ import {
 import { addOrMergeSessionToLocalHistory } from '@/lib/utils/modelChatConversationUtils';
 import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interface/conversation/streamTranscriptGuard';
 import { resolveRequestConversationId } from './requestConversationId.utils';
+import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
 
 /**
  * SSE/streaming assistant path: merges chunks, updates the open transcript, aborts per session.
@@ -34,6 +35,7 @@ export function useStreamingResponse({
     updateSessionMessages,
     handleStreamResult,
     handleSendError,
+    onPrefetchConversationRoute,
     selectedPersonalityName,
     selectedPersonalityIconUrl
 }: UseStreamingResponseProps) {
@@ -63,13 +65,18 @@ export function useStreamingResponse({
         content: string | any[],
         accumulatedContent: ProcessedContent,
         streamingSessionId: string | null,
+        streamPromotedConversationId: string | null,
         setAssistantResponse: React.Dispatch<React.SetStateAction<string>>
     ): ProcessedContent => {
         const mergedContent = mergeContentBlocks(accumulatedContent, content);
 
         // setAssistantResponse is visual-only (live typing animation) — only update
         // when the stream still owns the open view.
-        if (shouldApplyStreamToOpenTranscript(streamingSessionId, activeViewSessionIdRef.current)) {
+        if (shouldApplyStreamToOpenTranscript(
+            streamingSessionId,
+            activeViewSessionIdRef.current,
+            streamPromotedConversationId,
+        )) {
             const responseText = contentToDisplayText(mergedContent);
             setAssistantResponse(responseText);
         }
@@ -164,6 +171,7 @@ export function useStreamingResponse({
         let accumulatedReasoning = '';
         let accumulatedReasoningDetails: any[] = [];
         let isFirstChunk = true;
+        let streamPromotedConversationId: string | null = null;
 
         // Ordered event log for the current assistant turn.
         // Mutated in place during streaming; copied into the message object on each update.
@@ -186,10 +194,13 @@ export function useStreamingResponse({
             const now = Date.now();
             if (force || now - lastUiUpdateTime > 80) {
                 setChatForSession(chatMapKey, sessionMessages);
+                if (streamPromotedConversationId) {
+                    setChatForSession(streamPromotedConversationId, sessionMessages);
+                }
                 if (chatMapKey !== DRAFT_SESSION_KEY && updateSessionMessages) {
                     updateSessionMessages(chatMapKey, sessionMessages, {
                         modelId: selectedModel.id,
-                        title: sessionMessages[0]?.content as string || 'New chat'
+                        title: deriveChatSessionTitle(sessionMessages[0]?.content),
                     });
                 }
                 lastUiUpdateTime = now;
@@ -224,6 +235,13 @@ export function useStreamingResponse({
                 },
                 options: { model: selectedModel.id },
                 signal: abortController.signal,
+                onConversationId: (conversationId: string) => {
+                    if (streamingSessionId !== null) {
+                        return;
+                    }
+                    streamPromotedConversationId = conversationId;
+                    onPrefetchConversationRoute?.(conversationId);
+                },
                 onToolStreamEvent: (event: ToolStreamEvent) => {
                     const lastIdx = sessionMessages.length - 1;
                     const hasAssistantRow = lastIdx >= 0 && sessionMessages[lastIdx].role === 'assistant';
@@ -320,6 +338,7 @@ export function useStreamingResponse({
                         processedContent,
                         accumulatedContent,
                         streamingSessionId,
+                        streamPromotedConversationId,
                         setAssistantResponse
                     );
 
@@ -387,18 +406,24 @@ export function useStreamingResponse({
 
             const result = streamResult ?? {};
 
+            if (result.endedWithStreamError) {
+                throw new Error(ERROR_MESSAGES.GENERIC_CHAT_ERROR);
+            }
+
             // If this started as a draft chat and the backend assigned a real id,
             // always materialize it under that id so background completions are visible.
-            if (streamingSessionId === null && result.conversationId) {
-                setChatForSession(result.conversationId, sessionMessages);
+            const resolvedConversationId =
+                result.conversationId ?? streamPromotedConversationId ?? null;
+            if (streamingSessionId === null && resolvedConversationId) {
+                setChatForSession(resolvedConversationId, sessionMessages);
                 if (updateSessionMessages) {
-                    updateSessionMessages(result.conversationId, sessionMessages, {
+                    updateSessionMessages(resolvedConversationId, sessionMessages, {
                         modelId: selectedModel.id,
-                        title: sessionMessages[0]?.content as string || 'New chat'
+                        title: deriveChatSessionTitle(sessionMessages[0]?.content),
                     });
                 }
                 void addOrMergeSessionToLocalHistory({
-                    id: result.conversationId,
+                    id: resolvedConversationId,
                     session: { messages: sessionMessages }
                 });
             }
@@ -431,6 +456,7 @@ export function useStreamingResponse({
         createInitialStreamingMessage,
         updateStreamingMessage,
         processStreamingContent,
+        onPrefetchConversationRoute,
     ]);
 
     return {

@@ -12,6 +12,7 @@ export interface ContentBlock {
     image_url?: { url: string };
     imageText?: string;
     input_audio?: { data: string; format: string };
+    file_url?: { url: string; name?: string };
 }
 
 // Processed content type that can be string or structured array
@@ -52,11 +53,23 @@ export interface UseChatOperationsRefinedProps {
     updateSessionMessages?: (sessionId: string, messages: ChatMessage[], sessionData?: Partial<ChatSession>) => void;
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;
+    selectedPersonalityId?: string;
+    selectedSystemPrompt?: string;
     pendingOrphanReply?: OrphanReplyRequest | null;
     clearPendingOrphanReply?: () => void;
     /** When the API returns insufficient-funds, open credits modal / sync balance. */
     onInsufficientFunds?: () => void;
+    /** When the API returns a new conversation id, prefetch its route early (Claude-style). */
+    onPrefetchConversationRoute?: (conversationId: string) => void;
+    getChatForSession: (sessionKey: string) => ChatMessage[];
 }
+
+export type LastFailedSendPayload = {
+    chatSnapshot: ChatMessage[];
+    shouldStream: boolean;
+    preCreatedMessage?: ChatMessage;
+    sessionKey: string;
+};
 
 // Return type for the main hook
 export interface UseChatOperationsReturn {
@@ -74,6 +87,8 @@ export interface UseChatOperationsReturn {
     ) => Promise<void>;
     handleStop: () => void;
     refreshWalletBalance: () => Promise<number | null>;
+    canRetryLastSend: boolean;
+    retryLastFailedSend: () => Promise<void>;
 }
 
 // Props for streaming response handler
@@ -88,6 +103,7 @@ export interface UseStreamingResponseProps {
     updateSessionMessages?: (sessionId: string, messages: ChatMessage[], sessionData?: Partial<ChatSession>) => void;
     handleStreamResult: (result: StreamResult, streamingSessionId: string | null) => void;
     handleSendError: (error: unknown) => void;
+    onPrefetchConversationRoute?: (conversationId: string) => void;
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;
 }

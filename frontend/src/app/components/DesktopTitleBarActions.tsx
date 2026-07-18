@@ -99,7 +99,10 @@ export default function DesktopTitleBarActions() {
       const getContext = window.aigeniusDesktop?.getChatRuntimeContext;
       if (getContext) {
         const ctx = await getContext();
-        if (ctx?.desktopHost?.platform === "win32") {
+        const home = ctx?.desktopHost?.userHomeDir?.trim();
+        if (home) {
+          rootPath = home;
+        } else if (ctx?.desktopHost?.platform === "win32") {
           rootPath = "C:/";
         }
       }

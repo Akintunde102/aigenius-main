@@ -21,4 +21,8 @@ describe("shouldApplyStreamToOpenTranscript (I4)", () => {
   it("blocks background stream when view is draft", () => {
     expect(shouldApplyStreamToOpenTranscript("x", null)).toBe(false);
   });
+
+  it("allows draft stream when view promoted to assigned conversation id", () => {
+    expect(shouldApplyStreamToOpenTranscript(null, "new-id", "new-id")).toBe(true);
+  });
 });

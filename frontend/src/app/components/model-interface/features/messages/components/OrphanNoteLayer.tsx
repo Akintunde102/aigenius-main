@@ -1,6 +1,22 @@
 import React from 'react';
-import { FiRepeat } from 'react-icons/fi';
+import { FiMessageSquare, FiRepeat } from 'react-icons/fi';
 import { StickyThreadMarker } from '@/app/components/model-interface/shared/types';
+
+function markerChipLabel(marker: StickyThreadMarker): string {
+    const title = marker.title?.trim();
+    if (title && title !== 'Side note') {
+        return title;
+    }
+    return 'Side thread';
+}
+
+function markerChipTitle(marker: StickyThreadMarker): string {
+    const excerpt = marker.anchor.anchorText?.trim() || marker.anchor.messageExcerpt?.trim();
+    if (excerpt) {
+        return `Open side thread: “${excerpt.length > 80 ? `${excerpt.slice(0, 77)}…` : excerpt}”`;
+    }
+    return 'Open side thread';
+}
 
 interface OrphanNoteLayerProps {
     resolvedMarkerPositions: any[];
@@ -43,14 +59,18 @@ export const OrphanNoteLayer: React.FC<OrphanNoteLayerProps> = ({
     }
     return (
         <>
-            {resolvedMarkerPositions.map(({ marker, left, top, rects }) => (
+            {resolvedMarkerPositions.map(({ marker, left, top, rects }) => {
+                const chipLeft = rects.length > 0 ? rects[0].left : left;
+                const chipTop = rects.length > 0 ? rects[0].top : top;
+
+                return (
                 <React.Fragment key={marker.markerId}>
                     {/* Background Highlights */}
                     {rects.map((r: any, i: number) => (
                         <div
                             key={`${marker.markerId}-rect-${i}`}
                             data-orphan-highlight-id={marker.markerId}
-                            className="absolute cursor-pointer rounded-sm bg-blue-500/10 transition-colors duration-200 hover:bg-yellow-400/40"
+                            className="absolute cursor-pointer rounded-sm border border-blue-400/25 bg-blue-500/12 ring-1 ring-inset ring-blue-400/20 transition-colors duration-200 hover:bg-blue-500/20 hover:ring-blue-400/35"
                             style={{
                                 left: r.left,
                                 top: r.top,
@@ -59,35 +79,29 @@ export const OrphanNoteLayer: React.FC<OrphanNoteLayerProps> = ({
                                 zIndex: 5,
                             }}
                             onClick={() => onOpenOrphanMarker?.(marker)}
-                            title={marker.title || 'Open side thread'}
+                            title={markerChipTitle(marker)}
                         />
                     ))}
 
-                    {!rects || rects.length === 0 ? (
-                        <div
-                            data-orphan-marker-id={marker.markerId}
-                            className="absolute z-30 -translate-x-1/2 -translate-y-1/2 group/marker opacity-60 transition-opacity duration-300 hover:opacity-100"
-                            style={{ left, top }}
+                    <div
+                        data-orphan-marker-id={marker.markerId}
+                        className="absolute z-30 max-w-[min(100%,11rem)] -translate-y-full"
+                        style={{ left: chipLeft, top: Math.max(0, chipTop - 4) }}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => onOpenOrphanMarker?.(marker)}
+                            className="group/marker flex max-w-full items-center gap-1.5 rounded-full border border-blue-300/70 bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-blue-800 shadow-[0_2px_10px_rgba(37,99,235,0.18)] backdrop-blur-sm transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-900 hover:shadow-[0_4px_14px_rgba(37,99,235,0.24)] dark:border-blue-500/45 dark:bg-slate-900/95 dark:text-blue-200 dark:hover:border-blue-400/70 dark:hover:bg-slate-800/95 dark:hover:text-blue-100"
+                            title={markerChipTitle(marker)}
+                            aria-label={markerChipTitle(marker)}
                         >
-                            {/* The "Beeping" Pulse Effect */}
-                            <div className="absolute inset-0 animate-ping rounded-full bg-blue-400 opacity-20 group-hover/marker:bg-blue-500 group-hover/marker:opacity-40" />
-                            <div className="absolute inset-[-4px] animate-pulse rounded-full bg-blue-400/10 group-hover/marker:bg-blue-500/20" />
-                            
-                            <button
-                                type="button"
-                                onClick={() => onOpenOrphanMarker?.(marker)}
-                                className="relative flex h-3.5 w-3.5 items-center justify-center rounded-full border border-blue-500/50 bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.4)] transition-all duration-300 group-hover/marker:scale-125 group-hover/marker:border-blue-400 group-hover/marker:bg-blue-500 group-hover/marker:shadow-[0_0_15px_rgba(37,99,235,0.6)]"
-                                title={marker.title || 'Open anchored side note'}
-                                aria-label={marker.title || 'Open anchored side note'}
-                            >
-                                <div className="h-1 w-1 rounded-full bg-white opacity-80" />
-                            </button>
-                            
-                            {/* Tooltip removed as per user request for less obstruction */}
-                        </div>
-                    ) : null}
+                            <FiMessageSquare className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
+                            <span className="truncate">{markerChipLabel(marker)}</span>
+                        </button>
+                    </div>
                 </React.Fragment>
-            ))}
+                );
+            })}
 
             {/* Text Selection Trigger */}
             {selectionTrigger && (

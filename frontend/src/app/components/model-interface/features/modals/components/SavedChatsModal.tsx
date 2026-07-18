@@ -74,8 +74,12 @@ function SavedMessageItem({ msg, idx, isExpanded, onExpand, onInsert, onDelete }
         <>
             <li
                 key={msg.id || idx}
-                className={`relative px-2 py-2 rounded-lg cursor-pointer border border-blue-100 bg-white hover:bg-blue-50 transition group`}
+                className={`relative px-2 py-2 rounded-lg cursor-pointer border hover:bg-blue-50/5 dark:hover:bg-zinc-800/10 transition group`}
                 onClick={() => onExpand(isExpanded ? null : idx)}
+                style={{
+                    background: "var(--modal-bg-muted)",
+                    borderColor: "var(--modal-border)",
+                }}
             >
                 {/* Icons above, far right */}
                 <div className="absolute top-2 right-2 flex flex-row gap-2 z-10" onClick={e => e.stopPropagation()}>
@@ -111,12 +115,12 @@ function SavedMessageItem({ msg, idx, isExpanded, onExpand, onInsert, onDelete }
                 {/* Message preview and accordion */}
                 <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2 mb-4">
-                        <span className="text-xs text-gray-500 font-medium">{msg.role === 'user' ? 'User' : 'Assistant'}</span>
-                        <span className="text-[10px] text-gray-400">{formatTime(msg.timestamp)}</span>
+                        <span className="text-xs font-medium" style={{ color: "var(--modal-muted-fg)" }}>{msg.role === 'user' ? 'User' : 'Assistant'}</span>
+                        <span className="text-[10px]" style={{ color: "var(--modal-muted-fg)", opacity: 0.8 }}>{formatTime(msg.timestamp)}</span>
                     </div>
-                    <div className="text-xs text-gray-700 truncate" style={{ maxWidth: '90%' }}>{excerpt}</div>
+                    <div className="text-xs truncate" style={{ color: "var(--modal-fg)", maxWidth: '90%' }}>{excerpt}</div>
                     {isExpanded && (
-                        <div className="mt-2 p-2 rounded bg-blue-50 border border-blue-100 text-sm text-gray-900">
+                        <div className="mt-2 p-2 rounded border text-sm" style={{ background: "var(--modal-bg)", borderColor: "var(--modal-border)", color: "var(--modal-fg)" }}>
                             {messageContent.isImageMsg ? (
                                 <ImageMessage
                                     imageUrl={messageContent.imageUrl}
@@ -185,22 +189,30 @@ export function SavedChatsModal({
 
     return (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black bg-opacity-40 transition-all duration-200" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-2xl p-0 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 relative animate-fadeIn flex flex-col" onClick={e => e.stopPropagation()}>
+            <div
+                className="rounded-2xl shadow-2xl p-0 max-w-2xl w-full max-h-[90vh] overflow-y-auto border relative animate-fadeIn flex flex-col"
+                onClick={e => e.stopPropagation()}
+                style={{
+                    background: "var(--modal-bg)",
+                    borderColor: "var(--modal-border)",
+                    color: "var(--modal-fg)",
+                }}
+            >
                 {/* Header with search only */}
-                <div className="flex justify-between items-center px-6 pt-6 pb-4 border-b">
+                <div className="flex justify-between items-center px-6 pt-6 pb-4 border-b" style={{ borderColor: "var(--modal-border)" }}>
                     <div className="flex items-center flex-1">
                         <div className="relative w-full max-w-md">
                             <input
                                 type="text"
-                                className="pl-8 pr-3 py-2 rounded-full border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 w-full text-sm"
+                                className="app-modal-input pl-8 pr-3 py-2 rounded-full w-full text-sm focus:outline-none"
                                 placeholder="Search saved messages..."
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                             />
-                            <FiSearch className="absolute left-2 top-2.5 text-gray-400" size={16} />
+                            <FiSearch className="absolute left-2.5 top-3" size={16} style={{ color: "var(--modal-muted-fg)" }} />
                         </div>
                     </div>
-                    <button className="text-gray-400 hover:text-red-500 transition-colors ml-4" onClick={onClose} aria-label="Close">
+                    <button className="hover:text-red-500 transition-colors ml-4" onClick={onClose} aria-label="Close" style={{ color: "var(--modal-muted-fg)" }}>
                         <FiX size={24} />
                     </button>
                 </div>
@@ -208,7 +220,7 @@ export function SavedChatsModal({
                 <div className="flex-1 overflow-y-auto px-2 py-4">
                     <ul className="space-y-2 px-2">
                         {filteredMessages.length === 0 ? (
-                            <div className="text-gray-400 text-center py-12 text-lg flex flex-col items-center">
+                            <div className="text-center py-12 text-lg flex flex-col items-center" style={{ color: "var(--modal-muted-fg)" }}>
                                 <span className="mb-2">No saved messages.</span>
                                 <span className="text-sm">Save a message to see it here!</span>
                             </div>

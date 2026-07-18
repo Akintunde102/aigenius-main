@@ -6,7 +6,8 @@
 
 pocket-tts
 scipy
-onnxruntime-directml  # High-performance TTS inference on Windows GPU
+onnxruntime-directml; sys_platform == 'win32'  # High-performance TTS inference on Windows GPU
+onnxruntime; sys_platform != 'win32'           # Standard ONNX runtime for macOS / Linux
 maturin               # Required for building the Rust audio-transcoder extension
 av                    # PyAV for in-process zero-latency FFmpeg audio transcoding
 # Local STT for desktop...

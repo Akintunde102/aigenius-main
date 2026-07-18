@@ -47,23 +47,38 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                 }
             }}
         >
-            <div className={`bg-white rounded-lg shadow-lg p-6 w-80 max-w-full relative ${isProcessing ? 'pointer-events-none' : ''}`}>
+            <div
+                className={`rounded-lg shadow-lg p-6 w-80 max-w-full relative border ${isProcessing ? 'pointer-events-none' : ''}`}
+                style={{
+                    background: "var(--modal-bg)",
+                    borderColor: "var(--modal-border)",
+                    color: "var(--modal-fg)",
+                }}
+            >
                 {isProcessing && (
-                    <div className="absolute inset-0 bg-white bg-opacity-90 rounded-lg flex items-center justify-center z-10">
+                    <div
+                        className="absolute inset-0 rounded-lg flex items-center justify-center z-10"
+                        style={{ background: "var(--modal-bg)", opacity: 0.95 }}
+                    >
                         <div className="flex flex-col items-center gap-3">
                             <div className={`w-8 h-8 border-4 ${spinnerColorClasses[confirmButtonColor]} rounded-full animate-spin`}></div>
-                            <span className="font-medium text-gray-700">{processingText}</span>
+                            <span className="font-medium" style={{ color: "var(--modal-fg)" }}>{processingText}</span>
                         </div>
                     </div>
                 )}
-                <div className="text-lg font-semibold mb-4 text-center">
+                <div className="text-lg font-semibold mb-4 text-center" style={{ color: "var(--modal-fg)" }}>
                     {isProcessing ? processingTitle : title}
                 </div>
                 <div className="flex justify-center gap-4 mt-4">
                     <button
-                        className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 rounded border transition-colors hover:bg-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={onCancel}
                         disabled={isProcessing}
+                        style={{
+                            background: "var(--modal-bg)",
+                            borderColor: "var(--modal-border)",
+                            color: "var(--modal-muted-fg)",
+                        }}
                     >
                         Cancel
                     </button>

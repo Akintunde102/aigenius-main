@@ -54,7 +54,7 @@ function isSttPunctuationOnlyHallucination(text: string): boolean {
   if (!t) return true;
   if (t.length > 12) return false;
   if (/[a-z0-9]/i.test(t)) return false;
-  return /^[\s.,!?;:'"\u2026\u2013\u2014\-]+$/u.test(t);
+  return /^[\s.,!?;:'"\u2026\u2013\u2014\-]+$/.test(t);
 }
 
 /**

@@ -1,9 +1,3 @@
-import 'dotenv/config';
-
-if (!process.env.NODE_ENV) {
-  process.env.NODE_ENV = 'production';
-}
-
 import {
   app,
   BrowserWindow,
@@ -16,10 +10,24 @@ import {
   screen,
   shell,
   session,
+  utilityProcess,
 } from 'electron';
+import type { UtilityProcess } from 'electron';
+
+if (!app.isPackaged) {
+  // Dev-only: load .env from the working directory. Packaged builds use in-app defaults.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('dotenv/config');
+}
+
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'production';
+}
+
 import { runLocalDesktopTool } from './local-tool-executor';
 import { getChatRuntimeContextForIpc, USER_HOME_DIR_AT_STARTUP } from './chat-runtime-context';
 import { initLocalRetrievalMemory } from './local-retrieval-memory';
+import { isPreviewPathRegistered } from './preview-path-registry';
 import { attachMainShellNavigationGuards, deliverOpenExternalOrAuthUrl } from './navigation-guards';
 import { mainShellBrowserWindowOptions } from './shell-chrome';
 import { registerIpcHandlers } from './search';
@@ -28,15 +36,17 @@ import { setupCrashHandlers } from './crash-handler';
 import { checkInotifyLimit } from './utils/sys-limits';
 import fs from 'fs';
 import path from 'path';
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, ChildProcess, execSync } from 'child_process';
 import http from 'http';
 import os from 'os';
 import crypto from 'crypto';
 
+import { expandTildeInPath } from './utils/filesystem-path';
+
 function normalizeRendererFilesystemPath(filePath: string): string {
-  let normalizedPath = filePath;
+  let normalizedPath = expandTildeInPath(filePath);
   if (process.platform === 'win32') {
-    normalizedPath = filePath.replace(/\//g, '\\');
+    normalizedPath = normalizedPath.replace(/\//g, '\\');
     if (normalizedPath.startsWith('\\') && /^[a-zA-Z]:/.test(normalizedPath.slice(1))) {
       normalizedPath = normalizedPath.slice(1);
     }
@@ -124,7 +134,8 @@ function attachDesktopBridgeDebugLogging(win: BrowserWindow, preloadPath: string
   });
 }
 
-const children: ChildProcess[] = [];
+const children: Array<ChildProcess | UtilityProcess> = [];
+let isQuitting = false;
 
 function repoRootFromDesktopDist(): string {
   return path.join(__dirname, '..', '..');
@@ -144,6 +155,48 @@ function desktopServerEntry(): string {
   return path.join(desktopServerDir(), 'dist', 'index.js');
 }
 
+function packagedPythonPath(): string | undefined {
+  if (!app.isPackaged) {
+    return undefined;
+  }
+  const candidates = [
+    path.join(process.resourcesPath, 'python-venv', 'bin', 'python3'),
+    path.join(process.resourcesPath, 'python-venv', 'bin', 'python'),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
+function miniServerEnv(userDataPath: string, dbPath: string, modelsDir: string, token: string): NodeJS.ProcessEnv {
+  const pythonPath = packagedPythonPath();
+  const hfHome = path.join(userDataPath, 'hf-cache');
+  const pathParts = [
+    pythonPath ? path.dirname(pythonPath) : '',
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+    process.env.PATH ?? '',
+  ].filter(Boolean);
+
+  return {
+    ...process.env,
+    PORT: MINI_SERVER_PORT,
+    HOST: '127.0.0.1',
+    AIGENIUS_USER_DATA_PATH: userDataPath,
+    ...(process.env.AIGENIUS_SKIP_SEARCH === '1' ? {} : { AIGENIUS_DB_PATH: dbPath }),
+    AIGENIUS_MODELS_DIR: modelsDir,
+    AIGENIUS_SEARCH_WORKERS: '1',
+    AIGENIUS_SEARCH_IMAGES: process.env.AIGENIUS_SEARCH_IMAGES || '1',
+    AIGENIUS_SECRET_TOKEN: token,
+    HF_HOME: hfHome,
+    ...(pythonPath ? { PYTHON_PATH: pythonPath } : {}),
+    PATH: pathParts.join(path.delimiter),
+  };
+}
+
 function nextStandaloneDir(): string {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, 'next-standalone');
@@ -151,15 +204,136 @@ function nextStandaloneDir(): string {
   return path.join(repoRootFromDesktopDist(), 'frontend', '.next', 'standalone');
 }
 
-function nextServerScript(): string {
-  return path.join(nextStandaloneDir(), 'server.js');
+/** Next standalone in an npm workspace outputs `frontend/server.js`, not root `server.js`. */
+function nextStandaloneAppDir(): string {
+  const root = nextStandaloneDir();
+  const nestedApp = path.join(root, 'frontend');
+  if (fs.existsSync(path.join(nestedApp, 'server.js'))) {
+    return nestedApp;
+  }
+  return root;
 }
 
-function spawnAsNode(scriptPath: string, opts: { cwd: string; env: NodeJS.ProcessEnv; logPath?: string }): ChildProcess {
-  const env = { ...opts.env };
-  env.ELECTRON_RUN_AS_NODE = '1';
+function nextServerScript(): string {
+  return path.join(nextStandaloneAppDir(), 'server.js');
+}
 
-  let stdioConfig: any = 'inherit';
+function prepareChildLogFile(logPath: string): void {
+  try {
+    if (fs.existsSync(logPath)) {
+      const { size } = fs.statSync(logPath);
+      // Avoid multi-GB logs from repeated failed launches / verbose search indexing.
+      if (size > 5 * 1024 * 1024) {
+        fs.renameSync(logPath, `${logPath}.${Date.now()}.bak`);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+function releaseLoopbackPort(port: string): void {
+  if (process.platform !== 'darwin' && process.platform !== 'linux') {
+    return;
+  }
+  try {
+    const out = execSync(`lsof -nP -iTCP:${port} -sTCP:LISTEN -t`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    if (!out) {
+      return;
+    }
+    for (const pidRaw of out.split('\n')) {
+      const pid = Number.parseInt(pidRaw.trim(), 10);
+      if (!Number.isFinite(pid) || pid <= 0 || pid === process.pid) {
+        continue;
+      }
+      try {
+        process.kill(pid, 'SIGTERM');
+      } catch {
+        /* already gone */
+      }
+    }
+  } catch {
+    /* port already free */
+  }
+}
+
+async function isHttpReachable(url: string, timeoutMs = 1500): Promise<boolean> {
+  return new Promise((resolve) => {
+    const req = http.get(url, (res) => {
+      res.resume();
+      resolve((res.statusCode ?? 500) < 500);
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(timeoutMs, () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
+
+function spawnAsNode(scriptPath: string, opts: { cwd: string; env: NodeJS.ProcessEnv; logPath?: string }): ChildProcess | UtilityProcess {
+  if (!fs.existsSync(scriptPath)) {
+    throw new Error(`Server script not found: ${scriptPath}`);
+  }
+
+  const serviceName = `aigenius-${path.basename(scriptPath, path.extname(scriptPath))}`;
+
+  if (utilityProcess?.fork) {
+    // Utility processes stay off the Dock. Do not pass ELECTRON_RUN_AS_NODE here — that env var
+    // is only for spawn(process.execPath) and breaks packaged utility startup.
+    const utilityEnv = { ...opts.env };
+    delete utilityEnv.ELECTRON_RUN_AS_NODE;
+    const child = utilityProcess.fork(scriptPath, [], {
+      cwd: opts.cwd,
+      env: utilityEnv,
+      serviceName,
+      stdio: opts.logPath ? 'pipe' : 'inherit',
+    });
+
+    child.on('exit', (code) => {
+      if (code !== 0 && code !== null) {
+        console.error(`[aigenius-desktop] ${serviceName} exited with code ${code}`);
+      }
+    });
+
+    if (opts.logPath) {
+      prepareChildLogFile(opts.logPath);
+    }
+
+    if (opts.logPath && child.stdout && child.stderr) {
+      let outStream: fs.WriteStream | null = null;
+      try {
+        outStream = fs.createWriteStream(opts.logPath, { flags: 'a' });
+        outStream.on('error', (err) => {
+          console.error(`[aigenius-desktop] Log write stream error for ${opts.logPath}:`, err);
+        });
+        const stream = outStream;
+        child.stdout.on('data', (chunk: Buffer) => {
+          if (stream.writable) stream.write(chunk);
+        });
+        child.stderr.on('data', (chunk: Buffer) => {
+          if (stream.writable) stream.write(chunk);
+        });
+        child.on('exit', () => stream.end());
+      } catch (err) {
+        console.error(`[aigenius-desktop] Failed to create log stream for ${opts.logPath}:`, err);
+      }
+    }
+
+    children.push(child);
+    return child;
+  }
+
+  const env = { ...opts.env, ELECTRON_RUN_AS_NODE: '1' };
+
+  if (opts.logPath) {
+    prepareChildLogFile(opts.logPath);
+  }
+
+  let stdioConfig: 'inherit' | ['ignore', 'pipe', 'pipe'] = 'inherit';
   let outStream: fs.WriteStream | null = null;
   if (opts.logPath) {
     try {
@@ -173,7 +347,7 @@ function spawnAsNode(scriptPath: string, opts: { cwd: string; env: NodeJS.Proces
     }
   }
 
-  // Use the same Node version as Electron (bundled) to avoid host Node incompatibility (e.g. Node 24 vs Electron's Node 22)
+  // Fallback when utilityProcess is unavailable (should not happen in production Electron).
   const child = spawn(process.execPath, [scriptPath], {
     cwd: opts.cwd,
     env,
@@ -253,8 +427,13 @@ function waitForFrontendPageReady(url: string, timeoutMs: number, intervalMs: nu
 
 function killChildren(): void {
   for (const c of children) {
-    if (!c.killed) {
-      c.kill('SIGTERM');
+    try {
+      if ('killed' in c && c.killed) {
+        continue;
+      }
+      c.kill();
+    } catch {
+      /* process may already be gone */
     }
   }
   children.length = 0;
@@ -489,47 +668,50 @@ async function startBackendProcesses(): Promise<void> {
 
   const useExternalServer = process.env.AIGENIUS_EXTERNAL_MINI_SERVER === '1';
   const token = process.env.AIGENIUS_SECRET_TOKEN || SECRET_TOKEN;
+  const miniHealthUrl = `http://127.0.0.1:${miniPort}/health`;
 
   if (!useExternalServer) {
-    spawnAsNode(serverEntry, {
-      cwd: desktopServerDir(),
-      env: {
-        ...process.env,
-        PORT: miniPort,
-        HOST: '127.0.0.1',
-        AIGENIUS_USER_DATA_PATH: userDataPath,
-        ...(process.env.AIGENIUS_SKIP_SEARCH === '1' ? {} : { AIGENIUS_DB_PATH: dbPath }),
-        AIGENIUS_MODELS_DIR: modelsDir,
-        AIGENIUS_SEARCH_WORKERS: '1',
-        AIGENIUS_SEARCH_IMAGES: process.env.AIGENIUS_SEARCH_IMAGES || '1',
-        AIGENIUS_SECRET_TOKEN: token,
-      },
-      logPath: path.join(logsDir, 'mini-server.log'),
-    });
+    const miniAlreadyHealthy = await isHttpReachable(miniHealthUrl);
+    if (!miniAlreadyHealthy) {
+      releaseLoopbackPort(miniPort);
+      spawnAsNode(serverEntry, {
+        cwd: desktopServerDir(),
+        env: miniServerEnv(userDataPath, dbPath, modelsDir, token),
+        logPath: path.join(logsDir, 'mini-server.log'),
+      });
+    } else {
+      console.info('[aigenius-desktop] Mini-server already listening; reusing existing process.');
+    }
   } else {
     console.info('[aigenius-desktop] Using external mini-server (Docker). Skipping local spawn.');
   }
 
-
   await waitForHttpOk(
-    `http://127.0.0.1:${miniPort}/health`,
-    60_000,
+    miniHealthUrl,
+    90_000,
     1000,
   );
 
   if (app.isPackaged) {
-    const nextRoot = nextStandaloneDir();
+    const nextRoot = nextStandaloneAppDir();
     const serverJs = nextServerScript();
-    spawnAsNode(serverJs, {
-      cwd: nextRoot,
-      env: {
-        ...process.env,
-        PORT: FRONTEND_PORT,
-        HOSTNAME: '127.0.0.1',
-        NODE_ENV: 'production',
-      },
-      logPath: path.join(logsDir, 'frontend.log'),
-    });
+    const frontendHealthUrl = `http://127.0.0.1:${FRONTEND_PORT}/desktop-login`;
+    const frontendAlreadyHealthy = await isHttpReachable(frontendHealthUrl);
+    if (!frontendAlreadyHealthy) {
+      releaseLoopbackPort(FRONTEND_PORT);
+      spawnAsNode(serverJs, {
+        cwd: nextRoot,
+        env: {
+          ...process.env,
+          PORT: FRONTEND_PORT,
+          HOSTNAME: '127.0.0.1',
+          NODE_ENV: 'production',
+        },
+        logPath: path.join(logsDir, 'frontend.log'),
+      });
+    } else {
+      console.info('[aigenius-desktop] Frontend already listening; reusing existing process.');
+    }
   }
 
   // Dev: Next must already be running (e.g. `npm run dev` starts it in parallel). Packaged: we
@@ -624,6 +806,9 @@ function createWindow(relativePath?: string): BrowserWindow {
 
   win.on('focus', () => {
     lastFocusedMainShellWindow = win;
+    if (!win.isDestroyed()) {
+      win.webContents.send('main-window-focus');
+    }
   });
 
   if (!app.isPackaged) {
@@ -687,10 +872,12 @@ if (!gotLock) {
   });
 
   app.on('before-quit', (event) => {
+    if (isQuitting) {
+      return;
+    }
     // Hold the quit so the sidecar has time to flush the SQLite WAL checkpoint.
-    // We prevent default, send the shutdown signal, wait for the response (or a
-    // 2 s hard deadline), kill the child processes, then re-trigger quit.
     event.preventDefault();
+    isQuitting = true;
     void (async () => {
       try {
         await fetch(`http://127.0.0.1:${MINI_SERVER_PORT}/search/shutdown`, {
@@ -702,7 +889,6 @@ if (!gotLock) {
         /* sidecar may already be gone or not started — always proceed */
       }
       killChildren();
-      // Remove this listener before re-triggering to avoid an infinite loop.
       app.quit();
     })();
   });
@@ -755,6 +941,9 @@ if (!gotLock) {
       return { ok: false as const, error: 'invalid_path' };
     }
     const p = normalizeRendererFilesystemPath(filePath.trim());
+    if (!isPreviewPathRegistered(p)) {
+      return { ok: false as const, error: 'path_not_registered' };
+    }
     try {
       const st = await fs.promises.stat(p);
       if (!st.isFile()) {
@@ -1139,9 +1328,7 @@ if (!gotLock) {
   });
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-      app.quit();
-    }
+    app.quit();
   });
 
   app.on('will-quit', () => {

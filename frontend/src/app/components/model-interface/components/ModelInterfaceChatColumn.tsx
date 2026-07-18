@@ -44,6 +44,7 @@ type Props = {
     model: Model | null,
   ) => Promise<boolean | void>;
   handleFileUpload: (file: File) => void;
+  onAttachmentMenuRequest?: () => void;
   uploading: boolean;
   uploadProgress: number | null;
   supportsImageUpload: boolean;
@@ -77,6 +78,8 @@ type Props = {
   onAudioModeToggle?: (enabled: boolean) => void;
   isAudioMode?: boolean;
   onStartSTT?: () => void;
+  onCancelSTT?: () => void;
+  onConfirmSTT?: () => void;
   isSTTActive?: boolean;
   isDictationTranscribing?: boolean;
   audioTranscription?: string;
@@ -110,6 +113,7 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   handleSave,
   handleChatBoxSend,
   handleFileUpload,
+  onAttachmentMenuRequest,
   uploading,
   uploadProgress,
   supportsImageUpload,
@@ -140,6 +144,8 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   onAudioModeToggle,
   isAudioMode,
   onStartSTT,
+  onCancelSTT,
+  onConfirmSTT,
   isSTTActive,
   isDictationTranscribing,
   audioTranscription,
@@ -185,6 +191,7 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           currentSessionId={currentSessionId}
           onSendMessage={handleChatBoxSend}
           onFileUpload={handleFileUpload}
+          onAttachmentMenuRequest={onAttachmentMenuRequest}
           uploading={uploading}
           uploadProgress={uploadProgress}
           supportsImageUpload={supportsImageUpload || false}
@@ -229,6 +236,8 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           onAudioModeToggle={onAudioModeToggle}
           isAudioMode={isAudioMode}
           onStartSTT={onStartSTT}
+          onCancelSTT={onCancelSTT}
+          onConfirmSTT={onConfirmSTT}
           isSTTActive={isSTTActive}
           isDictationTranscribing={isDictationTranscribing}
           audioTranscription={audioTranscription}

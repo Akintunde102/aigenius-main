@@ -125,6 +125,8 @@ export async function runConversationEventsSubscription(
  * Subscribe to SSE conversation_created / conversation_updated events from the backend.
  * Updates IndexedDB and sidebar (setChatHistory) on each event — do not overwrite the open chat messages (§2.6).
  */
+const SSE_MAX_RECONNECT_ATTEMPTS = 8;
+
 export function useConversationEvents(setChatHistory?: SetChatHistory): void {
     const setChatHistoryRef = useRef(setChatHistory);
     setChatHistoryRef.current = setChatHistory;
@@ -134,28 +136,68 @@ export function useConversationEvents(setChatHistory?: SetChatHistory): void {
 
         const url = `${LINKS.noboxAPIRootUrl}${CONVERSATION_EVENTS_PATH}`;
         let controller = new AbortController();
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+        let reconnectAttempt = 0;
+        let disposed = false;
 
-        const start = () => runConversationEventsSubscription(
-            url,
-            () => getAccessToken(),
-            setChatHistoryRef,
-            controller.signal
-        ).catch((err: any) => {
-            if (err?.name !== 'AbortError') {
-                console.warn('Conversation events SSE error', err);
+        const clearReconnectTimer = () => {
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
             }
-        });
-        start();
+        };
+
+        const scheduleReconnect = () => {
+            if (disposed || controller.signal.aborted) return;
+            if (reconnectAttempt >= SSE_MAX_RECONNECT_ATTEMPTS) {
+                console.warn('Conversation events SSE: max reconnect attempts reached');
+                return;
+            }
+
+            const delay = Math.min(1000 * 2 ** reconnectAttempt, 30_000);
+            reconnectAttempt += 1;
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                void start();
+            }, delay);
+        };
+
+        const start = async () => {
+            if (disposed) return;
+
+            try {
+                await runConversationEventsSubscription(
+                    url,
+                    () => getAccessToken(),
+                    setChatHistoryRef,
+                    controller.signal,
+                );
+                reconnectAttempt = 0;
+                if (!disposed && !controller.signal.aborted) {
+                    scheduleReconnect();
+                }
+            } catch (err: any) {
+                if (err?.name === 'AbortError') return;
+                console.warn('Conversation events SSE error', err);
+                scheduleReconnect();
+            }
+        };
+
+        void start();
 
         const unsubscribe = subscribeToTokenRefresh(() => {
+            clearReconnectTimer();
+            reconnectAttempt = 0;
             controller.abort();
             controller = new AbortController();
-            start();
+            void start();
         });
 
         // Cleanup: abort the SSE so the request shows as "canceled" in DevTools.
         // In React 18 Strict Mode (dev) this runs on the first unmount, so you may see one canceled + one active request.
         return () => {
+            disposed = true;
+            clearReconnectTimer();
             unsubscribe();
             controller.abort();
         };
