@@ -33,6 +33,13 @@ jest.mock('../search/index.js', () => ({
   getSearchWatchPaths: () => ['/home/user/project'],
   closeSearchModule: jest.fn(),
   switchSearchProject: jest.fn(),
+  enqueueReindexPaths: jest.fn((paths, force) => {
+    for (const p of paths) {
+      mockQueuePush({ type: 'change', path: p, force: Boolean(force) });
+    }
+    return paths.length;
+  }),
+  enqueueProjectIndex: jest.fn(() => 1),
 }));
 
 jest.mock('../sidecar/index.js', () => ({
@@ -160,6 +167,8 @@ describe('local desktop search routes (scenario + timing)', () => {
         scan_in_progress: false,
         queue_depth: 0,
         db_path: '/tmp/aigenius-test.sqlite',
+        core_ready: true,
+        enrichment_ready: true,
       });
       expect(mockGetStatusSnapshot).toHaveBeenCalled();
       assertWithinBudget(res.ms, { label: 'GET /search/status (empty)', maxMs: STATUS_BUDGET_MS });

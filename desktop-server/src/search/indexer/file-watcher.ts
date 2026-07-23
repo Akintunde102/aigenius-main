@@ -3,23 +3,34 @@ import type { Stats } from 'fs';
 import fs from 'fs';
 import path from 'path';
 import { shouldSkipSearchIndexing } from './exemptions.js';
+import type { IndexPhase } from './index-phase.js';
 
 export type WatchEventType = 'add' | 'change' | 'unlink' | 'git_branch_switch';
-export type WatchEvent = { type: WatchEventType; path: string; stats?: Stats; force?: boolean };
+export type WatchEvent = {
+  type: WatchEventType;
+  path: string;
+  stats?: Stats;
+  force?: boolean;
+  /** Bulk scans: `text` then `structure`. Watcher events omit phase (full pipeline). */
+  phase?: IndexPhase;
+  /** After text phase completes, enqueue structure for this path (bulk active project). */
+  pipelineStructure?: boolean;
+  attempt?: number;
+};
 
 const DEFAULT_IGNORED_PATTERNS = [
   /(^|[/\\])\..+/, // dot-files / dot-folders
-  /venv/,
-  /\.venv/,
-  /env/,
-  /\.env/,
+  /(^|[/\\])venv([/\\]|$)/,
+  /(^|[/\\])\.venv([/\\]|$)/,
+  /(^|[/\\])env([/\\]|$)/,
+  /(^|[/\\])\.env([/\\]|$)/,
   /__pycache__/,
-  /out/,
-  /target/,
-  /cuda/,
-  /anaconda3/,
-  /miniconda3/,
-  /site-packages/,
+  /(^|[/\\])out([/\\]|$)/,
+  /(^|[/\\])target([/\\]|$)/,
+  /(^|[/\\])cuda([/\\]|$)/,
+  /(^|[/\\])anaconda3([/\\]|$)/,
+  /(^|[/\\])miniconda3([/\\]|$)/,
+  /(^|[/\\])site-packages([/\\]|$)/,
   /\.sqlite/,
   /\.db$/,
   /\.DS_Store/,
@@ -54,7 +65,7 @@ export function startWatcher(
       return DEFAULT_IGNORED_PATTERNS.some((pattern) => pattern.test(testPath));
     },
     persistent: true,
-    ignoreInitial: false,
+    ignoreInitial: true,
     awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 },
   });
 
@@ -86,6 +97,7 @@ export function startWatcher(
     });
 
   // Detect git branch switches via HEAD changes
+  const headWatchers: FSWatcher[] = [];
   for (const watchRoot of paths) {
     const gitHead = path.join(watchRoot, '.git', 'HEAD');
     if (!fs.existsSync(gitHead)) continue;
@@ -93,7 +105,11 @@ export function startWatcher(
     headWatcher.on('change', () => {
       onEvent({ type: 'git_branch_switch', path: watchRoot });
     });
+    headWatchers.push(headWatcher);
   }
 
-  return () => watcher.close();
+  return async () => {
+    await watcher.close();
+    await Promise.all(headWatchers.map((w) => w.close()));
+  };
 }

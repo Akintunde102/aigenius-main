@@ -1,9 +1,10 @@
-import type { MessageEvent, TextEvent, ToolEvent } from '@/app/components/model-interface/shared/types';
+import type { MessageEvent, TextEvent, ThinkingEvent, ToolEvent } from '@/app/components/model-interface/shared/types';
 import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
 
 export type ChatMessageDisplayBlock =
     | { type: 'text'; content: string; endsWithLastTextEvent: boolean }
-    | { type: 'tool'; event: ToolEvent };
+    | { type: 'tool'; event: ToolEvent }
+    | { type: 'thinking'; event: ThinkingEvent };
 
 function countFencedCodeBlocks(content: string): number {
     const matches = content.match(/(^|\n)```[^\n]*/g);
@@ -76,6 +77,12 @@ export function buildChatMessageDisplayBlocks(
         }
 
         flushTextBuffer();
+
+        if (evt.type === 'thinking') {
+            blocks.push({ type: 'thinking', event: evt as ThinkingEvent });
+            return;
+        }
+
         blocks.push({ type: 'tool', event: evt as ToolEvent });
     });
 

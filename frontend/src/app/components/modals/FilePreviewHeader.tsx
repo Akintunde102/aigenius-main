@@ -91,8 +91,12 @@ export function FilePreviewHeader({
       className={`flex h-11 shrink-0 items-center gap-2 border-b px-2 sm:px-3 ${
         draggable ? (isDragging ? 'cursor-grabbing select-none' : 'cursor-grab') : ''
       }`}
-      style={{ borderColor: 'var(--modal-border)', background: 'var(--modal-bg-muted)' }}
-      onPointerDown={onDragHandlePointerDown}
+      onPointerDown={draggable ? onDragHandlePointerDown : undefined}
+      style={{
+        borderColor: 'var(--modal-border)',
+        background: 'var(--modal-bg-muted)',
+        touchAction: draggable && isDragging ? 'none' : undefined,
+      }}
     >
       <ToolbarButton
         onClick={onToggleSidebar}

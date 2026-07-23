@@ -5,9 +5,10 @@ import { normalizeChatMessages } from '@/lib/utils/messageContentUtils';
 import SidebarHeader from "./ChatHistorySidebar/SidebarHeader";
 import SidebarContent from "./ChatHistorySidebar/SidebarContent";
 import SidebarFooter from "./ChatHistorySidebar/SidebarFooter";
-import { CodeProjectRail } from "./ChatHistorySidebar/CodeProjectRail";
 import { CreateCodeProjectModal } from "./ChatHistorySidebar/CreateCodeProjectModal";
+import { CodeProjectInfoModal } from "./ChatHistorySidebar/CodeProjectInfoModal";
 import { useCodeProjects } from "@/lib/hooks/useCodeProjects";
+import { setChatProjectScopeId } from "@/lib/code-projects/chat-project-scope";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
 import WalletModal from "./ChatHistorySidebar/WalletModal";
 import IntegrationsModal from "./ChatHistorySidebar/IntegrationsModal";
@@ -118,6 +119,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     /** Bumped when the collapsed-rail avatar opens the sidebar so the footer “more” menu can open after expand. */
     const [accountMenuSignal, setAccountMenuSignal] = React.useState(0);
     const [showCreateProjectModal, setShowCreateProjectModal] = React.useState(false);
+    const [infoProjectId, setInfoProjectId] = React.useState<string | null>(null);
     const {
         projects: codeProjects,
         activeProject,
@@ -158,6 +160,18 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     }, [setMobileSidebarOpen]);
 
     const handleSessionSwitch = React.useCallback((session: ChatSession) => {
+        const scopeId = session.codeProjectId ?? null;
+        setChatProjectScopeId(scopeId);
+
+        if (session.codeProjectId) {
+            const project = codeProjects.find((p) => p.id === session.codeProjectId);
+            if (project) {
+                selectProject(project);
+            }
+        } else {
+            selectProject(null);
+        }
+
         if (switchToSession) {
             switchToSession(session);
         } else {
@@ -168,9 +182,12 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         if (isMobile && setMobileSidebarOpen) {
             setMobileSidebarOpen(false);
         }
-    }, [isMobile, setChat, setCurrentSessionId, setMobileSidebarOpen, switchToSession]);
+    }, [codeProjects, isMobile, selectProject, setChat, setCurrentSessionId, setMobileSidebarOpen, switchToSession]);
 
     const handleNewChat = React.useCallback(() => {
+        setChatProjectScopeId(null);
+        selectProject(null);
+
         if (createNewSessionAndSwitch && models.length > 0) {
             createNewSessionAndSwitch(models[0].id);
         } else {
@@ -193,8 +210,38 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         setError,
         setMobileSidebarOpen,
         setTotalSpent,
+        selectProject,
     ]);
 
+    const handleNewChatForProject = React.useCallback((projectId: string | null) => {
+        setChatProjectScopeId(projectId);
+
+        if (projectId) {
+            const project = codeProjects.find((p) => p.id === projectId);
+            if (project) {
+                selectProject(project);
+            }
+        } else {
+            selectProject(null);
+        }
+
+        handleNewChat();
+    }, [codeProjects, handleNewChat, selectProject]);
+
+    const handleSelectProject = React.useCallback((projectId: string | null) => {
+        if (projectId) {
+            const project = codeProjects.find((p) => p.id === projectId);
+            if (project) {
+                selectProject(project);
+            }
+        } else {
+            selectProject(null);
+        }
+    }, [codeProjects, selectProject]);
+
+    const infoProject = infoProjectId
+        ? codeProjects.find((p) => p.id === infoProjectId) ?? null
+        : null;
 
     const open = mobileSidebarOpen;
 
@@ -227,6 +274,15 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 }}
             />
 
+            {infoProject ? (
+                <CodeProjectInfoModal
+                    project={infoProject}
+                    chatHistory={(chatHistory || []).filter((s) => s.conversationKind !== "orphan_question")}
+                    isActive={activeProject?.id === infoProject.id}
+                    onClose={() => setInfoProjectId(null)}
+                />
+            ) : null}
+
             <WalletModal
                 showWalletModal={showWalletModal}
                 setShowWalletModal={setShowWalletModal}
@@ -252,13 +308,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 historySearch={historySearch}
                 setHistorySearch={setHistorySearch}
                 onNewChat={handleNewChat}
-            />
-
-            <CodeProjectRail
-                projects={codeProjects}
-                activeProject={activeProject}
-                onSelect={selectProject}
-                onCreateClick={() => setShowCreateProjectModal(true)}
+                onNewProject={() => setShowCreateProjectModal(true)}
             />
 
             <SidebarContent
@@ -279,6 +329,10 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 isSessionActive={isSessionActive}
                 isInitialLoading={isInitialLoading}
                 codeProjects={codeProjects}
+                activeProjectId={activeProject?.id ?? null}
+                onNewChatForProject={handleNewChatForProject}
+                onSelectProject={handleSelectProject}
+                onProjectInfo={setInfoProjectId}
             />
 
             <SidebarFooter

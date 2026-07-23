@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import {
   closeSearchModule,
+  enqueueProjectIndex,
+  enqueueReindexPaths,
   getSearchQueue,
   getSearchWatchPaths,
   switchSearchProject,
@@ -9,6 +11,10 @@ import {
   getSearchStatusSnapshot,
   updateSearchStatusCache,
 } from '../search/status-snapshot.js';
+import { readIndexerStatusFile } from '../search/indexer-status-file.js';
+import { callIndexerIpc, isExternalIndexerEnabled } from '../search/indexer-ipc/client.js';
+import { warmSearchCache } from '../search/warm-search-cache.js';
+import { readAigeniusIgnoreFile, writeAigeniusIgnoreFile } from '../search/aigeniusignore-io.js';
 import {
   searchFiles,
   deleteFile,
@@ -35,20 +41,75 @@ import {
   getContext,
   getFileOverview,
   getSymbolDetail,
+  getSymbolLineRange,
+  findEnclosingSymbolAtLine,
   findSymbolReferences,
   traceCallChain,
   listBoundaries,
   getMakefileTargets,
 } from '../search/db/queries-intelligence.js';
-import { getActiveDbPath } from '../search/db/connection.js';
-import path from 'path';
+import {
+  findCallers,
+  symbolBlastRadius,
+  typeFlowTrace,
+  buildStructuralDigest,
+  formatCallersReport,
+  formatSymbolBlastRadiusReport,
+  formatTypeFlowReport,
+} from '../search/db/queries-graph.js';
 import { getDb } from '../search/db/connection.js';
+import { getDbForSearchQuery } from '../search/search-db-resolve.js';
+import path from 'path';
+import {
+  listRegisteredProjectIndexes,
+  projectIndexDbPath,
+  registerProjectIndex,
+  resolveProjectDbPath,
+  setActiveProjectIndexId,
+} from '../search/project-index-registry.js';
 import { stopVoiceSidecar } from '../sidecar/index.js';
 import { aigeniusSecretToken } from '../config/server-env.js';
 import { clientError, handleRoute } from '../utils/route-json.js';
 
 export function createSearchRoutes(): Hono {
   const r = new Hono();
+
+  function resolveReadDb(opts: {
+    projectId?: string;
+    rootPath?: string;
+    pathPrefix?: string;
+    filePath?: string;
+  }) {
+    const userData = process.env.AIGENIUS_USER_DATA_PATH ?? '';
+    return getDbForSearchQuery({ ...opts, userData });
+  }
+
+  async function queueIndexerOp(
+    body: Record<string, unknown>,
+    op: 'switch-project' | 'index-project',
+  ): Promise<void> {
+    if (!isExternalIndexerEnabled()) return;
+    const rootPath = typeof body.rootPath === 'string' ? body.rootPath.trim() : '';
+    const projectId = typeof body.projectId === 'string' ? body.projectId.trim() : '';
+    try {
+      if (op === 'switch-project' && rootPath) {
+        await callIndexerIpc({
+          op: 'switch-project',
+          projectId,
+          rootPath,
+          dbPath: typeof body.dbPath === 'string' ? body.dbPath : undefined,
+        }, 8_000);
+      } else if (op === 'index-project' && rootPath) {
+        await callIndexerIpc({
+          op: 'index-project',
+          rootPath,
+          force: Boolean(body.force),
+        }, 8_000);
+      }
+    } catch (err) {
+      console.warn(`[search] background indexer ${op} failed:`, err);
+    }
+  }
 
   r.use('*', async (c, next) => {
     if (c.req.method === 'OPTIONS') return next();
@@ -71,8 +132,11 @@ export function createSearchRoutes(): Hono {
 
   r.post('/query', (c) =>
     handleRoute(c, '[search] POST /search/query', async () => {
-      const { term, limit } = await c.req.json();
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const body = await c.req.json();
+      const { term, limit, pathPrefix } = body;
+      const { db } = resolveReadDb({
+        pathPrefix: typeof pathPrefix === 'string' ? pathPrefix : undefined,
+      });
       return c.json(searchFiles(db, term, limit));
     }),
   );
@@ -80,7 +144,9 @@ export function createSearchRoutes(): Hono {
   r.post('/rag', (c) =>
     handleRoute(c, '[search] POST /search/rag', async () => {
       const { contentQuery, pathQuery, topK, pathPrefix, extensions } = await c.req.json();
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const { db } = resolveReadDb({
+        pathPrefix: typeof pathPrefix === 'string' ? pathPrefix : undefined,
+      });
       const modelsDir = process.env.AIGENIUS_MODELS_DIR ?? '';
       return c.json(
         await ragQueryHybrid(db, modelsDir, contentQuery, pathQuery, topK, pathPrefix, extensions),
@@ -91,10 +157,10 @@ export function createSearchRoutes(): Hono {
   r.post('/embed-backfill', (c) =>
     handleRoute(c, '[search] POST /search/embed-backfill', async () => {
       const body = await c.req.json().catch(() => ({}));
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const pathPrefix = typeof body.pathPrefix === 'string' ? body.pathPrefix : '';
+      const { db } = resolveReadDb({ pathPrefix });
       const modelsDir = process.env.AIGENIUS_MODELS_DIR ?? '';
       const limit = typeof body.limit === 'number' ? body.limit : 500;
-      const pathPrefix = typeof body.pathPrefix === 'string' ? body.pathPrefix : '';
       const result = await embedBackfill(db, modelsDir, limit, pathPrefix);
       return c.json(result);
     }),
@@ -112,34 +178,60 @@ export function createSearchRoutes(): Hono {
       }
       let dbPath = typeof body.dbPath === 'string' ? body.dbPath.trim() : '';
       if (!dbPath && projectId && userData) {
-        dbPath = path.join(userData, 'search-indexes', `${projectId}.sqlite`);
+        dbPath = projectIndexDbPath(userData, projectId);
       }
       if (!dbPath) {
-        dbPath = process.env.AIGENIUS_DB_PATH ?? '';
+        dbPath = resolveProjectDbPath({ userData, rootPath, projectId });
       }
       if (!dbPath) {
         return clientError(c, 'dbPath could not be resolved', 400);
       }
-      await switchSearchProject({
+
+      const resolvedProjectId = projectId || path.basename(rootPath) || 'project';
+      registerProjectIndex(userData, {
+        projectId: resolvedProjectId,
+        rootPath,
         dbPath,
-        watchPaths: [rootPath],
-        modelsDir,
       });
+      setActiveProjectIndexId(userData, resolvedProjectId);
       process.env.AIGENIUS_DB_PATH = dbPath;
-      return c.json({ ok: true, dbPath, watchPaths: [rootPath] });
+
+      // Open the DB for reads immediately — search never waits for indexing.
+      const db = getDb(dbPath);
+      warmSearchCache(db, rootPath);
+
+      if (isExternalIndexerEnabled()) {
+        void queueIndexerOp({ ...body, projectId: resolvedProjectId, rootPath, dbPath }, 'switch-project');
+        void queueIndexerOp({ rootPath, force: false }, 'index-project');
+        return c.json({
+          ok: true,
+          dbPath,
+          watchPaths: [rootPath],
+          indexing: 'queued',
+        });
+      }
+
+      await switchSearchProject({
+        projectId: resolvedProjectId,
+        dbPath,
+        projectRoot: rootPath,
+        modelsDir,
+        userDataPath: userData,
+      });
+      return c.json({ ok: true, dbPath, watchPaths: [rootPath], indexing: 'queued' });
     }),
   );
 
   r.post('/import-graph', (c) =>
     handleRoute(c, '[search] POST /search/import-graph', async () => {
       const body = await c.req.json().catch(() => ({}));
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
       const pathPrefix = typeof body.pathPrefix === 'string' ? body.pathPrefix : '';
-      const maxDepth = typeof body.maxDepth === 'number' ? body.maxDepth : 4;
       const filePath = typeof body.path === 'string' ? body.path.trim() : '';
+      const { db, dbPath } = resolveReadDb({ pathPrefix, filePath });
+      const maxDepth = typeof body.maxDepth === 'number' ? body.maxDepth : 4;
       if (filePath) {
         const imports = listImportsForFile(db, filePath);
-        return c.json({ path: filePath, imports });
+        return c.json({ path: filePath, imports, dbPath });
       }
       const seeds = Array.isArray(body.paths)
         ? body.paths.filter((p: unknown): p is string => typeof p === 'string')
@@ -151,7 +243,7 @@ export function createSearchRoutes(): Hono {
       return c.json({
         ...result,
         outline: formatBlastRadiusReport(result),
-        dbPath: getActiveDbPath(),
+        dbPath,
       });
     }),
   );
@@ -162,7 +254,7 @@ export function createSearchRoutes(): Hono {
       const name = c.req.query('name') ?? '';
       const pathPrefix = c.req.query('path_prefix') ?? '';
       const limit = Number(c.req.query('limit') ?? 40);
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const { db } = resolveReadDb({ pathPrefix, filePath });
       if (filePath) {
         const symbols = listSymbolsForFile(db, filePath);
         return c.json({ path: filePath, symbols, outline: formatSymbolOutline(filePath, symbols) });
@@ -183,7 +275,7 @@ export function createSearchRoutes(): Hono {
       if (!rootPath) {
         return clientError(c, 'rootPath is required', 400);
       }
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const { db } = resolveReadDb({ rootPath });
       const outline = buildProjectArchitecture(db, rootPath, projectName);
       return c.json({ outline, rootPath });
     }),
@@ -194,12 +286,18 @@ export function createSearchRoutes(): Hono {
       const body = await c.req.json().catch(() => ({}));
       const input = typeof body.input === 'string' ? body.input.trim() : '';
       if (!input) return clientError(c, 'input is required', 400);
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const pathPrefix = typeof body.pathPrefix === 'string' ? body.pathPrefix : '';
+      const activeFile = typeof body.activeFile === 'string' ? body.activeFile : undefined;
+      const { db } = resolveReadDb({
+        pathPrefix,
+        filePath: activeFile || input,
+        rootPath: pathPrefix || input,
+      });
       const modelsDir = process.env.AIGENIUS_MODELS_DIR ?? '';
       const result = await getContext(db, modelsDir, input, {
         includeSource: Boolean(body.includeSource),
-        pathPrefix: typeof body.pathPrefix === 'string' ? body.pathPrefix : '',
-        activeFile: typeof body.activeFile === 'string' ? body.activeFile : undefined,
+        pathPrefix,
+        activeFile,
       });
       return c.json(result);
     }),
@@ -209,7 +307,7 @@ export function createSearchRoutes(): Hono {
     handleRoute(c, '[search] GET /search/file-overview', async () => {
       const filePath = c.req.query('path') ?? '';
       if (!filePath) return clientError(c, 'path required', 400);
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const { db } = resolveReadDb({ filePath });
       return c.json(getFileOverview(db, filePath));
     }),
   );
@@ -219,10 +317,36 @@ export function createSearchRoutes(): Hono {
       const filePath = c.req.query('path') ?? '';
       const name = c.req.query('name') ?? '';
       if (!filePath || !name) return clientError(c, 'path and name required', 400);
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const { db } = resolveReadDb({ filePath });
       const detail = getSymbolDetail(db, filePath, name);
       if (!detail) return clientError(c, 'symbol not found', 404);
       return c.json(detail);
+    }),
+  );
+
+  r.get('/symbol-line-range', (c) =>
+    handleRoute(c, '[search] GET /search/symbol-line-range', async () => {
+      const filePath = c.req.query('path') ?? '';
+      const name = c.req.query('name') ?? '';
+      if (!filePath || !name) return clientError(c, 'path and name required', 400);
+      const { db } = resolveReadDb({ filePath });
+      const range = getSymbolLineRange(db, filePath, name);
+      if (!range) return clientError(c, 'symbol not found', 404);
+      return c.json({ path: filePath, ...range });
+    }),
+  );
+
+  r.get('/symbol-at-line', (c) =>
+    handleRoute(c, '[search] GET /search/symbol-at-line', async () => {
+      const filePath = c.req.query('path') ?? '';
+      const line = Number(c.req.query('line') ?? 0);
+      if (!filePath || !Number.isFinite(line) || line < 1) {
+        return clientError(c, 'path and line (>=1) required', 400);
+      }
+      const { db } = resolveReadDb({ filePath });
+      const range = findEnclosingSymbolAtLine(db, filePath, line);
+      if (!range) return clientError(c, 'no symbol at line', 404);
+      return c.json({ path: filePath, ...range });
     }),
   );
 
@@ -231,7 +355,7 @@ export function createSearchRoutes(): Hono {
       const filePath = c.req.query('path') ?? '';
       const name = c.req.query('name') ?? '';
       if (!filePath || !name) return clientError(c, 'path and name required', 400);
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const { db } = resolveReadDb({ filePath });
       return c.json(findSymbolReferences(db, filePath, name));
     }),
   );
@@ -242,8 +366,77 @@ export function createSearchRoutes(): Hono {
       const name = c.req.query('name') ?? '';
       const maxDepth = Number(c.req.query('maxDepth') ?? 4);
       if (!filePath || !name) return clientError(c, 'path and name required', 400);
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const { db } = resolveReadDb({ filePath });
       return c.json(traceCallChain(db, filePath, name, maxDepth));
+    }),
+  );
+
+  r.get('/structural-digest', (c) =>
+    handleRoute(c, '[search] GET /search/structural-digest', async () => {
+      const rootPath = c.req.query('root') ?? c.req.query('rootPath') ?? '';
+      const projectName = c.req.query('projectName') ?? 'Project';
+      if (!rootPath) return clientError(c, 'root required', 400);
+      const { db } = resolveReadDb({ rootPath });
+      const digest = buildStructuralDigest(db, rootPath, projectName);
+      return c.json({ digest, rootPath });
+    }),
+  );
+
+  r.get('/find-callers', (c) =>
+    handleRoute(c, '[search] GET /search/find-callers', async () => {
+      const qualifiedName = c.req.query('qualified_name') ?? '';
+      const filePath = c.req.query('path') ?? '';
+      const name = c.req.query('name') ?? '';
+      const maxDepth = Number(c.req.query('maxDepth') ?? 1);
+      const minConfidence = (c.req.query('min_confidence') ?? 'static-heuristic') as
+        | 'static-certain'
+        | 'static-heuristic'
+        | 'inferred';
+      const pathPrefix = c.req.query('path_prefix') ?? '';
+      if (!qualifiedName && (!filePath || !name)) {
+        return clientError(c, 'qualified_name or path+name required', 400);
+      }
+      const { db } = resolveReadDb({ pathPrefix, filePath });
+      const qn = qualifiedName || `${filePath}#${name}`;
+      const result = findCallers(db, qn, { maxDepth, minConfidence, pathPrefix });
+      return c.json({ ...result, outline: formatCallersReport(result) });
+    }),
+  );
+
+  r.post('/symbol-blast-radius', (c) =>
+    handleRoute(c, '[search] POST /search/symbol-blast-radius', async () => {
+      const body = await c.req.json().catch(() => ({}));
+      const qualifiedName =
+        typeof body.qualified_name === 'string'
+          ? body.qualified_name
+          : typeof body.path === 'string' && typeof body.name === 'string'
+            ? `${body.path}#${body.name}`
+            : '';
+      const changeType = (body.change_type ?? 'signature_change') as
+        | 'signature_change'
+        | 'removal'
+        | 'return_type_change';
+      const pathPrefix = typeof body.path_prefix === 'string' ? body.path_prefix : '';
+      const maxDepth = typeof body.max_depth === 'number' ? body.max_depth : 2;
+      if (!qualifiedName) return clientError(c, 'qualified_name or path+name required', 400);
+      const { db } = resolveReadDb({
+        pathPrefix,
+        filePath: typeof body.path === 'string' ? body.path : undefined,
+      });
+      const result = symbolBlastRadius(db, qualifiedName, changeType, { pathPrefix, maxDepth });
+      return c.json({ ...result, outline: formatSymbolBlastRadiusReport(result) });
+    }),
+  );
+
+  r.get('/type-flow', (c) =>
+    handleRoute(c, '[search] GET /search/type-flow', async () => {
+      const typeName = c.req.query('type_name') ?? c.req.query('name') ?? '';
+      const direction = (c.req.query('direction') ?? 'both') as 'upstream' | 'downstream' | 'both';
+      const pathPrefix = c.req.query('path_prefix') ?? '';
+      if (!typeName) return clientError(c, 'type_name required', 400);
+      const { db } = resolveReadDb({ pathPrefix });
+      const result = typeFlowTrace(db, typeName, direction, { pathPrefix });
+      return c.json({ ...result, outline: formatTypeFlowReport(result) });
     }),
   );
 
@@ -251,7 +444,7 @@ export function createSearchRoutes(): Hono {
     handleRoute(c, '[search] GET /search/boundaries', async () => {
       const pathPrefix = c.req.query('path_prefix') ?? '';
       const boundaryType = c.req.query('type') ?? undefined;
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const { db } = resolveReadDb({ pathPrefix });
       return c.json({ boundaries: listBoundaries(db, pathPrefix, boundaryType) });
     }),
   );
@@ -260,24 +453,111 @@ export function createSearchRoutes(): Hono {
     handleRoute(c, '[search] GET /search/makefile-targets', async () => {
       const filePath = c.req.query('path') ?? '';
       if (!filePath) return clientError(c, 'path required', 400);
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const { db } = resolveReadDb({ filePath });
       return c.json({ targets: getMakefileTargets(db, filePath) });
     }),
   );
 
   r.get('/status', (c) =>
     handleRoute(c, '[search] GET /search/status', async () => {
-      try {
-        const queue = getSearchQueue();
-        const depth = queue.pendingCount();
-        updateSearchStatusCache({
-          queue_depth: depth,
-          scan_in_progress: depth > 0,
-        });
-      } catch {
-        updateSearchStatusCache({ scan_in_progress: false, queue_depth: 0 });
+      const userData = process.env.AIGENIUS_USER_DATA_PATH ?? '';
+      const fileStatus = readIndexerStatusFile(userData);
+      const registered = listRegisteredProjectIndexes(userData);
+
+      let indexerIpcOk = false;
+      if (isExternalIndexerEnabled()) {
+        try {
+          await callIndexerIpc({ op: 'ping' }, 1_500);
+          indexerIpcOk = true;
+        } catch {
+          indexerIpcOk = false;
+        }
       }
-      return c.json({ ...getSearchStatusSnapshot(), watching: true });
+
+      if (fileStatus) {
+        const health = fileStatus.health ?? {
+          indexer_ipc_reachable: indexerIpcOk,
+          db_integrity: 'unknown' as const,
+          last_error: null,
+          queue_text_depth: 0,
+          queue_structure_depth: 0,
+        };
+        return c.json({
+          indexed: fileStatus.indexed,
+          watching: fileStatus.watching,
+          lastRun: fileStatus.last_run,
+          scan_in_progress: fileStatus.scan_in_progress,
+          queue_depth: fileStatus.queue_depth,
+          db_path: fileStatus.db_path,
+          project_root: fileStatus.project_root,
+          active_project_id: fileStatus.active_project_id ?? null,
+          projects: fileStatus.projects ?? registered.map((p) => ({
+            project_id: p.projectId,
+            project_root: p.rootPath,
+            db_path: p.dbPath,
+            indexed: 0,
+            last_run: 0,
+            is_active: p.projectId === fileStatus.active_project_id,
+            watching: true,
+            index_ready: false,
+          })),
+          core_ready: fileStatus.core_ready,
+          enrichment_ready: fileStatus.enrichment_ready,
+          queue_by_tier: fileStatus.queue_by_tier,
+          health: {
+            ...health,
+            indexer_ipc_reachable: isExternalIndexerEnabled() ? indexerIpcOk : true,
+          },
+        });
+      }
+
+      if (!isExternalIndexerEnabled()) {
+        try {
+          const queue = getSearchQueue();
+          const depth = queue.pendingCount();
+          updateSearchStatusCache({
+            queue_depth: depth,
+            scan_in_progress: depth > 0,
+          });
+        } catch {
+          updateSearchStatusCache({ scan_in_progress: false, queue_depth: 0 });
+        }
+      }
+
+      return c.json({
+        ...getSearchStatusSnapshot(),
+        watching: true,
+        core_ready: true,
+        enrichment_ready: true,
+        projects: registered,
+        health: {
+          indexer_ipc_reachable: isExternalIndexerEnabled() ? indexerIpcOk : true,
+          db_integrity: 'unknown',
+          last_error: null,
+          queue_text_depth: 0,
+          queue_structure_depth: 0,
+        },
+      });
+    }),
+  );
+
+  r.get('/aigeniusignore', (c) =>
+    handleRoute(c, '[search] GET /search/aigeniusignore', async () => {
+      const rootPath = (c.req.query('rootPath') ?? '').trim();
+      if (!rootPath) return clientError(c, 'rootPath is required', 400);
+      const data = readAigeniusIgnoreFile(rootPath);
+      return c.json(data);
+    }),
+  );
+
+  r.put('/aigeniusignore', (c) =>
+    handleRoute(c, '[search] PUT /search/aigeniusignore', async () => {
+      const body = await c.req.json().catch(() => ({}));
+      const rootPath = typeof body.rootPath === 'string' ? body.rootPath.trim() : '';
+      const content = typeof body.content === 'string' ? body.content : '';
+      if (!rootPath) return clientError(c, 'rootPath is required', 400);
+      const result = writeAigeniusIgnoreFile(rootPath, content);
+      return c.json({ ok: true, ...result });
     }),
   );
 
@@ -285,7 +565,8 @@ export function createSearchRoutes(): Hono {
   r.post('/browse', (c) =>
     handleRoute(c, '[search] POST /search/browse', async () => {
       const body = await c.req.json().catch(() => ({}));
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const pathPrefix = typeof body.pathPrefix === 'string' ? body.pathPrefix : '';
+      const { db } = resolveReadDb({ pathPrefix });
       return c.json(browseFileIndex(db, body));
     }),
   );
@@ -294,7 +575,8 @@ export function createSearchRoutes(): Hono {
   r.post('/folders', (c) =>
     handleRoute(c, '[search] POST /search/folders', async () => {
       const body = await c.req.json().catch(() => ({}));
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const pathPrefix = typeof body.pathPrefix === 'string' ? body.pathPrefix : '';
+      const { db } = resolveReadDb({ pathPrefix });
       return c.json(browseFolderGroups(db, body));
     }),
   );
@@ -303,7 +585,8 @@ export function createSearchRoutes(): Hono {
   r.post('/explorer', (c) =>
     handleRoute(c, '[search] POST /search/explorer', async () => {
       const body = await c.req.json().catch(() => ({}));
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const directoryPath = typeof body.directoryPath === 'string' ? body.directoryPath : '';
+      const { db } = resolveReadDb({ pathPrefix: directoryPath, filePath: directoryPath });
       return c.json(browseExplorerDirectory(db, body));
     }),
   );
@@ -318,7 +601,7 @@ export function createSearchRoutes(): Hono {
       if (!filePath) {
         return clientError(c, 'path is required', 400);
       }
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const { db } = resolveReadDb({ filePath });
       const row = getFileIndexRow(db, filePath, maxContentChars);
       if (!row) {
         return clientError(c, 'not found', 404);
@@ -330,12 +613,20 @@ export function createSearchRoutes(): Hono {
   r.post('/reindex', (c) =>
     handleRoute(c, '[search] POST /search/reindex', async () => {
       const { paths, force } = await c.req.json();
-      const queue = getSearchQueue();
-      const p = Array.isArray(paths) ? paths : getSearchWatchPaths();
-      for (const filePath of p) {
-        queue.push({ type: 'change', path: filePath, force: Boolean(force) });
+      if (isExternalIndexerEnabled()) {
+        const p = Array.isArray(paths) ? paths : undefined;
+        void callIndexerIpc<{ queued: number }>({
+          op: 'reindex',
+          paths: p,
+          force: Boolean(force),
+        }, 8_000).catch((err) => {
+          console.warn('[search] background reindex failed:', err);
+        });
+        return c.json({ queued: 0, indexing: 'queued' });
       }
-      return c.json({ queued: p.length });
+      const p = Array.isArray(paths) ? paths : getSearchWatchPaths();
+      const queued = enqueueReindexPaths(p, Boolean(force));
+      return c.json({ queued });
     }),
   );
 
@@ -347,20 +638,27 @@ export function createSearchRoutes(): Hono {
       if (!rootPath) {
         return clientError(c, 'rootPath is required', 400);
       }
-      const { walkProjectFiles } = await import('../search/indexer/project-walk.js');
-      const files = walkProjectFiles(rootPath);
-      const queue = getSearchQueue();
-      for (const filePath of files) {
-        queue.push({ type: 'change', path: filePath, force });
+      const userData = process.env.AIGENIUS_USER_DATA_PATH ?? '';
+      const dbPath = resolveProjectDbPath({ userData, rootPath });
+      if (isExternalIndexerEnabled()) {
+        void callIndexerIpc<{ queued: number; rootPath: string }>({
+          op: 'index-project',
+          rootPath,
+          force,
+        }, 8_000).catch((err) => {
+          console.warn('[search] background index-project failed:', err);
+        });
+        return c.json({ queued: 0, rootPath, dbPath, indexing: 'queued' });
       }
-      return c.json({ queued: files.length, rootPath });
+      const queued = await enqueueProjectIndex(rootPath, dbPath, force);
+      return c.json({ queued, rootPath, dbPath });
     }),
   );
 
   r.post('/remove', (c) =>
     handleRoute(c, '[search] POST /search/remove', async () => {
       const { path: filePath } = await c.req.json();
-      const db = getDb(process.env.AIGENIUS_DB_PATH!);
+      const { db } = resolveReadDb({ filePath });
       deleteFile(db, filePath);
       return c.json({ ok: true });
     }),
@@ -369,7 +667,9 @@ export function createSearchRoutes(): Hono {
   // Graceful shutdown: Electron calls this in before-quit — stops watcher/queue/workers and closes SQLite (singleton cleared).
   r.post('/shutdown', (c) =>
     handleRoute(c, '[search] POST /search/shutdown', async () => {
-      if (process.env.AIGENIUS_DB_PATH) {
+      if (isExternalIndexerEnabled()) {
+        await callIndexerIpc({ op: 'shutdown' }, 5_000).catch(() => undefined);
+      } else if (process.env.AIGENIUS_DB_PATH) {
         await closeSearchModule();
         console.info('[aigenius-desktop-server] Search module shut down; SQLite closed cleanly.');
       }

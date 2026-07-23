@@ -33,16 +33,11 @@ export const TOOL_PERMISSION_CATALOG: ToolPermissionCatalogEntry[] = [
     defaultRequiresApproval: MUTATING,
   },
   {
-    id: 'local_index_rescan',
-    label: 'Rebuild search index',
-    description: 'Re-scan and update the local search index',
-    defaultRequiresApproval: MUTATING,
-  },
-  {
     id: 'local_read_file',
     label: 'Read local files',
     description: 'Read file contents from your machine',
     defaultRequiresApproval: READ_ONLY,
+    aliases: ['read_file', 'read_local_file'],
   },
   {
     id: 'local_list_directory',
@@ -54,12 +49,6 @@ export const TOOL_PERMISSION_CATALOG: ToolPermissionCatalogEntry[] = [
     id: 'local_rag_query',
     label: 'Search indexed files',
     description: 'Query the local search index',
-    defaultRequiresApproval: READ_ONLY,
-  },
-  {
-    id: 'local_index_status',
-    label: 'Indexer status',
-    description: 'Read local search indexer status',
     defaultRequiresApproval: READ_ONLY,
   },
   {
@@ -380,9 +369,6 @@ export function isWorkflowTool(tool: string): boolean {
 }
 
 export function normalizeToolId(tool: string): string {
-  if (tool === 'run_command') {
-    return 'local_shell';
-  }
   const byId = TOOL_PERMISSION_CATALOG.find((entry) => entry.id === tool);
   if (byId) {
     return byId.id;

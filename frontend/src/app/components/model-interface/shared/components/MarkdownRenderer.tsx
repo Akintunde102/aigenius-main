@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -17,6 +17,9 @@ import {
 import { MermaidRenderer } from './MermaidRenderer';
 import { buildLocalFilePreviewPayload } from '@/lib/utils/local-file-link';
 import { openFilePreview } from '@/app/components/modals/FilePreviewManager';
+import { getActiveCodeProject, subscribeActiveCodeProject } from '@/lib/code-projects/active-code-project';
+import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
+import { linkifyMarkdownFilePaths } from '@/lib/utils/linkifyMarkdownFilePaths';
 
 type MarkdownCodeElementProps = React.HTMLAttributes<HTMLElement> & {
     node?: unknown;
@@ -64,10 +67,23 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
     }
 
     const pageOrigin = typeof window !== 'undefined' ? window.location.origin : undefined;
+    const [projectRoot, setProjectRoot] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!isAigeniusDesktopRuntime()) {
+            return;
+        }
+        const sync = () => setProjectRoot(getActiveCodeProject()?.rootPath ?? null);
+        sync();
+        return subscribeActiveCodeProject(sync);
+    }, []);
 
     const processedContent = React.useMemo(() => {
-        return content;
-    }, [content]);
+        if (!isAigeniusDesktopRuntime()) {
+            return content;
+        }
+        return linkifyMarkdownFilePaths(content, { projectRoot });
+    }, [content, projectRoot]);
 
     return (
         <div

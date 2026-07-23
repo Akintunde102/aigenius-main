@@ -21,6 +21,10 @@ import {
   removeDraftStickyThreadMarker,
   upsertDraftStickyThreadMarker,
 } from "./orphanNoteAnchors";
+import {
+  applyStreamingTurnUpdate,
+  finalizeAllThinkingEvents,
+} from "../utils/thinkingEvent.utils";
 
 type StickyThreadRecord = StickyThreadMarker & {
   messages: ChatMessage[];
@@ -468,8 +472,9 @@ export function useAnchoredOrphanNotes(params: {
               const lastMessage = updatedMessages[updatedMessages.length - 1];
               if (!lastMessage || lastMessage.role !== "assistant") return m;
               
-              const nextContent = typeof chunk === "string" 
-                ? `${typeof lastMessage.content === "string" ? lastMessage.content : ""}${chunk}`
+              const textChunk = typeof chunk === "string" ? chunk : "";
+              const nextContent = textChunk
+                ? `${typeof lastMessage.content === "string" ? lastMessage.content : ""}${textChunk}`
                 : lastMessage.content;
               
               const nextReasoning = reasoning 
@@ -483,11 +488,18 @@ export function useAnchoredOrphanNotes(params: {
                   }]
                 : lastMessage.reasoning_details;
 
+              const nextEvents = applyStreamingTurnUpdate(lastMessage.events ?? [], {
+                textChunk: textChunk || undefined,
+                reasoning,
+                reasoningDetails,
+              });
+
               updatedMessages[updatedMessages.length - 1] = { 
                 ...lastMessage, 
                 content: nextContent,
                 reasoning: nextReasoning,
-                reasoning_details: nextReasoningDetails
+                reasoning_details: nextReasoningDetails,
+                events: nextEvents,
               };
               
               return {
@@ -499,6 +511,18 @@ export function useAnchoredOrphanNotes(params: {
           });
         },
       });
+
+      setMarkers((previous) => previous.map((m) => {
+        if (m.markerId !== activeMarker.markerId) return m;
+        const updatedMessages = [...m.messages];
+        const lastMessage = updatedMessages[updatedMessages.length - 1];
+        if (lastMessage?.role === "assistant" && lastMessage.events?.length) {
+          const events = [...lastMessage.events];
+          finalizeAllThinkingEvents(events);
+          updatedMessages[updatedMessages.length - 1] = { ...lastMessage, events };
+        }
+        return { ...m, messages: updatedMessages };
+      }));
 
       const conversationId = streamResult.conversationId ?? activeMarker.conversationId;
       if (!conversationId) {

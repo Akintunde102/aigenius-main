@@ -27,6 +27,8 @@ export interface IndexedFile {
 export interface WorkerInput {
   path: string;
   mtime: number;
+  /** When true, skip OCR/YOLO even if global skipImages is false. */
+  skipImages?: boolean;
 }
 
 /** Message received back from an extraction worker thread. */
@@ -40,10 +42,16 @@ export interface WorkerOutput {
 
 /** Configuration for `registerSearchModule()`. */
 export interface SearchModuleConfig {
-  /** Directories to watch and index. */
+  /** Active project root (high-priority watcher). */
+  projectRoot?: string | null;
+  /** Low-priority background paths (e.g. homedir for general search). */
+  backgroundWatchPaths?: string[];
+  /** Directories to watch and index (legacy; use projectRoot + backgroundWatchPaths). */
   watchPaths: string[];
   /** Absolute path to the SQLite database file. */
   dbPath: string;
+  /** Persisted status JSON directory (Electron userData). */
+  userDataPath?: string;
   /** Directory containing YOLO + Tesseract model files. */
   modelsDir: string;
   /** Number of worker threads (default: 4). */

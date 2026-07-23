@@ -35,7 +35,8 @@ CREATE VIRTUAL TABLE IF NOT EXISTS chunk_search USING fts5(
   content,
   content=file_chunks,
   content_rowid=rowid,
-  tokenize='unicode61 remove_diacritics 1'
+  tokenize='unicode61 remove_diacritics 1',
+  prefix='2 3 4'
 );
 
 DROP TRIGGER IF EXISTS chunk_fts_ai;

@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { FiFolderPlus, FiX } from "react-icons/fi";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
 
 type CreateCodeProjectModalProps = {
@@ -19,6 +21,23 @@ export function CreateCodeProjectModal({
   const [rules, setRules] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || saving) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [open, onClose, saving]);
 
   const handlePickFolder = useCallback(async () => {
     const bridge = window.aigeniusDesktop;
@@ -59,88 +78,141 @@ export function CreateCodeProjectModal({
     }
   }, [name, rootPath, rules, onCreate, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted || typeof document === "undefined") {
+    return null;
+  }
 
   const desktop = isAigeniusDesktopRuntime();
 
-  return (
+  const overlay = (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="create-code-project-title"
+      role="presentation"
+      className="app-modal-overlay backdrop-blur-[2px]"
+      onClick={saving ? undefined : onClose}
     >
       <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-code-project-title"
+        className="app-modal-panel max-w-lg shadow-xl"
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-lg border p-4 shadow-xl"
-        style={{
-          backgroundColor: "var(--sidebar-bg, #1e293b)",
-          borderColor: "var(--sidebar-border, #334155)",
-          color: "var(--sidebar-fg, #f1f5f9)",
-        }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="create-code-project-title" className="mb-3 text-base font-semibold">
-          New code project
-        </h2>
-        <p className="mb-4 text-xs opacity-80">
-          Chats under this project get scoped search, rules, and desktop indexing for the folder you choose.
-        </p>
-
-        <label className="mb-2 block text-xs font-medium">Name</label>
-        <input
-          className="mb-3 w-full rounded-md border px-2 py-1.5 text-sm"
-          style={{ borderColor: "var(--sidebar-border)", backgroundColor: "var(--sidebar-search-bg)" }}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. aigenius-platform"
-          autoFocus
-        />
-
-        <label className="mb-2 block text-xs font-medium">Project folder path</label>
-        <div className="mb-3 flex gap-2">
-          <input
-            className="min-w-0 flex-1 rounded-md border px-2 py-1.5 text-sm"
-            style={{ borderColor: "var(--sidebar-border)", backgroundColor: "var(--sidebar-search-bg)" }}
-            value={rootPath}
-            onChange={(e) => setRootPath(e.target.value)}
-            placeholder={desktop ? "Pick or paste absolute path" : "Absolute path to project root"}
-          />
-          {desktop ? (
-            <button
-              type="button"
-              onClick={() => void handlePickFolder()}
-              className="shrink-0 rounded-md border px-2 text-xs"
-              style={{ borderColor: "var(--sidebar-border)" }}
-            >
-              Browse
-            </button>
-          ) : null}
-        </div>
-
-        <label className="mb-2 block text-xs font-medium">Rules (optional)</label>
-        <textarea
-          className="mb-4 w-full rounded-md border px-2 py-1.5 text-sm"
-          style={{ borderColor: "var(--sidebar-border)", backgroundColor: "var(--sidebar-search-bg)" }}
-          rows={4}
-          value={rules}
-          onChange={(e) => setRules(e.target.value)}
-          placeholder="Stack, conventions, architecture notes for the model…"
-        />
-
-        {error ? <p className="mb-3 text-xs text-red-400">{error}</p> : null}
-
-        <div className="flex justify-end gap-2">
+        <div className="app-modal-panel-header flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="mb-1 flex items-center gap-2">
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
+                style={{
+                  borderColor: "var(--modal-border)",
+                  background: "var(--modal-bg)",
+                  color: "var(--chat-accent)",
+                }}
+                aria-hidden
+              >
+                <FiFolderPlus className="h-4 w-4" />
+              </div>
+              <h2 id="create-code-project-title" className="text-base font-semibold">
+                New code project
+              </h2>
+            </div>
+            <p className="text-xs" style={{ color: "var(--modal-muted-fg)" }}>
+              Chats under this project get scoped search, rules, and desktop indexing for the folder you choose.
+            </p>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-3 py-1.5 text-sm opacity-80 hover:opacity-100"
+            disabled={saving}
+            className="shrink-0 rounded-lg p-2 transition-colors hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40 disabled:opacity-50"
+            style={{ color: "var(--modal-muted-fg)" }}
+            aria-label="Close"
+          >
+            <FiX className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="app-modal-panel-body space-y-4">
+          <div>
+            <label htmlFor="code-project-name" className="app-modal-field-label">
+              Name
+            </label>
+            <input
+              id="code-project-name"
+              className="app-modal-input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. aigenius-platform"
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label htmlFor="code-project-path" className="app-modal-field-label">
+              Project folder path
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="code-project-path"
+                className="app-modal-input min-w-0 flex-1"
+                value={rootPath}
+                onChange={(e) => setRootPath(e.target.value)}
+                placeholder={desktop ? "Pick or paste absolute path" : "Absolute path to project root"}
+              />
+              {desktop ? (
+                <button
+                  type="button"
+                  onClick={() => void handlePickFolder()}
+                  className="shrink-0 rounded-lg border px-3 text-sm font-medium transition-colors hover:bg-[color-mix(in_srgb,var(--surface-muted)_80%,transparent)]"
+                  style={{
+                    borderColor: "var(--modal-border)",
+                    color: "var(--modal-fg)",
+                    background: "var(--surface-muted)",
+                  }}
+                >
+                  Browse
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="code-project-rules" className="app-modal-field-label">
+              Rules (optional)
+            </label>
+            <textarea
+              id="code-project-rules"
+              className="app-modal-input resize-y"
+              rows={4}
+              value={rules}
+              onChange={(e) => setRules(e.target.value)}
+              placeholder="Stack, conventions, architecture notes for the model…"
+            />
+          </div>
+
+          {error ? (
+            <p className="text-sm text-red-500" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+
+        <div
+          className="flex shrink-0 items-center justify-end gap-2 border-t px-5 py-4"
+          style={{ borderColor: "var(--modal-border)" }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+            style={{ color: "var(--modal-muted-fg)" }}
             disabled={saving}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-500 disabled:opacity-50"
+            className="app-modal-btn-primary px-4 py-2 text-sm"
             disabled={saving}
           >
             {saving ? "Creating…" : "Create project"}
@@ -149,4 +221,7 @@ export function CreateCodeProjectModal({
       </form>
     </div>
   );
+
+  const portalTarget = document.getElementById("modal-root") ?? document.body;
+  return createPortal(overlay, portalTarget);
 }

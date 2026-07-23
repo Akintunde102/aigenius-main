@@ -45,6 +45,7 @@ export async function runConversationEventsSubscription(
                 title: data.title ?? 'New chat',
                 messages: data.messages ?? [],
                 modelId: data.modelId,
+                codeProjectId: data.codeProjectId ?? null,
                 metadata: data.metadata,
                 personalityId: data.personalityId,
                 systemPrompt: data.systemPrompt,
@@ -68,6 +69,7 @@ export async function runConversationEventsSubscription(
             void addOrMergeSessionToLocalHistory(
                 {
                     id: sessionForList.id,
+                    codeProjectId: sessionForList.codeProjectId,
                     session: {
                         title: sessionForList.title,
                         modelId: sessionForList.modelId,

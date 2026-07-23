@@ -52,12 +52,18 @@ function windowChunks(content: string): FileChunk[] {
 function symbolBoundedChunks(content: string, symbols: ParsedSymbol[]): FileChunk[] {
   const chunks: FileChunk[] = [];
   let chunkIndex = 0;
+  const lines = content.split('\n');
+  const total = lines.length;
 
   for (let i = 0; i < symbols.length; i++) {
     const sym = symbols[i]!;
     const nextStart = symbols[i + 1]?.lineStart;
-    const lineEnd = nextStart != null ? nextStart - 1 : content.split('\n').length;
-    const slice = sliceLines(content, sym.lineStart, lineEnd);
+    const lineEnd = nextStart != null ? nextStart - 1 : total;
+    
+    const startIdx = Math.max(1, sym.lineStart) - 1;
+    const endIdx = Math.min(total, lineEnd);
+    const slice = lines.slice(startIdx, endIdx).join('\n');
+    
     if (!slice.trim()) continue;
     chunks.push({
       chunkIndex: chunkIndex++,

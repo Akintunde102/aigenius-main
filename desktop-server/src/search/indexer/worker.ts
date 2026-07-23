@@ -17,7 +17,7 @@ parentPort.on('message', async (input: WorkerInput) => {
   const { content, tags, error } = await routeExtraction(
     filePath,
     modelsDir,
-    skipImages,
+    input.skipImages ?? skipImages,
   );
 
   const output: WorkerOutput = {

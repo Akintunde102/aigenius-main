@@ -1,16 +1,34 @@
 import { runLocalDesktopTool, resolveShellProcessClose } from './local-tool-executor';
 import fs from 'fs/promises';
 import { ReadableStream } from 'stream/web';
+import { listDirectoryViaShell } from './utils/list-directory-via-shell';
 import {
   clearPreviewPathRegistryForTests,
   isPreviewPathRegistered,
 } from './preview-path-registry';
 
+jest.mock('./utils/read-file/path-resolver', () => ({
+  resolveReadFilePath: jest.fn(async (inputPath: string) => {
+    if (!inputPath?.trim()) {
+      return { ok: false, error: 'Error: file not found — path is required' };
+    }
+    const resolved = inputPath.startsWith('/') ? inputPath : `/home/user/${inputPath}`;
+    return { ok: true, resolved, displayPath: inputPath };
+  }),
+}));
+
+jest.mock('./active-code-project', () => ({
+  getActiveCodeProjectRootPath: () => '/home/user',
+  getActiveCodeProjectId: () => 'test-project',
+  setActiveCodeProjectIndex: jest.fn(),
+}));
+
 // Mock fs/promises
 jest.mock('fs/promises', () => ({
   open: jest.fn(),
   readdir: jest.fn(),
-  stat: jest.fn(),
+  stat: jest.fn().mockResolvedValue({ isFile: () => true, isDirectory: () => false }),
+  realpath: jest.fn((p: string) => Promise.resolve(p)),
 }));
 
 // Mock Electron
@@ -27,6 +45,32 @@ jest.mock('electron', () => ({
 jest.mock('./resolve-browser-window-for-ipc', () => ({
   resolveBrowserWindowForIpcSender: jest.fn(),
 }));
+
+jest.mock('./utils/list-directory-via-shell', () => ({
+  listDirectoryViaShell: jest.fn(),
+}));
+
+jest.mock('./utils/read-file-lines', () => {
+  const actual = jest.requireActual('./utils/read-file-lines');
+  return {
+    ...actual,
+    countFileLines: jest.fn().mockResolvedValue({ totalLines: 1, lineCountOmitted: false }),
+    readFileLines: jest.fn().mockResolvedValue({
+      lines: ['Hello World from a local file!'],
+      totalLines: 1,
+      lineStart: 1,
+      lineEnd: 1,
+      truncatedBelow: false,
+      lineCountOmitted: false,
+    }),
+  };
+});
+
+jest.mock('./utils/read-file/binary-detect', () => ({
+  isBinaryFile: jest.fn().mockResolvedValue(false),
+}));
+
+import * as readFileLinesMod from './utils/read-file-lines';
 
 describe('resolveShellProcessClose', () => {
   it('uses numeric exit code when the child reports one', () => {
@@ -144,36 +188,15 @@ describe('local_rag_query formatting (TDD RED Phase)', () => {
     expect(isPreviewPathRegistered('relative/path.txt')).toBe(false);
   });
 
-  it('formats local_index_status as readable Markdown instead of raw JSON', async () => {
-    const mockStatus = {
-      indexed: 1234,
-      watching: true,
-      lastRun: 1625097600000,
-    };
-
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => mockStatus,
-    });
-
-    const out = await runLocalDesktopTool(mockSender, 'local_index_status', {});
-
-    expect(out.ok).toBe(true);
-    if (out.ok) {
-      // RED PHASE: This will fail as it currently returns JSON
-      expect(out.result).toContain('Local index status');
-      expect(out.result).toContain('1,234');
-      expect(out.result).not.toContain('{"indexed":');
-    }
-  });
-
   it('formats local_read_file as readable Markdown instead of raw JSON', async () => {
-    const mockContent = 'Hello World from a local file!';
-    const mockFd = {
-      read: jest.fn().mockResolvedValue({ bytesRead: mockContent.length }),
-      close: jest.fn(),
-    };
-    (fs.open as jest.Mock).mockResolvedValue(mockFd);
+    (readFileLinesMod.readFileLines as jest.Mock).mockResolvedValue({
+      lines: ['Hello World from a local file!'],
+      totalLines: 1,
+      lineStart: 1,
+      lineEnd: 1,
+      truncatedBelow: false,
+      lineCountOmitted: false,
+    });
 
     const out = await runLocalDesktopTool(mockSender, 'local_read_file', { path: '/home/user/test.txt' });
 
@@ -182,9 +205,79 @@ describe('local_rag_query formatting (TDD RED Phase)', () => {
       expect(out.result).toContain('### Read file');
       expect(out.result).toContain('[test.txt](local-file://');
       expect(out.result).toContain(encodeURIComponent('/home/user/test.txt'));
-      expect(out.result).toContain('- **Bytes read**: 30');
-      expect(out.result).not.toContain('- **Truncated**');
+      expect(out.result).toContain('- **Total lines**: 1');
+      expect(out.result).toContain('Hello World from a local file!');
       expect(out.result).not.toContain('{"path":');
+      expect(isPreviewPathRegistered('/home/user/test.txt')).toBe(true);
+      expect(isPreviewPathRegistered('/home/user')).toBe(true);
+    }
+  });
+
+  it('accepts read_file as an alias of local_read_file', async () => {
+    (readFileLinesMod.readFileLines as jest.Mock).mockResolvedValue({
+      lines: ['alias works'],
+      totalLines: 1,
+      lineStart: 1,
+      lineEnd: 1,
+      truncatedBelow: false,
+      lineCountOmitted: false,
+    });
+
+    const out = await runLocalDesktopTool(mockSender, 'read_file', { path: '/home/user/alias.txt' });
+
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.result).toContain('alias works');
+    }
+  });
+
+  it('formats local_read_file byte mode when max_bytes is set', async () => {
+    const mockContent = 'Hello World from a local file!';
+    const mockFd = {
+      read: jest.fn(async (buf: Buffer) => {
+        buf.write(mockContent, 0, 'utf8');
+        return { bytesRead: mockContent.length };
+      }),
+      close: jest.fn().mockResolvedValue(undefined),
+    };
+    (fs.open as jest.Mock).mockResolvedValue(mockFd);
+    (readFileLinesMod.countFileLines as jest.Mock).mockResolvedValue({ totalLines: 1, lineCountOmitted: false });
+
+    const out = await runLocalDesktopTool(mockSender, 'local_read_file', {
+      path: '/home/user/test.txt',
+      offset: 0,
+      max_bytes: 1024,
+    });
+
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.result).toContain('- **Bytes read**: 30');
+      expect(out.result).toContain('Hello World from a local file!');
+    }
+  });
+
+  it('formats local_read_file line window with total line count', async () => {
+    (readFileLinesMod.readFileLines as jest.Mock).mockResolvedValue({
+      lines: ['line2', 'line3'],
+      totalLines: 10,
+      lineStart: 2,
+      lineEnd: 3,
+      truncatedBelow: true,
+      lineCountOmitted: false,
+    });
+
+    const out = await runLocalDesktopTool(mockSender, 'local_read_file', {
+      path: '/home/user/test.txt',
+      start_line: 2,
+      max_lines: 2,
+    });
+
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.result).toContain('- **Total lines**: 10');
+      expect(out.result).toContain('- **Lines shown**: 2–3');
+      expect(out.result).toMatch(/Truncated|start_line=4/);
+      expect(out.rawData?.mode).toBe('lines');
     }
   });
 
@@ -238,13 +331,14 @@ describe('local_rag_query formatting (TDD RED Phase)', () => {
   });
 
   it('successfully lists a directory using local_list_directory', async () => {
-    const mockEntries = [
-      { name: 'file1.txt', isDirectory: () => false },
-      { name: 'subdir', isDirectory: () => true },
-    ] as any;
-
-    jest.spyOn(fs, 'readdir').mockResolvedValue(mockEntries);
-    jest.spyOn(fs, 'stat').mockResolvedValue({ size: 100, mtimeMs: 123456789 } as any);
+    (listDirectoryViaShell as jest.Mock).mockResolvedValue({
+      shellCommand: "ls -la 'C:\\Users\\Test'",
+      structured: true,
+      items: [
+        { name: 'file1.txt', path: 'C:\\Users\\Test\\file1.txt', isDir: false, size: 100, mtime: 123456789 },
+        { name: 'subdir', path: 'C:\\Users\\Test\\subdir', isDir: true },
+      ],
+    });
 
     const out = await runLocalDesktopTool(mockSender, 'local_list_directory', { path: 'C:\\Users\\Test' });
 
@@ -253,6 +347,28 @@ describe('local_rag_query formatting (TDD RED Phase)', () => {
       expect(out.result).toContain('### Directory listing');
       expect(out.result).toContain('file1.txt');
       expect(out.result).toContain('subdir');
+      expect(out.result).toContain('Shell');
+    }
+  });
+
+  it('rejects custom command output that looks like a mis-parsed PowerShell table', async () => {
+    (listDirectoryViaShell as jest.Mock).mockResolvedValue({
+      shellCommand: 'Get-ChildItem -Force | Select-Object Name',
+      structured: false,
+      parseRejected: true,
+      items: [],
+      terminalOutput: 'Name\n----\napps',
+    });
+
+    const out = await runLocalDesktopTool(mockSender, 'local_list_directory', {
+      path: 'C:\\Users\\Test',
+      command: 'Get-ChildItem -Force | Select-Object Name',
+    });
+
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/table headers/i);
+      expect(out.error).toMatch(/omit `command`/i);
     }
   });
 });

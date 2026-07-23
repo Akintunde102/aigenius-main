@@ -8,6 +8,11 @@ import { shouldRequireToolApproval } from './tool-permission-preferences';
 import { applySearchReplaceHunk } from './apply-hunk';
 import { recordTouchedFile } from './edit-session';
 import { loopbackHttpUrl } from './loopback-host';
+import {
+  checkBlastRadiusGate,
+  fetchBlastRadiusSummaryForPaths,
+  riskyPatchPaths,
+} from './patch-blast-radius-gate';
 
 const MAX_OPERATIONS = 25;
 const MAX_CONTENT_BYTES = 1_500_000;
@@ -158,9 +163,17 @@ export async function applyLocalPatch(
   }
   const { ops } = parsed;
 
+  const gateError = checkBlastRadiusGate(ops);
+  if (gateError) {
+    return { ok: false, error: gateError };
+  }
+
+  const riskyPaths = riskyPatchPaths(ops);
+  const blastSummary = riskyPaths.length ? await fetchBlastRadiusSummaryForPaths(riskyPaths) : null;
+
   if (parent && shouldRequireToolApproval('local_apply_patch')) {
     try {
-      const approved = await showPatchApprovalDialog(parent, ops);
+      const approved = await showPatchApprovalDialog(parent, ops, blastSummary);
       if (!approved) {
         return { ok: false, error: 'User declined to apply file changes' };
       }
@@ -271,6 +284,19 @@ export async function applyLocalPatch(
 
   return {
     ok: true,
-    result: JSON.stringify({ partial: false, results }),
+    result: JSON.stringify({
+      partial: false,
+      results,
+      ...(blastSummary
+        ? {
+            blastRadius: {
+              certain: blastSummary.certain,
+              heuristic: blastSummary.heuristic,
+              inferred: blastSummary.inferred,
+              total: blastSummary.total,
+            },
+          }
+        : {}),
+    }),
   };
 }

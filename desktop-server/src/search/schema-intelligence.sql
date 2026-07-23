@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS symbol_edges (
   kind TEXT NOT NULL,
   line INTEGER,
   confidence TEXT NOT NULL DEFAULT 'high',
+  stale INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY (from_symbol_id) REFERENCES symbol_index(id) ON DELETE CASCADE,
   FOREIGN KEY (to_symbol_id) REFERENCES symbol_index(id) ON DELETE CASCADE
 );

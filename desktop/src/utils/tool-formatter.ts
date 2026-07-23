@@ -48,9 +48,9 @@ export function formatRagResults(data: any): FormattedToolResult {
     if (typeof result.hint === 'string' && result.hint.trim()) {
       md += `*${result.hint.trim()}*`;
     } else if (indexed === 0) {
-      md += '*The local index is empty — run `local_index_rescan` or use `local_list_directory`.*';
+      md += '*No indexed files for this scope — use `local_grep` and `local_list_directory` on disk.*';
     } else {
-      md += '*No matches found for this query in the local index.*';
+      md += '*No matches in the index for this query — use `local_grep` to search the filesystem directly.*';
     }
     return { result: md, rawData: data };
   }
@@ -114,36 +114,6 @@ export function formatRagResults(data: any): FormattedToolResult {
   return { result: md, rawData: data };
 }
 
-/**
- * Formats Index Status results into a clean Markdown summary.
- */
-export function formatIndexStatus(data: any): FormattedToolResult {
-  if (!data || typeof data !== 'object') return { result: String(data), rawData: data };
-
-  const indexed = typeof data.indexed === 'number' ? data.indexed.toLocaleString() : 'Unknown';
-  const watching = data.watching ? 'Active' : 'Inactive';
-  const lastRun = data.lastRun ? new Date(data.lastRun).toLocaleString() : 'Never';
-  const inProgress = data.scan_in_progress ? 'Yes' : 'No';
-
-  let md = '### Local index status\n\n';
-  md += `- **Files indexed**: ${indexed}\n`;
-  md += `- **Watcher**: ${watching}\n`;
-  md += `- **Last index run**: ${lastRun}\n`;
-  md += `- **Scan in progress**: ${inProgress}\n`;
-
-  // Append extra fields for compatibility
-  const knownKeys = ['indexed', 'watching', 'lastRun', 'scan_in_progress'];
-  const extraKeys = Object.keys(data).filter(k => !knownKeys.includes(k));
-  if (extraKeys.length > 0) {
-    md += '\n**Additional fields**\n\n';
-    extraKeys.forEach(k => {
-      md += `- **${k}**: ${JSON.stringify(data[k])}\n`;
-    });
-  }
-
-  return { result: md, rawData: data };
-}
-
 export interface DirectoryListingItem {
   path: string;
   name: string;
@@ -159,11 +129,24 @@ export function formatDirectoryListing(payload: {
   path: string;
   items: DirectoryListingItem[];
   hitLimit?: boolean;
+  shellCommand?: string;
+  terminalOutput?: string;
 }): FormattedToolResult {
-  const { path: rootPath, items, hitLimit } = payload;
+  const { path: rootPath, items, hitLimit, shellCommand, terminalOutput } = payload;
   let md = '### Directory listing\n\n';
   md += `- **Directory**: ${toLocalFileMarkdownLink(rootPath)}\n`;
-  md += `- **Entries**: ${items.length}${hitLimit ? ' (limit reached)' : ''}\n\n`;
+  md += `- **Entries**: ${items.length}${hitLimit ? ' (limit reached)' : ''}\n`;
+  if (shellCommand?.trim()) {
+    md += `- **Shell**: \`${shellCommand.trim()}\`\n`;
+  }
+  md += '\n';
+
+  if (terminalOutput?.trim()) {
+    md += '```\n';
+    md += terminalOutput.trimEnd();
+    md += '\n```\n';
+    return { result: md.trimEnd() + '\n', rawData: payload };
+  }
 
   if (items.length === 0) {
     md += '*No entries matched (or directory is empty).*';
@@ -186,16 +169,81 @@ export function formatDirectoryListing(payload: {
   return { result: md.trimEnd() + '\n', rawData: payload };
 }
 
+function appendAssistantActionBlock(md: string, actions: string[]): string {
+  if (!actions.length) return md;
+  const block =
+    '**Assistant action (invoke yourself — do not delegate to the user):**\n\n'
+    + actions.map((a) => `- ${a}`).join('\n')
+    + '\n\n';
+  return block + md;
+}
+
 /**
- * Formats background reindex acknowledgement.
+ * Formats local_get_context JSON into Markdown with model-directed follow-up hints.
  */
-export function formatIndexRescan(data: { queued?: number }): FormattedToolResult {
-  const q = typeof data.queued === 'number' ? data.queued : 0;
-  let md = '### Local index rescan\n\n';
-  md += `- **Started**: Yes\n`;
-  md += `- **Paths queued**: ${q.toLocaleString()}\n\n`;
-  md += '*Paths are re-queued for background indexing.*';
-  return { result: md, rawData: data };
+export function formatGetContext(data: any): FormattedToolResult {
+  if (!data || typeof data !== 'object') return { result: String(data), rawData: data };
+
+  const assistantActions: string[] = [];
+  let md = '### Code context\n\n';
+  md += `- **Query**: ${data.query ?? '(unknown)'}\n`;
+  md += `- **Type**: ${data.type ?? '(unknown)'}\n`;
+
+  if (data.type === 'project_overview' && data.projectOverview) {
+    const po = data.projectOverview;
+    const root = typeof po.root === 'string' ? po.root : '';
+    const indexed = typeof po.indexedFiles === 'number' ? po.indexedFiles : 0;
+    const entries = Array.isArray(po.directory?.entries) ? po.directory.entries : [];
+    const hasSrc = entries.some(
+      (e: { name?: string; kind?: string }) => e?.name === 'src' && e?.kind === 'directory',
+    );
+    const name = po.projectName ?? (root ? pathBase(root) : 'project');
+
+    md += `- **Project**: ${name}\n`;
+    if (root) md += `- **Root**: ${toLocalFileMarkdownLink(root)}\n`;
+    md += `- **Indexed files**: ${indexed.toLocaleString()}\n`;
+    if (typeof po.indexedChunks === 'number') {
+      md += `- **Indexed chunks**: ${po.indexedChunks.toLocaleString()}\n`;
+    }
+
+    if (po.git && typeof po.git === 'object') {
+      const g = po.git;
+      if (g.isRepo) {
+        md += `- **Git branch**: ${g.branch ?? 'unknown'}${g.isDirty ? ' (dirty)' : ''}\n`;
+      }
+    }
+
+    if (hasSrc && indexed < 20 && root) {
+      assistantActions.push(
+        `Only ${indexed} file(s) indexed but \`src/\` exists — use \`local_grep\` and \`local_read_file\` on disk until index tools are available.`,
+      );
+    }
+
+    if (typeof po.architectureMarkdown === 'string' && po.architectureMarkdown.trim()) {
+      md += '\n' + po.architectureMarkdown.trim() + '\n';
+    }
+  } else if (data.type === 'directory_overview' && data.directoryOverview) {
+    const d = data.directoryOverview;
+    if (typeof d.path === 'string') md += `- **Directory**: ${toLocalFileMarkdownLink(d.path)}\n`;
+    if (typeof d.indexedFilesUnderPath === 'number') {
+      md += `- **Indexed files under path**: ${d.indexedFilesUnderPath.toLocaleString()}\n`;
+    }
+    if (typeof data.note === 'string' && data.note.trim()) {
+      md += `\n_${data.note.trim()}_\n`;
+    }
+  } else if (data.type === 'not_found') {
+    if (typeof data.note === 'string' && data.note.trim()) {
+      md += `\n_${data.note.trim()}_\n`;
+    }
+    assistantActions.push(
+      'Path missing on disk — verify spelling with `local_list_directory` or ask the user once; do not paste tool invocations for them to run.',
+    );
+  } else if (typeof data.note === 'string' && data.note.trim()) {
+    md += `\n_${data.note.trim()}_\n`;
+  }
+
+  md = appendAssistantActionBlock(md, assistantActions);
+  return { result: md.trimEnd() + '\n', rawData: data };
 }
 
 /**
@@ -204,17 +252,103 @@ export function formatIndexRescan(data: { queued?: number }): FormattedToolResul
 export function formatReadFile(data: any): FormattedToolResult {
   if (!data || typeof data !== 'object') return { result: String(data), rawData: data };
 
-  const { path, bytes_read, truncated, content } = data;
+  const {
+    path,
+    bytes_read,
+    truncated,
+    content,
+    mode,
+    total_lines,
+    totalLines,
+    line_start,
+    line_end,
+    linesReturned,
+    lines_read,
+    line_count_omitted,
+    truncated_below,
+    status,
+    resolvedVia,
+    truncationNotice,
+    error,
+  } = data;
+
+  const total = typeof total_lines === 'number' ? total_lines : totalLines;
+  const lineStart = line_start ?? linesReturned?.[0];
+  const lineEnd = line_end ?? linesReturned?.[1];
+
+  if (status === 'error' || error) {
+    return { result: String(error ?? content ?? 'Read failed'), rawData: data };
+  }
 
   let md = `### Read file\n\n`;
   md += `- **Path**: ${toLocalFileMarkdownLink(path ?? '')}\n`;
-  md += `- **Bytes read**: ${bytes_read?.toLocaleString() ?? 0}\n`;
-  if (truncated === true) {
-    md += `- **Truncated**: Yes (size limits)\n`;
+
+  if (resolvedVia) {
+    md += `- **Resolved via**: ${resolvedVia}\n`;
   }
-  md += `\n\`\`\`\n${escapeBackticks(content)}\n\`\`\`\n`;
+
+  if (mode === 'lines' || mode === 'index') {
+    if (line_count_omitted) {
+      md += `- **Total lines**: _(file too large to count; limit is ${(50_000_000 / 1_000_000).toFixed(0)} MB)_\n`;
+    } else if (typeof total === 'number') {
+      md += `- **Total lines**: ${total.toLocaleString()}\n`;
+    }
+    if (typeof lineStart === 'number' && typeof lineEnd === 'number') {
+      md += `- **Lines shown**: ${lineStart.toLocaleString()}–${lineEnd.toLocaleString()}\n`;
+    } else if (typeof lineStart === 'number') {
+      md += `- **Start line**: ${lineStart.toLocaleString()}\n`;
+    }
+    if (typeof lines_read === 'number') {
+      md += `- **Lines read**: ${lines_read.toLocaleString()}\n`;
+    }
+    if (truncationNotice) {
+      md += `- **Truncated**: Yes — ${truncationNotice}\n`;
+    } else if (truncated_below === true || status === 'truncated' || truncated === true) {
+      md += `- **Truncated**: Yes (more content available — paginate with \`start_line\` / \`max_lines\`)\n`;
+    }
+  } else if (mode === 'index') {
+    if (typeof total === 'number') {
+      md += `- **Total lines**: ${total.toLocaleString()}\n`;
+    }
+  } else {
+    md += `- **Bytes read**: ${bytes_read?.toLocaleString() ?? 0}\n`;
+    if (line_count_omitted) {
+      md += `- **Total lines**: _(file too large to count)_\n`;
+    } else if (typeof total === 'number') {
+      md += `- **Total lines**: ${total.toLocaleString()}\n`;
+    }
+    if (truncationNotice) {
+      md += `- **Truncated**: Yes — ${truncationNotice}\n`;
+    } else if (truncated === true || status === 'truncated') {
+      md += `- **Truncated**: Yes (byte limit — use \`start_line\` / \`max_lines\` for precise windows)\n`;
+    }
+  }
+
+  const body = typeof content === 'string' ? content : '';
+  md += `\n\`\`\`\n${escapeBackticks(body)}\n\`\`\`\n`;
 
   return { result: md, rawData: data };
+}
+
+/** Format multi-file read_file batch results for the model. */
+export function formatReadFileBatch(batch: { results: any[] }): FormattedToolResult {
+  const results = Array.isArray(batch?.results) ? batch.results : [];
+  if (results.length === 0) {
+    return { result: 'No files read.', rawData: batch };
+  }
+  if (results.length === 1) {
+    return formatReadFile(results[0]);
+  }
+
+  let md = `### Read files (${results.length})\n\n`;
+  results.forEach((item, i) => {
+    const { result } = formatReadFile(item);
+    md += `#### ${i + 1}. ${item.path ?? 'file'}\n\n`;
+    md += result.replace(/^### Read file\n\n/, '');
+    md += '\n';
+  });
+
+  return { result: md.trimEnd() + '\n', rawData: batch };
 }
 
 /**

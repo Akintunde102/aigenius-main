@@ -176,6 +176,27 @@ export type AigeniusDesktopBridgeSurface = {
     options?: { onShellStreamChunk?: (chunk: { stream: string; text: string }) => void },
   ) => Promise<{ ok: boolean; result?: string; rawData?: any; error?: string }>;
   getChatRuntimeContext?: () => Promise<unknown>;
+  getLocalSearchIndexState?: () => Promise<{
+    reportedAtIso: string;
+    mode: 'active_project_warming' | 'active_project_ready' | 'no_active_project';
+    activeProject?: {
+      projectId: string;
+      rootPath: string;
+      indexedFiles: number;
+      indexReady: boolean;
+      scanInProgress: boolean;
+      lastRunMs: number;
+    };
+    catalogs: Array<{
+      projectId: string;
+      rootPath: string;
+      indexedFiles: number;
+      indexReady: boolean;
+      scanInProgress: boolean;
+      lastRunMs: number;
+      isActive: boolean;
+    }>;
+  }>;
   // Local file search
   searchFiles?: (
     term: string,
@@ -185,7 +206,23 @@ export type AigeniusDesktopBridgeSurface = {
     indexed: number;
     watching: boolean;
     lastRun: number;
+    scan_in_progress?: boolean;
+    queue_depth?: number;
+    project_root?: string | null;
+    health?: {
+      indexer_ipc_reachable: boolean;
+      db_integrity: string;
+      last_error: string | null;
+      queue_text_depth: number;
+      queue_structure_depth: number;
+    };
   }>;
+  searchAigeniusIgnore?: (payload: { rootPath: string }) => Promise<{
+    path?: string;
+    content?: string;
+    error?: boolean;
+  }>;
+  searchAigeniusIgnoreSave?: (payload: { rootPath: string; content: string }) => Promise<{ ok?: boolean; error?: boolean }>;
   searchReindex?: (payload: { paths?: string[]; force?: boolean }) => Promise<{ queued: number }>;
   searchRemove?: (filePath: string) => Promise<{ ok: boolean }>;
   searchBrowse?: (

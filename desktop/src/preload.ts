@@ -84,6 +84,28 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
       entries: Array<{ slug: string; name: string; description: string; tags: string[] }>;
     };
   }>,
+  getLocalSearchIndexState: () =>
+    ipcRenderer.invoke('get-local-search-index-state') as Promise<{
+      reportedAtIso: string;
+      mode: 'active_project_warming' | 'active_project_ready' | 'no_active_project';
+      activeProject?: {
+        projectId: string;
+        rootPath: string;
+        indexedFiles: number;
+        indexReady: boolean;
+        scanInProgress: boolean;
+        lastRunMs: number;
+      };
+      catalogs: Array<{
+        projectId: string;
+        rootPath: string;
+        indexedFiles: number;
+        indexReady: boolean;
+        scanInProgress: boolean;
+        lastRunMs: number;
+        isActive: boolean;
+      }>;
+    }>,
   syncToolPermissionPreferences: (prefs: {
     autoApproveAll: boolean;
     requireApprovalByTool: Record<string, boolean>;
@@ -165,7 +187,25 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
       indexed: number;
       watching: boolean;
       lastRun: number;
+      scan_in_progress?: boolean;
+      queue_depth?: number;
+      project_root?: string | null;
+      health?: {
+        indexer_ipc_reachable: boolean;
+        db_integrity: string;
+        last_error: string | null;
+        queue_text_depth: number;
+        queue_structure_depth: number;
+      };
     }>,
+  searchAigeniusIgnore: (payload: { rootPath: string }) =>
+    ipcRenderer.invoke('search:aigeniusignore', payload) as Promise<{
+      path?: string;
+      content?: string;
+      error?: boolean;
+    }>,
+  searchAigeniusIgnoreSave: (payload: { rootPath: string; content: string }) =>
+    ipcRenderer.invoke('search:aigeniusignore', { ...payload, action: 'write' }) as Promise<{ ok?: boolean; error?: boolean }>,
   searchReindex: (payload: { paths?: string[]; force?: boolean }) =>
     ipcRenderer.invoke('search:reindex', payload) as Promise<{ queued: number }>,
   searchRemove: (filePath: string) =>

@@ -2,6 +2,7 @@ import { serve } from '@hono/node-server';
 import path from 'path';
 import os from 'os';
 import { registerSearchModule } from './search/index.js';
+import { resolveSearchWorkerCountFromEnv } from './search/indexer/resolve-worker-count.js';
 import { startVoiceSidecar } from './sidecar/index.js';
 import { Server } from 'socket.io';
 import { createApp } from './app.js';
@@ -35,6 +36,11 @@ const server = serve(
 );
 
 function initSearchModule(): void {
+  if (process.env.AIGENIUS_EXTERNAL_INDEXER === '1') {
+    console.info('[aigenius-desktop-server] External indexer process enabled; HTTP sidecar is read/query only.');
+    return;
+  }
+
   const dbPath = process.env.AIGENIUS_DB_PATH;
 
   if (!dbPath) {
@@ -42,22 +48,29 @@ function initSearchModule(): void {
     return;
   }
 
-  console.info('[aigenius-desktop-server] Initialising search module...');
+  console.info('[aigenius-desktop-server] Initialising search module (in-process)...');
   try {
     const watchPathsRaw = process.env.AIGENIUS_SEARCH_WATCH_PATHS;
+    const projectRoot = process.env.AIGENIUS_PROJECT_ROOT?.trim() || null;
     const watchPaths = watchPathsRaw
       ? watchPathsRaw.split(',').map((p) => p.trim())
-      : [os.homedir()];
+      : projectRoot
+        ? [projectRoot]
+        : [];
 
     const modelsDir =
       process.env.AIGENIUS_MODELS_DIR ??
       path.join(process.cwd(), 'dist', 'search', 'models');
 
     registerSearchModule({
+      projectRoot,
       watchPaths,
+      backgroundWatchPaths:
+        process.env.AIGENIUS_HOMEDIR_INDEX === '0' ? [] : [os.homedir()],
       dbPath,
       modelsDir,
-      workerCount: parseInt(process.env.AIGENIUS_SEARCH_WORKERS ?? '4', 10),
+      userDataPath: process.env.AIGENIUS_USER_DATA_PATH ?? '',
+      workerCount: resolveSearchWorkerCountFromEnv(),
       skipImageSearch: process.env.AIGENIUS_SEARCH_IMAGES !== '1',
     });
     console.info('[aigenius-desktop-server] Search module ready.');
@@ -92,9 +105,10 @@ async function bootstrapAfterListen(): Promise<void> {
     console.info('[aigenius-desktop-server] PocketTTS disabled via AIGENIUS_ENABLE_TTS=0');
   }
 
-  // Schedule sync search init after a delay so Electron can pass waitForHttpOk.
-  // registerSearchModule is CPU/IO heavy and blocks the event loop while it runs.
-  const searchDelayMs = parseInt(process.env.AIGENIUS_SEARCH_INIT_DELAY_MS ?? '3000', 10);
+  // Indexing runs in a dedicated utility process; HTTP sidecar stays responsive.
+  const searchDelayMs = process.env.AIGENIUS_EXTERNAL_INDEXER === '1'
+    ? 0
+    : parseInt(process.env.AIGENIUS_SEARCH_INIT_DELAY_MS ?? '3000', 10);
   setTimeout(() => {
     initSearchModule();
   }, Number.isFinite(searchDelayMs) ? Math.max(0, searchDelayMs) : 3000);

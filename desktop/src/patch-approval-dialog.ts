@@ -4,6 +4,7 @@ import os from 'os';
 import fs from 'fs';
 import type { PatchOp } from './local-apply-patch-types';
 import { approvalDialogWindowChrome } from './approval-dialog-window-chrome';
+import type { BlastRadiusSummary } from './patch-blast-radius-gate';
 
 function patchApprovalHtmlPath(): string {
   if (app.isPackaged) {
@@ -12,7 +13,7 @@ function patchApprovalHtmlPath(): string {
   return path.join(__dirname, '..', 'resources', 'patch-approval.html');
 }
 
-function buildPayload(ops: PatchOp[]): {
+function buildRows(ops: PatchOp[]): {
   count: number;
   rows: Array<{
     variant: 'create' | 'update' | 'delete';
@@ -48,6 +49,32 @@ function buildPayload(ops: PatchOp[]): {
   return { count: ops.length, rows };
 }
 
+function buildPayload(
+  ops: PatchOp[],
+  blastSummary: BlastRadiusSummary | null,
+): {
+  count: number;
+  rows: ReturnType<typeof buildRows>['rows'];
+  blastRadius?: {
+    certain: number;
+    heuristic: number;
+    inferred: number;
+    total: number;
+  };
+} {
+  const base = buildRows(ops);
+  if (!blastSummary || blastSummary.total === 0) return base;
+  return {
+    ...base,
+    blastRadius: {
+      certain: blastSummary.certain,
+      heuristic: blastSummary.heuristic,
+      inferred: blastSummary.inferred,
+      total: blastSummary.total,
+    },
+  };
+}
+
 /**
  * Custom themed confirmation (replaces stock dialog.showMessageBox) so local patch approval
  * matches the AIGenius desktop shell and shows paths in a scannable layout.
@@ -55,14 +82,19 @@ function buildPayload(ops: PatchOp[]): {
 export function showPatchApprovalDialog(
   parent: BrowserWindow | undefined,
   ops: PatchOp[],
+  blastSummary: BlastRadiusSummary | null = null,
 ): Promise<boolean> {
   const htmlPath = patchApprovalHtmlPath();
   if (!fs.existsSync(htmlPath)) {
     return Promise.reject(new Error(`Missing patch approval UI: ${htmlPath}`));
   }
 
-  const payload = buildPayload(ops);
-  const preferredHeight = Math.min(720, 268 + Math.min(ops.length, 14) * 76 + Math.max(0, ops.length - 14) * 52);
+  const payload = buildPayload(ops, blastSummary);
+  const extraBlast = blastSummary?.total ? 56 : 0;
+  const preferredHeight = Math.min(
+    760,
+    268 + extraBlast + Math.min(ops.length, 14) * 76 + Math.max(0, ops.length - 14) * 52,
+  );
   const windowTitle =
     ops.length === 0
       ? 'File changes'

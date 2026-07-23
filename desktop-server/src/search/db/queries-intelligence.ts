@@ -3,6 +3,14 @@ import path from 'path';
 import type Database from 'better-sqlite3';
 import { listSymbolsForFile, searchSymbolsByName } from './queries-chunks.js';
 import { ragQueryHybrid } from '../embedding/hybrid-search.js';
+import {
+  buildDirectoryOverview,
+  buildProjectOverview,
+  isProjectRootDirectory,
+  resolveContextDirectoryPath,
+  type DirectoryOverviewPayload,
+  type ProjectOverviewPayload,
+} from '../project-root-snapshot.js';
 import { cleanFtsTerm, type RagHit } from './queries.js';
 
 export type FileOverview = {
@@ -49,8 +57,17 @@ export type EdgeRef = {
 
 export type ContextResult = {
   query: string;
-  type: 'file' | 'symbol' | 'keyword_match' | 'semantic_match' | 'not_found';
+  type:
+    | 'file'
+    | 'symbol'
+    | 'keyword_match'
+    | 'semantic_match'
+    | 'not_found'
+    | 'project_overview'
+    | 'directory_overview';
   overview?: FileOverview;
+  projectOverview?: ProjectOverviewPayload;
+  directoryOverview?: DirectoryOverviewPayload;
   source?: string;
   matches?: SymbolDetail[] | KeywordMatch[];
   note?: string;
@@ -77,6 +94,70 @@ function fileExists(input: string): boolean {
   } catch {
     return false;
   }
+}
+
+function escapeSqlLikeFragment(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/%/g, '\\%')
+    .replace(/_/g, '\\_');
+}
+
+/** True when input is likely a file path (not a bare symbol name or topic phrase). */
+function looksLikeFilePath(input: string): boolean {
+  const normalized = input.replace(/\\/g, '/');
+  return /\.[A-Za-z0-9]{1,16}$/.test(normalized) || normalized.includes('/');
+}
+
+function isIndexedFile(db: Database.Database, filePath: string): boolean {
+  const row = db.prepare('SELECT 1 AS ok FROM file_index WHERE path = ?').get(filePath) as
+    | { ok: number }
+    | undefined;
+  return Boolean(row?.ok);
+}
+
+/** Resolve repo-relative or absolute paths to an on-disk or indexed absolute path. */
+function resolveContextFilePath(
+  db: Database.Database,
+  input: string,
+  pathPrefix: string,
+): string | null {
+  const trimmed = input.trim();
+  if (!trimmed || !looksLikeFilePath(trimmed)) return null;
+
+  const candidates: string[] = [];
+  if (path.isAbsolute(trimmed)) {
+    candidates.push(path.normalize(trimmed));
+  } else if (pathPrefix) {
+    candidates.push(path.normalize(path.join(pathPrefix, trimmed)));
+  }
+
+  for (const candidate of candidates) {
+    if (fileExists(candidate) || isIndexedFile(db, candidate)) return candidate;
+  }
+
+  const suffix = trimmed.replace(/\\/g, '/').replace(/^\/+/, '');
+  if (!suffix) return candidates[0] ?? null;
+
+  const escaped = escapeSqlLikeFragment(suffix);
+  const normPrefix = pathPrefix ? path.normalize(pathPrefix) : '';
+  const prefixFilter = normPrefix ? 'AND path LIKE ? || \'%\'' : '';
+  const params: unknown[] = [`%/${escaped}`, `%${escaped}`];
+  if (normPrefix) params.push(normPrefix);
+  params.push(1);
+
+  const row = db
+    .prepare(
+      `SELECT path FROM file_index
+       WHERE (REPLACE(path, '\\', '/') LIKE ? ESCAPE '\\'
+              OR REPLACE(path, '\\', '/') LIKE ? ESCAPE '\\')
+       ${prefixFilter}
+       ORDER BY length(path) ASC
+       LIMIT ?`,
+    )
+    .get(...params) as { path: string } | undefined;
+
+  return row?.path ?? candidates[0] ?? null;
 }
 
 function lastIndexedForPath(db: Database.Database, filePath: string): number | null {
@@ -132,14 +213,22 @@ export function getFileOverview(db: Database.Database, filePath: string): FileOv
   };
 }
 
+export type SymbolLineRange = {
+  name: string;
+  kind: string;
+  line_start: number;
+  line_end: number;
+  signature: string;
+};
+
 function getSymbolRow(
   db: Database.Database,
   filePath: string,
   name: string,
-): { id: number; kind: string; name: string; line_start: number; signature: string; confidence: string } | null {
+): { id: number; kind: string; name: string; line_start: number; line_end: number; signature: string; confidence: string } | null {
   const rows = db
     .prepare(
-      `SELECT id, kind, name, line_start, signature, confidence
+      `SELECT id, kind, name, line_start, line_end, signature, confidence
        FROM symbol_index WHERE path = ? AND name = ? AND kind != 'import'
        ORDER BY line_start LIMIT 1`,
     )
@@ -148,10 +237,48 @@ function getSymbolRow(
     kind: string;
     name: string;
     line_start: number;
+    line_end: number;
     signature: string;
     confidence: string;
   }>;
   return rows[0] ?? null;
+}
+
+/** Exact symbol name match in a file (for read_file anchor resolution). */
+export function getSymbolLineRange(
+  db: Database.Database,
+  filePath: string,
+  name: string,
+): SymbolLineRange | null {
+  const row = getSymbolRow(db, filePath, name);
+  if (!row) return null;
+  return {
+    name: row.name,
+    kind: row.kind,
+    line_start: row.line_start,
+    line_end: row.line_end,
+    signature: row.signature,
+  };
+}
+
+/** Smallest enclosing symbol at a 1-based line (for `line:N` anchors). */
+export function findEnclosingSymbolAtLine(
+  db: Database.Database,
+  filePath: string,
+  line: number,
+): SymbolLineRange | null {
+  const safeLine = Math.max(1, Math.floor(line));
+  const row = db
+    .prepare(
+      `SELECT name, kind, line_start, line_end, signature
+       FROM symbol_index
+       WHERE path = ? AND kind != 'import'
+         AND line_start <= ? AND line_end >= ?
+       ORDER BY (line_end - line_start) ASC, line_start ASC
+       LIMIT 1`,
+    )
+    .get(filePath, safeLine, safeLine) as SymbolLineRange | undefined;
+  return row ?? null;
 }
 
 function edgesForSymbol(db: Database.Database, symbolId: number, direction: 'callers' | 'callees'): EdgeRef[] {
@@ -417,23 +544,11 @@ export async function getContext(
     last: number | null;
   };
 
-  if (fileExists(trimmed)) {
-    const result: ContextResult = {
-      query: trimmed,
-      type: 'file',
-      overview: getFileOverview(db, trimmed),
-      indexUpdatedAtMs: statusRow?.last ?? 0,
-    };
-    if (opts.includeSource) {
-      result.source = fs.readFileSync(trimmed, 'utf8');
-    }
-    return result;
-  }
-
   const pathSymbol = trimmed.match(/^(.+):([A-Za-z_$][\w$]*)$/);
   if (pathSymbol) {
     const [, fp, sym] = pathSymbol;
-    const detail = getSymbolDetail(db, fp!, sym!);
+    const resolvedFp = resolveContextFilePath(db, fp!, pathPrefix) ?? fp!;
+    const detail = getSymbolDetail(db, resolvedFp, sym!);
     if (detail) {
       return {
         query: trimmed,
@@ -442,6 +557,43 @@ export async function getContext(
         indexUpdatedAtMs: statusRow?.last ?? 0,
       };
     }
+  }
+
+  const resolvedDir = resolveContextDirectoryPath(trimmed, pathPrefix);
+  if (resolvedDir) {
+    if (isProjectRootDirectory(resolvedDir, pathPrefix)) {
+      return {
+        query: trimmed,
+        type: 'project_overview',
+        projectOverview: buildProjectOverview(db, resolvedDir),
+        indexUpdatedAtMs: statusRow?.last ?? 0,
+      };
+    }
+    return {
+      query: trimmed,
+      type: 'directory_overview',
+      directoryOverview: buildDirectoryOverview(db, resolvedDir),
+      note: 'Subdirectory snapshot — use a file path (e.g. package.json) or topic phrase for symbols.',
+      indexUpdatedAtMs: statusRow?.last ?? 0,
+    };
+  }
+
+  const resolvedFile = resolveContextFilePath(db, trimmed, pathPrefix);
+  if (resolvedFile && (fileExists(resolvedFile) || isIndexedFile(db, resolvedFile))) {
+    const result: ContextResult = {
+      query: trimmed,
+      type: 'file',
+      overview: getFileOverview(db, resolvedFile),
+      indexUpdatedAtMs: statusRow?.last ?? 0,
+    };
+    if (opts.includeSource && fileExists(resolvedFile)) {
+      result.source = fs.readFileSync(resolvedFile, 'utf8');
+    }
+    return result;
+  }
+
+  if (pathSymbol && looksLikeFilePath(pathSymbol[1]!)) {
+    return { query: trimmed, type: 'not_found', indexUpdatedAtMs: statusRow?.last ?? 0 };
   }
 
   let exact = searchSymbolsByName(db, trimmed, pathPrefix, 20);
@@ -472,11 +624,20 @@ export async function getContext(
   }
 
   const keyword = searchSymbolsFts(db, trimmed, pathPrefix, MAX_KEYWORD);
-  if (keyword.length) {
+  if (keyword.length && !resolveContextDirectoryPath(trimmed, pathPrefix)) {
     return {
       query: trimmed,
       type: 'keyword_match',
       matches: keyword,
+      indexUpdatedAtMs: statusRow?.last ?? 0,
+    };
+  }
+
+  if (looksLikeFilePath(trimmed)) {
+    return {
+      query: trimmed,
+      type: 'not_found',
+      note: 'Path not found as file or directory on disk — check path_prefix and spelling.',
       indexUpdatedAtMs: statusRow?.last ?? 0,
     };
   }

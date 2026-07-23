@@ -96,12 +96,24 @@ export interface ToolEvent {
     messageId?: string;
 }
 
+/** Model reasoning / thinking segment within an ordered assistant message event list */
+export interface ThinkingEvent {
+    type: 'thinking';
+    content: string;
+    loading: boolean;
+    timestamp: number;
+    /** Legacy / persistence hint; display order follows `ChatMessage.events` array index. */
+    order?: number;
+    requestId?: string;
+    messageId?: string;
+}
+
 /**
  * Ordered sequence of content events produced by a single assistant turn.
  * When present on a ChatMessage, this is the source of truth for rendering
  * and replaces the parallel streaming_tools / tool_executions fields.
  */
-export type MessageEvent = TextEvent | ToolEvent;
+export type MessageEvent = TextEvent | ToolEvent | ThinkingEvent;
 
 export interface ChatMessage {
     id?: string;

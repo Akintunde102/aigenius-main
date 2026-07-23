@@ -27,6 +27,10 @@ interface SidebarContentProps {
     isSessionActive?: (sessionId: string) => boolean;
     isInitialLoading?: boolean;
     codeProjects?: import("@/lib/calls/code-projects").CodeProject[];
+    activeProjectId?: string | null;
+    onNewChatForProject?: (projectId: string | null) => void;
+    onSelectProject?: (projectId: string | null) => void;
+    onProjectInfo?: (projectId: string) => void;
 }
 
 const SidebarContent = React.memo<SidebarContentProps>(({
@@ -47,6 +51,10 @@ const SidebarContent = React.memo<SidebarContentProps>(({
     isSessionActive,
     isInitialLoading = false,
     codeProjects = [],
+    activeProjectId = null,
+    onNewChatForProject,
+    onSelectProject,
+    onProjectInfo,
 }) => {
     const deferredHistorySearch = React.useDeferredValue(historySearch);
 
@@ -95,6 +103,10 @@ const SidebarContent = React.memo<SidebarContentProps>(({
                         onSessionSelect={handleSessionSelect}
                         isInitialLoading={isInitialLoading}
                         codeProjects={codeProjects}
+                        activeProjectId={activeProjectId}
+                        onNewChatForProject={onNewChatForProject}
+                        onSelectProject={onSelectProject}
+                        onProjectInfo={onProjectInfo}
                     />
                 </div>
 

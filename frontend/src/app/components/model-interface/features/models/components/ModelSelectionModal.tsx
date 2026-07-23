@@ -85,6 +85,7 @@ export const ModelSelectionModal = React.memo(({
   const [isMobile, setIsMobile] = useState(false);
   const [showFilterSortRow, setShowFilterSortRow] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [previewedRecentModel, setPreviewedRecentModel] = useState<Model | null>(null);
 
   // Progressive rendering (removed in favor of virtualization)
   const hasAutoSwitchedRef = React.useRef(false);
@@ -186,15 +187,53 @@ export const ModelSelectionModal = React.memo(({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  const handlePreviewRecentModel = useCallback((model: Model) => {
+    setPreviewedRecentModel(model);
+    if (activeTab !== "all") {
+      setActiveTab("all");
+      setShowFilterSortRow(true);
+    }
+  }, [activeTab, setActiveTab]);
+
   // Reset any inline selection when modal closes
   useEffect(() => {
-    if (!isOpen) setSelectedModelForDetails(null);
+    if (!isOpen) {
+      setSelectedModelForDetails(null);
+      setPreviewedRecentModel(null);
+    }
   }, [isOpen, setSelectedModelForDetails]);
 
   const handleClose = useCallback(() => {
     setSelectedModelForDetails(null);
+    setPreviewedRecentModel(null);
     onClose();
   }, [onClose, setSelectedModelForDetails]);
+
+  const filteredMainModels = useMemo(
+    () => previewedRecentModel
+      ? mainModelsSorted.filter((m) => m.id !== previewedRecentModel.id)
+      : mainModelsSorted,
+    [mainModelsSorted, previewedRecentModel],
+  );
+
+  const filteredOtherModels = useMemo(
+    () => previewedRecentModel
+      ? otherModelsSorted.filter((m) => m.id !== previewedRecentModel.id)
+      : otherModelsSorted,
+    [otherModelsSorted, previewedRecentModel],
+  );
+
+  const allModelSections = useMemo(() => {
+    const sections = [];
+    if (filteredMainModels.length > 0) {
+      sections.push({ title: "Main models", models: filteredMainModels });
+    }
+    if (previewedRecentModel) {
+      sections.push({ title: "Recently picked", models: [previewedRecentModel] });
+    }
+    sections.push({ title: "Others", models: filteredOtherModels });
+    return sections;
+  }, [filteredMainModels, filteredOtherModels, previewedRecentModel]);
 
   // Auto-switch to "all" if favorites are empty
   useEffect(() => {
@@ -261,8 +300,8 @@ export const ModelSelectionModal = React.memo(({
           </div>
           <RecentModelChips
             recentModels={recentModels}
-            selectedModelId={selectedModel?.id}
-            onSelect={sharedCardProps.onSelect}
+            highlightedModelId={previewedRecentModel?.id ?? selectedModel?.id}
+            onPreview={handlePreviewRecentModel}
             isMobile={isMobile}
           />
         </div>
@@ -348,10 +387,7 @@ export const ModelSelectionModal = React.memo(({
               }
               sections={
                 activeTab === "all"
-                  ? [
-                    { title: "Main models", models: mainModelsSorted },
-                    { title: "Others", models: otherModelsSorted },
-                  ]
+                  ? allModelSections
                   : undefined
               }
               emptyState={activeTab === "favorites" ? (

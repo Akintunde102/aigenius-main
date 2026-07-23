@@ -1,4 +1,4 @@
-import { formatRagResults, formatIndexStatus, formatReadFile, formatShellResult } from './tool-formatter';
+import { formatRagResults, formatReadFile, formatReadFileBatch, formatShellResult, formatGetContext } from './tool-formatter';
 
 describe('tool-formatter', () => {
   describe('escapeBackticks (via formatters)', () => {
@@ -61,10 +61,50 @@ describe('tool-formatter', () => {
     });
 
     it('should show truncation warning', () => {
-      const data = { path: '/tmp/test.txt', bytes_read: 10, content: 'trunc', truncated: true };
+      const data = { path: '/tmp/test.txt', bytes_read: 10, content: 'trunc', truncated: true, mode: 'bytes' };
       const { result } = formatReadFile(data);
 
-      expect(result).toContain('- **Truncated**: Yes (size limits)');
+      expect(result).toContain('- **Truncated**: Yes (byte limit');
+    });
+
+    it('surfaces explicit truncationNotice for LLM continuation', () => {
+      const data = {
+        path: 'src/big.ts',
+        mode: 'lines',
+        status: 'truncated',
+        content: '> ⚠ Showing lines 1–100 of 500. Call again with start_line=101\n\n     1\tcode',
+        truncationNotice: 'Showing lines 1–100 of 500. Call again with start_line=101',
+        linesReturned: [1, 100],
+        totalLines: 500,
+        resolvedVia: 'lineRange',
+      };
+      const { result } = formatReadFile(data);
+      expect(result).toContain('start_line=101');
+      expect(result).toContain('- **Resolved via**: lineRange');
+    });
+  });
+
+  describe('formatReadFileBatch', () => {
+    it('formats single result like formatReadFile', () => {
+      const batch = {
+        results: [{ path: 'a.ts', status: 'ok', content: '     1\tconst x = 1', mode: 'lines' }],
+      };
+      const { result } = formatReadFileBatch(batch);
+      expect(result).toContain('### Read file');
+      expect(result).not.toContain('Read files (');
+    });
+
+    it('formats multiple files with numbered sections', () => {
+      const batch = {
+        results: [
+          { path: 'a.ts', status: 'ok', content: 'a', mode: 'lines' },
+          { path: 'b.ts', status: 'ok', content: 'b', mode: 'lines' },
+        ],
+      };
+      const { result } = formatReadFileBatch(batch);
+      expect(result).toContain('### Read files (2)');
+      expect(result).toContain('#### 1. a.ts');
+      expect(result).toContain('#### 2. b.ts');
     });
   });
 
@@ -88,7 +128,7 @@ describe('tool-formatter', () => {
       const data = { hits: [], hit_count: 0, scanned_chunks: 42 };
       const { result } = formatRagResults(data);
 
-      expect(result).toContain('No matches found');
+      expect(result).toContain('local_grep');
       expect(result).toContain('Indexed files**: 42');
     });
 
@@ -106,22 +146,28 @@ describe('tool-formatter', () => {
     });
   });
 
-  describe('formatIndexStatus', () => {
-    it('should format status summary', () => {
+  describe('formatGetContext', () => {
+    it('should surface assistant action when index is incomplete for project with src/', () => {
       const data = {
-        indexed: 1500,
-        watching: true,
-        lastRun: Date.now(),
-        scan_in_progress: false,
+        query: 'C:/Users/test/nobox-website',
+        type: 'project_overview',
+        projectOverview: {
+          root: 'C:\\Users\\test\\nobox-website',
+          projectName: 'nobox-website',
+          directory: {
+            entries: [{ name: 'src', kind: 'directory' }, { name: 'package.json', kind: 'file' }],
+          },
+          indexedFiles: 2,
+          indexedChunks: 2,
+          architectureMarkdown: '## Project architecture\n\nSparse index.',
+        },
       };
 
-      const { result } = formatIndexStatus(data);
+      const { result } = formatGetContext(data);
 
-      expect(result).toContain('### Local index status');
-      expect(result).toContain('- **Files indexed**: 1,500');
-      expect(result).toContain('- **Watcher**: Active');
-      expect(result).toContain('- **Last index run**:');
-      expect(result).toContain('- **Scan in progress**: No');
+      expect(result).toContain('Assistant action');
+      expect(result).toContain('local_grep');
+      expect(result).toContain('Indexed files**: 2');
     });
   });
 });
