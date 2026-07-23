@@ -1,6 +1,6 @@
 /**
  * TypeScript/JavaScript structural indexer via ts-morph.
- * Produces high-confidence symbols and call/import/extends edges.
+ * Produces high-confidence symbols and call/import/extends/type-flow edges.
  */
 import fs from 'fs';
 import path from 'path';
@@ -12,6 +12,7 @@ import {
   type Node as MorphNode,
   type CallExpression,
 } from 'ts-morph';
+import { isTestFilePath, signatureHash } from '../graph/graph-types.js';
 import type { FileIntelligence, IndexedEdge, IndexedSymbol } from './language-indexer.js';
 
 const projectCache = new Map<string, Project>();
@@ -33,7 +34,10 @@ function getProject(filePath: string): Project {
   const tsconfig = findTsConfig(filePath);
   const key = tsconfig ?? path.dirname(filePath);
   let project = projectCache.get(key);
-  if (!project) {
+  if (project) {
+    projectCache.delete(key);
+    projectCache.set(key, project);
+  } else {
     project = tsconfig
       ? new Project({ tsConfigFilePath: tsconfig, skipAddingFilesFromTsConfig: false })
       : new Project({
@@ -46,6 +50,12 @@ function getProject(filePath: string): Project {
           },
         });
     projectCache.set(key, project);
+    if (projectCache.size > 5) {
+      const oldestKey = projectCache.keys().next().value;
+      if (oldestKey !== undefined) {
+        projectCache.delete(oldestKey);
+      }
+    }
   }
   return project;
 }
@@ -83,12 +93,14 @@ function collectSymbols(sf: SourceFile): IndexedSymbol[] {
     const key = `${kind}:${nameNode}:${lineOf(sf, node)}`;
     if (seen.has(key)) continue;
     seen.add(key);
+    const sig = signatureFor(node);
     symbols.push({
       kind,
       name: nameNode,
       lineStart: lineOf(sf, node),
       lineEnd: node.getEndLineNumber(),
-      signature: signatureFor(node),
+      signature: sig,
+      signatureHash: signatureHash(sig),
       confidence: 'high',
     });
   }
@@ -105,23 +117,210 @@ function resolveCalleeName(call: CallExpression): string | null {
   return null;
 }
 
-function collectCallEdges(sf: SourceFile, symbols: IndexedSymbol[]): IndexedEdge[] {
+function resolveCalleeTarget(
+  call: CallExpression,
+): { name: string; path?: string } | null {
+  const textName = resolveCalleeName(call);
+  if (!textName) return null;
+
+  try {
+    const symbol = call.getExpression().getSymbol();
+    const decls = symbol?.getDeclarations() ?? [];
+    if (decls.length > 0) {
+      const decl = decls[0]!;
+      const declSf = decl.getSourceFile();
+      const declPath = declSf.getFilePath();
+      if (Node.isFunctionDeclaration(decl) || Node.isMethodDeclaration(decl)) {
+        return { name: decl.getName() ?? textName.split('.').pop() ?? textName, path: declPath };
+      }
+      if (Node.isVariableDeclaration(decl)) {
+        return { name: decl.getName() ?? textName, path: declPath };
+      }
+      if (Node.isClassDeclaration(decl)) {
+        return { name: decl.getName() ?? textName, path: declPath };
+      }
+      return { name: textName.split('.').pop() ?? textName, path: declPath };
+    }
+  } catch {
+    /* fall through */
+  }
+
+  return { name: textName };
+}
+
+function collectCallEdges(
+  sf: SourceFile,
+  symbols: IndexedSymbol[],
+  filePath: string,
+): IndexedEdge[] {
   const edges: IndexedEdge[] = [];
-  const enclosing = (line: number): IndexedSymbol | undefined =>
-    symbols.find((s) => line >= s.lineStart && line <= s.lineEnd);
+  const isTest = isTestFilePath(filePath);
+  const sortedSymbols = [...symbols].sort((a, b) => a.lineStart - b.lineStart);
+
+  const enclosing = (line: number): IndexedSymbol | undefined => {
+    let lo = 0;
+    let hi = sortedSymbols.length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const s = sortedSymbols[mid]!;
+      if (line < s.lineStart) {
+        hi = mid - 1;
+      } else if (line > s.lineEnd) {
+        lo = mid + 1;
+      } else {
+        return s;
+      }
+    }
+    return undefined;
+  };
 
   for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
-    const callee = resolveCalleeName(call);
-    if (!callee) continue;
+    const target = resolveCalleeTarget(call);
+    if (!target) continue;
     const line = lineOf(sf, call);
     const from = enclosing(line);
+    const edgeKind = isTest ? 'tested_by' : 'calls';
     edges.push({
       fromName: from?.name ?? '__module__',
       fromLine: from?.lineStart ?? line,
-      toName: callee,
-      kind: 'calls',
+      toName: target.name,
+      toPath: target.path,
+      kind: edgeKind,
       line,
-      confidence: 'high',
+      confidence: target.path ? 'high' : 'heuristic',
+    });
+  }
+
+  return edges;
+}
+
+function collectTypeFlowEdges(sf: SourceFile, symbols: IndexedSymbol[]): IndexedEdge[] {
+  const edges: IndexedEdge[] = [];
+
+  for (const fn of sf.getFunctions()) {
+    const name = fn.getName();
+    if (!name) continue;
+    const from = symbols.find((s) => s.name === name && s.lineStart === fn.getStartLineNumber());
+    try {
+      const retType = fn.getReturnType().getText(fn);
+      const named = retType.replace(/<.*>/, '').trim();
+      if (named && !/^(string|number|boolean|void|any|unknown|never|undefined|null)$/i.test(named)) {
+        edges.push({
+          fromName: from?.name ?? name,
+          fromLine: from?.lineStart ?? fn.getStartLineNumber(),
+          toName: named,
+          kind: 'type_flows_into',
+          line: fn.getStartLineNumber(),
+          confidence: 'high',
+        });
+      }
+    } catch {
+      /* optional typing */
+    }
+
+    for (const param of fn.getParameters()) {
+      const typeNode = param.getTypeNode();
+      if (!typeNode) continue;
+      const typeText = typeNode.getText().trim();
+      if (!typeText || /^(string|number|boolean|any)$/i.test(typeText)) continue;
+      edges.push({
+        fromName: typeText,
+        fromLine: fn.getStartLineNumber(),
+        toName: name,
+        kind: 'type_flows_into',
+        line: param.getStartLineNumber(),
+        confidence: 'high',
+      });
+    }
+  }
+
+  for (const iface of sf.getInterfaces()) {
+    const name = iface.getName();
+    for (const prop of iface.getProperties()) {
+      const typeNode = prop.getTypeNode();
+      if (!typeNode) continue;
+      const typeText = typeNode.getText().trim();
+      if (!typeText) continue;
+      edges.push({
+        fromName: typeText,
+        fromLine: prop.getStartLineNumber(),
+        toName: name,
+        kind: 'type_flows_into',
+        line: prop.getStartLineNumber(),
+        confidence: 'high',
+      });
+    }
+  }
+
+  return edges;
+}
+
+function collectNestJsDiEdges(sf: SourceFile): IndexedEdge[] {
+  const edges: IndexedEdge[] = [];
+  const nestDecorators = new Set(['Injectable', 'Controller', 'Resolver', 'Gateway', 'Module']);
+
+  for (const cls of sf.getClasses()) {
+    const decorators = cls.getDecorators().map((d) => d.getName());
+    if (!decorators.some((n) => n && nestDecorators.has(n))) continue;
+    const className = cls.getName();
+    if (!className) continue;
+    const ctor = cls.getConstructors()[0];
+    if (!ctor) continue;
+    for (const param of ctor.getParameters()) {
+      const typeNode = param.getTypeNode();
+      if (!typeNode) continue;
+      const typeName = typeNode.getText().replace(/<.*>/, '').trim();
+      edges.push({
+        fromName: className,
+        fromLine: cls.getStartLineNumber(),
+        toName: typeName,
+        kind: 'depends_on',
+        line: ctor.getStartLineNumber(),
+        confidence: 'heuristic',
+      });
+    }
+  }
+
+  return edges;
+}
+
+function collectReadsWritesEdges(sf: SourceFile, symbols: IndexedSymbol[]): IndexedEdge[] {
+  const edges: IndexedEdge[] = [];
+  const moduleVars = new Set(
+    symbols.filter((s) => s.kind === 'const' && s.lineStart < 200).map((s) => s.name),
+  );
+  if (!moduleVars.size) return edges;
+
+  const sortedSymbols = [...symbols].sort((a, b) => a.lineStart - b.lineStart);
+  const enclosing = (line: number): IndexedSymbol | undefined => {
+    for (const s of sortedSymbols) {
+      if (line >= s.lineStart && line <= s.lineEnd) return s;
+    }
+    return undefined;
+  };
+
+  for (const id of sf.getDescendantsOfKind(SyntaxKind.Identifier)) {
+    const name = id.getText();
+    if (!moduleVars.has(name)) continue;
+    const parent = id.getParent();
+    if (!parent) continue;
+    const line = lineOf(sf, id);
+    const from = enclosing(line);
+    if (!from || from.name === name) continue;
+
+    let kind = 'reads';
+    if (parent.getKind() === SyntaxKind.BinaryExpression) {
+      const bin = parent as { getLeft?: () => MorphNode };
+      if (bin.getLeft?.() === id) kind = 'writes';
+    }
+
+    edges.push({
+      fromName: from.name,
+      fromLine: from.lineStart,
+      toName: name,
+      kind,
+      line,
+      confidence: 'heuristic',
     });
   }
 
@@ -229,9 +428,12 @@ export function indexTypeScript(filePath: string, content: string): FileIntellig
 
   const symbols = collectSymbols(sf);
   const edges = [
-    ...collectCallEdges(sf, symbols),
+    ...collectCallEdges(sf, symbols, absPath),
     ...collectInheritanceEdges(sf, symbols),
     ...collectReferenceEdges(sf, symbols),
+    ...collectTypeFlowEdges(sf, symbols),
+    ...collectNestJsDiEdges(sf),
+    ...collectReadsWritesEdges(sf, symbols),
   ];
 
   return {

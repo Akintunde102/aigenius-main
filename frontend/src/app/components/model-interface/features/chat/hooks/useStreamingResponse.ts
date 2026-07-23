@@ -2,6 +2,12 @@ import { useCallback, useRef } from 'react';
 import { ChatMessage, MessageEvent, TextEvent, ToolEvent } from '@/app/components/model-interface/shared/types';
 import { OpenRouterMessage, ToolStreamEvent } from '@/nobox-client/functions/access-model';
 import {
+    appendThinkingChunk,
+    extractReasoningChunk,
+    finalizeAllThinkingEvents,
+    finalizeOpenThinkingEvent,
+} from '../utils/thinkingEvent.utils';
+import {
     UseStreamingResponseProps,
     ProcessedContent,
     ChatCompletionRequestOverrides,
@@ -273,6 +279,7 @@ export function useStreamingResponse({
                             assistantMessageId,
                             assistantTimestamp
                         );
+                        finalizeOpenThinkingEvent(events);
                         events.push({
                             type: 'tool',
                             tool: event.tool,
@@ -293,6 +300,7 @@ export function useStreamingResponse({
                     }
 
                     if (event.type === 'start') {
+                        finalizeOpenThinkingEvent(events);
                         events.push({
                             type: 'tool',
                             tool: event.tool,
@@ -352,11 +360,18 @@ export function useStreamingResponse({
                         requestOverrides?.draftEpoch,
                     );
 
+                    // Track reasoning before visible text so interleaving matches stream order.
+                    const reasoningChunk = extractReasoningChunk(reasoning, reasoningDetails);
+                    if (reasoningChunk) {
+                        appendThinkingChunk(events, reasoningChunk);
+                    }
+
                     // Track this text chunk in the ordered event log.
                     const textStr = typeof processedContent === 'string'
                         ? processedContent
                         : contentToDisplayText(processedContent as any);
                     if (textStr) {
+                        finalizeOpenThinkingEvent(events);
                         const lastEvt = events.length > 0 ? events[events.length - 1] : null;
                         if (lastEvt?.type === 'text') {
                             (lastEvt as TextEvent).content += textStr;
@@ -411,6 +426,9 @@ export function useStreamingResponse({
                     }
                 },
             });
+
+            finalizeAllThinkingEvents(events);
+            patchEventsOnLastMessage();
 
             // Force a final flush so nothing is missed.
             flushUiUpdate(true);

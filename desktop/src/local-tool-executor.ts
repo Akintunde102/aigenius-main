@@ -11,21 +11,31 @@ import path from 'path';
 import os from 'os';
 import {
   formatDirectoryListing,
-  formatIndexRescan,
-  formatIndexStatus,
+  formatGetContext,
   formatRagResults,
   formatReadFile,
+  formatReadFileBatch,
   formatShellResult,
 } from './utils/tool-formatter';
 import { isIgnored } from './utils/exemptions';
+import { listDirectoryViaShell } from './utils/list-directory-via-shell';
+import { resolveShellProcessClose } from './utils/shell-process-close';
 import { loopbackHttpOrigin } from './loopback-host';
 import { shouldRequireToolApproval, normalizeDesktopToolId, TOOL_PERMISSION_CATALOG } from './tool-permission-preferences';
 import { getActiveCodeProjectRootPath } from './active-code-project';
 import { extractSymbolOutline } from './symbol-outline';
 import { runGitDiff, runGitStatus } from './local-git';
 import { runFindReferences } from './local-find-references';
+import { runGrep } from './local-grep';
 import { runGoToDefinition } from './local-lsp';
+import { executeReadFile } from './utils/read-file';
+import {
+  registerRagHitsForPreview,
+  registerReadFileBatchForPreview,
+  registerAbsolutePathForPreview,
+} from './utils/register-preview-paths';
 import { formatEditSessionHint, getTouchedFilesSnapshot } from './edit-session';
+import { recordBlastRadiusCheck } from './patch-blast-radius-gate';
 import { applyEditorDefaultsToToolArgs } from './active-editor-main';
 import { sidecarFetch } from './sidecar-fetch';
 
@@ -33,27 +43,7 @@ const MAX_CMD_LEN = 64_000;
 const MAX_SHELL_OUT = 512 * 1024;
 const SHELL_APPROVAL_FALLBACK_PREVIEW_MAX = 2000;
 
-/**
- * Maps child_process `close` (code, signal) to a numeric exit code and optional stderr suffix.
- */
-export function resolveShellProcessClose(
-  code: number | null,
-  signal: NodeJS.Signals | null,
-): { exitCode: number; stderrSuffix: string } {
-  if (typeof code === 'number') {
-    return { exitCode: code, stderrSuffix: '' };
-  }
-  if (signal) {
-    return {
-      exitCode: 1,
-      stderrSuffix: `\n[Process terminated by signal: ${signal}]`,
-    };
-  }
-  return {
-    exitCode: 1,
-    stderrSuffix: '\n[Process exited with unknown status]',
-  };
-}
+export { resolveShellProcessClose } from './utils/shell-process-close';
 
 function buildShellApprovalFallbackDetail(command: string): string {
   const truncated = command.length > SHELL_APPROVAL_FALLBACK_PREVIEW_MAX;
@@ -127,6 +117,7 @@ export async function runLocalDesktopTool(
   shellStreamId?: string,
 ): Promise<{ ok: true; result: string; rawData?: any } | { ok: false; error: string }> {
   const win = resolveBrowserWindowForIpcSender(sender);
+  tool = normalizeDesktopToolId(tool);
 
   if (shouldRequireToolApproval(tool) && !toolHasDedicatedApprovalUi(tool)) {
     const approved = await confirmGenericToolExecution(win, tool);
@@ -168,68 +159,13 @@ export async function runLocalDesktopTool(
           throw new Error(`Sidecar returned ${res.status}: ${body}`);
         }
         const data = await res.json();
+        registerRagHitsForPreview(data.hits);
         const formatted = formatRagResults(data);
         return { ok: true, result: formatted.result, rawData: formatted.rawData };
       } catch (e) {
         return {
           ok: false,
           error: e instanceof Error ? e.message : 'Search service unavailable',
-        };
-      }
-    }
-    case 'local_index_status': {
-      try {
-        const extensions = Array.isArray(rawArgs.extensions) ? rawArgs.extensions : undefined;
-        const res = await sidecarFetch(`${SERVER_URL}/search/status`, {
-          headers: sidecarAuthHeaders(),
-        }, 10_000);
-        if (!res.ok) {
-          const body = await res.text();
-          console.error('[aigenius-desktop][mini-server] /search/status error:', res.status, body);
-          throw new Error(`Sidecar returned ${res.status}: ${body}`);
-        }
-        const status = await res.json();
-        const formatted = formatIndexStatus({
-          ...status,
-          scan_in_progress: Boolean(status.scan_in_progress),
-        });
-        return {
-          ok: true,
-          result: formatted.result,
-          rawData: formatted.rawData,
-        };
-      } catch (e) {
-        return {
-          ok: false,
-          error: e instanceof Error ? e.message : 'Search service unavailable',
-        };
-      }
-    }
-    case 'local_index_rescan': {
-      try {
-        const p = typeof rawArgs.path === 'string' ? rawArgs.path : undefined;
-        const extensions = Array.isArray(rawArgs.extensions) ? rawArgs.extensions : undefined;
-        const res = await sidecarFetch(`${SERVER_URL}/search/reindex`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...sidecarAuthHeaders() },
-          body: JSON.stringify({ paths: p ? [p] : undefined }),
-        });
-        if (!res.ok) {
-          const body = await res.text();
-          console.error('[aigenius-desktop][mini-server] /search/reindex error:', res.status, body);
-          throw new Error(`Sidecar returned ${res.status}: ${body}`);
-        }
-        const data = await res.json();
-        const formatted = formatIndexRescan({ queued: data.queued });
-        return {
-          ok: true,
-          result: formatted.result,
-          rawData: formatted.rawData,
-        };
-      } catch (e) {
-        return {
-          ok: false,
-          error: e instanceof Error ? e.message : 'Search module unavailable',
         };
       }
     }
@@ -349,7 +285,8 @@ export async function runLocalDesktopTool(
           return { ok: false, error: `Sidecar returned ${res.status}` };
         }
         const data = await res.json();
-        return { ok: true, result: JSON.stringify(data, null, 2), rawData: data };
+        const formatted = formatGetContext(data);
+        return { ok: true, result: formatted.result, rawData: formatted.rawData };
       } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : 'get_context failed' };
       }
@@ -396,6 +333,128 @@ export async function runLocalDesktopTool(
         return { ok: false, error: e instanceof Error ? e.message : 'import blast radius failed' };
       }
     }
+    case 'local_grep':
+      return runGrep(rawArgs);
+    case 'local_find_callers': {
+      try {
+        const args = applyEditorDefaultsToToolArgs(rawArgs, { symbol: true, path: true });
+        const pathPrefix =
+          typeof args.path_prefix === 'string' && args.path_prefix.trim()
+            ? args.path_prefix.trim()
+            : getActiveCodeProjectRootPath() ?? '';
+        const qualifiedName =
+          typeof args.qualified_name === 'string' && args.qualified_name.trim()
+            ? args.qualified_name.trim()
+            : typeof args.path === 'string' && typeof args.symbol === 'string'
+              ? `${args.path}#${args.symbol}`
+              : '';
+        if (!qualifiedName) {
+          return { ok: false, error: 'qualified_name or path+symbol required' };
+        }
+        const params = new URLSearchParams({
+          qualified_name: qualifiedName,
+          path_prefix: pathPrefix,
+          maxDepth: String(typeof args.max_depth === 'number' ? args.max_depth : 1),
+          min_confidence: typeof args.min_confidence === 'string' ? args.min_confidence : 'static-heuristic',
+        });
+        const res = await sidecarFetch(`${SERVER_URL}/search/find-callers?${params}`, {
+          headers: sidecarAuthHeaders(),
+        });
+        if (!res.ok) return { ok: false, error: `Sidecar returned ${res.status}` };
+        const data = await res.json();
+        return { ok: true, result: data.outline ?? JSON.stringify(data, null, 2), rawData: data };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : 'find_callers failed' };
+      }
+    }
+    case 'local_trace_call_chain': {
+      try {
+        const args = applyEditorDefaultsToToolArgs(rawArgs, { symbol: true, path: true });
+        const filePath = typeof args.path === 'string' ? args.path.trim() : '';
+        const name = typeof args.symbol === 'string' ? args.symbol.trim() : '';
+        if (!filePath || !name) return { ok: false, error: 'path and symbol required' };
+        const params = new URLSearchParams({
+          path: filePath,
+          name,
+          maxDepth: String(typeof args.max_depth === 'number' ? args.max_depth : 4),
+        });
+        const res = await sidecarFetch(`${SERVER_URL}/search/call-chain?${params}`, {
+          headers: sidecarAuthHeaders(),
+        });
+        if (!res.ok) return { ok: false, error: `Sidecar returned ${res.status}` };
+        const data = await res.json();
+        const chain = Array.isArray(data.chain) ? data.chain : [];
+        const body = chain.length ? chain.map((s: string) => `- ${s}`).join('\n') : 'No call chain found.';
+        const trunc = data.truncated ? '\n\n_(truncated at max depth)_' : '';
+        return { ok: true, result: `# Call chain: ${filePath}#${name}\n\n${body}${trunc}`, rawData: data };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : 'trace_call_chain failed' };
+      }
+    }
+    case 'local_symbol_blast_radius': {
+      try {
+        const args = applyEditorDefaultsToToolArgs(rawArgs, { symbol: true, path: true });
+        const pathPrefix =
+          typeof args.path_prefix === 'string' && args.path_prefix.trim()
+            ? args.path_prefix.trim()
+            : getActiveCodeProjectRootPath() ?? '';
+        const qualifiedName =
+          typeof args.qualified_name === 'string' && args.qualified_name.trim()
+            ? args.qualified_name.trim()
+            : typeof args.path === 'string' && typeof args.symbol === 'string'
+              ? `${args.path}#${args.symbol}`
+              : '';
+        if (!qualifiedName) {
+          return { ok: false, error: 'qualified_name or path+symbol required' };
+        }
+        const res = await sidecarFetch(`${SERVER_URL}/search/symbol-blast-radius`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...sidecarAuthHeaders() },
+          body: JSON.stringify({
+            qualified_name: qualifiedName,
+            change_type: typeof args.change_type === 'string' ? args.change_type : 'signature_change',
+            path_prefix: pathPrefix,
+            max_depth: typeof args.max_depth === 'number' ? args.max_depth : 2,
+          }),
+        });
+        if (!res.ok) return { ok: false, error: `Sidecar returned ${res.status}` };
+        const data = await res.json();
+        const keys: string[] = [qualifiedName];
+        if (typeof args.path === 'string') keys.push(args.path);
+        recordBlastRadiusCheck(keys);
+        return { ok: true, result: data.outline ?? JSON.stringify(data, null, 2), rawData: data };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : 'symbol_blast_radius failed' };
+      }
+    }
+    case 'local_type_flow_trace': {
+      try {
+        const typeName =
+          typeof rawArgs.type_name === 'string'
+            ? rawArgs.type_name.trim()
+            : typeof rawArgs.symbol === 'string'
+              ? rawArgs.symbol.trim()
+              : '';
+        if (!typeName) return { ok: false, error: 'type_name required' };
+        const pathPrefix =
+          typeof rawArgs.path_prefix === 'string' && rawArgs.path_prefix.trim()
+            ? rawArgs.path_prefix.trim()
+            : getActiveCodeProjectRootPath() ?? '';
+        const params = new URLSearchParams({
+          type_name: typeName,
+          direction: typeof rawArgs.direction === 'string' ? rawArgs.direction : 'both',
+          path_prefix: pathPrefix,
+        });
+        const res = await sidecarFetch(`${SERVER_URL}/search/type-flow?${params}`, {
+          headers: sidecarAuthHeaders(),
+        });
+        if (!res.ok) return { ok: false, error: `Sidecar returned ${res.status}` };
+        const data = await res.json();
+        return { ok: true, result: data.outline ?? JSON.stringify(data, null, 2), rawData: data };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : 'type_flow_trace failed' };
+      }
+    }
     case 'local_retrieval_memory_get':
       try {
         return await getRetrievalMemoryBySlugFromTool(rawArgs);
@@ -412,7 +471,11 @@ export async function runLocalDesktopTool(
       try {
         const p = typeof rawArgs.path === 'string' ? rawArgs.path : '';
         if (!p) return { ok: false, error: 'Missing path' };
+        if (!path.isAbsolute(p)) {
+          return { ok: false, error: 'path must be an absolute path' };
+        }
         await shell.openPath(p);
+        registerAbsolutePathForPreview(p);
         return { ok: true, result: 'File opened in OS' };
       } catch (e: any) {
         return { ok: false, error: e.message };
@@ -682,36 +745,15 @@ async function runShell(
 async function readBoundedFile(
   args: Record<string, unknown>,
 ): Promise<{ ok: true; result: string; rawData?: any } | { ok: false; error: string }> {
-  const p = typeof args.path === 'string' ? args.path : '';
-  if (!p || !path.isAbsolute(p)) {
-    return { ok: false, error: 'path must be an absolute path' };
-  }
-  const offset = typeof args.offset === 'number' && args.offset >= 0 ? args.offset : 0;
-  const maxBytes = typeof args.max_bytes === 'number'
-    ? Math.min(Math.max(1, args.max_bytes), 2_000_000)
-    : 65_536;
   try {
-    const fh = await fs.open(p, 'r');
-    try {
-      const buf = Buffer.alloc(maxBytes);
-      const { bytesRead } = await fh.read(buf, 0, maxBytes, offset);
-      const slice = buf.subarray(0, bytesRead);
-      const text = slice.toString('utf8');
-      const formatted = formatReadFile({
-        path: p,
-        offset,
-        bytes_read: bytesRead,
-        truncated: bytesRead === maxBytes,
-        content: text,
-      });
-      return {
-        ok: true,
-        result: formatted.result,
-        rawData: formatted.rawData,
-      };
-    } finally {
-      await fh.close();
+    const batch = await executeReadFile(args);
+    registerReadFileBatchForPreview(batch.results);
+    const firstError = batch.results.find((r) => r.status === 'error');
+    if (batch.results.length === 1 && firstError) {
+      return { ok: false, error: firstError.error ?? firstError.content };
     }
+    const formatted = formatReadFileBatch(batch);
+    return { ok: true, result: formatted.result, rawData: formatted.rawData };
   } catch (e: unknown) {
     return { ok: false, error: e instanceof Error ? e.message : 'read failed' };
   }
@@ -725,6 +767,7 @@ async function listLocalDirectory(
     return { ok: false, error: 'path must be an absolute directory path' };
   }
 
+  const command = typeof args.command === 'string' ? args.command.trim() : '';
   const recursive = !!args.recursive;
   const extensions = Array.isArray(args.extensions)
     ? (args.extensions as string[]).map(e => e.toLowerCase().replace(/^\./, ''))
@@ -733,26 +776,44 @@ async function listLocalDirectory(
 
   try {
     const results: Array<{ path: string; name: string; isDir: boolean; size?: number; mtime?: number }> = [];
+    let shellCommand = '';
+    let terminalOutput: string | undefined;
+    let parseRejected = false;
 
     async function walk(currentPath: string) {
       if (results.length >= limit) return;
 
-      const entries = await fs.readdir(currentPath, { withFileTypes: true });
-      for (const entry of entries) {
+      const remaining = limit - results.length;
+      const listing = await listDirectoryViaShell(currentPath, {
+        limit: remaining,
+        command: command || undefined,
+      });
+      if (!shellCommand) {
+        shellCommand = listing.shellCommand;
+      }
+      if (listing.terminalOutput) {
+        terminalOutput = listing.terminalOutput;
+      }
+      if (listing.parseRejected) {
+        parseRejected = true;
+      }
+
+      if (!listing.structured) {
+        return;
+      }
+
+      for (const entry of listing.items) {
         if (results.length >= limit) break;
 
-        const fullPath = path.join(currentPath, entry.name);
-
-        // Skip common noise folders if we're not explicitly in them
-        if (isIgnored(fullPath)) {
+        if (isIgnored(entry.path)) {
           continue;
         }
 
-        if (entry.isDirectory()) {
-          results.push({ path: fullPath, name: entry.name, isDir: true });
-          if (recursive) {
+        if (entry.isDir) {
+          results.push({ path: entry.path, name: entry.name, isDir: true });
+          if (recursive && !command) {
             try {
-              await walk(fullPath);
+              await walk(entry.path);
             } catch {
               // Skip directories we can't access
             }
@@ -760,15 +821,13 @@ async function listLocalDirectory(
         } else {
           const ext = path.extname(entry.name).toLowerCase().replace(/^\./, '');
           if (!extensions || extensions.includes(ext)) {
-            let size = 0;
-            let mtime = 0;
-            try {
-              const stat = await fs.stat(fullPath);
-              size = stat.size;
-              mtime = Math.floor(stat.mtimeMs);
-            } catch { }
-
-            results.push({ path: fullPath, name: entry.name, isDir: false, size, mtime });
+            results.push({
+              path: entry.path,
+              name: entry.name,
+              isDir: false,
+              size: entry.size,
+              mtime: entry.mtime,
+            });
           }
         }
       }
@@ -776,8 +835,37 @@ async function listLocalDirectory(
 
     await walk(dirPath);
 
+    if (command && parseRejected) {
+      return {
+        ok: false,
+        error:
+          'Directory listing failed: shell output could not be parsed (table headers like `Name`, `----`, or `Mode` detected). '
+          + 'Retry `local_list_directory` with only `{ path: "<absolute directory>" }` and omit `command`.',
+      };
+    }
+
+    if (command && terminalOutput && results.length === 0) {
+      const formatted = formatDirectoryListing({
+        path: dirPath,
+        items: [],
+        shellCommand,
+        terminalOutput,
+      });
+      return {
+        ok: true,
+        result: formatted.result,
+        rawData: formatted.rawData,
+      };
+    }
+
     const hitLimit = results.length >= limit;
-    const formatted = formatDirectoryListing({ path: dirPath, items: results, hitLimit });
+    const formatted = formatDirectoryListing({
+      path: dirPath,
+      items: results,
+      hitLimit,
+      shellCommand,
+      terminalOutput,
+    });
     return {
       ok: true,
       result: formatted.result,

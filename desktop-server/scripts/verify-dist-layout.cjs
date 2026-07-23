@@ -10,6 +10,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const required = [
   path.join(root, 'dist', 'index.js'),
+  path.join(root, 'dist', 'indexer-main.js'),
   path.join(root, 'dist', 'python', 'voice_sidecar.py'),
   path.join(root, 'dist', 'python', 'voice_sidecar_lib', '__init__.py'),
   path.join(root, 'dist', 'sidecar', 'index.js'),

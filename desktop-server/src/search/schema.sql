@@ -17,7 +17,8 @@ CREATE VIRTUAL TABLE IF NOT EXISTS file_search USING fts5(
   extension UNINDEXED,
   content=file_index,
   content_rowid=rowid,
-  tokenize='unicode61 remove_diacritics 1'
+  tokenize='unicode61 remove_diacritics 1',
+  prefix='2 3 4'
 );
 
 -- Keep FTS index consistent with file_index

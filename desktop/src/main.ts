@@ -19,6 +19,7 @@ import {
 } from 'electron';
 import { runLocalDesktopTool } from './local-tool-executor';
 import { getChatRuntimeContextForIpc, USER_HOME_DIR_AT_STARTUP } from './chat-runtime-context';
+import { fetchLocalSearchIndexState } from './local-search-index-state';
 import {
   loadToolPermissionPreferences,
   applySyncedToolPermissionPreferences,
@@ -41,6 +42,9 @@ import { DEV_LOOPBACK_HOST, loopbackHttpUrl } from './loopback-host';
 import { setActiveCodeProjectIndex } from './active-code-project';
 import { refreshProjectArchitectureMemory } from './project-architecture-memory';
 import { setMainActiveEditor } from './active-editor-main';
+import { startIndexerUtilityProcess, markIndexerAppQuitting } from './indexer-utility-process';
+import { saveLastCodeProject } from './last-code-project';
+import net from 'net';
 
 function normalizeRendererFilesystemPath(filePath: string): string {
   let normalizedPath = filePath;
@@ -54,6 +58,7 @@ function normalizeRendererFilesystemPath(filePath: string): string {
 }
 
 const MINI_SERVER_PORT = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
+const INDEXER_IPC_PORT = process.env.AIGENIUS_INDEXER_IPC_PORT ?? '18012';
 const FRONTEND_PORT = resolveFrontendPort();
 /** Secure token for local sidecar communication (respect pre-set env for external sidecar / Tilt). */
 const SECRET_TOKEN =
@@ -488,6 +493,63 @@ function createMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+function desktopIndexerEntry(): string {
+  if (app.isPackaged) {
+    return path.join(desktopServerDir(), 'indexer-main.js');
+  }
+  return path.join(desktopServerDir(), 'dist', 'indexer-main.js');
+}
+
+async function waitForIndexerIpc(port: string, timeoutMs = 60_000): Promise<void> {
+  const host = '127.0.0.1';
+  const portNum = Number.parseInt(port, 10);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const ok = await new Promise<boolean>((resolve) => {
+      const socket = net.createConnection({ host, port: portNum }, () => {
+        const payload = JSON.stringify({ id: 'ping', op: 'ping' });
+        socket.write(`${payload}\n`);
+      });
+      let buffer = '';
+      socket.on('data', (chunk) => {
+        buffer += chunk.toString('utf8');
+        if (buffer.includes('\n')) {
+          socket.end();
+          resolve(true);
+        }
+      });
+      socket.on('error', () => resolve(false));
+      setTimeout(() => {
+        socket.destroy();
+        resolve(false);
+      }, 2_000);
+    });
+    if (ok) return;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`Indexer IPC not ready on ${host}:${port} after ${timeoutMs}ms`);
+}
+
+async function startIndexerEarly(userDataPath: string, modelsDir: string, token: string, logsDir: string): Promise<void> {
+  if (process.env.AIGENIUS_EXTERNAL_INDEXER === '0') {
+    return;
+  }
+  const entry = desktopIndexerEntry();
+  if (!fs.existsSync(entry)) {
+    console.warn('[aigenius-desktop] Indexer entry missing; skipping utility process:', entry);
+    return;
+  }
+  startIndexerUtilityProcess({
+    desktopServerDir: desktopServerDir(),
+    userDataPath,
+    modelsDir,
+    secretToken: token,
+    ipcPort: INDEXER_IPC_PORT,
+    logsDir,
+  });
+  await waitForIndexerIpc(INDEXER_IPC_PORT, 90_000);
+}
+
 async function startBackendProcesses(): Promise<void> {
   const miniPort = MINI_SERVER_PORT;
   const serverEntry = desktopServerEntry();
@@ -514,8 +576,8 @@ async function startBackendProcesses(): Promise<void> {
         ...(process.env.AIGENIUS_SKIP_SEARCH === '1' ? {} : { AIGENIUS_DB_PATH: dbPath }),
         AIGENIUS_MODELS_DIR: modelsDir,
         AIGENIUS_TREE_SITTER: '1',
-        AIGENIUS_SEARCH_WORKERS: '1',
-        AIGENIUS_SEARCH_IMAGES: process.env.AIGENIUS_SEARCH_IMAGES || '1',
+        AIGENIUS_EXTERNAL_INDEXER: process.env.AIGENIUS_EXTERNAL_INDEXER === '0' ? '0' : '1',
+        AIGENIUS_INDEXER_IPC_PORT: INDEXER_IPC_PORT,
         AIGENIUS_SECRET_TOKEN: token,
       },
       logPath: path.join(logsDir, 'mini-server.log'),
@@ -523,13 +585,6 @@ async function startBackendProcesses(): Promise<void> {
   } else {
     console.info('[aigenius-desktop] Using external mini-server (Docker). Skipping local spawn.');
   }
-
-
-  await waitForHttpOk(
-    loopbackHttpUrl(miniPort, '/health'),
-    60_000,
-    1000,
-  );
 
   if (app.isPackaged) {
     const nextRoot = nextStandaloneDir();
@@ -546,10 +601,15 @@ async function startBackendProcesses(): Promise<void> {
     });
   }
 
-  // Dev: Next must already be running (e.g. `npm run dev` starts it in parallel). Packaged: we
-  // spawned standalone above. Avoid loadURL before the UI is reachable (ERR_CONNECTION_REFUSED).
+  // Dev: Next must already be running (Tilt `web` resource). Wait for UI before the indexer
+  // loads Whisper / tree-sitter and competes for CPU during first compile.
   const frontendWaitMs = app.isPackaged ? 120_000 : 180_000;
-  await waitForFrontendPageReady(FRONTEND_URL, frontendWaitMs, 400);
+  await Promise.all([
+    waitForHttpOk(loopbackHttpUrl(miniPort, '/health'), 60_000, 1000),
+    waitForFrontendPageReady(FRONTEND_URL, frontendWaitMs, 400),
+  ]);
+
+  await startIndexerEarly(userDataPath, modelsDir, token, logsDir);
 }
 
 /**
@@ -701,6 +761,7 @@ if (!gotLock) {
   });
 
   app.on('before-quit', (event) => {
+    markIndexerAppQuitting();
     // Hold the quit so the sidecar has time to flush the SQLite WAL checkpoint.
     // We prevent default, send the shutdown signal, wait for the response (or a
     // 2 s hard deadline), kill the child processes, then re-trigger quit.
@@ -888,6 +949,8 @@ if (!gotLock) {
     }
   });
 
+  ipcMain.handle('get-local-search-index-state', async () => fetchLocalSearchIndexState());
+
   ipcMain.handle('get-chat-runtime-context', async () => {
     console.log('[aigenius-desktop][ipc] get-chat-runtime-context started');
     try {
@@ -959,6 +1022,11 @@ if (!gotLock) {
         return { ok: true };
       }
 
+      saveLastCodeProject(app.getPath('userData'), {
+        projectId: payload.projectId,
+        rootPath: payload.rootPath,
+      });
+
       try {
         const port = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
         const token = process.env.AIGENIUS_SECRET_TOKEN;
@@ -989,7 +1057,7 @@ if (!gotLock) {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ rootPath: payload.rootPath, force: true }),
+          body: JSON.stringify({ rootPath: payload.rootPath, force: false }),
         });
         if (!res.ok) {
           console.warn('[aigenius-desktop] index-project returned', res.status);
@@ -1002,16 +1070,6 @@ if (!gotLock) {
             payload.rootPath,
             path.basename(payload.rootPath) || payload.projectId,
           );
-          setTimeout(() => {
-            void fetch(loopbackHttpUrl(port, '/search/embed-backfill'), {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ pathPrefix: payload.rootPath, limit: 2000 }),
-            }).catch(() => undefined);
-          }, 25_000).unref?.();
         }
 
         return { ok: true };

@@ -53,57 +53,107 @@ export function groupSidebarSessions(
 export type ProjectSidebarBucket = {
   projectId: string | null;
   label: string;
-  sessions: GroupedSidebarSessions;
+  /** Flat list sorted by recency (no nested section headers). */
+  sessions: ChatSession[];
+  /** Includes the open-now chat when it belongs to this project. */
+  conversationCount: number;
+  /** True when the pinned open-now chat is assigned to this project. */
+  hasActiveSession: boolean;
 };
 
+export type GroupSidebarSessionsByProjectOptions = {
+  /** Session shown in the Open now section — excluded from bucket rows. */
+  activeSessionId?: string | null;
+  /** Fallback project for the active session when codeProjectId is not persisted yet. */
+  activeProjectId?: string | null;
+};
+
+function resolveSessionProjectId(
+  session: ChatSession,
+  opts: GroupSidebarSessionsByProjectOptions,
+): string | null {
+  if (session.codeProjectId) return session.codeProjectId;
+  const sessionId = session.id ?? "";
+  if (
+    opts.activeSessionId
+    && sessionId === opts.activeSessionId
+    && opts.activeProjectId
+  ) {
+    return opts.activeProjectId;
+  }
+  return null;
+}
+
+/** Most recently active first. */
+export function sortSidebarSessions(sessions: ChatSession[]): ChatSession[] {
+  return [...sessions].sort(
+    (a, b) => lastMessageTimestamp(b) - lastMessageTimestamp(a),
+  );
+}
+
 /**
- * Group sessions under project headers, then starred/recent/earlier within each.
+ * Group sessions under project headers. General only appears when unassigned chats exist.
  */
 export function groupSidebarSessionsByProject(
   sessions: ChatSession[],
   projects: CodeProject[],
-  nowMs: number = Date.now(),
+  opts: GroupSidebarSessionsByProjectOptions = {},
 ): ProjectSidebarBucket[] {
   const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
   const byProject = new Map<string | null, ChatSession[]>();
+  const activeSessionId = opts.activeSessionId ?? null;
 
   for (const s of sessions) {
-    const pid = s.codeProjectId ?? null;
+    const pid = resolveSessionProjectId(s, opts);
     const list = byProject.get(pid) ?? [];
     list.push(s);
     byProject.set(pid, list);
   }
 
+  const toBucket = (
+    projectId: string | null,
+    label: string,
+    list: ChatSession[],
+  ): ProjectSidebarBucket => {
+    const hasActiveSession = Boolean(
+      activeSessionId && list.some((s) => s.id === activeSessionId),
+    );
+    const sessionsForList = activeSessionId
+      ? list.filter((s) => s.id !== activeSessionId)
+      : list;
+
+    return {
+      projectId,
+      label,
+      sessions: sortSidebarSessions(sessionsForList),
+      conversationCount: list.length,
+      hasActiveSession,
+    };
+  };
+
   const buckets: ProjectSidebarBucket[] = [];
 
   for (const project of projects) {
-    const list = byProject.get(project.id);
-    if (!list?.length) continue;
-    buckets.push({
-      projectId: project.id,
-      label: project.name,
-      sessions: groupSidebarSessions(list, nowMs),
-    });
+    const list = byProject.get(project.id) ?? [];
+    buckets.push(toBucket(project.id, project.name, list));
     byProject.delete(project.id);
   }
 
-  const general = byProject.get(null);
-  if (general?.length) {
-    buckets.push({
-      projectId: null,
-      label: "General",
-      sessions: groupSidebarSessions(general, nowMs),
-    });
+  const general = byProject.get(null) ?? [];
+  if (general.length > 0) {
+    buckets.push(toBucket(null, "General", general));
     byProject.delete(null);
   }
 
   for (const [projectId, list] of byProject.entries()) {
     if (!list.length) continue;
-    buckets.push({
-      projectId,
-      label: projectNameById.get(projectId ?? '') ?? "Unknown project",
-      sessions: groupSidebarSessions(list, nowMs),
-    });
+    buckets.push(
+      toBucket(
+        projectId,
+        projectNameById.get(projectId ?? '') ?? "Unknown project",
+        list,
+      ),
+    );
   }
 
   return buckets;

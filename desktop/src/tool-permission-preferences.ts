@@ -39,16 +39,11 @@ export const TOOL_PERMISSION_CATALOG: ToolPermissionCatalogEntry[] = [
     defaultRequiresApproval: true,
   },
   {
-    id: 'local_index_rescan',
-    label: 'Rebuild search index',
-    description: 'Re-scan files for local search',
-    defaultRequiresApproval: true,
-  },
-  {
     id: 'local_read_file',
     label: 'Read local files',
     description: 'Read file contents from your machine',
     defaultRequiresApproval: false,
+    aliases: ['read_file', 'read_local_file'],
   },
   {
     id: 'local_list_directory',
@@ -105,9 +100,6 @@ function normalizeStored(raw: unknown): StoredToolPermissionPreferences {
 }
 
 export function normalizeDesktopToolId(tool: string): string {
-  if (tool === 'run_command') {
-    return 'local_shell';
-  }
   const byId = TOOL_PERMISSION_CATALOG.find((entry) => entry.id === tool);
   if (byId) {
     return byId.id;

@@ -169,5 +169,26 @@ export function registerIpcHandlers(): void {
       }
     },
   );
+
+  ipcMain.handle('search:aigeniusignore', async (_event, payload: { rootPath?: string; content?: string; action?: string }) => {
+    try {
+      if (payload?.action === 'write' && typeof payload.rootPath === 'string') {
+        const res = await fetch(`${SERVER_URL}/search/aigeniusignore`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...authHeader() },
+          body: JSON.stringify({ rootPath: payload.rootPath, content: payload.content ?? '' }),
+        });
+        return await res.json();
+      }
+      const rootPath = typeof payload?.rootPath === 'string' ? encodeURIComponent(payload.rootPath) : '';
+      const res = await fetch(`${SERVER_URL}/search/aigeniusignore?rootPath=${rootPath}`, {
+        headers: authHeader(),
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('[aigenius-desktop][proxy] search:aigeniusignore failed', err);
+      return { error: true };
+    }
+  });
 }
 

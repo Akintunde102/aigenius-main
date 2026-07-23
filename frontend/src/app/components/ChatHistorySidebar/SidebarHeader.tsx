@@ -2,12 +2,11 @@
 
 import React from "react";
 import { FiHome, FiPlus, FiX } from "react-icons/fi";
-import { PanelLeft, Search, Database } from "lucide-react";
+import { FolderPlus, PanelLeft, Search } from "lucide-react";
 import ChatHistorySearchBar from "../ChatHistorySearchBar";
 import { useRouter } from "next/navigation";
 import { LINKS } from "@/lib/links";
 import { clearAuthSession } from "@/lib/utils/auth-session";
-import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
 
 interface SidebarHeaderProps {
   isMobile: boolean;
@@ -16,6 +15,53 @@ interface SidebarHeaderProps {
   historySearch: string;
   setHistorySearch: (s: string) => void;
   onNewChat?: () => void;
+  onNewProject?: () => void;
+}
+
+type SidebarIconButtonProps = {
+  isMobile: boolean;
+  ariaLabel: string;
+  title: string;
+  onClick: () => void;
+  children: React.ReactNode;
+};
+
+function SidebarIconButton({
+  isMobile,
+  ariaLabel,
+  title,
+  onClick,
+  children,
+}: SidebarIconButtonProps) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      title={title}
+      onClick={onClick}
+      className={
+        isMobile
+          ? "flex shrink-0 touch-manipulation items-center justify-center rounded p-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
+          : "flex h-8 w-9 shrink-0 items-center justify-center rounded-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 sm:h-7"
+      }
+      style={isMobile
+        ? { minWidth: 40, minHeight: 40, color: "var(--sidebar-muted-fg)" }
+        : {
+          border: "1px solid var(--sidebar-icon-btn-border)",
+          backgroundColor: "var(--sidebar-icon-btn-bg)",
+          color: "var(--sidebar-fg)",
+        }
+      }
+      onMouseEnter={e => {
+        if (!isMobile) e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-hover-bg)";
+      }}
+      onMouseLeave={e => {
+        if (!isMobile) e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-bg)";
+      }}
+    >
+      {children}
+    </button>
+  );
 }
 
 /** Matches workflow list / studio title bar: dark strip + slate search field. */
@@ -27,6 +73,7 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
     historySearch,
     setHistorySearch,
     onNewChat,
+    onNewProject,
   }) => {
     void mobileSidebarOpen;
     const router = useRouter();
@@ -34,11 +81,6 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
     const [draftHistorySearch, setDraftHistorySearch] =
       React.useState(historySearch);
     const skipDebouncedPushRef = React.useRef(true);
-
-    const [showLocalSearchIndex, setShowLocalSearchIndex] = React.useState(false);
-    React.useLayoutEffect(() => {
-      setShowLocalSearchIndex(isAigeniusDesktopRuntime());
-    }, []);
 
     React.useEffect(() => {
       setDraftHistorySearch(historySearch);
@@ -103,73 +145,29 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
           ) : null}
 
           {onNewChat ? (
-            <button
-              type="button"
-              aria-label="New chat"
+            <SidebarIconButton
+              isMobile={isMobile}
+              ariaLabel="New chat"
               title="New chat"
-              onClick={() => onNewChat()}
-              className={
-                isMobile
-                  ? "flex shrink-0 touch-manipulation items-center justify-center rounded p-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
-                  : "flex h-8 w-9 shrink-0 items-center justify-center rounded-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 sm:h-7"
-              }
-              style={isMobile
-                ? { minWidth: 40, minHeight: 40, color: "var(--sidebar-muted-fg)" }
-                : {
-                  border: "1px solid var(--sidebar-icon-btn-border)",
-                  backgroundColor: "var(--sidebar-icon-btn-bg)",
-                  color: "var(--sidebar-fg)",
-                }
-              }
-              onMouseEnter={e => {
-                if (!isMobile) e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-hover-bg)";
-              }}
-              onMouseLeave={e => {
-                if (!isMobile) e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-bg)";
-              }}
+              onClick={onNewChat}
             >
               <FiPlus size={isMobile ? 20 : 18} strokeWidth={2} aria-hidden />
-            </button>
+            </SidebarIconButton>
           ) : null}
 
-          {showLocalSearchIndex ? (
-            <button
-              type="button"
-              aria-label="Local search index"
-              title="Local search index — browse SQLite file_index"
-              onClick={() => {
-                if (isAigeniusDesktopRuntime()) {
-                  window.aigeniusDesktop?.openNewWindow?.("/desktop-search-index");
-                } else {
-                  router.push("/desktop-search-index");
-                }
-              }}
-              className={
-                isMobile
-                  ? "flex shrink-0 touch-manipulation items-center justify-center rounded p-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
-                  : "flex h-8 w-9 shrink-0 items-center justify-center rounded-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 sm:h-7"
-              }
-              style={isMobile
-                ? { minWidth: 40, minHeight: 40, color: "var(--sidebar-muted-fg)" }
-                : {
-                  border: "1px solid var(--sidebar-icon-btn-border)",
-                  backgroundColor: "var(--sidebar-icon-btn-bg)",
-                  color: "var(--sidebar-fg)",
-                }
-              }
-              onMouseEnter={e => {
-                if (!isMobile) e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-hover-bg)";
-              }}
-              onMouseLeave={e => {
-                if (!isMobile) e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-bg)";
-              }}
+          {onNewProject ? (
+            <SidebarIconButton
+              isMobile={isMobile}
+              ariaLabel="New project"
+              title="New project"
+              onClick={onNewProject}
             >
-              <Database
-                size={isMobile ? 20 : 16}
-                strokeWidth={isMobile ? 2 : 1.75}
+              <FolderPlus
+                className={isMobile ? "h-5 w-5" : "h-[18px] w-[18px]"}
+                strokeWidth={2}
                 aria-hidden
               />
-            </button>
+            </SidebarIconButton>
           ) : null}
 
           <div className="relative min-h-8 min-w-0 flex-1 sm:min-h-7">

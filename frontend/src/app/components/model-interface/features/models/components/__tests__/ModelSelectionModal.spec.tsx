@@ -15,11 +15,14 @@ jest.mock('../ModelSelectionFiltersNew', () => ({
 }));
 
 jest.mock('../ModelSelectionGrid', () => ({
-    ModelSelectionGrid: ({ models, emptyState }: any) => {
-        if (models.length === 0 && emptyState) return <>{emptyState}</>;
+    ModelSelectionGrid: ({ models = [], sections, emptyState }: any) => {
+        const allModels = sections?.length
+            ? sections.flatMap((section: any) => section.models)
+            : models;
+        if (allModels.length === 0 && emptyState) return <>{emptyState}</>;
         return (
             <div data-testid="grid">
-                {models.map((m: any) => <div key={m.id} data-testid="model-item">{m.name}</div>)}
+                {allModels.map((m: any) => <div key={m.id} data-testid="model-item">{m.name}</div>)}
             </div>
         );
     }

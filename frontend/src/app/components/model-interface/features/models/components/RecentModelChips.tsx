@@ -5,15 +5,15 @@ import { getModelDisplayName } from "@/app/components/model-interface/shared/uti
 
 interface RecentModelChipsProps {
   recentModels: Model[];
-  selectedModelId?: string;
-  onSelect: (model: Model) => void;
+  highlightedModelId?: string;
+  onPreview: (model: Model) => void;
   isMobile: boolean;
 }
 
 export function RecentModelChips({
   recentModels,
-  selectedModelId,
-  onSelect,
+  highlightedModelId,
+  onPreview,
   isMobile,
 }: RecentModelChipsProps) {
   if (recentModels.length === 0) return null;
@@ -24,8 +24,8 @@ export function RecentModelChips({
         <button
           key={model.id}
           type="button"
-          onClick={() => onSelect(model)}
-          className={`app-chip flex-shrink-0 ${selectedModelId === model.id ? "app-chip--active" : ""}`}
+          onClick={() => onPreview(model)}
+          className={`app-chip flex-shrink-0 ${highlightedModelId === model.id ? "app-chip--active" : ""}`}
         >
           <FiClock size={isMobile ? 9 : 13} className="flex-shrink-0" style={{ color: "var(--modal-muted-fg)" }} />
           <span className={`truncate font-medium leading-tight ${isMobile ? "text-[9px]" : "text-[13px]"}`}>

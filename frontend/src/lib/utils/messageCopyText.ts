@@ -1,4 +1,4 @@
-import type { MessageEvent, TextEvent, ToolEvent } from '@/app/components/model-interface/shared/types';
+import type { MessageEvent, TextEvent, ThinkingEvent, ToolEvent } from '@/app/components/model-interface/shared/types';
 import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
 
 /**
@@ -12,6 +12,10 @@ export function buildCopyTextFromEvents(events: MessageEvent[]): string {
         if (evt.type === 'text') {
             const t = textPartToPlainString((evt as TextEvent).content as unknown).trim();
             if (t) parts.push(t);
+        } else if (evt.type === 'thinking') {
+            const te = evt as ThinkingEvent;
+            const t = te.content.trim();
+            if (t) parts.push(`[Thought]\n${t}`);
         } else if (evt.type === 'tool') {
             const te = evt as ToolEvent;
             const title = te.displayName?.trim() || te.tool;

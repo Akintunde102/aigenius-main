@@ -6,6 +6,7 @@ import type { ChatMessage, MessageEvent } from '@/app/components/model-interface
 import { buildChatMessageDisplayBlocks } from '../../messages/components/chatMessageDisplay.utils';
 import { TextMessage } from '../../message-types';
 import { ToolStreamingCard } from './ToolStreamingCard';
+import { ReasoningGroup } from './ReasoningGroup';
 import { getAgentRunById } from '@/lib/calls/agent-run';
 import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
 import { ERROR_MESSAGES } from '../hooks/chatOperations.constants';
@@ -35,6 +36,16 @@ function TranscriptMessage({ msg }: { msg: ChatMessage }) {
                                     role="assistant"
                                 />
                             );
+                        }
+                        if (block.type === 'thinking') {
+                            return (
+                                <div key={i} className="w-full">
+                                    <ReasoningGroup event={block.event} />
+                                </div>
+                            );
+                        }
+                        if (block.type !== 'tool') {
+                            return null;
                         }
                         const toolEvt = block.event;
                         return (

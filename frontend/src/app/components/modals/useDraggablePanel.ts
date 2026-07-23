@@ -1,8 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 
 export type PanelPosition = { x: number; y: number };
+
+export type DraggablePanelVariant = 'modal' | 'side';
 
 function clamp(value: number, min: number, max: number) {
     return Math.min(Math.max(value, min), max);
@@ -16,14 +18,6 @@ function getPanelSize(panel: HTMLElement) {
     };
 }
 
-function getCenteredPosition(panel: HTMLElement): PanelPosition {
-    const { width, height } = getPanelSize(panel);
-    return {
-        x: Math.max(0, (window.innerWidth - width) / 2),
-        y: Math.max(0, (window.innerHeight - height) / 2),
-    };
-}
-
 function getClampedPosition(panel: HTMLElement, x: number, y: number): PanelPosition {
     const { width, height } = getPanelSize(panel);
     const maxX = Math.max(0, window.innerWidth - width);
@@ -34,10 +28,16 @@ function getClampedPosition(panel: HTMLElement, x: number, y: number): PanelPosi
     };
 }
 
+function getPanelViewportPosition(panel: HTMLElement): PanelPosition {
+    const rect = panel.getBoundingClientRect();
+    return { x: rect.left, y: rect.top };
+}
+
 export function useDraggablePanel(
     enabled: boolean,
     panelRef: RefObject<HTMLElement | null>,
     resetKey: string | null,
+    variant: DraggablePanelVariant = 'modal',
 ) {
     const [position, setPosition] = useState<PanelPosition | null>(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -64,6 +64,22 @@ export function useDraggablePanel(
 
     useEffect(() => () => cleanupDragRef.current?.(), []);
 
+    useEffect(() => {
+        if (!enabled || !position) return;
+
+        const handleResize = () => {
+            const panel = panelRef.current;
+            if (!panel) return;
+            setPosition((prev) => {
+                if (!prev) return prev;
+                return getClampedPosition(panel, prev.x, prev.y);
+            });
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [enabled, panelRef, position]);
+
     const onDragHandlePointerDown = useCallback(
         (event: React.PointerEvent<HTMLElement>) => {
             if (!enabled) return;
@@ -75,7 +91,7 @@ export function useDraggablePanel(
             event.preventDefault();
             event.stopPropagation();
 
-            const current = position ?? getCenteredPosition(panel);
+            const current = position ?? getPanelViewportPosition(panel);
             setPosition(current);
 
             dragRef.current = {
@@ -111,19 +127,37 @@ export function useDraggablePanel(
         [enabled, panelRef, position, stopDragging],
     );
 
-    const panelStyle: React.CSSProperties | undefined = enabled
-        ? position
-            ? { position: 'absolute', left: position.x, top: position.y }
-            : {
-                  position: 'absolute',
-                  left: '50%',
-                  top: '50%',
-                  transform: 'translate(-50%, -50%)',
-              }
-        : undefined;
+    const panelStyle: CSSProperties | undefined = (() => {
+        if (!enabled) return undefined;
+
+        if (position) {
+            return {
+                position: 'fixed',
+                left: position.x,
+                top: position.y,
+                right: 'auto',
+                bottom: 'auto',
+                transform: 'none',
+                margin: 0,
+            };
+        }
+
+        if (variant === 'modal') {
+            return {
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+            };
+        }
+
+        return undefined;
+    })();
 
     return {
         panelStyle,
+        position,
+        setPosition,
         isDragging,
         onDragHandlePointerDown,
     };

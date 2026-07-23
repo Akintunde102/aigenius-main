@@ -46,7 +46,7 @@ import {
 } from '../../message-types';
 
 // Chat feature components (thinking, tools) - direct imports to avoid circular dependency
-import { ThinkingDisplay } from '../../chat/components/ThinkingDisplay';
+import { ReasoningGroup } from '../../chat/components/ReasoningGroup';
 import { ToolExecutionDisplay } from '../../chat/components/ToolExecutionDisplay';
 import { ToolStreamingCard } from '../../chat/components/ToolStreamingCard';
 import { ToolStreamingGroup } from '../../chat/components/ToolStreamingGroup';
@@ -54,7 +54,10 @@ import {
     clusterToolDisplayBlocks,
     type ChatMessageRenderBlock,
 } from '../../chat/components/cluster-tool-display-blocks';
+import { buildAssistantRenderSegments } from '../../chat/components/assistant-turn-summary.utils';
+import { AssistantWorkSummary } from '../../chat/components/AssistantWorkSummary';
 import type { ChatMessageDisplayBlock } from './chatMessageDisplay.utils';
+import { enrichEventsWithLegacyThinking } from '../../chat/utils/thinkingEvent.utils';
 
 interface ChatMessageProps {
     msg: ChatMessageType;
@@ -168,12 +171,15 @@ export function ChatMessage({
 
     /** Events in `msg.events` array order (not sorted by `order` field). */
     const displayEvents = useMemo(() => {
-        if (!msg.events?.length) return [];
-        return msg.events.filter(
+        if (!msg.events?.length) {
+            return enrichEventsWithLegacyThinking([], msg);
+        }
+        const filtered = msg.events.filter(
             (e): e is MessageEvent =>
                 e != null && typeof e === 'object' && 'type' in e,
         );
-    }, [msg.events]);
+        return enrichEventsWithLegacyThinking(filtered, msg);
+    }, [msg]);
 
     const displayBlocks = useMemo(
         () => buildChatMessageDisplayBlocks(displayEvents, { streaming }),
@@ -181,6 +187,11 @@ export function ChatMessage({
     );
 
     const renderBlocks = useMemo(() => clusterToolDisplayBlocks(displayBlocks), [displayBlocks]);
+
+    const renderSegments = useMemo(
+        () => buildAssistantRenderSegments(renderBlocks, streaming),
+        [renderBlocks, streaming],
+    );
 
     const legacyStreamingToolBlocks = useMemo((): ChatMessageRenderBlock[] => {
         const tools = msg.streaming_tools;
@@ -394,10 +405,11 @@ export function ChatMessage({
     }), [msg.role, isLongUserText]);
 
     // Early return for empty assistant messages - after all hooks are called
-    // Don't hide if there's reasoning, tool executions, active streaming tool, events, or live stream (status chip).
+    // Don't hide if there's thinking, tool executions, active streaming tool, events, or live stream (status chip).
     if (msg.role === 'assistant' && (!msg.content || (typeof msg.content === 'string' && msg.content.trim() === ''))) {
         if (
             !streaming
+            && !displayEvents.some((e) => e.type === 'thinking')
             && !msg.reasoning
             && !msg.reasoning_details?.length
             && !msg.tool_executions?.length
@@ -474,23 +486,24 @@ export function ChatMessage({
                         />
                         {/* Content wrapper: min-w-0 prevents flex blowout; tables/code handle their own overflow */}
                         <div className="min-w-0">
-                            {/* Thinking stream: below model name, only while streaming and no content yet; never shown with final message */}
-                            {msg.role === 'assistant' && streaming && (msg.reasoning || msg.reasoning_details) && !(typeof msg.content === 'string' && msg.content.trim()) && (
-                                <ThinkingDisplay
-                                    reasoning={msg.reasoning}
-                                    reasoningDetails={msg.reasoning_details}
-                                />
-                            )}
-
                             {/*
                           * Event-based render (new messages).
                           * Each assistant turn carries an ordered `events` list; we render them
-                          * sequentially so text → tool → text → tool interleaving is preserved.
+                          * sequentially so text → thinking → tool → text interleaving is preserved.
                           * Legacy messages (no events) fall through to the old render path below.
                           */}
-                            {renderBlocks.length > 0 ? (
+                            {renderSegments.length > 0 ? (
                                 <div className="flex flex-col gap-3 md:gap-4">
-                                    {renderBlocks.map((block, i: number) => {
+                                    {renderSegments.map((segment, i: number) => {
+                                        if (segment.type === 'work_summary') {
+                                            return (
+                                                <div key={`work-summary-${i}`} className="w-full">
+                                                    <AssistantWorkSummary items={segment.items} />
+                                                </div>
+                                            );
+                                        }
+
+                                        const block = segment.block;
                                         if (block.type === 'text') {
                                             return (
                                                 <TextMessage
@@ -502,12 +515,27 @@ export function ChatMessage({
                                             );
                                         }
 
+                                        if (block.type === 'thinking') {
+                                            return (
+                                                <div key={i} className="w-full">
+                                                    <ReasoningGroup
+                                                        event={block.event}
+                                                        messageStreaming={streaming}
+                                                    />
+                                                </div>
+                                            );
+                                        }
+
                                         if (block.type === 'tool_cluster') {
                                             return (
                                                 <div key={i} className="w-full">
                                                     <ToolStreamingGroup events={block.events} messageStreaming={streaming} />
                                                 </div>
                                             );
+                                        }
+
+                                        if (block.type !== 'tool') {
+                                            return null;
                                         }
 
                                         const toolEvt = block.event;

@@ -248,6 +248,23 @@ export default function DesktopSearchIndexPage() {
   const [sortDir, setSortDir] = useState<BrowseSortDir>("desc");
   const [rescanningPaths, setRescanningPaths] = useState<Set<string>>(new Set());
 
+  const [indexerHealth, setIndexerHealth] = useState<{
+    queue_depth?: number;
+    scan_in_progress?: boolean;
+    project_root?: string | null;
+    health?: {
+      indexer_ipc_reachable: boolean;
+      db_integrity: string;
+      last_error: string | null;
+      queue_text_depth: number;
+      queue_structure_depth: number;
+    };
+  } | null>(null);
+  const [ignoreOpen, setIgnoreOpen] = useState(false);
+  const [ignoreContent, setIgnoreContent] = useState("");
+  const [ignoreRoot, setIgnoreRoot] = useState<string | null>(null);
+  const [ignoreSaving, setIgnoreSaving] = useState(false);
+
   const [portalMounted, setPortalMounted] = useState(false);
   useEffect(() => {
     setPortalMounted(true);
@@ -267,6 +284,49 @@ export default function DesktopSearchIndexPage() {
       setBridgePhase(ok ? "ready" : "unavailable");
     });
   }, []);
+
+  useEffect(() => {
+    if (bridgePhase !== "ready") return;
+    const bridgeRoot = getAigeniusDesktopBridgeFromBrowsingContext();
+    const poll = async () => {
+      try {
+        const st = await bridgeRoot?.searchStatus?.();
+        if (st && typeof st === "object") {
+          setIndexerHealth(st);
+          if (typeof st.project_root === "string" && st.project_root) {
+            setIgnoreRoot(st.project_root);
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    void poll();
+    const id = window.setInterval(() => void poll(), 12_000);
+    return () => window.clearInterval(id);
+  }, [bridgePhase]);
+
+  useEffect(() => {
+    if (!ignoreOpen || !ignoreRoot) return;
+    const bridgeRoot = getAigeniusDesktopBridgeFromBrowsingContext();
+    void bridgeRoot?.searchAigeniusIgnore?.({ rootPath: ignoreRoot }).then((res) => {
+      if (res && !res.error && typeof res.content === "string") {
+        setIgnoreContent(res.content);
+      }
+    });
+  }, [ignoreOpen, ignoreRoot]);
+
+  const saveAigeniusIgnore = useCallback(async () => {
+    if (!ignoreRoot) return;
+    const bridgeRoot = getAigeniusDesktopBridgeFromBrowsingContext();
+    if (!bridgeRoot?.searchAigeniusIgnoreSave) return;
+    setIgnoreSaving(true);
+    try {
+      await bridgeRoot.searchAigeniusIgnoreSave({ rootPath: ignoreRoot, content: ignoreContent });
+    } finally {
+      setIgnoreSaving(false);
+    }
+  }, [ignoreContent, ignoreRoot]);
 
   const closeDetailModal = useCallback(() => {
     setDetailModalOpen(false);
@@ -1234,6 +1294,57 @@ export default function DesktopSearchIndexPage() {
               </div>
             ) : (
               <>
+                {indexerHealth ? (
+                  <div className="rounded-lg border border-zinc-700/80 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-300">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <span>
+                        IPC:{" "}
+                        <span className={indexerHealth.health?.indexer_ipc_reachable !== false ? "text-emerald-300" : "text-red-300"}>
+                          {indexerHealth.health?.indexer_ipc_reachable !== false ? "ok" : "down"}
+                        </span>
+                      </span>
+                      <span>Queue: {indexerHealth.queue_depth ?? 0}</span>
+                      <span>Text: {indexerHealth.health?.queue_text_depth ?? 0}</span>
+                      <span>Structure: {indexerHealth.health?.queue_structure_depth ?? 0}</span>
+                      <span>
+                        Scan: {indexerHealth.scan_in_progress ? "active" : "idle"}
+                      </span>
+                      {indexerHealth.health?.last_error ? (
+                        <span className="text-amber-200">Last error: {indexerHealth.health.last_error}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="rounded-lg border border-zinc-700/70 bg-zinc-900/40 p-3">
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-amber-200/90 hover:underline"
+                    onClick={() => setIgnoreOpen((v) => !v)}
+                  >
+                    {ignoreOpen ? "Hide" : "Edit"} .aigeniusignore {ignoreRoot ? `(${ignoreRoot})` : ""}
+                  </button>
+                  {ignoreOpen ? (
+                    <div className="mt-2 flex flex-col gap-2">
+                      <textarea
+                        value={ignoreContent}
+                        onChange={(e) => setIgnoreContent(e.target.value)}
+                        rows={6}
+                        className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1.5 font-mono text-xs text-zinc-100"
+                        placeholder="# gitignore-style patterns, one per line"
+                      />
+                      <button
+                        type="button"
+                        disabled={!ignoreRoot || ignoreSaving}
+                        className="self-start rounded-lg border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-medium hover:bg-zinc-700 disabled:opacity-50"
+                        onClick={() => void saveAigeniusIgnore()}
+                      >
+                        {ignoreSaving ? "Saving…" : "Save .aigeniusignore"}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-wrap gap-2">
                     <span className="text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">View mode</span>

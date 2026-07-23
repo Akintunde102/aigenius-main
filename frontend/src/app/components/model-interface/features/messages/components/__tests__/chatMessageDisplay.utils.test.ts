@@ -72,4 +72,28 @@ describe('chatMessageDisplay.utils', () => {
             { type: 'text', content: '```ts\nconst x = 1;\n```', endsWithLastTextEvent: true },
         ]);
     });
+
+    it('preserves thinking blocks inline between text and tools', () => {
+        const events: MessageEvent[] = [
+            {
+                type: 'thinking',
+                content: 'Let me reason this through.',
+                loading: false,
+                timestamp: 1,
+            },
+            { type: 'text', content: 'Answer.' },
+            tool(),
+        ];
+
+        const blocks = buildChatMessageDisplayBlocks(events, { streaming: false });
+
+        expect(blocks).toEqual([
+            {
+                type: 'thinking',
+                event: expect.objectContaining({ content: 'Let me reason this through.' }),
+            },
+            { type: 'text', content: 'Answer.', endsWithLastTextEvent: true },
+            { type: 'tool', event: expect.objectContaining({ tool: 'gmail_search' }) },
+        ]);
+    });
 });

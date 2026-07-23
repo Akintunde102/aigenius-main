@@ -11,6 +11,9 @@ import { indexFileIntelligence } from '../indexer/intelligence-router.js';
 import { detectBoundaries } from '../indexer/boundaries.js';
 import { isMakefile } from '../indexer/makefile-indexer.js';
 import type { IndexedEdge, IndexedSymbol } from '../indexer/language-indexer.js';
+import { makeQualifiedName, signatureHash } from '../graph/graph-types.js';
+import { buildStructuralDigest } from './queries-graph.js';
+import { detachInboundEdgesBeforeReindex } from '../indexer/stale-edge-sweep.js';
 
 export type SymbolRow = {
   kind: string;
@@ -24,6 +27,7 @@ export type SymbolRow = {
 
 /** Remove symbols + chunks + graph edges for a file (called before re-index or on delete). */
 export function deleteFileStructure(db: Database.Database, filePath: string): void {
+  detachInboundEdgesBeforeReindex(db, filePath);
   db.prepare(
     'DELETE FROM symbol_search WHERE symbol_id IN (SELECT id FROM symbol_index WHERE path = ?)',
   ).run(filePath);
@@ -39,6 +43,34 @@ function symbolKey(kind: string, name: string, line: number): string {
   return `${kind}:${name}:${line}`;
 }
 
+function symbolInsertParams(
+  filePath: string,
+  sym: {
+    kind: string;
+    name: string;
+    line_start: number;
+    line_end: number;
+    signature: string;
+    confidence: string;
+    language: string;
+  },
+  now = Date.now(),
+) {
+  return {
+    path: filePath,
+    kind: sym.kind,
+    name: sym.name,
+    line_start: sym.line_start,
+    line_end: sym.line_end,
+    signature: sym.signature,
+    confidence: sym.confidence,
+    language: sym.language,
+    qualified_name: makeQualifiedName(filePath, sym.name),
+    signature_hash: signatureHash(sym.signature),
+    last_analyzed_at: now,
+  };
+}
+
 function persistIntelligenceGraph(
   db: Database.Database,
   filePath: string,
@@ -50,16 +82,16 @@ function persistIntelligenceGraph(
 ): void {
   const idByKey = new Map<string, number>();
   const insertSymbol = db.prepare(`
-    INSERT INTO symbol_index (path, kind, name, line_start, line_end, signature, confidence, language)
-    VALUES (@path, @kind, @name, @line_start, @line_end, @signature, @confidence, @language)
+    INSERT INTO symbol_index (path, kind, name, line_start, line_end, signature, confidence, language, qualified_name, signature_hash, last_analyzed_at)
+    VALUES (@path, @kind, @name, @line_start, @line_end, @signature, @confidence, @language, @qualified_name, @signature_hash, @last_analyzed_at)
   `);
   const insertFts = db.prepare(`
     INSERT INTO symbol_search (name, signature, kind, path, symbol_id)
     VALUES (@name, @signature, @kind, @path, @symbol_id)
   `);
   const insertEdge = db.prepare(`
-    INSERT INTO symbol_edges (from_symbol_id, to_symbol_id, to_name, to_path, kind, line, confidence)
-    VALUES (@from_symbol_id, @to_symbol_id, @to_name, @to_path, @kind, @line, @confidence)
+    INSERT INTO symbol_edges (from_symbol_id, to_symbol_id, to_name, to_path, kind, line, confidence, stale)
+    VALUES (@from_symbol_id, @to_symbol_id, @to_name, @to_path, @kind, @line, @confidence, 0)
   `);
   const insertBoundary = db.prepare(`
     INSERT INTO symbol_boundaries (symbol_id, file_path, line, boundary_type, label, confidence)
@@ -92,16 +124,17 @@ function persistIntelligenceGraph(
       .get(targetPath) as { id: number } | undefined;
     if (existing) return existing.id;
 
-    const result = insertSymbol.run({
-      path: targetPath,
-      kind: 'module',
-      name: '__module__',
-      line_start: 1,
-      line_end: 1,
-      signature: path.basename(targetPath),
-      confidence: 'high',
-      language,
-    });
+    const result = insertSymbol.run(
+      symbolInsertParams(targetPath, {
+        kind: 'module',
+        name: '__module__',
+        line_start: 1,
+        line_end: 1,
+        signature: path.basename(targetPath),
+        confidence: 'high',
+        language,
+      }, now),
+    );
     return Number(result.lastInsertRowid);
   };
 
@@ -118,18 +151,33 @@ function persistIntelligenceGraph(
     return row?.id ?? null;
   };
 
+  const lookupGlobalSymbolId = (targetPath: string, targetName: string): number | null => {
+    const shortName = targetName.includes('.') ? targetName.split('.').pop()! : targetName;
+    const row = db
+      .prepare(
+        `SELECT id FROM symbol_index
+         WHERE path = ? AND name = ? AND kind NOT IN ('import', 'module')
+         ORDER BY line_start LIMIT 1`,
+      )
+      .get(targetPath, shortName) as { id: number } | undefined;
+    return row?.id ?? null;
+  };
+
+  const now = Date.now();
+
   db.transaction(() => {
     for (const sym of symbols) {
-      const result = insertSymbol.run({
-        path: filePath,
-        kind: sym.kind,
-        name: sym.name,
-        line_start: sym.lineStart,
-        line_end: sym.lineEnd,
-        signature: sym.signature,
-        confidence: sym.confidence,
-        language,
-      });
+      const result = insertSymbol.run(
+        symbolInsertParams(filePath, {
+          kind: sym.kind,
+          name: sym.name,
+          line_start: sym.lineStart,
+          line_end: sym.lineEnd,
+          signature: sym.signature,
+          confidence: sym.confidence,
+          language,
+        }, now),
+      );
       const symbolId = Number(result.lastInsertRowid);
       idByKey.set(symbolKey(sym.kind, sym.name, sym.lineStart), symbolId);
       insertFts.run({
@@ -144,16 +192,17 @@ function persistIntelligenceGraph(
     const moduleLine = symbols[0]?.lineStart ?? 1;
     let moduleId = findSymbolId('__module__', moduleLine);
     if (!moduleId && edges.some((e) => e.fromName === '__module__')) {
-      const result = insertSymbol.run({
-        path: filePath,
-        kind: 'module',
-        name: '__module__',
-        line_start: 1,
-        line_end: 1,
-        signature: path.basename(filePath),
-        confidence: 'high',
-        language,
-      });
+      const result = insertSymbol.run(
+        symbolInsertParams(filePath, {
+          kind: 'module',
+          name: '__module__',
+          line_start: 1,
+          line_end: 1,
+          signature: path.basename(filePath),
+          confidence: 'high',
+          language,
+        }, now),
+      );
       moduleId = Number(result.lastInsertRowid);
       idByKey.set(symbolKey('module', '__module__', 1), moduleId);
     }
@@ -186,7 +235,10 @@ function persistIntelligenceGraph(
       if (!fromId) continue;
 
       let toId: number | null = null;
-      if (!edge.toPath) {
+      if (edge.toPath) {
+        toId = lookupGlobalSymbolId(edge.toPath, edge.toName);
+      }
+      if (!toId && !edge.toPath) {
         toId = findSymbolId(edge.toName, edge.line ?? 0);
       }
 
@@ -565,65 +617,7 @@ export function buildProjectArchitecture(
   rootPath: string,
   projectName: string,
 ): string {
-  const norm = path.normalize(rootPath);
-  const fileCount = (
-    db.prepare(`SELECT COUNT(*) AS cnt FROM file_index WHERE path LIKE ? || '%'`).get(norm) as
-      | { cnt: number }
-      | undefined
-  )?.cnt ?? 0;
-
-  const chunkCount = (
-    db.prepare(`SELECT COUNT(*) AS cnt FROM file_chunks WHERE path LIKE ? || '%'`).get(norm) as
-      | { cnt: number }
-      | undefined
-  )?.cnt ?? 0;
-
-  const topSymbols = db
-    .prepare(
-      `SELECT kind, name, path, line_start
-       FROM symbol_index
-       WHERE path LIKE ? || '%' AND kind != 'import'
-       ORDER BY kind, name
-       LIMIT 60`,
-    )
-    .all(norm) as Array<{ kind: string; name: string; path: string; line_start: number }>;
-
-  const extensions = db
-    .prepare(
-      `SELECT extension, COUNT(*) AS cnt
-       FROM file_index WHERE path LIKE ? || '%' AND extension IS NOT NULL AND extension != ''
-       GROUP BY extension ORDER BY cnt DESC LIMIT 12`,
-    )
-    .all(norm) as Array<{ extension: string; cnt: number }>;
-
-  const lines = [
-    `# Project architecture: ${projectName}`,
-    '',
-    `- Root: \`${norm}\``,
-    `- Indexed files: ${fileCount}`,
-    `- Search chunks: ${chunkCount}`,
-    '',
-  ];
-
-  if (extensions.length) {
-    lines.push('## File types', '');
-    for (const e of extensions) {
-      lines.push(`- .${e.extension}: ${e.cnt} files`);
-    }
-    lines.push('');
-  }
-
-  if (topSymbols.length) {
-    lines.push('## Key symbols (sample)', '');
-    for (const s of topSymbols) {
-      const rel = path.relative(norm, s.path).replace(/\\/g, '/');
-      lines.push(`- ${s.kind} \`${s.name}\` — ${rel}:${s.line_start}`);
-    }
-  } else {
-    lines.push('_Re-index the project to populate symbol graph._');
-  }
-
-  return lines.join('\n');
+  return buildStructuralDigest(db, rootPath, projectName);
 }
 
 export type { ParsedSymbol, ParsedImport, FileChunk };

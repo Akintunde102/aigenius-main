@@ -7,8 +7,12 @@ import {
 } from '@/app/components/model-interface/shared/types';
 import { ToolStreamingCard } from '@/app/components/model-interface/features/chat/components/ToolStreamingCard';
 import { ToolStreamingGroup } from '@/app/components/model-interface/features/chat/components/ToolStreamingGroup';
+import { ReasoningGroup } from '@/app/components/model-interface/features/chat/components/ReasoningGroup';
 import { clusterToolDisplayBlocks } from '@/app/components/model-interface/features/chat/components/cluster-tool-display-blocks';
+import { buildAssistantRenderSegments } from '@/app/components/model-interface/features/chat/components/assistant-turn-summary.utils';
+import { AssistantWorkSummary } from '@/app/components/model-interface/features/chat/components/AssistantWorkSummary';
 import { buildChatMessageDisplayBlocks } from '@/app/components/model-interface/features/messages/components/chatMessageDisplay.utils';
+import { enrichEventsWithLegacyThinking } from '@/app/components/model-interface/features/chat/utils/thinkingEvent.utils';
 import { buildCopyTextFromEvents } from '@/lib/utils/messageCopyText';
 
 // Custom hooks
@@ -89,11 +93,14 @@ export function ChatMessage({
     }, [msg.personaName, modelName, msg.role]);
 
     const displayEvents = useMemo(() => {
-        if (!msg.events?.length) return [];
-        return msg.events.filter(
+        if (!msg.events?.length) {
+            return enrichEventsWithLegacyThinking([], msg);
+        }
+        const filtered = msg.events.filter(
             (e): e is MessageEvent => e != null && typeof e === 'object' && 'type' in e,
         );
-    }, [msg.events]);
+        return enrichEventsWithLegacyThinking(filtered, msg);
+    }, [msg]);
 
     const displayBlocks = useMemo(
         () => buildChatMessageDisplayBlocks(displayEvents, { streaming }),
@@ -101,6 +108,11 @@ export function ChatMessage({
     );
 
     const renderBlocks = useMemo(() => clusterToolDisplayBlocks(displayBlocks), [displayBlocks]);
+
+    const renderSegments = useMemo(
+        () => buildAssistantRenderSegments(renderBlocks, streaming),
+        [renderBlocks, streaming],
+    );
 
     // Event handlers
     const handleCopy = useCallback(() => {
@@ -152,12 +164,13 @@ export function ChatMessage({
     // Early return for empty assistant messages - after all hooks are called
     if (msg.role === 'assistant' && (!msg.content || (typeof msg.content === 'string' && msg.content.trim() === ''))) {
         if (
-            !streaming &&
-            !msg.reasoning &&
-            !msg.reasoning_details?.length &&
-            !msg.tool_executions?.length &&
-            !msg.streaming_tools?.length &&
-            !msg.events?.length
+            !streaming
+            && !displayEvents.some((e) => e.type === 'thinking')
+            && !msg.reasoning
+            && !msg.reasoning_details?.length
+            && !msg.tool_executions?.length
+            && !msg.streaming_tools?.length
+            && !msg.events?.length
         ) {
             return null;
         }
@@ -177,9 +190,18 @@ export function ChatMessage({
                     />
 
                     {/* Chat content — event-based assistant turns match main chat */}
-                    {msg.role === 'assistant' && renderBlocks.length > 0 ? (
+                    {msg.role === 'assistant' && renderSegments.length > 0 ? (
                         <div className="flex flex-col gap-3">
-                            {renderBlocks.map((block, i) => {
+                            {renderSegments.map((segment, i) => {
+                                if (segment.type === 'work_summary') {
+                                    return (
+                                        <div key={`work-summary-${i}`} className="w-full">
+                                            <AssistantWorkSummary items={segment.items} />
+                                        </div>
+                                    );
+                                }
+
+                                const block = segment.block;
                                 if (block.type === 'text') {
                                     return (
                                         <TextMessage
@@ -190,6 +212,16 @@ export function ChatMessage({
                                         />
                                     );
                                 }
+                                if (block.type === 'thinking') {
+                                    return (
+                                        <div key={i} className="w-full">
+                                            <ReasoningGroup
+                                                event={block.event}
+                                                messageStreaming={streaming}
+                                            />
+                                        </div>
+                                    );
+                                }
                                 if (block.type === 'tool_cluster') {
                                     return (
                                         <div key={i} className="w-full">
@@ -197,6 +229,10 @@ export function ChatMessage({
                                         </div>
                                     );
                                 }
+                                if (block.type !== 'tool') {
+                                    return null;
+                                }
+
                                 const toolEvt = block.event;
                                 return (
                                     <div key={i} className="w-full">

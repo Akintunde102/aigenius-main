@@ -4,6 +4,7 @@ export type IndexedSymbol = {
   lineStart: number;
   lineEnd: number;
   signature: string;
+  signatureHash?: string;
   confidence: 'high' | 'heuristic';
 };
 

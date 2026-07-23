@@ -15,7 +15,6 @@ jest.mock('../resolve-browser-window-for-ipc', () => ({
 
 // Mock formatters
 jest.spyOn(formatter, 'formatRagResults').mockReturnValue({ result: 'Formatted RAG', rawData: { hits: [] } });
-jest.spyOn(formatter, 'formatIndexStatus').mockReturnValue({ result: 'Formatted Status', rawData: { indexed: 0 } });
 
 describe('local-tool-executor', () => {
   const mockSender = {} as any;
@@ -102,24 +101,6 @@ describe('local-tool-executor', () => {
         expect(res.result).toContain('Shell output');
         expect(res.result).toContain('- **Exit code**: 0');
         expect(res.result).toContain('hello');
-      }
-    });
-  });
-
-  describe('runLocalDesktopTool - local_index_status', () => {
-    it('should return structured status', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: async () => ({ indexed: 123 }),
-        status: 200,
-      });
-
-      const res = await runLocalDesktopTool(mockSender, 'local_index_status', {});
-
-      expect(res.ok).toBe(true);
-      if (res.ok) {
-        expect(res.result).toBe('Formatted Status');
-        expect(res.rawData).toEqual({ indexed: 0 });
       }
     });
   });

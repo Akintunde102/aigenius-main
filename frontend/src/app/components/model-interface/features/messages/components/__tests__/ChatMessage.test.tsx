@@ -23,8 +23,8 @@ jest.mock('@/app/components/model-interface/features/messages/components/UsageDe
     UsageDetailsModal: () => null,
 }));
 
-jest.mock('@/app/components/model-interface/features/chat/components/ThinkingDisplay', () => ({
-    ThinkingDisplay: () => <div data-testid="thinking-display" />,
+jest.mock('@/app/components/model-interface/features/chat/components/ReasoningGroup', () => ({
+    ReasoningGroup: () => <div data-testid="reasoning-group" />,
 }));
 
 jest.mock('@/app/components/model-interface/features/chat/components/ToolExecutionDisplay', () => ({

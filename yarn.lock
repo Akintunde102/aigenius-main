@@ -4487,6 +4487,12 @@ aggregate-error@^3.0.0:
     socket.io "^4.8.1"
     socket.io-client "^4.8.3"
     tesseract.js "^5.1.0"
+    tree-sitter-cpp "^0.23.4"
+    tree-sitter-python "^0.23.6"
+    tree-sitter-rust "^0.23.2"
+    tree-sitter-typescript "^0.23.2"
+    ts-morph "^25.0.1"
+    web-tree-sitter "^0.24.7"
 
 "aigenius-desktop@file:C:\\Users\\DELL5530\\Desktop\\projects\\aigenius-platform\\client\\desktop":
   version "0.1.0"
@@ -7072,7 +7078,7 @@ electron-to-chromium@^1.5.328:
 electron-to-chromium@^1.5.389:
   version "1.5.392"
 
-electron@^33.2.1:
+electron@33.2.1:
   version "33.2.1"
   resolved "https://registry.npmjs.org/electron/-/electron-33.2.1.tgz"
   integrity sha512-SG/nmSsK9Qg1p6wAW+ZfqU+AV8cmXMTIklUL18NnOKfZLlum4ZsDoVdmmmlL39ZmeCaq27dr7CgslRPahfoVJg==
@@ -11595,6 +11601,21 @@ node-addon-api@^3.1.0:
   resolved "https://registry.npmjs.org/node-addon-api/-/node-addon-api-3.2.1.tgz"
   integrity sha512-mmcei9JghVNDYydghQmeDX8KoAm0FAiYyIcUt/N4nhyAipB17pllZQDOJD2fotxABnt4Mdz+dKTO7eftLg4d0A==
 
+node-addon-api@^8.2.1:
+  version "8.9.0"
+  resolved "https://registry.npmjs.org/node-addon-api/-/node-addon-api-8.9.0.tgz"
+  integrity sha512-ekZMeaaIzSQTSpr7X2X3iJM7lTzgnx8ahAG9pJfT/7+14mlEM8ZYQ9cgCDvSSRbReFK0oHli3WrZdCiRsgAT9Q==
+
+node-addon-api@^8.2.2:
+  version "8.9.0"
+  resolved "https://registry.npmjs.org/node-addon-api/-/node-addon-api-8.9.0.tgz"
+  integrity sha512-ekZMeaaIzSQTSpr7X2X3iJM7lTzgnx8ahAG9pJfT/7+14mlEM8ZYQ9cgCDvSSRbReFK0oHli3WrZdCiRsgAT9Q==
+
+node-addon-api@^8.3.0:
+  version "8.9.0"
+  resolved "https://registry.npmjs.org/node-addon-api/-/node-addon-api-8.9.0.tgz"
+  integrity sha512-ekZMeaaIzSQTSpr7X2X3iJM7lTzgnx8ahAG9pJfT/7+14mlEM8ZYQ9cgCDvSSRbReFK0oHli3WrZdCiRsgAT9Q==
+
 node-api-version@^0.1.4:
   version "0.1.4"
   resolved "https://registry.npmjs.org/node-api-version/-/node-api-version-0.1.4.tgz"
@@ -11631,7 +11652,7 @@ node-fetch@^2.6.9:
   dependencies:
     whatwg-url "^5.0.0"
 
-node-gyp-build@^4.2.1, node-gyp-build@^4.3.0:
+node-gyp-build@^4.2.1, node-gyp-build@^4.3.0, node-gyp-build@^4.8.2, node-gyp-build@^4.8.4:
   version "4.8.4"
   resolved "https://registry.npmjs.org/node-gyp-build/-/node-gyp-build-4.8.4.tgz"
   integrity sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==
@@ -15019,6 +15040,61 @@ tree-kill@1.2.2:
   resolved "https://registry.npmjs.org/tree-kill/-/tree-kill-1.2.2.tgz"
   integrity sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==
 
+tree-sitter-c@^0.23.1:
+  version "0.23.6"
+  resolved "https://registry.npmjs.org/tree-sitter-c/-/tree-sitter-c-0.23.6.tgz"
+  integrity sha512-0dxXKznVyUA0s6PjNolJNs2yF87O5aL538A/eR6njA5oqX3C3vH4vnx3QdOKwuUdpKEcFdHuiDpRKLLCA/tjvQ==
+  dependencies:
+    node-addon-api "^8.3.0"
+    node-gyp-build "^4.8.4"
+
+tree-sitter-cpp@^0.23.4:
+  version "0.23.4"
+  resolved "https://registry.npmjs.org/tree-sitter-cpp/-/tree-sitter-cpp-0.23.4.tgz"
+  integrity sha512-qR5qUDyhZ5jJ6V8/umiBxokRbe89bCGmcq/dk94wI4kN86qfdV8k0GHIUEKaqWgcu42wKal5E97LKpLeVW8sKw==
+  dependencies:
+    node-addon-api "^8.2.1"
+    node-gyp-build "^4.8.2"
+    tree-sitter-c "^0.23.1"
+
+tree-sitter-javascript@^0.23.1:
+  version "0.23.1"
+  resolved "https://registry.npmjs.org/tree-sitter-javascript/-/tree-sitter-javascript-0.23.1.tgz"
+  integrity sha512-/bnhbrTD9frUYHQTiYnPcxyHORIw157ERBa6dqzaKxvR/x3PC4Yzd+D1pZIMS6zNg2v3a8BZ0oK7jHqsQo9fWA==
+  dependencies:
+    node-addon-api "^8.2.2"
+    node-gyp-build "^4.8.2"
+
+tree-sitter-python@^0.23.6:
+  version "0.23.6"
+  resolved "https://registry.npmjs.org/tree-sitter-python/-/tree-sitter-python-0.23.6.tgz"
+  integrity sha512-yIM9z0oxKIxT7bAtPOhgoVl6gTXlmlIhue7liFT4oBPF/lha7Ha4dQBS82Av6hMMRZoVnFJI8M6mL+SwWoLD3A==
+  dependencies:
+    node-addon-api "^8.3.0"
+    node-gyp-build "^4.8.4"
+
+tree-sitter-rust@^0.23.2:
+  version "0.23.2"
+  resolved "https://registry.npmjs.org/tree-sitter-rust/-/tree-sitter-rust-0.23.2.tgz"
+  integrity sha512-mpII54xsZxTMdtNFxVk9WqhPTEP7kKEBkZyb8ulWlhnNJIFBQISpfmABpdqXtnaETeduVHEWABQ5H5o7KUH8XA==
+  dependencies:
+    node-addon-api "^8.2.2"
+    node-gyp-build "^4.8.4"
+
+tree-sitter-typescript@^0.23.2:
+  version "0.23.2"
+  resolved "https://registry.npmjs.org/tree-sitter-typescript/-/tree-sitter-typescript-0.23.2.tgz"
+  integrity sha512-e04JUUKxTT53/x3Uq1zIL45DoYKVfHH4CZqwgZhPg5qYROl5nQjV+85ruFzFGZxu+QeFVbRTPDRnqL9UbU4VeA==
+  dependencies:
+    node-addon-api "^8.2.2"
+    node-gyp-build "^4.8.2"
+    tree-sitter-javascript "^0.23.1"
+
+tree-sitter-wasms@^0.1.11:
+  version "0.1.11"
+  resolved "https://registry.npmjs.org/tree-sitter-wasms/-/tree-sitter-wasms-0.1.11.tgz"
+  integrity sha512-26sE4+qoTi1CbzHdo9sHs9pRE/jXVFVRigSG/5TNAbwhSMVjHfMAg4UjmOhAFAIx5UxgoQuaURwqhm0SRNrpWA==
+
 trim-lines@^3.0.0:
   version "3.0.1"
   resolved "https://registry.npmjs.org/trim-lines/-/trim-lines-3.0.1.tgz"
@@ -15819,6 +15895,11 @@ wcwidth@^1.0.1:
   integrity sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==
   dependencies:
     defaults "^1.0.3"
+
+web-tree-sitter@^0.24.7:
+  version "0.24.7"
+  resolved "https://registry.npmjs.org/web-tree-sitter/-/web-tree-sitter-0.24.7.tgz"
+  integrity sha512-CdC/TqVFbXqR+C51v38hv6wOPatKEUGxa39scAeFSm98wIhZxAYonhRQPSMmfZ2w7JDI0zQDdzdmgtNk06/krQ==
 
 webidl-conversions@^3.0.0:
   version "3.0.1"

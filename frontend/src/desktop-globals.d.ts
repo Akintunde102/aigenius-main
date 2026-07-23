@@ -21,6 +21,7 @@ declare global {
           generatedAtIso: string;
           entries: Array<{ slug: string; name: string; description: string; tags: string[] }>;
         };
+        structuralDigest?: string;
       }>;
       syncToolPermissionPreferences?: (prefs: {
         autoApproveAll: boolean;

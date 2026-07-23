@@ -6,25 +6,20 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let _db: Database.Database | null = null;
-let _dbPath: string | null = null;
+const _dbPool = new Map<string, Database.Database>();
+let _primaryDbPath: string | null = null;
 
-/**
- * Returns the singleton better-sqlite3 connection, creating it on first call.
- * WAL mode + 32 MB cache for sub-20ms queries on large indexes.
- * MUST be called from the Electron main thread only.
- */
-export function getDb(dbPath: string): Database.Database {
-  if (_db && _dbPath === dbPath) return _db;
-  if (_db) closeDb();
+function openDbConnection(dbPath: string): Database.Database {
 
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
   const db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
-  db.pragma('cache_size = -32000'); // 32 MB
+  db.pragma('cache_size = -65536'); // 64 MB
   db.pragma('foreign_keys = ON');
   db.pragma('synchronous = NORMAL');
+  db.pragma('mmap_size = 1073741824'); // 1 GB memory-mapped I/O
+  db.pragma('temp_store = MEMORY');
 
   // --- Migration: Add 'extension' column to file_index if missing ---
   const tableInfo = db.prepare("PRAGMA table_info(file_index)").all() as { name: string }[];
@@ -43,10 +38,14 @@ export function getDb(dbPath: string): Database.Database {
   const searchHasExtension = searchTableInfo.some((c) => c.name === 'extension');
   
   let needsRebuild = false;
-  if (searchExists && !searchHasExtension) {
-    console.info('[search-db] Migrating: Rebuilding file_search virtual table for extension support...');
-    db.exec("DROP TABLE IF EXISTS file_search");
-    needsRebuild = true;
+  if (searchExists) {
+    const searchSqlRow = db.prepare("SELECT sql FROM sqlite_schema WHERE name = 'file_search'").get() as { sql: string } | undefined;
+    const searchSql = searchSqlRow?.sql ?? '';
+    if (!searchHasExtension || !searchSql.includes('prefix=')) {
+      console.info('[search-db] Migrating: Rebuilding file_search virtual table for schema alignment (prefix)...');
+      db.exec("DROP TABLE IF EXISTS file_search");
+      needsRebuild = true;
+    }
   }
 
   const schema = fs.readFileSync(
@@ -59,15 +58,20 @@ export function getDb(dbPath: string): Database.Database {
   let needsChunkRebuild = false;
   if (fs.existsSync(chunkSchemaPath)) {
     const chunkSearchInfo = db.prepare('PRAGMA table_info(chunk_search)').all() as { name: string }[];
+    const chunkExists = chunkSearchInfo.length > 0;
     const expectedChunkColumns = ['path', 'symbol_name', 'line_start', 'line_end', 'content'];
-    if (
-      chunkSearchInfo.length > 0 &&
-      (chunkSearchInfo.length !== expectedChunkColumns.length ||
-        expectedChunkColumns.some((name, i) => chunkSearchInfo[i]?.name !== name))
-    ) {
-      console.info('[search-db] Migrating: Rebuilding chunk_search virtual table for schema alignment...');
-      db.exec('DROP TABLE IF EXISTS chunk_search');
-      needsChunkRebuild = true;
+    
+    const columnsMatch = chunkSearchInfo.length === expectedChunkColumns.length &&
+      expectedChunkColumns.every((name, i) => chunkSearchInfo[i]?.name === name);
+
+    if (chunkExists) {
+      const chunkSqlRow = db.prepare("SELECT sql FROM sqlite_schema WHERE name = 'chunk_search'").get() as { sql: string } | undefined;
+      const chunkSql = chunkSqlRow?.sql ?? '';
+      if (!columnsMatch || !chunkSql.includes('prefix=')) {
+        console.info('[search-db] Migrating: Rebuilding chunk_search virtual table for schema alignment (prefix)...');
+        db.exec('DROP TABLE IF EXISTS chunk_search');
+        needsChunkRebuild = true;
+      }
     }
     db.exec(fs.readFileSync(chunkSchemaPath, 'utf8'));
     if (needsChunkRebuild) {
@@ -95,8 +99,20 @@ export function getDb(dbPath: string): Database.Database {
     console.info('[search-db] Index rebuild complete.');
   }
 
-  _db = db;
-  _dbPath = dbPath;
+  return db;
+}
+
+/**
+ * Returns a pooled better-sqlite3 connection (one per dbPath).
+ * WAL mode allows concurrent readers while the indexer writes — search never closes sibling DBs.
+ */
+export function getDb(dbPath: string): Database.Database {
+  const existing = _dbPool.get(dbPath);
+  if (existing) return existing;
+
+  const db = openDbConnection(dbPath);
+  _dbPool.set(dbPath, db);
+  _primaryDbPath = dbPath;
   return db;
 }
 
@@ -127,6 +143,24 @@ function migrateIntelligenceColumns(db: Database.Database): void {
     if (!names.has('language')) {
       db.exec('ALTER TABLE symbol_index ADD COLUMN language TEXT');
     }
+    if (!names.has('qualified_name')) {
+      db.exec('ALTER TABLE symbol_index ADD COLUMN qualified_name TEXT');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_symbol_qname ON symbol_index(qualified_name)');
+    }
+    if (!names.has('signature_hash')) {
+      db.exec('ALTER TABLE symbol_index ADD COLUMN signature_hash TEXT');
+    }
+    if (!names.has('last_analyzed_at')) {
+      db.exec('ALTER TABLE symbol_index ADD COLUMN last_analyzed_at INTEGER');
+    }
+  }
+
+  const edgeCols = db.prepare('PRAGMA table_info(symbol_edges)').all() as { name: string }[];
+  if (edgeCols.length > 0) {
+    const edgeNames = new Set(edgeCols.map((c) => c.name));
+    if (!edgeNames.has('stale')) {
+      db.exec('ALTER TABLE symbol_edges ADD COLUMN stale INTEGER NOT NULL DEFAULT 0');
+    }
   }
 }
 
@@ -135,19 +169,37 @@ function migrateIntelligenceColumns(db: Database.Database): void {
  * Throws if `getDb()` has not been called yet (i.e. before `registerSearchModule`).
  */
 export function getSearchDb(): Database.Database {
-  if (!_db) throw new Error('Search DB not initialised — call registerSearchModule first');
-  return _db;
+  if (_primaryDbPath) return getDb(_primaryDbPath);
+  const first = _dbPool.values().next().value as Database.Database | undefined;
+  if (!first) throw new Error('Search DB not initialised — call getDb(dbPath) first');
+  return first;
 }
 
-/** Closes the DB connection (call on app quit). */
-export function closeDb(): void {
-  if (_db) {
-    _db.close();
-    _db = null;
-    _dbPath = null;
+/** Closes one or all pooled DB connections (call on app quit). */
+export function closeDb(dbPath?: string): void {
+  if (dbPath) {
+    const db = _dbPool.get(dbPath);
+    if (db) {
+      db.close();
+      _dbPool.delete(dbPath);
+    }
+    if (_primaryDbPath === dbPath) {
+      _primaryDbPath = _dbPool.keys().next().value ?? null;
+    }
+    return;
   }
+
+  for (const [p, db] of _dbPool) {
+    db.close();
+    _dbPool.delete(p);
+  }
+  _primaryDbPath = null;
 }
 
 export function getActiveDbPath(): string | null {
-  return _dbPath;
+  return _primaryDbPath;
+}
+
+export function listOpenDbPaths(): string[] {
+  return [..._dbPool.keys()];
 }

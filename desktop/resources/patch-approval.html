@@ -220,12 +220,65 @@
         padding: 24px;
         text-align: center;
       }
+
+      .blast-panel {
+        margin: 0 0 12px;
+        padding: 12px 14px;
+        background: rgba(56, 189, 248, 0.08);
+        border: 1px solid rgba(56, 189, 248, 0.22);
+        border-radius: var(--radius-sm);
+      }
+
+      .blast-title {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 8px;
+      }
+
+      .blast-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .conf-badge {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+      }
+
+      .conf-badge.certain {
+        color: #34d399;
+        background: rgba(52, 211, 153, 0.12);
+        border-color: rgba(52, 211, 153, 0.28);
+      }
+
+      .conf-badge.heuristic {
+        color: #fbbf24;
+        background: rgba(251, 191, 36, 0.12);
+        border-color: rgba(251, 191, 36, 0.28);
+      }
+
+      .conf-badge.inferred {
+        color: #94a3b8;
+        background: rgba(148, 163, 184, 0.12);
+        border-color: rgba(148, 163, 184, 0.28);
+      }
     </style>
   </head>
   <body>
     <div class="chrome">
       <div id="titlebar-drag" aria-hidden="true"></div>
       <div class="content-scroll">
+        <div id="blast-panel" class="blast-panel" hidden>
+          <div class="blast-title">Structural impact (indexed graph)</div>
+          <div class="blast-badges" id="blast-badges"></div>
+        </div>
         <div class="list-wrap" id="list"></div>
       </div>
       <div class="footer">
@@ -249,6 +302,33 @@
       function render(data) {
         const list = document.getElementById('list');
         list.innerHTML = '';
+
+        const blastPanel = document.getElementById('blast-panel');
+        const blastBadges = document.getElementById('blast-badges');
+        if (data.blastRadius && data.blastRadius.total > 0 && blastPanel && blastBadges) {
+          blastPanel.hidden = false;
+          blastBadges.innerHTML = '';
+          if (data.blastRadius.certain > 0) {
+            const el = document.createElement('span');
+            el.className = 'conf-badge certain';
+            el.textContent = data.blastRadius.certain + ' confirmed';
+            blastBadges.appendChild(el);
+          }
+          if (data.blastRadius.heuristic > 0) {
+            const el = document.createElement('span');
+            el.className = 'conf-badge heuristic';
+            el.textContent = data.blastRadius.heuristic + ' heuristic';
+            blastBadges.appendChild(el);
+          }
+          if (data.blastRadius.inferred > 0) {
+            const el = document.createElement('span');
+            el.className = 'conf-badge inferred';
+            el.textContent = data.blastRadius.inferred + ' inferred';
+            blastBadges.appendChild(el);
+          }
+        } else if (blastPanel) {
+          blastPanel.hidden = true;
+        }
 
         if (!data.rows || data.rows.length === 0) {
           list.innerHTML = '<div class="empty">No changes.</div>';

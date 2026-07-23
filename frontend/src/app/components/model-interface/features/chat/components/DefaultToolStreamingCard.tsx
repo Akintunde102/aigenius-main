@@ -8,6 +8,7 @@ import { getToolDisplayName } from './toolDisplayNames';
 import { ERROR_MESSAGES } from '../hooks/chatOperations.constants';
 import { WorkflowIntentTranscriptExpand } from './WorkflowIntentTranscriptExpand';
 import { MarkdownRenderer } from '@/app/components/model-interface/shared/components/MarkdownRenderer';
+import { ToolSearchFilesHover } from './tool-ui/ToolSearchFilesHover';
 import type { ToolStreamingCardProps } from './tool-streaming-card.types';
 import cardStyles from './DefaultToolStreamingCard.module.scss';
 
@@ -24,6 +25,7 @@ export function DefaultToolStreamingCard({
   const [resultOpen, setResultOpen] = useState(false);
   const [containerCollapsed, setContainerCollapsed] = useState(groupItem);
   const wasLoadingRef = useRef(loading);
+  const wasGroupLoadingRef = useRef(loading);
 
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
@@ -73,6 +75,22 @@ export function DefaultToolStreamingCard({
   const resolvedDisplayName = activityTitle || displayName || getToolDisplayName(tool);
 
   useEffect(() => {
+    if (!groupItem) return;
+    if (loading) {
+      setContainerCollapsed(false);
+      wasGroupLoadingRef.current = true;
+      return;
+    }
+
+    if (wasGroupLoadingRef.current) {
+      setContainerCollapsed(true);
+      setInputOpen(false);
+      setResultOpen(false);
+      wasGroupLoadingRef.current = false;
+    }
+  }, [groupItem, loading]);
+
+  useEffect(() => {
     if (groupItem) return;
     if (loading && filteredLogs.length > 1) {
       setActivityOpen(true);
@@ -95,30 +113,40 @@ export function DefaultToolStreamingCard({
 
   const showActivityLogs = !groupItem && filteredLogs.length > 0;
 
+  const toggleButton = (
+    <button
+      type="button"
+      onClick={() => setContainerCollapsed(!containerCollapsed)}
+      className={groupItem ? cardStyles.toggle : 'flex w-full flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-sm px-0 py-0.5 text-left transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/80 dark:hover:text-zinc-100 dark:focus-visible:ring-zinc-600/80'}
+      aria-expanded={!containerCollapsed}
+    >
+      <span
+        className={
+          groupItem
+            ? `${cardStyles.title} ${loading ? cardStyles.titleLoading : ''}`
+            : 'min-w-0 shrink font-medium text-slate-700 dark:text-zinc-200'
+        }
+      >
+        {resolvedDisplayName}
+      </span>
+      <span
+        className={groupItem ? cardStyles.chevron : 'shrink-0 text-slate-400 tabular-nums dark:text-zinc-500'}
+        aria-hidden
+      >
+        {containerCollapsed ? '▸' : '▾'}
+      </span>
+    </button>
+  );
+
   return (
     <div className={`${cardStyles.root} ${groupItem ? cardStyles.rootGroupItem : 'my-1 w-full text-[12px] leading-snug text-slate-600 dark:text-zinc-400'}`}>
-      <button
-        type="button"
-        onClick={() => setContainerCollapsed(!containerCollapsed)}
-        className={groupItem ? cardStyles.toggle : 'flex w-full flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-sm px-0 py-0.5 text-left transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/80 dark:hover:text-zinc-100 dark:focus-visible:ring-zinc-600/80'}
-        aria-expanded={!containerCollapsed}
-      >
-        <span
-          className={
-            groupItem
-              ? `${cardStyles.title} ${loading ? cardStyles.titleLoading : ''}`
-              : 'min-w-0 shrink font-medium text-slate-700 dark:text-zinc-200'
-          }
-        >
-          {resolvedDisplayName}
-        </span>
-        <span
-          className={groupItem ? cardStyles.chevron : 'shrink-0 text-slate-400 tabular-nums dark:text-zinc-500'}
-          aria-hidden
-        >
-          {containerCollapsed ? '▸' : '▾'}
-        </span>
-      </button>
+      {groupItem ? (
+        <ToolSearchFilesHover tool={tool} arguments={toolArgs} result={result}>
+          {toggleButton}
+        </ToolSearchFilesHover>
+      ) : (
+        toggleButton
+      )}
 
       {!containerCollapsed && (
         <div
@@ -163,25 +191,47 @@ export function DefaultToolStreamingCard({
             </div>
           )}
 
-          <div className="space-y-2.5 pt-0.5">
+          <div className={groupItem ? cardStyles.ioSections : 'space-y-2.5 pt-0.5'}>
             {toolArgs && Object.keys(toolArgs).length > 0 && (
-              <div>
+              <div className={groupItem ? cardStyles.ioSection : undefined}>
                 <button
                   type="button"
                   onClick={() => setInputOpen(!inputOpen)}
-                  className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+                  className={
+                    groupItem
+                      ? cardStyles.ioToggle
+                      : 'flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300'
+                  }
                 >
                   <span>Input</span>
-                  {inputOpen ? <FiChevronUp className="h-3 w-3" aria-hidden /> : <FiChevronDown className="h-3 w-3" aria-hidden />}
+                  {groupItem ? (
+                    <span className={cardStyles.ioChevron} aria-hidden>
+                      {inputOpen ? '▾' : '▸'}
+                    </span>
+                  ) : inputOpen ? (
+                    <FiChevronUp className="h-3 w-3" aria-hidden />
+                  ) : (
+                    <FiChevronDown className="h-3 w-3" aria-hidden />
+                  )}
                 </button>
                 {inputOpen && (
-                  <div className="mt-1 space-y-0.5 border-l border-slate-200/80 pl-2 text-slate-500 dark:border-zinc-700/80 dark:text-zinc-400">
+                  <div
+                    className={
+                      groupItem
+                        ? cardStyles.ioPanel
+                        : 'mt-1 space-y-0.5 border-l border-slate-200/80 pl-2 text-slate-500 dark:border-zinc-700/80 dark:text-zinc-400'
+                    }
+                  >
                     {Object.entries(toolArgs).map(([k, v]) => {
                       if (k === 'activityTitle') return null;
                       return (
-                        <div key={k} className="flex gap-1.5">
-                          <span className="shrink-0 font-semibold text-slate-400 dark:text-zinc-500">{k}:</span>
-                          <span className="break-all">{typeof v === 'string' ? v : JSON.stringify(v)}</span>
+                        <div key={k} className={groupItem ? cardStyles.ioRow : 'flex gap-1.5'}>
+                          <span className={groupItem ? cardStyles.ioKey : 'shrink-0 font-semibold text-slate-400 dark:text-zinc-500'}>
+                            {k}
+                          </span>
+                          <span className={groupItem ? cardStyles.ioValue : 'break-all'}>
+                            {typeof v === 'string' ? v : JSON.stringify(v)}
+                          </span>
                         </div>
                       );
                     })}
@@ -191,19 +241,27 @@ export function DefaultToolStreamingCard({
             )}
 
             {(parsedResult !== null || loading) && (
-              <div className="space-y-1">
+              <div className={groupItem ? cardStyles.ioSection : 'space-y-1'}>
                 <button
                   type="button"
                   onClick={() => parsedResult !== null && setResultOpen(!resultOpen)}
-                  className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide transition-colors ${loading
-                      ? 'text-slate-700 dark:text-zinc-300'
-                      : 'text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300'
-                    }`}
+                  className={
+                    groupItem
+                      ? `${cardStyles.ioToggle} ${loading && parsedResult === null ? cardStyles.ioToggleActive : ''}`
+                      : `flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide transition-colors ${loading
+                          ? 'text-slate-700 dark:text-zinc-300'
+                          : 'text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300'
+                        }`
+                  }
                   disabled={loading && parsedResult === null}
                 >
-                  <span>Result</span>
+                  <span>Output</span>
                   {loading && parsedResult === null ? (
                     <FiLoader className="h-3 w-3 animate-spin shrink-0" aria-hidden />
+                  ) : groupItem ? (
+                    <span className={cardStyles.ioChevron} aria-hidden>
+                      {resultOpen ? '▾' : '▸'}
+                    </span>
                   ) : resultOpen ? (
                     <FiChevronUp className="h-3 w-3" aria-hidden />
                   ) : (
@@ -213,13 +271,17 @@ export function DefaultToolStreamingCard({
 
                 {resultOpen && parsedResult !== null && (
                   <div
-                    className={`max-h-[220px] overflow-y-auto rounded-sm border px-2.5 py-2 text-[11px] leading-relaxed custom-scrollbar border-slate-200/90 dark:border-zinc-700/80 ${success === false ? 'text-red-900 dark:text-red-300' : 'text-slate-900 dark:text-zinc-100'
-                      }`}
+                    className={
+                      groupItem
+                        ? `${cardStyles.ioPanel} ${success === false ? cardStyles.ioPanelError : ''}`
+                        : `max-h-[220px] overflow-y-auto rounded-sm border px-2.5 py-2 text-[11px] leading-relaxed custom-scrollbar border-slate-200/90 dark:border-zinc-700/80 ${success === false ? 'text-red-900 dark:text-red-300' : 'text-slate-900 dark:text-zinc-100'
+                          }`
+                    }
                   >
                     {contentToRender ? (
                       <MarkdownRenderer content={contentToRender} className="markdown-tool-result" />
                     ) : (
-                      <div className="opacity-80">
+                      <div className={groupItem ? cardStyles.ioJsonWrap : 'opacity-80'}>
                         <JsonSyntaxBlock
                           value={parsedResult}
                           preClassName="max-h-60 border-none bg-transparent p-0"

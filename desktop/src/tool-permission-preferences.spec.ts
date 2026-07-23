@@ -26,6 +26,11 @@ describe('tool-permission-preferences', () => {
     expect(normalizeDesktopToolId('run_command')).toBe('local_shell');
   });
 
+  it('normalizes read_file aliases to local_read_file', () => {
+    expect(normalizeDesktopToolId('read_file')).toBe('local_read_file');
+    expect(normalizeDesktopToolId('read_local_file')).toBe('local_read_file');
+  });
+
   it('requires approval for shell by default', () => {
     applySyncedToolPermissionPreferences({
       autoApproveAll: false,
@@ -48,6 +53,5 @@ describe('tool-permission-preferences', () => {
       requireApprovalByTool: {},
     });
     expect(shouldRequireToolApproval('local_retrieval_memory_upsert')).toBe(true);
-    expect(shouldRequireToolApproval('local_index_rescan')).toBe(true);
   });
 });

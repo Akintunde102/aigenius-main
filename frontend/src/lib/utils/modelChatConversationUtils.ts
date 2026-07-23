@@ -184,6 +184,7 @@ export async function addOrUpdateChatHistory(session: ChatMessage[], modelId: st
  */
 export async function addOrMergeSessionToLocalHistory(saved: {
     id?: string;
+    codeProjectId?: string | null;
     session?: {
         title?: string;
         modelId?: string;
@@ -201,6 +202,7 @@ export async function addOrMergeSessionToLocalHistory(saved: {
 }, title?: string, chat?: ChatMessage[]): Promise<void> {
     const sessionForList = {
         id: saved.id,
+        codeProjectId: saved.codeProjectId ?? null,
         title: saved.session?.title || title || 'New chat',
         messages: saved.session?.messages || chat || [],
         modelId: saved.session?.modelId,

@@ -1,8 +1,6 @@
 import {
   formatDirectoryListing,
-  formatIndexRescan,
   formatRagResults,
-  formatIndexStatus,
   formatReadFile,
   formatShellResult,
 } from '../tool-formatter';
@@ -34,7 +32,7 @@ describe('tool-formatter', () => {
       const res = formatRagResults(mockData);
       expect(res.result).toContain('### Local search');
       expect(res.result).toContain('- **Matches**: 0');
-      expect(res.result).toContain('No matches found');
+      expect(res.result).toContain('local_grep');
       expect(res.rawData).toEqual(mockData);
     });
 
@@ -42,23 +40,6 @@ describe('tool-formatter', () => {
       const res = formatRagResults(null);
       expect(res.result).toBe('null');
       expect(res.rawData).toBeNull();
-    });
-  });
-
-  describe('formatIndexStatus', () => {
-    it('should return summary bullets and rawData', () => {
-      const mockData = {
-        indexed: 100,
-        watching: true,
-        lastRun: Date.now(),
-        scan_in_progress: false,
-      };
-
-      const res = formatIndexStatus(mockData);
-      expect(res.result).toContain('### Local index status');
-      expect(res.result).toContain('- **Files indexed**: 100');
-      expect(res.result).toContain('- **Watcher**: Active');
-      expect(res.rawData).toEqual(mockData);
     });
   });
 
@@ -77,14 +58,6 @@ describe('tool-formatter', () => {
       expect(res.result).toContain('- **Entries**: 2');
       expect(res.result).toContain('**a.ts**');
       expect(res.result).toContain('**Type**: Directory');
-    });
-  });
-
-  describe('formatIndexRescan', () => {
-    it('formats queue acknowledgement', () => {
-      const res = formatIndexRescan({ queued: 3 });
-      expect(res.result).toContain('### Local index rescan');
-      expect(res.result).toContain('- **Paths queued**: 3');
     });
   });
 

@@ -10,6 +10,9 @@ import { defineMonacoAppThemes, getMonacoThemeId } from './monaco-app-theme';
 import { FilePreviewHeader } from './FilePreviewHeader';
 import { FilePreviewExplorer } from './FilePreviewExplorer';
 import { useDraggablePanel } from './useDraggablePanel';
+import { useResizablePanel } from './useResizablePanel';
+import { useExplorerTree } from './useExplorerTree';
+import { PanelResizeHandles } from './PanelResizeHandles';
 
 // Configure Monaco loader to use local files from public directory
 loader.config({
@@ -81,23 +84,57 @@ export const FilePreviewModal: React.FC = () => {
         updateCursor();
     }, [payload, syncEditorContext]);
 
-    // Explorer State (Internal Sidebar)
-    const [explorerPath, setExplorerPath] = useState<string>('');
-    const [explorerItems, setExplorerItems] = useState<FolderItem[]>([]);
-    const [explorerLoading, setExplorerLoading] = useState(false);
-    const [pathHistory, setPathHistory] = useState<string[]>([]);
-    const [forwardHistory, setForwardHistory] = useState<string[]>([]);
-    // Ref to track the last path that was automatically synced from a file open
-    const lastSyncedPathRef = useRef<string | null>(null);
+    // Explorer tree state is managed by useExplorerTree below.
 
     const isOpen = !!payload;
     const isSidePanel = payload?.placement === 'side';
-    const isDraggableModal = isOpen && !isSidePanel;
+    const {
+        treeRoot,
+        revealPath,
+        toggleExpanded,
+        refreshTree,
+        invalidateDirectory,
+        resetTree,
+        isExpanded,
+        isLoading: isExplorerLoading,
+        getChildren,
+        getCreateTargetDir,
+    } = useExplorerTree(payload?.localPath, isOpen && showSidebar, payload?.type === 'folder');
     const {
         panelStyle: draggablePanelStyle,
+        position: panelPosition,
+        setPosition: setPanelPosition,
         isDragging,
         onDragHandlePointerDown,
-    } = useDraggablePanel(isDraggableModal, panelRef, payload?.localPath ?? payload?.name ?? null);
+    } = useDraggablePanel(
+        isOpen,
+        panelRef,
+        payload?.localPath ?? payload?.name ?? null,
+        isSidePanel ? 'side' : 'modal',
+    );
+    const {
+        panelSizeStyle,
+        isResizing,
+        resizeEdges,
+        onResizeHandlePointerDown,
+        syncSizeFromElement,
+    } = useResizablePanel(
+        isOpen,
+        panelRef,
+        isSidePanel ? 'side' : 'modal',
+        panelPosition,
+        setPanelPosition,
+    );
+
+    const handleDragHandlePointerDown = useCallback(
+        (event: React.PointerEvent<HTMLElement>) => {
+            if (isSidePanel && !panelPosition) {
+                syncSizeFromElement();
+            }
+            onDragHandlePointerDown(event);
+        },
+        [isSidePanel, onDragHandlePointerDown, panelPosition, syncSizeFromElement],
+    );
     const isDirty = payload?.type === 'code' && editedContent !== (payload.textContent || '');
     const isMarkdown = Boolean(
         payload?.name.toLowerCase().endsWith('.md') || payload?.name.toLowerCase().endsWith('.markdown'),
@@ -188,106 +225,8 @@ export const FilePreviewModal: React.FC = () => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isOpen, handleSave]);
 
-    // Helper to fetch explorer contents
-    const fetchExplorerItems = useCallback(async (path: string) => {
-        if (!path) return;
-        setExplorerLoading(true);
-        try {
-            const bridge = (window as any).aigeniusDesktop;
-            if (bridge?.runLocalDesktopTool) {
-                const res = await bridge.runLocalDesktopTool({
-                    tool: 'local_list_directory',
-                    arguments: { path, limit: 100 }
-                });
-                if (res.ok) {
-                    const data = res.rawData || JSON.parse(res.result);
-                    setExplorerItems(data.items || []);
-                }
-            }
-        } catch (err) {
-            console.error('[FilePreviewModal] Explorer fetch error:', err);
-        } finally {
-            setExplorerLoading(false);
-        }
-    }, []);
-
-    // Sync explorer path ONLY when a new file is opened from outside (payload changes)
-    useEffect(() => {
-        if (payload?.localPath && payload.localPath !== lastSyncedPathRef.current) {
-            const pathParts = payload.localPath.split(/[\\\/]/);
-            if (payload.type !== 'folder') {
-                pathParts.pop();
-            }
-            const dir = pathParts.join('/');
-
-            lastSyncedPathRef.current = payload.localPath;
-            setExplorerPath(dir);
-            // Clear history when we jump to a completely new file context from outside
-            setPathHistory([]);
-            setForwardHistory([]);
-        }
-    }, [payload?.localPath, payload?.type]);
-
-    // Fetch items whenever explorerPath changes (manual or automatic)
-    useEffect(() => {
-        if (explorerPath) {
-            fetchExplorerItems(explorerPath);
-        }
-    }, [explorerPath, fetchExplorerItems]);
-
-    const navigateTo = useCallback((path: string) => {
-        if (path === explorerPath) return;
-        setPathHistory(prev => [...prev, explorerPath]);
-        setForwardHistory([]);
-        setExplorerPath(path);
-    }, [explorerPath]);
-
-    const goBack = useCallback(() => {
-        if (pathHistory.length === 0) return;
-        const prev = pathHistory[pathHistory.length - 1];
-        setForwardHistory(old => [explorerPath, ...old]);
-        setPathHistory(old => old.slice(0, -1));
-        setExplorerPath(prev);
-    }, [pathHistory, explorerPath]);
-
-    const goForward = useCallback(() => {
-        if (forwardHistory.length === 0) return;
-        const next = forwardHistory[0];
-        setPathHistory(old => [...old, explorerPath]);
-        setForwardHistory(old => old.slice(1));
-        setExplorerPath(next);
-    }, [forwardHistory, explorerPath]);
-
-    const goUp = useCallback(() => {
-        const parts = explorerPath.split(/[\\\/]/).filter(Boolean);
-        if (parts.length > 0) {
-            const firstPart = parts[0];
-            const isWindowsDrive = /^[a-zA-Z]:$/.test(firstPart);
-
-            if (parts.length === 1 && isWindowsDrive) return; // Already at C:/
-
-            parts.pop();
-            const parent = parts.join('/') || (isWindowsDrive ? firstPart + '/' : '/');
-            navigateTo(parent);
-        }
-    }, [explorerPath, navigateTo]);
-
-    const goToOriginal = useCallback(() => {
-        if (originalPayload?.localPath) {
-            const pathParts = originalPayload.localPath.split(/[\\\/]/);
-            if (originalPayload.type !== 'folder') {
-                pathParts.pop();
-            }
-            const dir = pathParts.join('/') || (pathParts[0]?.includes(':') ? pathParts[0] + '/' : '/');
-            navigateTo(dir);
-        }
-    }, [originalPayload, navigateTo]);
-
     const handleItemClick = useCallback(async (item: FolderItem) => {
-        if (item.isDir) {
-            navigateTo(item.path);
-            return;
-        }
+        if (item.isDir) return;
         const ext = item.name.split('.').pop()?.toLowerCase() || '';
         const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
         const pdfExts = ['pdf'];
@@ -304,12 +243,17 @@ export const FilePreviewModal: React.FC = () => {
             textContent: type === 'code' ? '// Loading code...' : undefined
         };
 
-        lastSyncedPathRef.current = item.path;
         setPayload(newPayload);
         setError(null);
         setShowMarkdownPreview(false);
         cleanupBlob();
-    }, [navigateTo, cleanupBlob]);
+    }, [cleanupBlob]);
+
+    const goToOriginal = useCallback(() => {
+        if (originalPayload?.localPath) {
+            void revealPath(originalPayload.localPath);
+        }
+    }, [originalPayload?.localPath, revealPath]);
 
     const handleItemDeleted = useCallback((deletedPath: string) => {
         if (payload?.localPath === deletedPath) {
@@ -323,7 +267,6 @@ export const FilePreviewModal: React.FC = () => {
     const handleItemRenamed = useCallback((oldPath: string, newPath: string, newName: string, isDir: boolean) => {
         if (payload?.localPath === oldPath) {
             setPayload((p) => p ? { ...p, localPath: newPath, name: newName, type: isDir ? 'folder' : p.type } : p);
-            lastSyncedPathRef.current = newPath;
         }
         if (originalPayload?.localPath === oldPath) {
             setOriginalPayload((p) => p ? { ...p, localPath: newPath, name: newName } : p);
@@ -360,6 +303,7 @@ export const FilePreviewModal: React.FC = () => {
 
     useEffect(() => {
         const handleOpen = (p: FilePreviewPayload) => {
+            resetTree();
             setPayload(p);
             setOriginalPayload(p);
             setFolderItems([]);
@@ -368,9 +312,6 @@ export const FilePreviewModal: React.FC = () => {
             setEditedContent(p.textContent || '');
             setShowMarkdownPreview(false);
             setShowSidebar(!!p.localPath);
-            setPathHistory([]);
-            setForwardHistory([]);
-            lastSyncedPathRef.current = null;
             cleanupBlob();
             if (p.type === 'code' && p.localPath) {
                 syncEditorContext(p);
@@ -381,6 +322,7 @@ export const FilePreviewModal: React.FC = () => {
             setOriginalPayload(null);
             setError(null);
             cleanupBlob();
+            resetTree();
             clearActiveEditorContext();
             const bridge = (window as { aigeniusDesktop?: { syncActiveEditor?: (x: null) => Promise<unknown> } }).aigeniusDesktop;
             void bridge?.syncActiveEditor?.(null);
@@ -393,7 +335,7 @@ export const FilePreviewModal: React.FC = () => {
             filePreviewEmitter.off('open', handleOpen);
             filePreviewEmitter.off('close', handleClose);
         };
-    }, [cleanupBlob, syncEditorContext]);
+    }, [cleanupBlob, resetTree, syncEditorContext]);
 
     useEffect(() => {
         if (!isOpen || !payload) return;
@@ -506,7 +448,7 @@ export const FilePreviewModal: React.FC = () => {
                         <Editor
                             height="100%"
                             theme={monacoThemeId}
-                            path={payload.name}
+                            path={payload.localPath ?? payload.name}
                             value={payload.textContent}
                             onChange={(value) => setEditedContent(value || '')}
                             onMount={handleEditorMount}
@@ -546,81 +488,95 @@ export const FilePreviewModal: React.FC = () => {
         }
     };
 
-    const panelBody = (
-        <div
-            ref={panelRef}
-            className={
-                isSidePanel
-                    ? 'file-preview-side-panel app-modal-panel relative flex h-full w-full flex-col overflow-hidden border-l shadow-2xl'
-                    : 'app-modal-panel relative flex w-full max-w-6xl h-[75vh] max-h-[75vh] flex-col overflow-hidden rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300'
-            }
-            onClick={(e) => e.stopPropagation()}
-            style={
-                isSidePanel
-                    ? {
-                          borderColor: 'var(--modal-border, rgba(255,255,255,0.08))',
-                          background: 'var(--modal-bg)',
-                      }
-                    : draggablePanelStyle
-            }
-        >
-            <FilePreviewHeader
-                showSidebar={showSidebar}
-                onToggleSidebar={() => setShowSidebar((v) => !v)}
-                fileName={payload.name}
-                filePath={payload.localPath}
-                isDirty={isDirty}
-                isMarkdown={isMarkdown}
-                isCode={payload.type === 'code'}
-                showMarkdownPreview={showMarkdownPreview}
-                onToggleMarkdownPreview={() => setShowMarkdownPreview((v) => !v)}
-                onSave={handleSave}
-                isSaving={isSaving}
-                canSave={isDirty}
-                onOpenInOS={handleOpenInOS}
-                onClose={closeFilePreview}
-                draggable={!isSidePanel}
-                isDragging={isDragging}
-                onDragHandlePointerDown={onDragHandlePointerDown}
-            />
+    const panelHeader = (
+        <FilePreviewHeader
+            showSidebar={showSidebar}
+            onToggleSidebar={() => setShowSidebar((v) => !v)}
+            fileName={payload.name}
+            filePath={payload.localPath}
+            isDirty={isDirty}
+            isMarkdown={isMarkdown}
+            isCode={payload.type === 'code'}
+            showMarkdownPreview={showMarkdownPreview}
+            onToggleMarkdownPreview={() => setShowMarkdownPreview((v) => !v)}
+            onSave={handleSave}
+            isSaving={isSaving}
+            canSave={isDirty}
+            onOpenInOS={handleOpenInOS}
+            onClose={closeFilePreview}
+            draggable
+            isDragging={isDragging}
+            onDragHandlePointerDown={handleDragHandlePointerDown}
+        />
+    );
 
-            <div className="flex min-h-0 flex-1 overflow-hidden">
-                {showSidebar && explorerPath && (
-                    <FilePreviewExplorer
-                        explorerPath={explorerPath}
-                        explorerItems={explorerItems}
-                        explorerLoading={explorerLoading}
-                        activePath={payload.localPath}
-                        resolvedTheme={resolvedTheme}
-                        pathHistory={pathHistory}
-                        forwardHistory={forwardHistory}
-                        onNavigate={navigateTo}
-                        onGoBack={goBack}
-                        onGoForward={goForward}
-                        onGoUp={goUp}
-                        onGoToOriginal={goToOriginal}
-                        onRefresh={() => fetchExplorerItems(explorerPath)}
-                        onOpenItem={handleItemClick}
-                        onItemDeleted={handleItemDeleted}
-                        onItemRenamed={handleItemRenamed}
-                        onItemCreated={handleItemCreated}
-                        onError={setError}
-                    />
-                )}
-                <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-                    {renderMainContent()}
-                </div>
+    const panelMain = (
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+            {showSidebar && payload.localPath && (
+                <FilePreviewExplorer
+                    treeRoot={treeRoot}
+                    activePath={payload.localPath}
+                    resolvedTheme={resolvedTheme}
+                    originalPath={originalPayload?.localPath}
+                    isExpanded={isExpanded}
+                    isLoading={isExplorerLoading}
+                    getChildren={getChildren}
+                    toggleExpanded={toggleExpanded}
+                    onRefresh={() => void refreshTree()}
+                    onRevealOriginal={goToOriginal}
+                    onOpenItem={handleItemClick}
+                    onItemDeleted={handleItemDeleted}
+                    onItemRenamed={handleItemRenamed}
+                    onItemCreated={handleItemCreated}
+                    onError={setError}
+                    getCreateTargetDir={getCreateTargetDir}
+                    onInvalidateDirectory={invalidateDirectory}
+                />
+            )}
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+                {renderMainContent()}
             </div>
         </div>
     );
 
+    const hasCustomPosition = draggablePanelStyle?.position === 'fixed';
+    const panelChromeClassName = `app-modal-panel relative flex h-full w-full flex-col overflow-hidden shadow-2xl ${
+        isSidePanel ? 'border-l' : 'rounded-2xl'
+    }`;
+
     if (isSidePanel) {
         return (
             <div
-                className="file-preview-side-host fixed bottom-0 right-0 z-[120] flex w-[min(50vw,44rem)] animate-in slide-in-from-right duration-300"
-                style={{ top: 'var(--aigenius-desktop-titlebar-top, 0px)' }}
+                ref={panelRef}
+                className="file-preview-side-host fixed z-[120] flex animate-in slide-in-from-right duration-300"
+                style={{
+                    top: hasCustomPosition ? undefined : 'var(--aigenius-desktop-titlebar-top, 0px)',
+                    bottom: hasCustomPosition ? undefined : 0,
+                    right: hasCustomPosition ? undefined : 0,
+                    height: hasCustomPosition
+                        ? panelSizeStyle.height
+                        : 'calc(100vh - var(--aigenius-desktop-titlebar-top, 0px))',
+                    maxHeight: 'calc(100vh - var(--aigenius-desktop-titlebar-top, 0px))',
+                    ...panelSizeStyle,
+                    ...draggablePanelStyle,
+                }}
             >
-                {panelBody}
+                <div
+                    className={panelChromeClassName}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                        borderColor: 'var(--modal-border, rgba(255,255,255,0.08))',
+                        background: 'var(--modal-bg)',
+                    }}
+                >
+                    <PanelResizeHandles
+                        edges={resizeEdges}
+                        onResizeHandlePointerDown={onResizeHandlePointerDown}
+                        isResizing={isResizing}
+                    />
+                    {panelHeader}
+                    {panelMain}
+                </div>
             </div>
         );
     }
@@ -631,7 +587,23 @@ export const FilePreviewModal: React.FC = () => {
             style={{ background: 'var(--modal-overlay)' }}
             onClick={closeFilePreview}
         >
-            {panelBody}
+            <div
+                ref={panelRef}
+                className="app-modal-panel relative flex flex-col overflow-hidden rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                    ...panelSizeStyle,
+                    ...draggablePanelStyle,
+                }}
+            >
+                <PanelResizeHandles
+                    edges={resizeEdges}
+                    onResizeHandlePointerDown={onResizeHandlePointerDown}
+                    isResizing={isResizing}
+                />
+                {panelHeader}
+                {panelMain}
+            </div>
         </div>
     );
 };

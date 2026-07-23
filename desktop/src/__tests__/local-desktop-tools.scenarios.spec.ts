@@ -106,7 +106,6 @@ jest.mock('fs/promises', () => ({
 import fs from 'fs/promises';
 
 const EXECUTOR_BUDGET_MS = 500;
-const INDEX_STATUS_BUDGET_MS = 300;
 
 type SidecarHandler = (url: string, init?: RequestInit) => Response | Promise<Response>;
 
@@ -204,40 +203,10 @@ describe('local desktop tools — full scenario suite', () => {
     return { out, row };
   }
 
-  describe('indexer tools (status / search / rescan)', () => {
-    it('local_index_status returns markdown within tight budget', async () => {
-      const { out, row } = await runTimedTool('local_index_status', {}, INDEX_STATUS_BUDGET_MS);
-      if (out.ok) {
-        expect(out.result).toContain('Local index status');
-        expect(out.result).toContain('42');
-        expect(out.rawData).toMatchObject({ indexed: 42, watching: true });
-      }
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/search/status'),
-        expect.objectContaining({
-          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
-        }),
-      );
-      expect(row.ok).toBe(true);
-    });
-
-    it('local_index_status surfaces sidecar errors quickly', async () => {
-      installSidecarRouter(() => jsonResponse({ error: 'down' }, 503));
-      const t0 = performance.now();
-      const out = await runLocalDesktopTool(mockSender, 'local_index_status', {});
-      const ms = performance.now() - t0;
-      assertWithinBudget(ms, { label: 'local_index_status (error)', maxMs: INDEX_STATUS_BUDGET_MS });
-      expect(out.ok).toBe(false);
-    });
-
+  describe('indexer tools (search)', () => {
     it('local_rag_query hits /search/rag within budget', async () => {
       const { out } = await runTimedTool('local_rag_query', { query: 'helper' });
       if (out.ok) expect(out.result).toContain('Local search');
-    });
-
-    it('local_index_rescan queues work within budget', async () => {
-      const { out } = await runTimedTool('local_index_rescan', { path: '/home/user/project' });
-      if (out.ok) expect(out.result).toContain('Paths queued');
     });
   });
 
@@ -335,44 +304,19 @@ describe('local desktop tools — full scenario suite', () => {
   });
 
   describe('end-to-end indexer analysis scenario', () => {
-    it('status → rag → rescan → status with per-step timing', async () => {
+    it('rag query with per-step timing', async () => {
       const rows: TimingReportRow[] = [];
 
-      let t0 = performance.now();
-      let out = await runLocalDesktopTool(mockSender, 'local_index_status', {});
-      rows.push(assertWithinBudget(performance.now() - t0, {
-        label: 'scenario: initial status',
-        maxMs: INDEX_STATUS_BUDGET_MS,
-      }));
-      expect(out.ok).toBe(true);
-
-      t0 = performance.now();
-      out = await runLocalDesktopTool(mockSender, 'local_rag_query', { query: 'helper' });
+      const t0 = performance.now();
+      const out = await runLocalDesktopTool(mockSender, 'local_rag_query', { query: 'helper' });
       rows.push(assertWithinBudget(performance.now() - t0, {
         label: 'scenario: rag query',
         maxMs: EXECUTOR_BUDGET_MS,
       }));
       expect(out.ok).toBe(true);
+      if (out.ok) expect(out.result).toContain('Local search');
 
-      t0 = performance.now();
-      out = await runLocalDesktopTool(mockSender, 'local_index_rescan', {
-        path: '/home/user/project',
-      });
-      rows.push(assertWithinBudget(performance.now() - t0, {
-        label: 'scenario: queue rescan',
-        maxMs: EXECUTOR_BUDGET_MS,
-      }));
-      expect(out.ok).toBe(true);
-
-      t0 = performance.now();
-      out = await runLocalDesktopTool(mockSender, 'local_index_status', {});
-      rows.push(assertWithinBudget(performance.now() - t0, {
-        label: 'scenario: final status',
-        maxMs: INDEX_STATUS_BUDGET_MS,
-      }));
-      expect(out.ok).toBe(true);
-
-      expect(formatTimingTable(rows)).toContain('scenario: initial status');
+      expect(formatTimingTable(rows)).toContain('scenario: rag query');
     });
   });
 });

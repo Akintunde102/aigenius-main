@@ -1,7 +1,11 @@
+import { normalizePatchContent } from './patch-diff-display.utils';
+
 export type PatchOpKind = 'create_file' | 'update_file' | 'apply_hunk' | 'delete_file';
 
 export type ParsedPatchOperation =
-  | { kind: PatchOpKind; path: string; content: string | null }
+  | { kind: 'create_file' | 'update_file'; path: string; content: string }
+  | { kind: 'apply_hunk'; path: string; search: string; replace: string }
+  | { kind: 'delete_file'; path: string }
   | { kind: 'invalid'; path: string | null; detail: string };
 
 const MAX_PREVIEW_CHARS = 120_000;
@@ -96,22 +100,23 @@ export function parsePatchOperationsForDisplay(
     }
 
     if (kind === 'delete_file') {
-      operations.push({ kind: 'delete_file', path: filePath, content: null });
+      operations.push({ kind: 'delete_file', path: filePath });
       continue;
     }
 
     if (kind === 'apply_hunk') {
-      const search = typeof o.search === 'string' ? o.search : '';
-      const replace = typeof o.replace === 'string' ? o.replace : '';
+      const search = typeof o.search === 'string' ? normalizePatchContent(truncateContent(o.search)) : '';
+      const replace = typeof o.replace === 'string' ? normalizePatchContent(truncateContent(o.replace)) : '';
       operations.push({
         kind: 'apply_hunk',
         path: filePath,
-        content: truncateContent(`search:\n${search}\n\nreplace:\n${replace}`),
+        search,
+        replace,
       });
       continue;
     }
 
-    const content = typeof o.content === 'string' ? truncateContent(o.content) : '';
+    const content = typeof o.content === 'string' ? normalizePatchContent(truncateContent(o.content)) : '';
     operations.push({ kind, path: filePath, content });
   }
 
@@ -140,14 +145,4 @@ export function summarizePatchOperations(operations: ParsedPatchOperation[]): st
   return parts.length ? parts.join(', ') : 'No operations';
 }
 
-/**
- * Build a unified-diff-style text for proposed file body (no prior snapshot — all additions).
- */
-export function proposedBodyAsUnifiedDiffLines(displayPath: string, newContent: string): string[] {
-  const lines = newContent.split(/\r?\n/);
-  const out: string[] = [`--- /dev/null`, `+++ ${displayPath}`];
-  for (const line of lines) {
-    out.push(`+${line}`);
-  }
-  return out;
-}
+export { proposedBodyAsUnifiedDiffLines } from './patch-diff-display.utils';

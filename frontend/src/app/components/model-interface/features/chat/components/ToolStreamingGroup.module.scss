@@ -33,8 +33,33 @@
 }
 
 .headerLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 400;
-  color: var(--tool-work-text, #475569);
+  color: var(--tool-work-summary, #a1a1aa);
+}
+
+.headerLabelActive {
+  animation: toolWorkPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes toolWorkPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .headerLabelActive {
+    animation: none;
+    opacity: 0.85;
+  }
 }
 
 .chevron {
@@ -59,8 +84,27 @@
   min-width: 0;
 }
 
+.body {
+  margin-top: 0.125rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.patchSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.patchItem {
+  min-width: 0;
+}
+
 :global(.dark) .group {
   --tool-work-muted: var(--chat-muted-fg);
   --tool-work-text: var(--modal-fg);
+  --tool-work-summary: var(--chat-muted-fg);
   --tool-work-ring: color-mix(in srgb, var(--chat-accent) 22%, transparent);
 }

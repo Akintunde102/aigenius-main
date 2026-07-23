@@ -1,0 +1,38 @@
+---
+description: UI must support light and dark mode via theme CSS variables — never hardcode colors.
+globs: frontend/**/*.{tsx,ts,scss,css}
+alwaysApply: false
+---
+
+# Theme-aware UI (light / dark)
+
+All frontend UI must work in **both** light and dark mode. The app uses `ThemeProvider` (`lib/providers/ThemeProvider.tsx`) and toggles the `dark` class on `<html>`.
+
+## Use design tokens — not fixed colors
+
+Prefer CSS variables from `src/app/styles/globals.scss` (and `globals.css` sidebar tokens when styling sidebar chrome):
+
+| Use case | Tokens |
+|----------|--------|
+| Modals / dialogs | `--modal-overlay`, `--modal-bg`, `--modal-bg-muted`, `--modal-border`, `--modal-fg`, `--modal-muted-fg` |
+| Modal layout | `.app-modal-overlay`, `.app-modal-panel`, `.app-modal-input`, `.app-modal-btn-primary`, `.app-modal-field-label` |
+| Chat / accent actions | `--chat-accent`, `--chat-accent-hover`, `--surface-muted`, `--surface-elevated` |
+| Sidebar | `--sidebar-*` (only inside sidebar components) |
+
+## Do
+
+- Use `var(--token)` or the shared `app-modal-*` classes.
+- Portal overlays to `#modal-root` or `document.body` so `position: fixed` centers on the viewport (sidebar ancestors use transforms).
+- Test mentally in **both** `:root` and `.dark` token sets.
+
+## Avoid
+
+- Hardcoded hex/rgb backgrounds or text (`#1e293b`, `bg-white`, `text-gray-900`) for surfaces that should follow the theme.
+- Sidebar-only tokens (`--sidebar-bg`) on portaled modals — use `--modal-*` instead.
+- `fixed` modals rendered inside transformed parents without a portal.
+
+## Reference implementations
+
+- `ChatHistorySidebar/CreateCodeProjectModal.tsx`
+- `ChatHistorySidebar/CodeProjectInfoModal.tsx`
+- `LightweightModal.tsx`
