@@ -184,9 +184,17 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         }
     }, [codeProjects, isMobile, selectProject, setChat, setCurrentSessionId, setMobileSidebarOpen, switchToSession]);
 
-    const handleNewChat = React.useCallback(() => {
-        setChatProjectScopeId(null);
-        selectProject(null);
+    const startNewChatInScope = React.useCallback((projectId: string | null) => {
+        setChatProjectScopeId(projectId);
+
+        if (projectId) {
+            const project = codeProjects.find((p) => p.id === projectId);
+            if (project) {
+                selectProject(project);
+            }
+        } else {
+            selectProject(null);
+        }
 
         if (createNewSessionAndSwitch && models.length > 0) {
             createNewSessionAndSwitch(models[0].id);
@@ -202,6 +210,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
             setMobileSidebarOpen(false);
         }
     }, [
+        codeProjects,
         createNewSessionAndSwitch,
         isMobile,
         models,
@@ -213,22 +222,17 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         selectProject,
     ]);
 
+    const handleNewChat = React.useCallback(() => {
+        startNewChatInScope(null);
+    }, [startNewChatInScope]);
+
     const handleNewChatForProject = React.useCallback((projectId: string | null) => {
-        setChatProjectScopeId(projectId);
-
-        if (projectId) {
-            const project = codeProjects.find((p) => p.id === projectId);
-            if (project) {
-                selectProject(project);
-            }
-        } else {
-            selectProject(null);
-        }
-
-        handleNewChat();
-    }, [codeProjects, handleNewChat, selectProject]);
+        startNewChatInScope(projectId);
+    }, [startNewChatInScope]);
 
     const handleSelectProject = React.useCallback((projectId: string | null) => {
+        setChatProjectScopeId(projectId);
+
         if (projectId) {
             const project = codeProjects.find((p) => p.id === projectId);
             if (project) {

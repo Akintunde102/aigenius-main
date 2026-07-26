@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import clsx from 'clsx';
 
 import 'github-markdown-css/github-markdown.css';
@@ -20,6 +22,13 @@ import { openFilePreview } from '@/app/components/modals/FilePreviewManager';
 import { getActiveCodeProject, subscribeActiveCodeProject } from '@/lib/code-projects/active-code-project';
 import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
 import { linkifyMarkdownFilePaths } from '@/lib/utils/linkifyMarkdownFilePaths';
+import { repairLlmMarkdown } from '@/lib/utils/repairLlmMarkdown';
+
+/** Allow `<br>` in LLM table cells; everything else stays on the default sanitize schema. */
+const markdownSanitizeSchema = {
+    ...defaultSchema,
+    tagNames: [...(defaultSchema.tagNames ?? []), 'br'],
+};
 
 type MarkdownCodeElementProps = React.HTMLAttributes<HTMLElement> & {
     node?: unknown;
@@ -79,10 +88,11 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
     }, []);
 
     const processedContent = React.useMemo(() => {
-        if (!isAigeniusDesktopRuntime()) {
-            return content;
+        let text = repairLlmMarkdown(content);
+        if (isAigeniusDesktopRuntime()) {
+            text = linkifyMarkdownFilePaths(text, { projectRoot });
         }
-        return linkifyMarkdownFilePaths(content, { projectRoot });
+        return text;
     }, [content, projectRoot]);
 
     return (
@@ -100,7 +110,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
                     return url;
                 }}
                 remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeHighlight]}
+                rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeSchema], rehypeHighlight]}
                 components={{
                     a: ({ node, ...props }) => {
                         void node;

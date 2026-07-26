@@ -485,6 +485,7 @@ export function useModelInterface(options?: {
       setCurrentSessionId,
       refreshChatHistory,
       populateFromBackend,
+      updateSessionMessages,
       showTyping,
       setShowTyping,
       showScrollToBottom,

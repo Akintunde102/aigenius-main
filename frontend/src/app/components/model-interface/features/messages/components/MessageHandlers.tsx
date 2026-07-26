@@ -19,6 +19,10 @@ interface MessageHandlersProps {
         chatSnapshot?: ChatMessage[],
     ) => void;
     chatEndRef: React.RefObject<HTMLDivElement>;
+    viewSessionId?: string | null;
+    updateSessionMessages?: (sessionId: string, messages: ChatMessage[]) => void;
+    setLoading?: (loading: boolean) => void;
+    handleStop?: () => void;
 }
 
 export function MessageHandlers({
@@ -26,6 +30,10 @@ export function MessageHandlers({
     chat,
     setChat,
     handleSend,
+    viewSessionId = null,
+    updateSessionMessages,
+    setLoading,
+    handleStop,
 }: MessageHandlersProps) {
 
     const handleDeleteMessage = useCallback((idx: number) => {
@@ -60,11 +68,29 @@ export function MessageHandlers({
     }, [setChat]);
 
     const handleReplayMessage = useCallback((message: ChatMessage, idx: number) => {
-        if (idx < 0 || idx >= chat.length) return;
+        if (message.role !== 'user' || idx < 0 || idx >= chat.length) return;
+
+        // Stop any in-flight generation and block passive server sync before truncating.
+        handleStop?.();
+        setLoading?.(true);
+
         const nextChat = chat.slice(0, idx + 1);
         setChat(nextChat);
+
+        if (viewSessionId && updateSessionMessages) {
+            updateSessionMessages(viewSessionId, nextChat);
+        }
+
         scheduleNextTick(() => handleSend(undefined, undefined, message, nextChat));
-    }, [chat, setChat, handleSend]);
+    }, [
+        chat,
+        setChat,
+        handleSend,
+        viewSessionId,
+        updateSessionMessages,
+        setLoading,
+        handleStop,
+    ]);
 
     const handleCopyMessage = useCallback((content: string) => {
         copy(content);

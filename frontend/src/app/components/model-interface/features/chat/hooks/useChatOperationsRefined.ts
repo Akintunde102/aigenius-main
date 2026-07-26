@@ -54,6 +54,7 @@ export function useChatOperationsRefined({
     pendingOrphanReply,
     clearPendingOrphanReply,
     onInsufficientFunds,
+    getChatForSession,
 }: UseChatOperationsRefinedProps): UseChatOperationsReturn {
 
     const viewSessionId = resolveViewSessionId(routeConversationId, currentSessionId ?? null);
@@ -208,11 +209,6 @@ export function useChatOperationsRefined({
     ): Promise<boolean> => {
         const shouldStream = enableStreaming !== undefined ? enableStreaming : streamingEnabled;
         const inputToSend = resolveInputToSend(content, input);
-        // Read the transcript through the ref so a send triggered from a stale
-        // closure (memoized composer, deferred tick) still uses the messages of
-        // the conversation that is open right now.
-        const chatForBuild = chatSnapshot ?? currentChatRef.current;
-
         console.log('[useChatOperationsRefined] handleSend entered', { hasSelectedModel: !!selectedModel, inputLength: inputToSend.length, shouldStream });
 
         if (!selectedModel) {
@@ -242,6 +238,9 @@ export function useChatOperationsRefined({
 
         const sendingViewId = resolveViewSessionId(routeConversationId, currentSessionId ?? null);
         const sendingSessionId = sendingViewId ?? DRAFT_SESSION_KEY;
+        // Build from the captured session slot, not whichever transcript is
+        // currently rendered after navigation or a delayed send callback.
+        const chatForBuild = chatSnapshot ?? getChatForSession(sendingSessionId) ?? currentChatRef.current;
         // For draft sends, remember which draft generation this request belongs to.
         const draftEpochAtSend = sendingViewId === null ? getDraftConversationEpoch() : undefined;
         const sendGeneration = (sessionSendGenerationRef.current.get(sendingSessionId) ?? 0) + 1;
@@ -357,7 +356,7 @@ export function useChatOperationsRefined({
         setLoadingForSession, setStreamingForSession, setError,
         setAssistantResponse, chatEndRef,
         handleStreamingResponse, handleNonStreamingResponse, pendingOrphanReply, clearPendingOrphanReply, onInsufficientFunds,
-        setWallet, validateBalance,
+        setWallet, validateBalance, getChatForSession,
     ]);
 
     const handleStop = useCallback(() => {

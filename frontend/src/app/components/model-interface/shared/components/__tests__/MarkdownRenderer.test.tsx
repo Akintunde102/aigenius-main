@@ -105,11 +105,16 @@ describe('MarkdownRenderer', () => {
         expect(reactMarkdownSpy.mock.calls[0][0].children).toBe('  line1\n\nline2  ');
     });
 
-    it('wires remark-gfm and rehype-highlight into ReactMarkdown', () => {
+    it('wires remark-gfm and rehype plugins into ReactMarkdown', () => {
         render(<MarkdownRenderer content="x" />);
         const arg = reactMarkdownSpy.mock.calls[0][0];
         expect(arg.remarkPlugins).toHaveLength(1);
-        expect(arg.rehypePlugins).toHaveLength(1);
+        expect(arg.rehypePlugins).toHaveLength(3);
+    });
+
+    it('applies repairLlmMarkdown before passing content to ReactMarkdown', () => {
+        render(<MarkdownRenderer content={'| A | one\\ntwo |'} />);
+        expect(reactMarkdownSpy.mock.calls[0][0].children).toContain('one<br>two');
     });
 
     it('renders mocked markdown subtree so downstream structure can be asserted', () => {

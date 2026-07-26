@@ -163,4 +163,20 @@ jest.mock('remark-gfm', () => ({}));
 
 // Mock rehype-highlight
 jest.mock('rehype-highlight', () => ({}));
+
+// Mock rehype-raw / rehype-sanitize (ESM-only packages)
+jest.mock('rehype-raw', () => ({
+    __esModule: true,
+    default: function rehypeRaw() {
+        return function rehypeRawTransform() {};
+    },
+}));
+
+jest.mock('rehype-sanitize', () => ({
+    __esModule: true,
+    default: function rehypeSanitize() {
+        return function rehypeSanitizeTransform() {};
+    },
+    defaultSchema: { tagNames: [] },
+}));
  
