@@ -19,13 +19,16 @@ const mockChat: ChatMessage[] = [
 describe('MessageHandlers', () => {
     const setChat = jest.fn();
     const handleSend = jest.fn();
+    const updateSessionMessages = jest.fn();
+    const setLoading = jest.fn();
+    const handleStop = jest.fn();
     const chatEndRef = { current: null } as React.RefObject<HTMLDivElement>;
 
     beforeEach(() => {
         jest.clearAllMocks();
     });
 
-    const renderWithHandlers = (chat = mockChat) => {
+    const renderWithHandlers = (chat = mockChat, extra: Partial<React.ComponentProps<typeof MessageHandlers>> = {}) => {
         let capturedHandlers: any;
         render(
             <MessageHandlers
@@ -33,6 +36,11 @@ describe('MessageHandlers', () => {
                 setChat={setChat}
                 handleSend={handleSend}
                 chatEndRef={chatEndRef}
+                viewSessionId="session-1"
+                updateSessionMessages={updateSessionMessages}
+                setLoading={setLoading}
+                handleStop={handleStop}
+                {...extra}
             >
                 {(handlers) => {
                     capturedHandlers = handlers;
@@ -98,7 +106,10 @@ describe('MessageHandlers', () => {
 
         handlers.handleReplayMessage(messageToReplay, 0);
 
+        expect(handleStop).toHaveBeenCalled();
+        expect(setLoading).toHaveBeenCalledWith(true);
         expect(setChat).toHaveBeenCalledWith(expectedSnapshot);
+        expect(updateSessionMessages).toHaveBeenCalledWith('session-1', expectedSnapshot);
 
         expect(scheduleNextTick).toHaveBeenCalled();
         expect(handleSend).toHaveBeenCalledWith(
@@ -123,12 +134,21 @@ describe('MessageHandlers', () => {
         handlers.handleReplayMessage(messageToReplay, 2);
 
         expect(setChat).toHaveBeenCalledWith(expectedSnapshot);
+        expect(updateSessionMessages).toHaveBeenCalledWith('session-1', expectedSnapshot);
         expect(handleSend).toHaveBeenCalledWith(
             undefined,
             undefined,
             messageToReplay,
             expectedSnapshot,
         );
+    });
+
+    it('handleReplayMessage ignores non-user messages', () => {
+        const handlers = renderWithHandlers();
+        handlers.handleReplayMessage(mockChat[1], 1);
+
+        expect(setChat).not.toHaveBeenCalled();
+        expect(handleSend).not.toHaveBeenCalled();
     });
 
     it('handleCopyMessage correctly calls the copy utility', () => {

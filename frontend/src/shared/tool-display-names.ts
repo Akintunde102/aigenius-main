@@ -107,7 +107,14 @@ export function getToolActivityHint(
             return 'Converting and uploading PDF…';
         case 'web_fetch': {
             const u = args.url;
-            if (typeof u === 'string' && u.trim()) return `Fetching ${u.slice(0, 48)}${u.length > 48 ? '…' : ''}…`;
+            if (typeof u === 'string' && u.trim()) {
+                try {
+                    const host = new URL(u.trim()).hostname.replace(/^www\./, '');
+                    return `Fetching ${host}…`;
+                } catch {
+                    return `Fetching ${u.slice(0, 48)}${u.length > 48 ? '…' : ''}…`;
+                }
+            }
             return 'Fetching page…';
         }
         case 'call_model': {

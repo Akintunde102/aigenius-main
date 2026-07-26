@@ -180,6 +180,25 @@ describe('useChatOperationsRefined', () => {
         expect(uiChatBase[1].events).toEqual(assistantEvents);
     });
 
+    it('builds sends from the captured session slot when the visible chat prop is stale', async () => {
+        renderHookWithProps({
+            currentSessionId: 'session-a',
+            routeConversationId: 'session-a',
+            chat: [],
+            streamingEnabled: true,
+            getChatForSession: (sessionKey) => (sessionKey === 'session-a' ? baseChat : []),
+        });
+
+        await act(async () => {
+            await resultRef.current!.handleSend('new prompt', true);
+        });
+
+        expect(handleStreamingResponse).toHaveBeenCalledTimes(1);
+        const uiChatBase = handleStreamingResponse.mock.calls[0][2] as ChatMessage[];
+        expect(uiChatBase[0]?.content).toBe('previous user');
+        expect(uiChatBase[1]?.events).toEqual(assistantEvents);
+    });
+
     it('passes orphan side-thread request overrides into the response handler and clears them after success', async () => {
         renderHookWithProps({
             streamingEnabled: true,

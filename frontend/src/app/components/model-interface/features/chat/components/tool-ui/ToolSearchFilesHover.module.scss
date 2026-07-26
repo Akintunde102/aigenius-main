@@ -13,20 +13,20 @@
   width: min(28rem, calc(100vw - 2rem));
   overflow: hidden;
   border-radius: 0.5rem;
-  border: 1px solid rgba(63, 63, 70, 0.9);
-  background: #18181b;
-  color: #f4f4f5;
+  border: 1px solid var(--tool-hover-border, rgba(0, 0, 0, 0.1));
+  background: var(--tool-hover-bg, #ffffff);
+  color: var(--tool-hover-fg, #334155);
   box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(255, 255, 255, 0.03);
+    0 10px 24px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
 .header {
   padding: 0.45rem 0.65rem 0.35rem;
   font-size: 10px;
   line-height: 1.35;
-  color: #a1a1aa;
-  border-bottom: 1px solid rgba(63, 63, 70, 0.75);
+  color: var(--tool-hover-muted, #94a3b8);
+  border-bottom: 1px solid var(--tool-hover-divider, rgba(0, 0, 0, 0.08));
 }
 
 .scope {
@@ -34,7 +34,7 @@
   margin-top: 0.1rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   font-size: 10px;
-  color: #d4d4d8;
+  color: var(--tool-hover-scope-fg, #475569);
   word-break: break-all;
 }
 
@@ -55,12 +55,12 @@
 }
 
 .item:hover {
-  background: rgba(63, 63, 70, 0.45);
+  background: var(--tool-hover-item-bg, rgba(0, 0, 0, 0.04));
 }
 
 .fileIcon {
   flex-shrink: 0;
-  color: #71717a;
+  color: var(--tool-hover-icon-fg, #94a3b8);
 }
 
 .name {
@@ -71,7 +71,7 @@
   white-space: nowrap;
   font-size: 11px;
   font-weight: 500;
-  color: #fafafa;
+  color: var(--tool-hover-name-fg, #1e293b);
 }
 
 .path {
@@ -81,19 +81,35 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 10px;
-  color: #71717a;
+  color: var(--tool-hover-path-fg, #64748b);
 }
 
 .line {
   flex-shrink: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   font-size: 10px;
-  color: #a1a1aa;
+  color: var(--tool-hover-muted, #94a3b8);
   font-variant-numeric: tabular-nums;
 }
 
 .empty {
   padding: 0.55rem 0.65rem 0.65rem;
   font-size: 10px;
-  color: #a1a1aa;
+  color: var(--tool-hover-muted, #94a3b8);
+}
+
+:global(.dark) .popover {
+  --tool-hover-border: rgba(63, 63, 70, 0.9);
+  --tool-hover-bg: #18181b;
+  --tool-hover-fg: #f4f4f5;
+  --tool-hover-muted: #a1a1aa;
+  --tool-hover-divider: rgba(63, 63, 70, 0.75);
+  --tool-hover-scope-fg: #d4d4d8;
+  --tool-hover-item-bg: rgba(63, 63, 70, 0.45);
+  --tool-hover-icon-fg: #71717a;
+  --tool-hover-name-fg: #fafafa;
+  --tool-hover-path-fg: #71717a;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
 }

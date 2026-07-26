@@ -1,24 +1,24 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { FilePreviewModal } from '../FilePreviewModal';
 import { filePreviewEmitter } from '../FilePreviewManager';
 
-// Mock Lucide icons
-jest.mock('lucide-react', () => ({
-    X: () => <div data-testid="icon-x" />,
-    FolderOpen: () => <div data-testid="icon-folder-open" />,
-    Download: () => <div data-testid="icon-download" />,
-    FileIcon: () => <div data-testid="icon-file-icon" />,
-    Folder: () => <div data-testid="icon-folder" />,
-    ChevronRight: () => <div data-testid="icon-chevron-right" />,
-    File: () => <div data-testid="icon-file" />,
-    PanelLeft: () => <div data-testid="icon-panel-left" />,
-    ExternalLink: () => <div data-testid="icon-external-link" />,
-    Save: () => <div data-testid="icon-save" />,
-    Eye: () => <div data-testid="icon-eye" />,
-    Code2: () => <div data-testid="icon-code2" />,
-}));
+// Mock Lucide icons — proxy covers explorer/header icons without listing each one
+jest.mock('lucide-react', () => {
+    const React = require('react');
+    return new Proxy(
+        {},
+        {
+            get: (_target, prop) => {
+                const name = String(prop);
+                const MockIcon = () => <div data-testid={`icon-${name}`} />;
+                MockIcon.displayName = name;
+                return MockIcon;
+            },
+        },
+    );
+});
 
 // Mock Monaco Editor
 jest.mock('@monaco-editor/react', () => {
@@ -37,8 +37,8 @@ describe('FilePreviewModal', () => {
     const originalDesktopBridge = (window as any).aigeniusDesktop;
 
     beforeEach(() => {
-        // Clear all mock implementations
         jest.clearAllMocks();
+        Element.prototype.scrollIntoView = jest.fn();
     });
 
     afterEach(() => {
@@ -67,11 +67,13 @@ describe('FilePreviewModal', () => {
 
         render(<FilePreviewModal />);
 
-        filePreviewEmitter.emit('open', {
-            type: 'image',
-            name: 'test.png',
-            url: 'local-file:///test.png',
-            localPath: '/test.png'
+        await act(async () => {
+            filePreviewEmitter.emit('open', {
+                type: 'image',
+                name: 'test.png',
+                url: 'local-file:///test.png',
+                localPath: '/test.png'
+            });
         });
 
         // Initially shows loading spinner or nothing because url is empty during fetch
@@ -103,11 +105,13 @@ describe('FilePreviewModal', () => {
 
         render(<FilePreviewModal />);
 
-        filePreviewEmitter.emit('open', {
-            type: 'folder',
-            name: 'my-folder',
-            url: 'local-file:///folder',
-            localPath: '/folder'
+        await act(async () => {
+            filePreviewEmitter.emit('open', {
+                type: 'folder',
+                name: 'my-folder',
+                url: 'local-file:///folder',
+                localPath: '/folder'
+            });
         });
 
         expect(screen.getByText('my-folder')).toBeInDocument();
@@ -137,11 +141,13 @@ describe('FilePreviewModal', () => {
 
         render(<FilePreviewModal />);
 
-        filePreviewEmitter.emit('open', {
-            type: 'folder',
-            name: 'empty-folder',
-            url: 'local-file:///empty',
-            localPath: '/empty'
+        await act(async () => {
+            filePreviewEmitter.emit('open', {
+                type: 'folder',
+                name: 'empty-folder',
+                url: 'local-file:///empty',
+                localPath: '/empty'
+            });
         });
 
         await waitFor(() => {
@@ -175,11 +181,13 @@ describe('FilePreviewModal', () => {
         render(<FilePreviewModal />);
 
         // 1. Open folder
-        filePreviewEmitter.emit('open', {
-            type: 'folder',
-            name: 'code-folder',
-            url: 'local-file:///folder',
-            localPath: '/folder'
+        await act(async () => {
+            filePreviewEmitter.emit('open', {
+                type: 'folder',
+                name: 'code-folder',
+                url: 'local-file:///folder',
+                localPath: '/folder'
+            });
         });
 
         await waitFor(() => {
@@ -219,11 +227,13 @@ describe('FilePreviewModal', () => {
 
         render(<FilePreviewModal />);
 
-        filePreviewEmitter.emit('open', {
-            type: 'folder',
-            name: 'img-folder',
-            url: 'local-file:///folder',
-            localPath: '/folder'
+        await act(async () => {
+            filePreviewEmitter.emit('open', {
+                type: 'folder',
+                name: 'img-folder',
+                url: 'local-file:///folder',
+                localPath: '/folder'
+            });
         });
 
         await waitFor(() => {

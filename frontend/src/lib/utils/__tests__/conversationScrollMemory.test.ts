@@ -4,6 +4,7 @@ import {
   clearConversationScrollState,
   getConversationScrollState,
   getStaleConversationIds,
+  localMessagesMatchServerPrefix,
   saveConversationScrollState,
   shouldAcceptRemoteConversationSync,
 } from "../conversationScrollMemory";
@@ -80,6 +81,38 @@ describe("conversationScrollMemory", () => {
     expect(shouldAcceptRemoteConversationSync(local, local)).toBe(false);
     expect(shouldAcceptRemoteConversationSync(local, equalCountServer)).toBe(false);
     expect(shouldAcceptRemoteConversationSync(local, aheadServer)).toBe(true);
+  });
+
+  it("shouldAcceptRemoteConversationSync rejects replay branches trimmed to a user turn", () => {
+    const fullServerThread = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1 }),
+      createMessage({ id: "assistant-1", role: "assistant", timestamp: 2 }),
+      createMessage({ id: "user-2", role: "user", timestamp: 3 }),
+      createMessage({ id: "assistant-2", role: "assistant", timestamp: 4 }),
+    ];
+    const replaySnapshot = fullServerThread.slice(0, 3);
+
+    expect(shouldAcceptRemoteConversationSync(replaySnapshot, fullServerThread)).toBe(false);
+    expect(localMessagesMatchServerPrefix(replaySnapshot, fullServerThread)).toBe(true);
+  });
+
+  it("shouldAcceptRemoteConversationSync rejects stale server tails after a branched assistant reply", () => {
+    const localAfterReplay = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1 }),
+      createMessage({ id: "assistant-1", role: "assistant", timestamp: 2 }),
+      createMessage({ id: "user-2", role: "user", timestamp: 3 }),
+      createMessage({ id: "assistant-new", role: "assistant", timestamp: 5 }),
+    ];
+    const staleServer = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1 }),
+      createMessage({ id: "assistant-1", role: "assistant", timestamp: 2 }),
+      createMessage({ id: "user-2", role: "user", timestamp: 3 }),
+      createMessage({ id: "assistant-old", role: "assistant", timestamp: 4 }),
+      createMessage({ id: "user-3", role: "user", timestamp: 6 }),
+    ];
+
+    expect(shouldAcceptRemoteConversationSync(localAfterReplay, staleServer)).toBe(false);
+    expect(localMessagesMatchServerPrefix(localAfterReplay, staleServer)).toBe(false);
   });
 
   it("persists and restores scroll state per conversation", () => {

@@ -104,29 +104,29 @@
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #a1a1aa;
+  color: var(--io-toggle-fg, #94a3b8);
   cursor: pointer;
   transition: color 0.15s ease;
 
   &:hover {
-    color: #d4d4d8;
+    color: var(--io-toggle-hover-fg, #475569);
   }
 
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(161, 161, 170, 0.35);
+    box-shadow: 0 0 0 2px var(--tool-work-ring, rgba(148, 163, 184, 0.45));
     border-radius: 2px;
   }
 }
 
 .ioToggleActive {
-  color: #d4d4d8;
+  color: var(--io-toggle-active-fg, #334155);
 }
 
 .ioChevron {
   font-size: 10px;
   line-height: 1;
-  color: #71717a;
+  color: var(--io-chevron-fg, #94a3b8);
 }
 
 .ioPanel {
@@ -134,15 +134,15 @@
   max-height: 14rem;
   overflow-y: auto;
   border-radius: 0.5rem;
-  border: 1px solid rgba(63, 63, 70, 0.9);
-  background: #18181b;
-  color: #f4f4f5;
+  border: 1px solid var(--io-panel-border, rgba(0, 0, 0, 0.1));
+  background: var(--io-panel-bg, #ffffff);
+  color: var(--io-panel-fg, #334155);
   padding: 0.35rem 0.55rem;
 }
 
 .ioPanelError {
   border-color: rgba(248, 113, 113, 0.45);
-  color: #fecaca;
+  color: #b91c1c;
 }
 
 .ioRow {
@@ -157,7 +157,7 @@
   flex-shrink: 0;
   font-size: 10px;
   font-weight: 500;
-  color: #a1a1aa;
+  color: var(--io-key-fg, #94a3b8);
 }
 
 .ioValue {
@@ -165,7 +165,7 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   font-size: 10px;
   line-height: 1.45;
-  color: #d4d4d8;
+  color: var(--io-value-fg, #475569);
   word-break: break-word;
   white-space: pre-wrap;
 }
@@ -179,4 +179,17 @@
   --tool-work-text: #d4d4d8;
   --tool-work-item: #a1a1aa;
   --tool-work-ring: rgba(161, 161, 170, 0.35);
+  --io-toggle-fg: #a1a1aa;
+  --io-toggle-hover-fg: #d4d4d8;
+  --io-toggle-active-fg: #d4d4d8;
+  --io-chevron-fg: #71717a;
+  --io-panel-bg: #18181b;
+  --io-panel-border: rgba(63, 63, 70, 0.9);
+  --io-panel-fg: #f4f4f5;
+  --io-key-fg: #a1a1aa;
+  --io-value-fg: #d4d4d8;
+}
+
+:global(.dark) .ioPanelError {
+  color: #fecaca;
 }

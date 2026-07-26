@@ -71,13 +71,10 @@
 
 .body {
   margin: 0.25rem 0 0;
-  padding: 0.35rem 0.55rem;
+  padding: 0;
   max-height: 280px;
   overflow-y: auto;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(63, 63, 70, 0.9);
-  background: #18181b;
-  color: var(--reasoning-body-fg, #a1a1aa);
+  color: var(--tool-work-muted, #64748b);
 }
 
 .markdownWrap {
@@ -107,5 +104,4 @@
   --tool-work-text: var(--modal-fg);
   --tool-work-summary: var(--chat-muted-fg);
   --tool-work-ring: color-mix(in srgb, var(--chat-accent) 22%, transparent);
-  --reasoning-body-fg: var(--chat-muted-fg);
 }

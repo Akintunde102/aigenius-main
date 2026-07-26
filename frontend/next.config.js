@@ -125,7 +125,8 @@ const nextConfig = {
                             "default-src 'self'",
                             scriptSrc,
                             "style-src 'self' 'unsafe-inline'",
-                            "img-src 'self' blob: data: https://images.unsplash.com https://nobox-upload-bucket.s3.eu-west-2.amazonaws.com https://res.cloudinary.com",
+                            // Allow HTTPS images from any host so assistant markdown (e.g. Wikipedia) can render.
+                            "img-src 'self' blob: data: https:",
                             "font-src 'self'",
                             "worker-src 'self' blob:",
                             "frame-src 'self' blob: data: https://checkout.paystack.com",
