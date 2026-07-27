@@ -2,10 +2,12 @@ import path from 'path';
 import type Database from 'better-sqlite3';
 import type { RagQueryResult } from '../db/queries.js';
 import { ragQueryChunks } from '../db/queries-chunks.js';
+import { getGraphCoverageStats } from '../db/queries.js';
 import { cosineSimilarity, embedTextForSearch, reciprocalRankFusion } from './embedder.js';
 import { blobToVector } from './hash-embedder.js';
 import { countEmbeddings } from './chunk-embeddings.js';
 import { DEFAULT_IGNORED_PATHS } from '../indexer/exemptions.js';
+import { paginateSemanticHits } from './semantic-search.js';
 
 type HybridHit = {
   id: string;
@@ -20,10 +22,9 @@ type HybridHit = {
   score: number;
 };
 
-function vectorSearchChunks(
+function vectorSearchAllChunks(
   db: Database.Database,
   queryVec: Float32Array,
-  topK: number,
   pathPrefix: string,
   extensions?: string[],
 ): HybridHit[] {
@@ -67,7 +68,7 @@ function vectorSearchChunks(
     vector: Buffer;
   }>;
 
-  const scored = rows.map((r) => {
+  return rows.map((r) => {
     const vec = blobToVector(r.vector);
     const sim = cosineSimilarity(queryVec, vec);
     return {
@@ -83,13 +84,15 @@ function vectorSearchChunks(
       score: sim,
     };
   });
-
-  scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, topK);
 }
 
+export type HybridSearchOptions = {
+  page?: number;
+  pageSize?: number;
+};
+
 /**
- * Hybrid retrieval: FTS chunk search + vector similarity fused via RRF.
+ * Hybrid retrieval: FTS chunk search + vector similarity fused via RRF, then paginated with dynamic cutoff.
  */
 export async function ragQueryHybrid(
   db: Database.Database,
@@ -99,22 +102,43 @@ export async function ragQueryHybrid(
   topK = 8,
   pathPrefix = '',
   extensions?: string[],
+  options: HybridSearchOptions = {},
 ): Promise<RagQueryResult> {
+  const page = Math.max(0, options.page ?? 0);
+  const pageSize = Math.max(1, options.pageSize ?? topK);
   const embeddingCount = countEmbeddings(db);
+  const graphStats = getGraphCoverageStats(db, pathPrefix);
+  const graphPartial = graphStats.pending > 0 || graphStats.error > 0;
 
   if (!contentQuery.trim() || embeddingCount === 0) {
     const { ragQuerySmart } = await import('../db/queries-chunks.js');
-    return ragQuerySmart(db, contentQuery, pathQuery, topK, pathPrefix, extensions);
+    const result = ragQuerySmart(db, contentQuery, pathQuery, pageSize, pathPrefix, extensions);
+    return {
+      ...result,
+      page,
+      page_size: pageSize,
+      has_more: false,
+      relevant_total: result.hit_count,
+      graph_partial: graphPartial,
+    };
   }
 
-  const ftsResult = ragQueryChunks(db, contentQuery, pathQuery, topK * 2, pathPrefix, extensions);
+  const ftsResult = ragQueryChunks(db, contentQuery, pathQuery, pageSize * 4, pathPrefix, extensions);
   const queryVec = await embedTextForSearch(modelsDir, contentQuery);
   if (!queryVec) {
     const { ragQuerySmart } = await import('../db/queries-chunks.js');
-    return ragQuerySmart(db, contentQuery, pathQuery, topK, pathPrefix, extensions);
+    const result = ragQuerySmart(db, contentQuery, pathQuery, pageSize, pathPrefix, extensions);
+    return {
+      ...result,
+      page,
+      page_size: pageSize,
+      has_more: false,
+      relevant_total: result.hit_count,
+      graph_partial: graphPartial,
+    };
   }
 
-  const vectorHits = vectorSearchChunks(db, queryVec, topK * 2, pathPrefix, extensions);
+  const vectorHits = vectorSearchAllChunks(db, queryVec, pathPrefix, extensions);
 
   const ftsList = ftsResult.hits.map((h, i) => ({
     id: `chunk:${(h as { chunk_id?: number }).chunk_id ?? i}`,
@@ -129,16 +153,22 @@ export async function ragQueryHybrid(
     score: h.score,
   }));
 
-  const fused = reciprocalRankFusion([ftsList, vectorHits], 60).slice(0, topK);
+  const fused = reciprocalRankFusion([ftsList, vectorHits], 60).map((h) => ({
+    ...h,
+    score: h.rrfScore,
+  }));
+
+  const paged = paginateSemanticHits(fused, page, pageSize);
+  const scoreByChunk = new Map(fused.map((h) => [h.chunk_id, h.score]));
 
   const statusRow = db.prepare<[], { last: number | null }>('SELECT MAX(mtime) AS last FROM file_index').get();
   const chunkTotal = db.prepare<[], { cnt: number }>('SELECT COUNT(*) AS cnt FROM file_chunks').get()?.cnt ?? 0;
 
   return {
-    hits: fused.map((h) => ({
+    hits: paged.hits.map((h) => ({
       path: h.path,
       name: h.name,
-      score: h.rrfScore,
+      score: scoreByChunk.get(h.chunk_id) ?? 0,
       snippet: h.snippet,
       mtime: h.mtime,
       line_start: h.line_start,
@@ -147,8 +177,14 @@ export async function ragQueryHybrid(
       chunk_id: h.chunk_id,
       hybrid: true,
     })),
-    hit_count: fused.length,
+    hit_count: paged.hits.length,
     scanned_chunks: chunkTotal,
     index_updated_at_ms: statusRow?.last ?? 0,
+    page: paged.page,
+    page_size: paged.page_size,
+    has_more: paged.has_more,
+    relevant_total: paged.relevant_total,
+    cutoff_score: paged.cutoff_score,
+    graph_partial: graphPartial,
   };
 }

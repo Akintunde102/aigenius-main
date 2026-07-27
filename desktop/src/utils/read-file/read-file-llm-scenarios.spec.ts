@@ -72,21 +72,42 @@ describe('read-file-service integration', () => {
     });
     expect(batch.results).toHaveLength(2);
     expect(batch.results.every((r) => r.status === 'ok')).toBe(true);
+    expect(batch.batchMeta?.isBatch).toBe(true);
     const formatted = formatReadFileBatch(batch);
-    expect(formatted.result).toContain('Read files (2)');
+    expect(formatted.result).toContain('Batch read');
+    expect(formatted.result).toContain('40%');
   });
 
-  it('caps batch file count by context tier (small model)', async () => {
+  it('skips later files when batch budget is exhausted', async () => {
     workspaceRoot = await createTestWorkspace({
-      '1.ts': '1\n', '2.ts': '2\n', '3.ts': '3\n',
+      'small.txt': 'ok\n',
+      'big.txt': numberedLines(800),
+      'tail.txt': 'tail\n',
     });
     const batch = await executeReadFile({
-      reads: [{ path: '1.ts' }, { path: '2.ts' }, { path: '3.ts' }],
-      model_context_length: 16_000,
+      reads: [{ path: 'small.txt' }, { path: 'big.txt' }, { path: 'tail.txt' }],
+      model_context_length: 4_000,
     });
-    expect(batch.results.length).toBeGreaterThanOrEqual(3);
-    const skipped = batch.results.find((r) => r.content.includes('batch limit'));
-    expect(skipped).toBeDefined();
+    expect(batch.results[0]?.status).toBe('ok');
+    expect(batch.results[1]?.status).toBe('truncated');
+    expect(batch.results[2]?.status).toBe('skipped');
+    expect(batch.results[2]?.skipReason).toBe('budget_exhausted');
+    expect(batch.results[2]?.content).toContain('SKIPPED');
+  });
+
+  it('skips denylisted files in batch without consuming budget', async () => {
+    workspaceRoot = await createTestWorkspace({
+      '.env': 'SECRET=1\n',
+      'ok.txt': 'visible\n',
+    });
+    const batch = await executeReadFile({
+      reads: [{ path: '.env' }, { path: 'ok.txt' }],
+      model_context_length: 128_000,
+    });
+    expect(batch.results[0]?.status).toBe('skipped');
+    expect(batch.results[0]?.skipReason).toBe('denylist');
+    expect(batch.results[1]?.status).toBe('ok');
+    expect(batch.results[1]?.content).toContain('visible');
   });
 });
 

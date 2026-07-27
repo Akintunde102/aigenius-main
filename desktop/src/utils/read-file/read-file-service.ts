@@ -1,12 +1,18 @@
-import fs from 'fs/promises';
+import fs from 'fs';
+import readline from 'readline';
+import fsPromises from 'fs/promises';
 import {
   countFileLines,
   formatNumberedLines,
   MAX_MAX_LINES,
   readFileLines,
 } from '../read-file-lines';
+import { batchReadDenyReason } from './batch-read-denylist';
 import { isBinaryFile } from './binary-detect';
-import { resolveContextBudget } from './context-budget-policy';
+import {
+  resolveBatchReadBudget,
+  resolveSingleFileLineBudget,
+} from './context-budget-policy';
 import {
   buildDocSectionIndex,
   formatDocIndex,
@@ -18,6 +24,7 @@ import { truncateLongLine } from './long-line';
 import { resolveReadFilePath } from './path-resolver';
 import { resolveSymbolAnchor } from './symbol-anchor';
 import type {
+  ReadFileBatchMeta,
   ReadFileBatchResult,
   ReadFileItemResult,
   ReadFileRequest,
@@ -64,6 +71,18 @@ function normalizeRequests(args: Record<string, unknown>): ReadFileRequest[] {
   return [];
 }
 
+function hasExplicitReadWindow(req: ReadFileRequest): boolean {
+  return (
+    typeof req.start_line === 'number'
+    || typeof req.max_lines === 'number'
+    || typeof req.offset === 'number'
+    || typeof req.limit === 'number'
+    || Boolean(req.anchorSymbol)
+    || req.mode === 'lines'
+    || req.mode === 'index'
+  );
+}
+
 function resolveStartLine(req: ReadFileRequest): number {
   if (typeof req.start_line === 'number' && req.start_line >= 1) {
     return Math.floor(req.start_line);
@@ -88,12 +107,38 @@ function buildTruncationNotice(
   lineStart: number,
   lineEnd: number,
   totalLines: number | undefined,
-  path: string,
+  filePath: string,
 ): string {
   if (totalLines && lineEnd < totalLines) {
-    return `Showing lines ${lineStart}–${lineEnd} of ${totalLines}. Call again with start_line=${lineEnd + 1} (or offset=${lineEnd}) to continue reading ${path}.`;
+    return `Showing lines ${lineStart}–${lineEnd} of ${totalLines}. Call again with start_line=${lineEnd + 1} (or offset=${lineEnd}) to continue reading ${filePath}.`;
   }
   return `Showing lines ${lineStart}–${lineEnd}. More content may exist below — call again with start_line=${lineEnd + 1} to continue.`;
+}
+
+function buildBatchBudgetTruncationNotice(
+  lineStart: number,
+  lineEnd: number,
+  totalLines: number | undefined,
+  filePath: string,
+): string {
+  if (totalLines && lineEnd < totalLines) {
+    return `Batch budget exhausted inside this file (lines ${lineStart}–${lineEnd} of ${totalLines}). Continue with start_line=${lineEnd + 1}. Do not summarize this file as complete.`;
+  }
+  return `Batch budget exhausted at lines ${lineStart}–${lineEnd} of ${filePath}. Do not summarize this file as complete.`;
+}
+
+function skippedItem(
+  path: string,
+  reason: 'budget_exhausted' | 'denylist' | 'max_paths',
+  message: string,
+): ReadFileItemResult {
+  return {
+    path,
+    status: 'skipped',
+    skipReason: reason,
+    content: message,
+    truncationNotice: message,
+  };
 }
 
 async function readLineWindow(
@@ -138,10 +183,73 @@ async function readLineWindow(
   };
 }
 
+async function readFullFileWithinCharBudget(
+  resolvedPath: string,
+  displayPath: string,
+  charBudget: { value: number },
+): Promise<ReadFileItemResult> {
+  const lineCount = await countFileLines(resolvedPath);
+  const totalLines = lineCount.lineCountOmitted ? undefined : lineCount.totalLines;
+  const rawLines: string[] = [];
+  let stoppedEarly = false;
+
+  await new Promise<void>((resolve, reject) => {
+    const rl = readline.createInterface({
+      input: fs.createReadStream(resolvedPath, { encoding: 'utf8' }),
+      crlfDelay: Infinity,
+    });
+
+    rl.on('line', (line) => {
+      const candidate = [...rawLines, line];
+      const processed = candidate.map((l) => truncateLongLine(l).text);
+      const formatted = formatNumberedLines(processed, 1);
+      if (formatted.length > charBudget.value) {
+        stoppedEarly = true;
+        rl.close();
+        resolve();
+        return;
+      }
+      rawLines.push(line);
+    });
+
+    rl.on('close', () => resolve());
+    rl.on('error', reject);
+  });
+
+  const processedLines = rawLines.map((l) => truncateLongLine(l).text);
+  const content = formatNumberedLines(processedLines, 1);
+  const lineEnd = processedLines.length;
+  const truncated = stoppedEarly || (totalLines !== undefined && lineEnd < totalLines);
+
+  charBudget.value = Math.max(0, charBudget.value - content.length);
+
+  const truncationNotice = truncated
+    ? buildBatchBudgetTruncationNotice(1, lineEnd, totalLines, displayPath)
+    : undefined;
+
+  let body = content;
+  if (truncationNotice) {
+    body = `> ⚠ PARTIAL — ${truncationNotice}\n\n${body}`;
+  }
+
+  return {
+    path: displayPath,
+    resolvedPath,
+    status: truncated ? 'truncated' : 'ok',
+    linesReturned: lineEnd > 0 ? [1, lineEnd] : undefined,
+    totalLines,
+    content: body,
+    truncationNotice,
+    resolvedVia: 'batchFull',
+    mode: 'lines',
+    line_count_omitted: lineCount.lineCountOmitted,
+  };
+}
+
 async function readSingle(
   req: ReadFileRequest,
   budgetMaxLines: number,
-  charBudgetRemaining: { value: number },
+  charBudgetRemaining?: { value: number },
 ): Promise<ReadFileItemResult> {
   const pathResult = await resolveReadFilePath(req.path);
   if (!pathResult.ok) {
@@ -173,14 +281,21 @@ async function readSingle(
         'docIndex',
       );
       result.resolvedVia = 'docIndex';
+      if (charBudgetRemaining) {
+        charBudgetRemaining.value = Math.max(0, charBudgetRemaining.value - result.content.length);
+      }
       return result;
     }
     const indexBody = formatDocIndex(sections);
+    const content = `Document section index for ${displayPath}:\n\n${indexBody}`;
+    if (charBudgetRemaining) {
+      charBudgetRemaining.value = Math.max(0, charBudgetRemaining.value - content.length);
+    }
     return {
       path: displayPath,
       resolvedPath: resolved,
       status: 'ok',
-      content: `Document section index for ${displayPath}:\n\n${indexBody}`,
+      content,
       resolvedVia: 'docIndex',
       mode: 'index',
     };
@@ -197,11 +312,14 @@ async function readSingle(
         Math.min(span, budgetMaxLines),
         'symbolAnchor',
       );
+      if (charBudgetRemaining) {
+        charBudgetRemaining.value = Math.max(0, charBudgetRemaining.value - result.content.length);
+      }
       return result;
     }
     const fallbackLine = anchor.fallbackLine ?? 1;
     const fallbackNote = `anchorSymbol "${req.anchorSymbol}" did not resolve (${anchor.reason}); showing line-range fallback.`;
-    return readLineWindow(
+    const result = await readLineWindow(
       resolved,
       displayPath,
       fallbackLine,
@@ -209,6 +327,10 @@ async function readSingle(
       'lineRangeFallback',
       fallbackNote,
     );
+    if (charBudgetRemaining) {
+      charBudgetRemaining.value = Math.max(0, charBudgetRemaining.value - result.content.length);
+    }
+    return result;
   }
 
   const lineCount = await countFileLines(resolved);
@@ -224,12 +346,16 @@ async function readSingle(
   ) {
     const sections = await buildDocSectionIndex(resolved);
     const indexBody = formatDocIndex(sections);
+    const content = `> Large document (${totalLines ?? 'unknown'} lines). Section index:\n\n${indexBody}\n\nRequest a section with anchorSymbol: "section:N" or use start_line/max_lines.`;
+    if (charBudgetRemaining) {
+      charBudgetRemaining.value = Math.max(0, charBudgetRemaining.value - content.length);
+    }
     return {
       path: displayPath,
       resolvedPath: resolved,
       status: 'ok',
       totalLines,
-      content: `> Large document (${totalLines ?? 'unknown'} lines). Section index:\n\n${indexBody}\n\nRequest a section with anchorSymbol: "section:N" or use start_line/max_lines.`,
+      content,
       resolvedVia: 'docIndex',
       mode: 'index',
       line_count_omitted: lineCount.lineCountOmitted,
@@ -248,11 +374,27 @@ async function readSingle(
     const startLine = resolveStartLine(req);
     const maxLines = resolveMaxLines(req, budgetMaxLines);
     const result = await readLineWindow(resolved, displayPath, startLine, maxLines, 'lineRange');
-    charBudgetRemaining.value -= result.content.length;
+    if (charBudgetRemaining) {
+      if (result.content.length > charBudgetRemaining.value) {
+        const allowed = result.content.slice(0, charBudgetRemaining.value);
+        charBudgetRemaining.value = 0;
+        return {
+          ...result,
+          status: 'truncated',
+          content: `> ⚠ PARTIAL — batch budget exhausted.\n\n${allowed}`,
+          truncationNotice: 'Batch budget exhausted while reading this file.',
+        };
+      }
+      charBudgetRemaining.value -= result.content.length;
+    }
     return result;
   }
 
-  return readLineWindow(resolved, displayPath, 1, budgetMaxLines, 'lineRange');
+  const result = await readLineWindow(resolved, displayPath, 1, budgetMaxLines, 'lineRange');
+  if (charBudgetRemaining) {
+    charBudgetRemaining.value = Math.max(0, charBudgetRemaining.value - result.content.length);
+  }
+  return result;
 }
 
 async function readBoundedFileByBytes(
@@ -262,7 +404,7 @@ async function readBoundedFileByBytes(
   maxBytes: number,
 ): Promise<ReadFileItemResult> {
   const lineCount = await countFileLines(resolvedPath);
-  const fh = await fs.open(resolvedPath, 'r');
+  const fh = await fsPromises.open(resolvedPath, 'r');
   try {
     const buf = Buffer.alloc(maxBytes);
     const { bytesRead } = await fh.read(buf, 0, maxBytes, offset);
@@ -291,6 +433,97 @@ async function readBoundedFileByBytes(
   }
 }
 
+async function executeBatchRead(
+  requests: ReadFileRequest[],
+  modelContextLength?: number,
+): Promise<ReadFileBatchResult> {
+  const budget = resolveBatchReadBudget(modelContextLength);
+  const charBudget = { value: budget.budgetChars };
+  const results: ReadFileItemResult[] = [];
+  let budgetExhausted = false;
+
+  const cappedRequests = requests.slice(0, budget.maxPaths);
+
+  for (const req of cappedRequests) {
+    const denyReason = batchReadDenyReason(req.path);
+    if (denyReason) {
+      results.push(
+        skippedItem(req.path, 'denylist', `> ⊘ SKIPPED — ${denyReason}`),
+      );
+      continue;
+    }
+
+    if (budgetExhausted || charBudget.value <= 0) {
+      budgetExhausted = true;
+      results.push(
+        skippedItem(
+          req.path,
+          'budget_exhausted',
+          '> ⊘ SKIPPED — batch budget exhausted (40% of model context used). Put important files earlier in reads[].',
+        ),
+      );
+      continue;
+    }
+
+    const pathResult = await resolveReadFilePath(req.path);
+    if (!pathResult.ok) {
+      results.push({
+        path: req.path,
+        status: 'error',
+        content: pathResult.error,
+        error: pathResult.error,
+      });
+      continue;
+    }
+
+    if (await isBinaryFile(pathResult.resolved)) {
+      const err = `Error: unsupported file type — ${pathResult.displayPath} (binary)`;
+      results.push({ path: pathResult.displayPath, status: 'error', content: err, error: err });
+      continue;
+    }
+
+    let item: ReadFileItemResult;
+    if (hasExplicitReadWindow(req)) {
+      item = await readSingle(req, MAX_MAX_LINES, charBudget);
+    } else {
+      item = await readFullFileWithinCharBudget(
+        pathResult.resolved,
+        pathResult.displayPath,
+        charBudget,
+      );
+    }
+
+    if (item.status === 'truncated' || charBudget.value <= 0) {
+      budgetExhausted = true;
+    }
+    results.push(item);
+  }
+
+  if (requests.length > budget.maxPaths) {
+    for (let j = budget.maxPaths; j < requests.length; j += 1) {
+      results.push(
+        skippedItem(
+          requests[j].path,
+          'max_paths',
+          `> ⊘ SKIPPED — exceeds max ${budget.maxPaths} paths per batch read.`,
+        ),
+      );
+    }
+  }
+
+  const charsUsed = budget.budgetChars - charBudget.value;
+  const batchMeta: ReadFileBatchMeta = {
+    modelContextTokens: budget.modelContextTokens,
+    budgetTokens: budget.budgetTokens,
+    budgetChars: budget.budgetChars,
+    charsUsed,
+    budgetFraction: budget.budgetFraction,
+    isBatch: true,
+  };
+
+  return { results, batchMeta };
+}
+
 export async function executeReadFile(
   args: Record<string, unknown>,
   options: ExecuteReadFileOptions = {},
@@ -300,8 +533,8 @@ export async function executeReadFile(
       ? args.model_context_length
       : options.modelContextLength;
 
-  const budget = resolveContextBudget(modelContextLength);
   const requests = normalizeRequests(args);
+  const isBatch = Array.isArray(args.reads) && args.reads.length > 0;
 
   if (requests.length === 0) {
     return {
@@ -314,13 +547,14 @@ export async function executeReadFile(
     };
   }
 
-  const capped = requests.slice(0, budget.maxFiles);
-  const charBudget = { value: budget.maxChars };
-  const results: ReadFileItemResult[] = [];
+  if (isBatch) {
+    return executeBatchRead(requests, modelContextLength);
+  }
+
+  const lineBudget = resolveSingleFileLineBudget(modelContextLength);
 
   const useByteMode =
-    !Array.isArray(args.reads)
-    && typeof args.path === 'string'
+    typeof args.path === 'string'
     && typeof args.max_bytes === 'number'
     && typeof args.start_line !== 'number'
     && typeof args.max_lines !== 'number';
@@ -345,43 +579,6 @@ export async function executeReadFile(
     return { results: [item] };
   }
 
-  for (let i = 0; i < capped.length; i += 1) {
-    if (charBudget.value <= 0) {
-      results.push({
-        path: capped[i].path,
-        status: 'truncated',
-        content: `> ⚠ Batch character budget exhausted. Request this file individually with local_read_file.`,
-        truncationNotice: 'Batch budget exhausted — retry this file alone.',
-      });
-      continue;
-    }
-
-    const item = await readSingle(capped[i], budget.maxLines, charBudget);
-    if (item.content.length > charBudget.value) {
-      const allowed = item.content.slice(0, charBudget.value);
-      results.push({
-        ...item,
-        status: 'truncated',
-        content: `> ⚠ Response truncated to fit context budget.\n\n${allowed}`,
-        truncationNotice: 'Character budget reached for this batch.',
-      });
-      charBudget.value = 0;
-    } else {
-      charBudget.value -= item.content.length;
-      results.push(item);
-    }
-  }
-
-  if (requests.length > budget.maxFiles) {
-    for (let j = budget.maxFiles; j < requests.length; j += 1) {
-      results.push({
-        path: requests[j].path,
-        status: 'truncated',
-        content: `> ⚠ Skipped — batch limit is ${budget.maxFiles} files. Request separately.`,
-        truncationNotice: `Exceeded max ${budget.maxFiles} files per call.`,
-      });
-    }
-  }
-
-  return { results };
+  const item = await readSingle(requests[0], lineBudget.maxLines);
+  return { results: [item] };
 }

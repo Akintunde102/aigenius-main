@@ -104,6 +104,12 @@ export type RagQueryResult = {
   index_updated_at_ms: number;
   /** Set when the caller omitted searchable terms and browse filters. */
   hint?: string;
+  page?: number;
+  page_size?: number;
+  has_more?: boolean;
+  relevant_total?: number;
+  cutoff_score?: number | null;
+  graph_partial?: boolean;
 };
 
 /**
@@ -1176,4 +1182,60 @@ export function purgeExemptedFiles(db: Database.Database): void {
   if (vadResult.changes > 0) {
     console.info(`[search-db] Purged ${vadResult.changes} rows under public/vad from the index.`);
   }
+}
+
+/** Bump last_accessed_at for recently read files (graph worker prioritization). */
+export function touchFileAccess(db: Database.Database, filePaths: string[]): void {
+  if (!filePaths.length) return;
+  const now = Date.now();
+  const stmt = db.prepare('UPDATE file_index SET last_accessed_at = ? WHERE path = ?');
+  db.transaction(() => {
+    for (const p of filePaths) {
+      if (p) stmt.run(now, p);
+    }
+  })();
+}
+
+export type GraphCoverageStats = {
+  total: number;
+  complete: number;
+  pending: number;
+  skipped: number;
+  error: number;
+  none: number;
+};
+
+export function getGraphCoverageStats(
+  db: Database.Database,
+  pathPrefix = '',
+): GraphCoverageStats {
+  const norm = pathPrefix ? path.normalize(pathPrefix) : '';
+  const prefixFilter = norm ? 'WHERE path LIKE ? || \'%\'' : '';
+  const params: unknown[] = norm ? [norm] : [];
+  const rows = db
+    .prepare(
+      `SELECT COALESCE(graph_status, 'none') AS status, COUNT(*) AS cnt
+       FROM file_index
+       ${prefixFilter}
+       GROUP BY status`,
+    )
+    .all(...params) as Array<{ status: string; cnt: number }>;
+
+  const stats: GraphCoverageStats = {
+    total: 0,
+    complete: 0,
+    pending: 0,
+    skipped: 0,
+    error: 0,
+    none: 0,
+  };
+  for (const row of rows) {
+    stats.total += row.cnt;
+    if (row.status === 'complete') stats.complete += row.cnt;
+    else if (row.status === 'pending') stats.pending += row.cnt;
+    else if (row.status === 'skipped') stats.skipped += row.cnt;
+    else if (row.status === 'error') stats.error += row.cnt;
+    else stats.none += row.cnt;
+  }
+  return stats;
 }

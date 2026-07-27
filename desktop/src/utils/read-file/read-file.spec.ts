@@ -1,23 +1,38 @@
-import { resolveContextBudget } from './context-budget-policy';
+import {
+  resolveBatchReadBudget,
+  resolveContextBudget,
+  resolveSingleFileLineBudget,
+  CHARS_PER_TOKEN_ESTIMATE,
+  BATCH_CONTEXT_FRACTION,
+} from './context-budget-policy';
 import { truncateLongLine, DEFAULT_MAX_LINE_CHARS } from './long-line';
 import { formatNumberedLines } from '../read-file-lines';
 
 describe('read-file utilities', () => {
-  describe('resolveContextBudget', () => {
-    it('tiers by model context window', () => {
-      expect(resolveContextBudget(16_000).maxChars).toBe(15_000);
-      expect(resolveContextBudget(16_000).maxFiles).toBe(2);
-      expect(resolveContextBudget(64_000).maxChars).toBe(25_000);
-      expect(resolveContextBudget(64_000).maxFiles).toBe(4);
-      expect(resolveContextBudget(150_000).maxChars).toBe(40_000);
-      expect(resolveContextBudget(200_000).maxChars).toBe(40_000);
-      expect(resolveContextBudget(1_000_000).maxChars).toBe(60_000);
-      expect(resolveContextBudget(1_000_000).maxFiles).toBe(10);
+  describe('resolveBatchReadBudget', () => {
+    it('allocates 40% of context as char budget', () => {
+      const b = resolveBatchReadBudget(100_000);
+      expect(b.budgetFraction).toBe(BATCH_CONTEXT_FRACTION);
+      expect(b.budgetTokens).toBe(40_000);
+      expect(b.budgetChars).toBe(Math.floor(40_000 * CHARS_PER_TOKEN_ESTIMATE));
+      expect(b.maxPaths).toBe(20);
     });
+  });
 
-    it('uses default tier when context length missing', () => {
-      const b = resolveContextBudget(undefined);
-      expect(b.maxChars).toBe(25_000);
+  describe('resolveSingleFileLineBudget', () => {
+    it('tiers default max lines for single-file reads', () => {
+      expect(resolveSingleFileLineBudget(16_000).maxLines).toBe(400);
+      expect(resolveSingleFileLineBudget(128_000).maxLines).toBe(800);
+      expect(resolveSingleFileLineBudget(1_000_000).maxLines).toBe(2_000);
+    });
+  });
+
+  describe('resolveContextBudget (compat)', () => {
+    it('maps batch + single budgets for legacy callers', () => {
+      const b = resolveContextBudget(128_000);
+      expect(b.maxChars).toBe(resolveBatchReadBudget(128_000).budgetChars);
+      expect(b.maxLines).toBe(800);
+      expect(b.maxFiles).toBe(20);
     });
   });
 

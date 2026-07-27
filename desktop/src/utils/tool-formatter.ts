@@ -280,6 +280,18 @@ export function formatReadFile(data: any): FormattedToolResult {
     return { result: String(error ?? content ?? 'Read failed'), rawData: data };
   }
 
+  if (status === 'skipped') {
+    let md = `### Read file\n\n`;
+    md += `- **Path**: ${toLocalFileMarkdownLink(path ?? '')}\n`;
+    md += `- **Status**: skipped\n`;
+    if (truncationNotice) {
+      md += `\n${truncationNotice}\n`;
+    } else if (content) {
+      md += `\n${content}\n`;
+    }
+    return { result: md, rawData: data };
+  }
+
   let md = `### Read file\n\n`;
   md += `- **Path**: ${toLocalFileMarkdownLink(path ?? '')}\n`;
 
@@ -331,17 +343,57 @@ export function formatReadFile(data: any): FormattedToolResult {
 }
 
 /** Format multi-file read_file batch results for the model. */
-export function formatReadFileBatch(batch: { results: any[] }): FormattedToolResult {
+export function formatReadFileBatch(batch: {
+  results: any[];
+  batchMeta?: {
+    modelContextTokens?: number;
+    budgetTokens?: number;
+    budgetChars?: number;
+    charsUsed?: number;
+    budgetFraction?: number;
+    isBatch?: boolean;
+  };
+}): FormattedToolResult {
   const results = Array.isArray(batch?.results) ? batch.results : [];
   if (results.length === 0) {
     return { result: 'No files read.', rawData: batch };
   }
-  if (results.length === 1) {
+  if (results.length === 1 && !batch.batchMeta?.isBatch) {
     return formatReadFile(results[0]);
   }
 
-  let md = `### Read files (${results.length})\n\n`;
+  const meta = batch.batchMeta;
+  let md = `### Batch read (${results.length} paths)\n\n`;
+
+  if (meta) {
+    const pct = Math.round((meta.budgetFraction ?? 0.4) * 100);
+    md += `- **Budget**: ${pct}% of model context`;
+    if (meta.modelContextTokens) {
+      md += ` (${meta.modelContextTokens.toLocaleString()} tokens → ~${meta.budgetTokens?.toLocaleString() ?? '?'} token pool)`;
+    }
+    md += '\n';
+    if (typeof meta.budgetChars === 'number' && typeof meta.charsUsed === 'number') {
+      md += `- **Used**: ${meta.charsUsed.toLocaleString()} / ${meta.budgetChars.toLocaleString()} chars\n`;
+    }
+    md += `- **Order matters** — put important files first; later files may be skipped when budget runs out.\n`;
+    md += `- **Do not** treat PARTIAL or SKIPPED files as fully read.\n\n`;
+    md += `| # | File | Status |\n|---|------|--------|\n`;
+    results.forEach((item, i) => {
+      const status = summarizeBatchItemStatus(item);
+      const name = item.path ? pathBase(item.path) : 'file';
+      md += `| ${i + 1} | ${name} | ${status} |\n`;
+    });
+    md += '\n';
+  } else {
+    md += `Read files (${results.length})\n\n`;
+  }
+
   results.forEach((item, i) => {
+    if (item.status === 'skipped' && !item.linesReturned && !item.content?.includes('\t')) {
+      md += `#### ${i + 1}. ${item.path ?? 'file'}\n\n`;
+      md += `${item.content || item.truncationNotice || '_Skipped._'}\n\n`;
+      return;
+    }
     const { result } = formatReadFile(item);
     md += `#### ${i + 1}. ${item.path ?? 'file'}\n\n`;
     md += result.replace(/^### Read file\n\n/, '');
@@ -349,6 +401,29 @@ export function formatReadFileBatch(batch: { results: any[] }): FormattedToolRes
   });
 
   return { result: md.trimEnd() + '\n', rawData: batch };
+}
+
+function summarizeBatchItemStatus(item: {
+  status?: string;
+  linesReturned?: [number, number];
+  totalLines?: number;
+  skipReason?: string;
+}): string {
+  if (item.status === 'skipped') {
+    if (item.skipReason === 'denylist') return 'SKIPPED (denylist)';
+    if (item.skipReason === 'max_paths') return 'SKIPPED (max paths)';
+    return 'SKIPPED (budget exhausted)';
+  }
+  if (item.status === 'error') return 'ERROR';
+  if (item.status === 'truncated') {
+    const range = item.linesReturned;
+    if (range && item.totalLines && range[1] < item.totalLines) {
+      return `PARTIAL lines ${range[0]}–${range[1]} of ${item.totalLines}`;
+    }
+    return 'PARTIAL';
+  }
+  if (item.status === 'ok') return 'full';
+  return item.status ?? '?';
 }
 
 /**

@@ -4,7 +4,7 @@ import {
   isGeneratedPath,
   languageForExtension,
 } from './language-indexer.js';
-import { indexTypeScript, isTypeScriptExtension } from './ts-morph-indexer.js';
+import { indexTypeScriptSymbols, isTypeScriptExtension } from './ts-morph-indexer.js';
 import { indexPython } from './python-indexer.js';
 import { indexRust } from './rust-indexer.js';
 import { indexCpp, isCppExtension } from './cpp-indexer.js';
@@ -28,9 +28,10 @@ function mergeSymbols(base: IndexedSymbol[], extra: IndexedSymbol[]): IndexedSym
 }
 
 /**
- * Route a file to the correct language map-drawer.
+ * Fast structural index — tree-sitter / regex; no deep ts-morph graph.
+ * Used for index_ready; deep edges are built in the background.
  */
-export async function indexFileIntelligence(
+export async function indexFileIntelligenceFast(
   filePath: string,
   content: string,
   extension: string,
@@ -44,20 +45,24 @@ export async function indexFileIntelligence(
   }
 
   if (isTypeScriptExtension(ext)) {
+    const tree = await indexWithTreeSitter(content, ext);
+    if (tree) {
+      return {
+        language: 'typescript',
+        symbols: tree.symbols,
+        edges: tree.edges,
+        isGenerated: generated,
+      };
+    }
     try {
-      const result = indexTypeScript(filePath, content);
+      const result = indexTypeScriptSymbols(filePath, content);
       return { ...result, isGenerated: generated };
-    } catch (err) {
-      console.warn('[search] ts-morph indexer failed, falling back to tree-sitter:', filePath, err);
-      const tree = await indexWithTreeSitter(content, ext);
-      if (tree) {
-        return {
-          language: 'typescript',
-          symbols: tree.symbols,
-          edges: tree.edges,
-          isGenerated: generated,
-        };
-      }
+    } catch {
+      const symbols = (await parseSymbolsAsync(content, ext)).map((s) => ({
+        ...s,
+        confidence: 'heuristic' as const,
+      }));
+      return { language: 'typescript', symbols, edges: [], isGenerated: generated };
     }
   }
 
@@ -114,4 +119,34 @@ export async function indexFileIntelligence(
     edges: [],
     isGenerated: generated,
   };
+}
+
+/**
+ * Full intelligence (includes deep ts-morph graph). Used by background graph worker.
+ */
+export async function indexFileIntelligence(
+  filePath: string,
+  content: string,
+  extension: string,
+): Promise<FileIntelligence> {
+  const ext = extension.toLowerCase().replace(/^\./, '');
+  const generated = isGeneratedPath(filePath);
+
+  if (isMakefile(filePath, ext)) {
+    const result = indexMakefile(filePath, content);
+    return { ...result, isGenerated: generated };
+  }
+
+  if (isTypeScriptExtension(ext)) {
+    try {
+      const { indexTypeScript } = await import('./ts-morph-indexer.js');
+      const result = indexTypeScript(filePath, content);
+      return { ...result, isGenerated: generated };
+    } catch (err) {
+      console.warn('[search] ts-morph indexer failed, falling back to tree-sitter:', filePath, err);
+      return indexFileIntelligenceFast(filePath, content, extension);
+    }
+  }
+
+  return indexFileIntelligenceFast(filePath, content, extension);
 }

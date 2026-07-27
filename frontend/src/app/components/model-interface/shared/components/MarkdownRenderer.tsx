@@ -24,10 +24,14 @@ import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
 import { linkifyMarkdownFilePaths } from '@/lib/utils/linkifyMarkdownFilePaths';
 import { repairLlmMarkdown } from '@/lib/utils/repairLlmMarkdown';
 
-/** Allow `<br>` in LLM table cells; everything else stays on the default sanitize schema. */
-const markdownSanitizeSchema = {
+/** Allow `<br>` in LLM table cells and `local-file://` preview links. */
+export const markdownSanitizeSchema = {
     ...defaultSchema,
     tagNames: [...(defaultSchema.tagNames ?? []), 'br'],
+    protocols: {
+        ...defaultSchema.protocols,
+        href: [...(defaultSchema.protocols?.href ?? []), 'local-file'],
+    },
 };
 
 type MarkdownCodeElementProps = React.HTMLAttributes<HTMLElement> & {
