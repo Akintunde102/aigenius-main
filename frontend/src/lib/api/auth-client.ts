@@ -33,6 +33,15 @@ export function clearStoredAuthSession() {
     storage(storageConstants.NOBOX_TOKEN).removeItem();
     storage(storageConstants.NOBOX_CLIENT_TOKEN).removeItem();
     storage(storageConstants.LOGGED_USER_DETAILS).removeItem();
+
+    if (typeof window !== 'undefined') {
+        import('@/lib/utils/chatStorage').then(({ clearChatStorage }) => {
+            void clearChatStorage().catch((err) => console.error("Failed to clear chat IndexedDB storage:", err));
+        });
+        localStorage.removeItem('aigenius-active-code-project-v1');
+        localStorage.removeItem('aigenius-active-editor-context-v1');
+        localStorage.removeItem('aigenius-conversation-scroll-state-v1');
+    }
 }
 
 export function handleSessionExpired() {

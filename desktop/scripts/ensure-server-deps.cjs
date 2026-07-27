@@ -14,7 +14,12 @@ function moduleInstalled(name) {
 }
 
 function needsInstall() {
-  return !moduleInstalled('better-sqlite3') || !moduleInstalled('onnxruntime-node');
+  return (
+    !moduleInstalled('better-sqlite3') ||
+    !moduleInstalled('onnxruntime-node') ||
+    !moduleInstalled('ts-morph') ||
+    !moduleInstalled('web-tree-sitter')
+  );
 }
 
 if (!needsInstall()) {
