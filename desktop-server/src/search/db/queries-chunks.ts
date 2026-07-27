@@ -7,10 +7,14 @@ import { resolveImports } from '../indexer/import-resolver.js';
 import { deleteImportsForFile, upsertImports } from './queries-import-graph.js';
 import { cleanFtsTerm, ragQuery, type RagHit, type RagQueryResult } from './queries.js';
 import { DEFAULT_IGNORED_PATHS } from '../indexer/exemptions.js';
-import { indexFileIntelligence } from '../indexer/intelligence-router.js';
+import { indexFileIntelligenceFast } from '../indexer/intelligence-router.js';
+import { indexTypeScriptDeepEdges, isTypeScriptExtension } from '../indexer/ts-morph-indexer.js';
+import { shouldSkipDeepGraphIndexing } from '../indexer/exemptions.js';
+import type { GraphStatus } from '../graph-status.js';
 import { detectBoundaries } from '../indexer/boundaries.js';
 import { isMakefile } from '../indexer/makefile-indexer.js';
 import type { IndexedEdge, IndexedSymbol } from '../indexer/language-indexer.js';
+import { languageForExtension } from '../indexer/language-indexer.js';
 import { makeQualifiedName, signatureHash } from '../graph/graph-types.js';
 import { buildStructuralDigest } from './queries-graph.js';
 import { detachInboundEdgesBeforeReindex } from '../indexer/stale-edge-sweep.js';
@@ -283,14 +287,200 @@ function persistIntelligenceGraph(
   })();
 }
 
+function resolveGraphStatus(filePath: string, extension: string): GraphStatus {
+  const ext = extension.toLowerCase().replace(/^\./, '');
+  if (!isTypeScriptExtension(ext)) return 'complete';
+  if (shouldSkipDeepGraphIndexing(filePath)) return 'skipped';
+  return 'pending';
+}
+
+function setFileGraphStatus(db: Database.Database, filePath: string, status: GraphStatus): void {
+  const now = Date.now();
+  db.prepare(
+    `UPDATE file_index SET graph_status = ?, graph_indexed_at = CASE WHEN ? IN ('complete', 'skipped') THEN ? ELSE graph_indexed_at END WHERE path = ?`,
+  ).run(status, status, now, filePath);
+}
+
+/** Insert deep ts-morph edges for a file whose symbols already exist. */
+function insertDeepEdgesForFile(
+  db: Database.Database,
+  filePath: string,
+  content: string,
+  extension: string,
+): number {
+  const ext = extension.toLowerCase().replace(/^\./, '');
+  if (!isTypeScriptExtension(ext)) return 0;
+
+  const edges = indexTypeScriptDeepEdges(filePath, content);
+  db.prepare(
+    `DELETE FROM symbol_edges WHERE from_symbol_id IN (SELECT id FROM symbol_index WHERE path = ?)`,
+  ).run(filePath);
+
+  const symbols = db
+    .prepare(
+      `SELECT id, kind, name, line_start, line_end FROM symbol_index WHERE path = ?`,
+    )
+    .all(filePath) as Array<{
+    id: number;
+    kind: string;
+    name: string;
+    line_start: number;
+    line_end: number;
+  }>;
+
+  const idByKey = new Map<string, number>();
+  for (const sym of symbols) {
+    idByKey.set(symbolKey(sym.kind, sym.name, sym.line_start), sym.id);
+  }
+
+  const findSymbolId = (name: string, line: number): number | null => {
+    for (const sym of symbols) {
+      if (sym.name === name && sym.line_start === line) return sym.id;
+    }
+    for (const sym of symbols) {
+      if (sym.name === name) return sym.id;
+    }
+    return null;
+  };
+
+  const findEnclosingSymbolId = (targetPath: string, line: number): number | null => {
+    const row = db
+      .prepare(
+        `SELECT id FROM symbol_index
+         WHERE path = ? AND line_start <= ? AND line_end >= ?
+           AND kind NOT IN ('import', 'module')
+         ORDER BY (line_end - line_start) ASC
+         LIMIT 1`,
+      )
+      .get(targetPath, line, line) as { id: number } | undefined;
+    return row?.id ?? null;
+  };
+
+  const lookupGlobalSymbolId = (targetPath: string, targetName: string): number | null => {
+    const shortName = targetName.includes('.') ? targetName.split('.').pop()! : targetName;
+    const row = db
+      .prepare(
+        `SELECT id FROM symbol_index
+         WHERE path = ? AND name = ? AND kind NOT IN ('import', 'module')
+         ORDER BY line_start LIMIT 1`,
+      )
+      .get(targetPath, shortName) as { id: number } | undefined;
+    return row?.id ?? null;
+  };
+
+  const ensureModuleSymbol = (targetPath: string): number => {
+    const existing = db
+      .prepare(
+        `SELECT id FROM symbol_index WHERE path = ? AND name = '__module__' AND kind = 'module' LIMIT 1`,
+      )
+      .get(targetPath) as { id: number } | undefined;
+    if (existing) return existing.id;
+    const language = languageForExtension(path.extname(targetPath).replace(/^\./, ''));
+    const result = db
+      .prepare(
+        `INSERT INTO symbol_index (path, kind, name, line_start, line_end, signature, confidence, language, qualified_name, signature_hash, last_analyzed_at)
+         VALUES (@path, @kind, @name, @line_start, @line_end, @signature, @confidence, @language, @qualified_name, @signature_hash, @last_analyzed_at)`,
+      )
+      .run(
+        symbolInsertParams(targetPath, {
+          kind: 'module',
+          name: '__module__',
+          line_start: 1,
+          line_end: 1,
+          signature: path.basename(targetPath),
+          confidence: 'high',
+          language,
+        }),
+      );
+    return Number(result.lastInsertRowid);
+  };
+
+  const insertEdge = db.prepare(`
+    INSERT INTO symbol_edges (from_symbol_id, to_symbol_id, to_name, to_path, kind, line, confidence, stale)
+    VALUES (@from_symbol_id, @to_symbol_id, @to_name, @to_path, @kind, @line, @confidence, 0)
+  `);
+
+  let moduleId = findSymbolId('__module__', 1);
+  let inserted = 0;
+
+  db.transaction(() => {
+    for (const edge of edges) {
+      if (edge.fromName === '__external__' && edge.toPath) {
+        const toId = findSymbolId(edge.toName, edge.fromLine);
+        if (!toId) continue;
+        const callerLine = edge.line ?? 1;
+        const callerSymId = findEnclosingSymbolId(edge.toPath, callerLine);
+        const fromId = callerSymId ?? ensureModuleSymbol(edge.toPath);
+        insertEdge.run({
+          from_symbol_id: fromId,
+          to_symbol_id: toId,
+          to_name: edge.toName,
+          to_path: null,
+          kind: 'references',
+          line: callerLine,
+          confidence: edge.confidence,
+        });
+        inserted++;
+        continue;
+      }
+
+      let fromId = findSymbolId(edge.fromName, edge.fromLine);
+      if (!fromId && edge.fromName === '__module__') fromId = moduleId;
+      if (!fromId && edge.fromName === '__translation_unit__') fromId = moduleId;
+      if (!fromId) fromId = findSymbolId(edge.fromName, edge.fromLine) ?? moduleId;
+      if (!fromId) continue;
+
+      let toId: number | null = null;
+      if (edge.toPath) {
+        toId = lookupGlobalSymbolId(edge.toPath, edge.toName);
+      }
+      if (!toId && !edge.toPath) {
+        toId = findSymbolId(edge.toName, edge.line ?? 0);
+      }
+
+      insertEdge.run({
+        from_symbol_id: fromId,
+        to_symbol_id: toId,
+        to_name: edge.toName,
+        to_path: edge.toPath ?? null,
+        kind: edge.kind,
+        line: edge.line ?? null,
+        confidence: edge.confidence,
+      });
+      inserted++;
+    }
+  })();
+
+  return inserted;
+}
+
+/** Background worker: build deep ts-morph graph edges for one file. */
+export async function upsertDeepGraph(db: Database.Database, filePath: string): Promise<void> {
+  const row = db
+    .prepare(`SELECT content, extension FROM file_index WHERE path = ?`)
+    .get(filePath) as { content: string; extension: string | null } | undefined;
+  if (!row?.content) {
+    setFileGraphStatus(db, filePath, 'error');
+    return;
+  }
+  const ext = row.extension ?? path.extname(filePath).replace(/^\./, '');
+  try {
+    insertDeepEdgesForFile(db, filePath, row.content, ext);
+    setFileGraphStatus(db, filePath, 'complete');
+  } catch (err) {
+    setFileGraphStatus(db, filePath, 'error');
+    throw err;
+  }
+}
+
 export function upsertFileStructure(
   db: Database.Database,
   filePath: string,
   content: string,
   extension: string,
-  modelsDir?: string,
+  _modelsDir?: string,
 ): { symbolCount: number; chunkCount: number } | Promise<{ symbolCount: number; chunkCount: number }> {
-  return upsertFileStructureAsync(db, filePath, content, extension, modelsDir);
+  return upsertFileStructureAsync(db, filePath, content, extension);
 }
 
 async function upsertFileStructureAsync(
@@ -298,19 +488,21 @@ async function upsertFileStructureAsync(
   filePath: string,
   content: string,
   extension: string,
-  modelsDir?: string,
 ): Promise<{ symbolCount: number; chunkCount: number }> {
   deleteFileStructure(db, filePath);
 
   let intelligence;
   try {
-    intelligence = await indexFileIntelligence(filePath, content, extension);
+    intelligence = await indexFileIntelligenceFast(filePath, content, extension);
   } catch (err) {
     console.warn('[search] intelligence indexer failed for', filePath, err);
     throw err;
   }
 
   const symbols = intelligence.symbols;
+  const fastEdges = isTypeScriptExtension(extension.toLowerCase().replace(/^\./, ''))
+    ? []
+    : intelligence.edges;
   const imports = parseImports(content, extension);
   const resolvedImports = resolveImports(filePath, imports);
   deleteImportsForFile(db, filePath);
@@ -332,8 +524,10 @@ async function upsertFileStructureAsync(
     extension,
     intelligence.language,
     symbols,
-    intelligence.edges,
+    fastEdges,
   );
+
+  setFileGraphStatus(db, filePath, resolveGraphStatus(filePath, extension));
 
   const insertImportSymbol = db.prepare(`
     INSERT INTO symbol_index (path, kind, name, line_start, line_end, signature, confidence, language)
@@ -381,15 +575,6 @@ async function upsertFileStructureAsync(
       });
     }
   })();
-
-  if (modelsDir && chunks.length > 0) {
-    try {
-      const { embedChunksForFile } = await import('../embedding/chunk-embeddings.js');
-      await embedChunksForFile(db, filePath, modelsDir);
-    } catch (err) {
-      console.warn('[search] chunk embed error for', filePath, err);
-    }
-  }
 
   return { symbolCount: symbols.length + imports.length, chunkCount: chunks.length };
 }

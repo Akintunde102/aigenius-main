@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import type { IndexTier } from './indexer/index-tier.js';
 
+import type { GraphCoverageStats } from './db/queries.js';
+
 export type IndexerProjectStatus = {
   project_id: string;
   project_root: string;
@@ -36,6 +38,7 @@ export type IndexerStatusFile = {
   queue_by_tier: Record<IndexTier, number>;
   core_ready: boolean;
   enrichment_ready: boolean;
+  graph_coverage?: GraphCoverageStats;
   health?: IndexerHealthStatus;
 };
 

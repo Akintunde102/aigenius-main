@@ -1,7 +1,62 @@
-import { ChatMessage } from '@/app/components/model-interface/shared/types';
+import {
+    ChatMessage,
+    ToolEvent,
+} from '@/app/components/model-interface/shared/types';
 import { OpenRouterContentBlock, OpenRouterMessage } from '@/nobox-client/functions/access-model';
+import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
 import { MessageOptimizationResult } from './chatOperations.types';
 import { CHAT_CONFIG, CONTENT_TYPES } from './chatOperations.constants';
+
+const TOOL_CALL_HIGHLIGHT_PREFIX = '[Called: ';
+
+/**
+ * Plain assistant text for the model request — no thinking, no tool args/logs/results.
+ * Tool activity is summarized as lightweight "[Called: …]" lines so the model knows
+ * tools ran without replaying full payloads. UI state keeps full `events` for copy/view.
+ */
+export function buildAssistantContentForApi(msg: ChatMessage): string {
+    const base = extractAssistantBaseText(msg);
+    const toolHighlights = collectToolCallHighlights(msg);
+    if (!toolHighlights.length) {
+        return base;
+    }
+    const highlightsBlock = toolHighlights.join('\n');
+    return base ? `${base}\n\n${highlightsBlock}` : highlightsBlock;
+}
+
+function extractAssistantBaseText(msg: ChatMessage): string {
+    if (typeof msg.content === 'string') {
+        return msg.content.trim();
+    }
+    if (Array.isArray(msg.content)) {
+        return msg.content
+            .filter((block) => block.type === 'text')
+            .map((block) => textPartToPlainString(block.text).trim())
+            .filter(Boolean)
+            .join('\n')
+            .trim();
+    }
+    return String(msg.content ?? '').trim();
+}
+
+function collectToolCallHighlights(msg: ChatMessage): string[] {
+    const fromEvents = (msg.events ?? [])
+        .filter((evt): evt is ToolEvent => evt.type === 'tool')
+        .map((evt) => formatToolCallHighlight(evt));
+
+    if (fromEvents.length) {
+        return fromEvents;
+    }
+
+    return (msg.tool_executions ?? []).map((exec) =>
+        formatToolCallHighlight({ tool: exec.tool, displayName: exec.tool }),
+    );
+}
+
+function formatToolCallHighlight(tool: Pick<ToolEvent, 'tool' | 'displayName'>): string {
+    const label = tool.displayName?.trim() || tool.tool?.trim() || 'tool';
+    return `${TOOL_CALL_HIGHLIGHT_PREFIX}${label}]`;
+}
 
 /**
  * Processes text content blocks and calculates their size
@@ -200,27 +255,41 @@ export function optimizeMessagesForAPI(messages: ChatMessage[]): MessageOptimiza
         const msg = reversedMessages[i];
         const isRecent = i < CHAT_CONFIG.KEEP_RECENT_MESSAGES;
 
-        // Process the message content
-        const { optimizedContent, messageSize, imagesRemoved: msgImagesRemoved } = processMessage(
-            msg,
-            isRecent,
-            totalSize
-        );
+        let content: string | OpenRouterContentBlock[];
+        let size: number;
 
-        imagesRemoved += msgImagesRemoved;
+        if (msg.role === 'assistant') {
+            const apiText = buildAssistantContentForApi(msg);
+            const truncated = handleMessageTruncation(
+                apiText,
+                apiText.length,
+                isRecent,
+                totalSize,
+                messagesTruncated,
+            );
+            content = truncated.content;
+            size = truncated.size;
+            messagesTruncated = truncated.truncated;
+        } else {
+            const { optimizedContent, messageSize, imagesRemoved: msgImagesRemoved } = processMessage(
+                msg,
+                isRecent,
+                totalSize,
+            );
+            imagesRemoved += msgImagesRemoved;
 
-        // Handle truncation for non-recent messages
-        const { content, size, truncated } = handleMessageTruncation(
-            optimizedContent,
-            messageSize,
-            isRecent,
-            totalSize,
-            messagesTruncated
-        );
+            const truncated = handleMessageTruncation(
+                optimizedContent,
+                messageSize,
+                isRecent,
+                totalSize,
+                messagesTruncated,
+            );
+            content = truncated.content;
+            size = truncated.size;
+            messagesTruncated = truncated.truncated;
+        }
 
-        messagesTruncated = truncated;
-
-        // Add to total size and create optimized message
         totalSize += size;
 
         optimizedMessages.unshift({
@@ -233,7 +302,6 @@ export function optimizeMessagesForAPI(messages: ChatMessage[]): MessageOptimiza
             ...(msg.usage && { usage: msg.usage }),
             ...(msg.cost !== undefined && { cost: msg.cost }),
             ...(msg.tool_usage_charges?.length && { tool_usage_charges: msg.tool_usage_charges }),
-            ...(msg.events ? { events: msg.events } : {}),  
         });
     }
 

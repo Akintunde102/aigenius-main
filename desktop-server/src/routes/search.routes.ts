@@ -23,6 +23,7 @@ import {
   browseFolderGroups,
   browseExplorerDirectory,
   getFileIndexRow,
+  touchFileAccess,
 } from '../search/db/queries.js';
 import {
   listSymbolsForFile,
@@ -44,19 +45,16 @@ import {
   getSymbolLineRange,
   findEnclosingSymbolAtLine,
   findSymbolReferences,
-  traceCallChain,
   listBoundaries,
   getMakefileTargets,
 } from '../search/db/queries-intelligence.js';
 import {
   findCallers,
-  symbolBlastRadius,
-  typeFlowTrace,
   buildStructuralDigest,
   formatCallersReport,
-  formatSymbolBlastRadiusReport,
-  formatTypeFlowReport,
 } from '../search/db/queries-graph.js';
+import { withToolTimeout } from '../search/utils/tool-timeout.js';
+import { getGraphCoverageStats } from '../search/db/queries.js';
 import { getDb } from '../search/db/connection.js';
 import { getDbForSearchQuery } from '../search/search-db-resolve.js';
 import path from 'path';
@@ -143,13 +141,41 @@ export function createSearchRoutes(): Hono {
 
   r.post('/rag', (c) =>
     handleRoute(c, '[search] POST /search/rag', async () => {
-      const { contentQuery, pathQuery, topK, pathPrefix, extensions } = await c.req.json();
+      const body = await c.req.json();
+      const {
+        contentQuery,
+        pathQuery,
+        topK,
+        pathPrefix,
+        extensions,
+        page,
+        page_size,
+        pageSize,
+      } = body;
       const { db } = resolveReadDb({
         pathPrefix: typeof pathPrefix === 'string' ? pathPrefix : undefined,
       });
       const modelsDir = process.env.AIGENIUS_MODELS_DIR ?? '';
+      const resolvedPage = typeof page === 'number' ? page : 0;
+      const resolvedPageSize =
+        typeof page_size === 'number'
+          ? page_size
+          : typeof pageSize === 'number'
+            ? pageSize
+            : typeof topK === 'number'
+              ? topK
+              : 8;
       return c.json(
-        await ragQueryHybrid(db, modelsDir, contentQuery, pathQuery, topK, pathPrefix, extensions),
+        await ragQueryHybrid(
+          db,
+          modelsDir,
+          contentQuery,
+          pathQuery,
+          resolvedPageSize,
+          pathPrefix,
+          extensions,
+          { page: resolvedPage, pageSize: resolvedPageSize },
+        ),
       );
     }),
   );
@@ -356,18 +382,8 @@ export function createSearchRoutes(): Hono {
       const name = c.req.query('name') ?? '';
       if (!filePath || !name) return clientError(c, 'path and name required', 400);
       const { db } = resolveReadDb({ filePath });
+      touchFileAccess(db, [filePath]);
       return c.json(findSymbolReferences(db, filePath, name));
-    }),
-  );
-
-  r.get('/call-chain', (c) =>
-    handleRoute(c, '[search] GET /search/call-chain', async () => {
-      const filePath = c.req.query('path') ?? '';
-      const name = c.req.query('name') ?? '';
-      const maxDepth = Number(c.req.query('maxDepth') ?? 4);
-      if (!filePath || !name) return clientError(c, 'path and name required', 400);
-      const { db } = resolveReadDb({ filePath });
-      return c.json(traceCallChain(db, filePath, name, maxDepth));
     }),
   );
 
@@ -397,46 +413,29 @@ export function createSearchRoutes(): Hono {
         return clientError(c, 'qualified_name or path+name required', 400);
       }
       const { db } = resolveReadDb({ pathPrefix, filePath });
+      if (filePath) touchFileAccess(db, [filePath]);
       const qn = qualifiedName || `${filePath}#${name}`;
-      const result = findCallers(db, qn, { maxDepth, minConfidence, pathPrefix });
-      return c.json({ ...result, outline: formatCallersReport(result) });
-    }),
-  );
-
-  r.post('/symbol-blast-radius', (c) =>
-    handleRoute(c, '[search] POST /search/symbol-blast-radius', async () => {
-      const body = await c.req.json().catch(() => ({}));
-      const qualifiedName =
-        typeof body.qualified_name === 'string'
-          ? body.qualified_name
-          : typeof body.path === 'string' && typeof body.name === 'string'
-            ? `${body.path}#${body.name}`
-            : '';
-      const changeType = (body.change_type ?? 'signature_change') as
-        | 'signature_change'
-        | 'removal'
-        | 'return_type_change';
-      const pathPrefix = typeof body.path_prefix === 'string' ? body.path_prefix : '';
-      const maxDepth = typeof body.max_depth === 'number' ? body.max_depth : 2;
-      if (!qualifiedName) return clientError(c, 'qualified_name or path+name required', 400);
-      const { db } = resolveReadDb({
-        pathPrefix,
-        filePath: typeof body.path === 'string' ? body.path : undefined,
-      });
-      const result = symbolBlastRadius(db, qualifiedName, changeType, { pathPrefix, maxDepth });
-      return c.json({ ...result, outline: formatSymbolBlastRadiusReport(result) });
-    }),
-  );
-
-  r.get('/type-flow', (c) =>
-    handleRoute(c, '[search] GET /search/type-flow', async () => {
-      const typeName = c.req.query('type_name') ?? c.req.query('name') ?? '';
-      const direction = (c.req.query('direction') ?? 'both') as 'upstream' | 'downstream' | 'both';
-      const pathPrefix = c.req.query('path_prefix') ?? '';
-      if (!typeName) return clientError(c, 'type_name required', 400);
-      const { db } = resolveReadDb({ pathPrefix });
-      const result = typeFlowTrace(db, typeName, direction, { pathPrefix });
-      return c.json({ ...result, outline: formatTypeFlowReport(result) });
+      const graphStats = getGraphCoverageStats(db, pathPrefix);
+      const graphPartial = graphStats.pending > 0 || graphStats.error > 0;
+      try {
+        const result = await withToolTimeout('find-callers', () =>
+          findCallers(db, qn, { maxDepth, minConfidence, pathPrefix }),
+        );
+        return c.json({
+          ...result,
+          outline: formatCallersReport(result),
+          graph_partial: graphPartial,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return c.json({
+          qualified_name: qn,
+          callers: [],
+          outline: `Graph lookup timed out (${msg}). Use local_grep for lexical callers.`,
+          graph_partial: true,
+          timed_out: true,
+        });
+      }
     }),
   );
 
@@ -503,6 +502,7 @@ export function createSearchRoutes(): Hono {
           })),
           core_ready: fileStatus.core_ready,
           enrichment_ready: fileStatus.enrichment_ready,
+          graph_coverage: fileStatus.graph_coverage,
           queue_by_tier: fileStatus.queue_by_tier,
           health: {
             ...health,

@@ -48,7 +48,11 @@ jest.mock('rehype-highlight', () => ({
     },
 }));
 
-import { MarkdownRenderer, shouldOpenWorkflowStudioLinkInNewTab } from '../MarkdownRenderer';
+import {
+    MarkdownRenderer,
+    markdownSanitizeSchema,
+    shouldOpenWorkflowStudioLinkInNewTab,
+} from '../MarkdownRenderer';
 
 describe('shouldOpenWorkflowStudioLinkInNewTab', () => {
     it('matches relative /workflow/:id links', () => {
@@ -71,6 +75,12 @@ describe('shouldOpenWorkflowStudioLinkInNewTab', () => {
         expect(
             shouldOpenWorkflowStudioLinkInNewTab('https://other.example/workflow/f284a24b-df4a-4596-a880-ba92ef255442', origin),
         ).toBe(false);
+    });
+});
+
+describe('markdownSanitizeSchema', () => {
+    it('allows local-file preview links through rehype-sanitize', () => {
+        expect(markdownSanitizeSchema.protocols?.href).toContain('local-file');
     });
 });
 

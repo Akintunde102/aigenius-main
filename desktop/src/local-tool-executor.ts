@@ -142,6 +142,11 @@ export async function runLocalDesktopTool(
               : '';
         const pathQuery = typeof rawArgs.path_query === 'string' ? rawArgs.path_query : '';
         const topK = typeof rawArgs.top_k === 'number' ? rawArgs.top_k : 8;
+        const page = typeof rawArgs.page === 'number' ? rawArgs.page : 0;
+        const pageSize =
+          typeof rawArgs.page_size === 'number'
+            ? rawArgs.page_size
+            : topK;
         const prefix =
           typeof rawArgs.path_prefix === 'string' && rawArgs.path_prefix.trim()
             ? rawArgs.path_prefix.trim()
@@ -151,7 +156,7 @@ export async function runLocalDesktopTool(
         const res = await sidecarFetch(`${SERVER_URL}/search/rag`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...sidecarAuthHeaders() },
-          body: JSON.stringify({ contentQuery, pathQuery, topK, pathPrefix: prefix, extensions }),
+          body: JSON.stringify({ contentQuery, pathQuery, topK: pageSize, page, page_size: pageSize, pathPrefix: prefix, extensions }),
         });
         if (!res.ok) {
           const body = await res.text();
@@ -335,6 +340,14 @@ export async function runLocalDesktopTool(
     }
     case 'local_grep':
       return runGrep(rawArgs);
+    case 'local_trace_call_chain':
+    case 'local_symbol_blast_radius':
+    case 'local_type_flow_trace':
+      return {
+        ok: false,
+        error:
+          'This graph tool was removed (too slow). Use local_find_callers, local_import_blast_radius, and local_grep instead.',
+      };
     case 'local_find_callers': {
       try {
         const args = applyEditorDefaultsToToolArgs(rawArgs, { symbol: true, path: true });
@@ -365,94 +378,6 @@ export async function runLocalDesktopTool(
         return { ok: true, result: data.outline ?? JSON.stringify(data, null, 2), rawData: data };
       } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : 'find_callers failed' };
-      }
-    }
-    case 'local_trace_call_chain': {
-      try {
-        const args = applyEditorDefaultsToToolArgs(rawArgs, { symbol: true, path: true });
-        const filePath = typeof args.path === 'string' ? args.path.trim() : '';
-        const name = typeof args.symbol === 'string' ? args.symbol.trim() : '';
-        if (!filePath || !name) return { ok: false, error: 'path and symbol required' };
-        const params = new URLSearchParams({
-          path: filePath,
-          name,
-          maxDepth: String(typeof args.max_depth === 'number' ? args.max_depth : 4),
-        });
-        const res = await sidecarFetch(`${SERVER_URL}/search/call-chain?${params}`, {
-          headers: sidecarAuthHeaders(),
-        });
-        if (!res.ok) return { ok: false, error: `Sidecar returned ${res.status}` };
-        const data = await res.json();
-        const chain = Array.isArray(data.chain) ? data.chain : [];
-        const body = chain.length ? chain.map((s: string) => `- ${s}`).join('\n') : 'No call chain found.';
-        const trunc = data.truncated ? '\n\n_(truncated at max depth)_' : '';
-        return { ok: true, result: `# Call chain: ${filePath}#${name}\n\n${body}${trunc}`, rawData: data };
-      } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : 'trace_call_chain failed' };
-      }
-    }
-    case 'local_symbol_blast_radius': {
-      try {
-        const args = applyEditorDefaultsToToolArgs(rawArgs, { symbol: true, path: true });
-        const pathPrefix =
-          typeof args.path_prefix === 'string' && args.path_prefix.trim()
-            ? args.path_prefix.trim()
-            : getActiveCodeProjectRootPath() ?? '';
-        const qualifiedName =
-          typeof args.qualified_name === 'string' && args.qualified_name.trim()
-            ? args.qualified_name.trim()
-            : typeof args.path === 'string' && typeof args.symbol === 'string'
-              ? `${args.path}#${args.symbol}`
-              : '';
-        if (!qualifiedName) {
-          return { ok: false, error: 'qualified_name or path+symbol required' };
-        }
-        const res = await sidecarFetch(`${SERVER_URL}/search/symbol-blast-radius`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...sidecarAuthHeaders() },
-          body: JSON.stringify({
-            qualified_name: qualifiedName,
-            change_type: typeof args.change_type === 'string' ? args.change_type : 'signature_change',
-            path_prefix: pathPrefix,
-            max_depth: typeof args.max_depth === 'number' ? args.max_depth : 2,
-          }),
-        });
-        if (!res.ok) return { ok: false, error: `Sidecar returned ${res.status}` };
-        const data = await res.json();
-        const keys: string[] = [qualifiedName];
-        if (typeof args.path === 'string') keys.push(args.path);
-        recordBlastRadiusCheck(keys);
-        return { ok: true, result: data.outline ?? JSON.stringify(data, null, 2), rawData: data };
-      } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : 'symbol_blast_radius failed' };
-      }
-    }
-    case 'local_type_flow_trace': {
-      try {
-        const typeName =
-          typeof rawArgs.type_name === 'string'
-            ? rawArgs.type_name.trim()
-            : typeof rawArgs.symbol === 'string'
-              ? rawArgs.symbol.trim()
-              : '';
-        if (!typeName) return { ok: false, error: 'type_name required' };
-        const pathPrefix =
-          typeof rawArgs.path_prefix === 'string' && rawArgs.path_prefix.trim()
-            ? rawArgs.path_prefix.trim()
-            : getActiveCodeProjectRootPath() ?? '';
-        const params = new URLSearchParams({
-          type_name: typeName,
-          direction: typeof rawArgs.direction === 'string' ? rawArgs.direction : 'both',
-          path_prefix: pathPrefix,
-        });
-        const res = await sidecarFetch(`${SERVER_URL}/search/type-flow?${params}`, {
-          headers: sidecarAuthHeaders(),
-        });
-        if (!res.ok) return { ok: false, error: `Sidecar returned ${res.status}` };
-        const data = await res.json();
-        return { ok: true, result: data.outline ?? JSON.stringify(data, null, 2), rawData: data };
-      } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : 'type_flow_trace failed' };
       }
     }
     case 'local_retrieval_memory_get':

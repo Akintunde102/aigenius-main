@@ -26,7 +26,7 @@ import {
   isPathUnderRoot,
   type IndexTier,
 } from './indexer/index-tier.js';
-import { getStatus } from './db/queries.js';
+import { getStatus, getGraphCoverageStats } from './db/queries.js';
 import {
   refreshSearchStatusFromDb,
   resetSearchStatusSnapshot,
@@ -53,6 +53,7 @@ import { enqueueWithBackpressure } from './indexer/queue-backpressure.js';
 import { FileWriteBatcher } from './indexer/file-write-batcher.js';
 import { startWalMaintenance, stopWalMaintenance } from './indexer/wal-maintenance.js';
 import { startEmbedIdleScheduler, stopEmbedIdleScheduler } from './indexer/embed-idle-scheduler.js';
+import { startGraphIdleScheduler, stopGraphIdleScheduler } from './indexer/graph-idle-scheduler.js';
 import { warmSearchCache } from './warm-search-cache.js';
 
 type TieredQueue = ReturnType<typeof createTieredIndexQueue>;
@@ -161,6 +162,7 @@ function publishIndexerStatus(dbPath: string, projectRoot: string | null): void 
       queue_by_tier: counts,
       core_ready: computeCoreReady(counts),
       enrichment_ready: computeEnrichmentReady(counts),
+      graph_coverage: getGraphCoverageStats(db, projectRoot ?? ''),
       health: {
         indexer_ipc_reachable: true,
         db_integrity: 'ok',
@@ -345,7 +347,7 @@ async function processStructurePhase(item: TieredQueueItem): Promise<void> {
   console.info(`\x1b[36m[search] Indexing structure [${tier}]:\x1b[0m`, filePath);
 
   try {
-    await upsertFileStructure(db, filePath, content, ext, _modelsDir);
+    await upsertFileStructure(db, filePath, content, ext);
     db.prepare('UPDATE file_index SET index_status = ? WHERE path = ?').run('ok', filePath);
     _lastIndexerError = null;
   } catch (structErr) {
@@ -512,6 +514,25 @@ async function ensureIndexerInfrastructure(config: {
       return targets;
     },
     modelsDir: _modelsDir,
+  });
+
+  startGraphIdleScheduler({
+    isQueueIdle: () => (_queue?.pendingCount() ?? 0) === 0,
+    listTargets: () => {
+      const targets: Array<{ db: ReturnType<typeof getDb>; dbPath: string; pathPrefix: string }> = [];
+      if (_activeDbPath && _activeProjectRoot) {
+        targets.push({
+          db: getDb(_activeDbPath),
+          dbPath: _activeDbPath,
+          pathPrefix: _activeProjectRoot,
+        });
+      }
+      for (const slot of _projectSlots.values()) {
+        if (slot.dbPath === _activeDbPath) continue;
+        targets.push({ db: getDb(slot.dbPath), dbPath: slot.dbPath, pathPrefix: slot.rootPath });
+      }
+      return targets;
+    },
   });
 
   _infraReady = true;
@@ -691,6 +712,7 @@ export function registerSearchModule(config: SearchModuleConfig): void {
 
 export async function closeSearchModule(): Promise<void> {
   stopEmbedIdleScheduler();
+  stopGraphIdleScheduler();
   stopWalMaintenance();
   _fileBatcher?.flushAll();
   _fileBatcher = null;

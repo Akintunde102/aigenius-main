@@ -11,14 +11,17 @@ export type ReadFileRequest = {
   mode?: ReadFileMode;
 };
 
-export type ReadFileResultStatus = 'ok' | 'truncated' | 'error';
+export type ReadFileResultStatus = 'ok' | 'truncated' | 'error' | 'skipped';
+
+export type ReadFileSkipReason = 'budget_exhausted' | 'denylist' | 'max_paths';
 
 export type ReadFileResolvedVia =
   | 'lineRange'
   | 'symbolAnchor'
   | 'docIndex'
   | 'lineRangeFallback'
-  | 'bytes';
+  | 'bytes'
+  | 'batchFull';
 
 export type ReadFileItemResult = {
   path: string;
@@ -32,14 +35,38 @@ export type ReadFileItemResult = {
   mode?: 'lines' | 'bytes' | 'index';
   line_count_omitted?: boolean;
   bytes_read?: number;
+  skipReason?: ReadFileSkipReason;
   /** Absolute resolved path (for preview registration; not shown to model). */
   resolvedPath?: string;
 };
 
-export type ReadFileBatchResult = {
-  results: ReadFileItemResult[];
+export type ReadFileBatchMeta = {
+  modelContextTokens: number;
+  budgetTokens: number;
+  budgetChars: number;
+  charsUsed: number;
+  budgetFraction: number;
+  isBatch: boolean;
 };
 
+export type ReadFileBatchResult = {
+  results: ReadFileItemResult[];
+  batchMeta?: ReadFileBatchMeta;
+};
+
+export type BatchReadBudget = {
+  modelContextTokens: number;
+  budgetTokens: number;
+  budgetChars: number;
+  maxPaths: number;
+  budgetFraction: number;
+};
+
+export type SingleFileLineBudget = {
+  maxLines: number;
+};
+
+/** @deprecated Use resolveBatchReadBudget / resolveSingleFileLineBudget */
 export type ContextBudget = {
   maxChars: number;
   maxLines: number;
