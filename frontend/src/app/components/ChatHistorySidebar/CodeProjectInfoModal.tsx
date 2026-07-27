@@ -12,6 +12,7 @@ type CodeProjectInfoModalProps = {
   chatHistory: ChatSession[];
   isActive: boolean;
   onClose: () => void;
+  onDelete?: (id: string) => Promise<void>;
 };
 
 function formatDate(value: string): string {
@@ -76,8 +77,25 @@ export function CodeProjectInfoModal({
   chatHistory,
   isActive,
   onClose,
+  onDelete,
 }: CodeProjectInfoModalProps) {
   const [mounted, setMounted] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleConfirmDelete = async () => {
+    if (!onDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete(project.id);
+      onClose();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete project");
+      setDeleting(false);
+    }
+  };
 
   const stats = useMemo(() => {
     const inProject = chatHistory.filter((s) => s.codeProjectId === project.id);
@@ -208,14 +226,65 @@ export function CodeProjectInfoModal({
           </div>
         </div>
 
-        <div
-          className="flex shrink-0 justify-end border-t px-5 py-4"
-          style={{ borderColor: "var(--modal-border)" }}
-        >
-          <button type="button" onClick={onClose} className="app-modal-btn-primary px-4 py-2">
-            Close
-          </button>
-        </div>
+        {showConfirmDelete ? (
+          <div
+            className="flex shrink-0 flex-col gap-3 border-t bg-red-500/5 px-5 py-4"
+            style={{ borderColor: "var(--modal-border)" }}
+          >
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-semibold text-red-500">
+                Are you sure you want to delete this project?
+              </p>
+              <p className="text-xs opacity-80" style={{ color: "var(--modal-muted-fg)" }}>
+                This will permanently delete the project and all conversations associated with it. This action cannot be undone.
+              </p>
+              {deleteError && (
+                <p className="text-xs text-red-500 mt-1 font-semibold">
+                  {deleteError}
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowConfirmDelete(false)}
+                disabled={deleting}
+                className="rounded-lg border px-4 py-2 text-sm font-semibold transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                style={{ borderColor: "var(--modal-border)", color: "var(--modal-fg)" }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Yes, Delete"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="flex shrink-0 items-center justify-between border-t px-5 py-4"
+            style={{ borderColor: "var(--modal-border)" }}
+          >
+            {onDelete ? (
+              <button
+                type="button"
+                onClick={() => setShowConfirmDelete(true)}
+                className="rounded-lg border border-red-500/30 px-4 py-2 text-sm font-semibold text-red-500 transition-colors hover:bg-red-500/10 focus-visible:outline-none"
+              >
+                Delete Project
+              </button>
+            ) : (
+              <div />
+            )}
+            <button type="button" onClick={onClose} className="app-modal-btn-primary px-4 py-2">
+              Close
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

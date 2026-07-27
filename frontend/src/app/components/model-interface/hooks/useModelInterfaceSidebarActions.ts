@@ -43,7 +43,9 @@ export function useModelInterfaceSidebarActions({
           return false;
         }
 
-        const wasActiveSession = id === currentSessionId;
+        const wasActiveSession =
+          id === currentSessionId ||
+          (typeof window !== "undefined" && window.location.pathname.includes(id));
         setChatHistory((prevHistory) =>
           prevHistory.filter((session) => session.id !== id),
         );

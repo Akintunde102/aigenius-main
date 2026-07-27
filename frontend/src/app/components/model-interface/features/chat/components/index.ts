@@ -4,6 +4,7 @@ export { default as ChatContainer } from './ChatContainer';
 export { default as ChatLoadingIndicator } from './ChatLoadingIndicator';
 export { TimeDivider } from './TimeDivider';
 export { TypingIndicator } from './TypingIndicator';
+export { ChatErrorMessage } from './ChatErrorMessage';
 export { EmptyState } from './EmptyState';
 export { ThinkingDisplay } from './ThinkingDisplay';
 export { ToolExecutionDisplay } from './ToolExecutionDisplay';

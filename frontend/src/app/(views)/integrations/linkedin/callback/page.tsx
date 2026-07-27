@@ -23,7 +23,7 @@ export default function LinkedInCallbackPage() {
 
       if (window.opener && !window.opener.closed) {
         const msg = { type: 'linkedin-integration-callback', success, error };
-        window.opener.postMessage(msg, window.location.origin);
+        window.opener.postMessage(msg, '*');
 
         setMessage(success ? 'Connection successful! Closing...' : 'Connection failed. Closing...');
         setDone(true);
@@ -51,7 +51,7 @@ export default function LinkedInCallbackPage() {
       if (window.opener && !window.opener.closed) {
         window.opener.postMessage(
           { type: 'linkedin-integration-callback', success: false, error: 'Callback error' },
-          window.location.origin,
+          '*',
         );
         setTimeout(() => {
           try {

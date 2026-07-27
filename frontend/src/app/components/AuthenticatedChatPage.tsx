@@ -94,6 +94,15 @@ export default function AuthenticatedChatPage({
         setToken(token);
         setLoading(false);
         setAuthReady(true);
+
+        // Clear previous user's local caches/IndexedDB before redirecting to the new session
+        import('@/lib/utils/chatStorage').then(({ clearChatStorage }) => {
+            void clearChatStorage().catch((err) => console.error("Failed to clear chat IndexedDB storage:", err));
+        });
+        localStorage.removeItem('aigenius-active-code-project-v1');
+        localStorage.removeItem('aigenius-active-editor-context-v1');
+        localStorage.removeItem('aigenius-conversation-scroll-state-v1');
+
         window.location.replace(redirectPathRef.current);
       } catch (error) {
         console.error("Error getting auth connection token:", error);
