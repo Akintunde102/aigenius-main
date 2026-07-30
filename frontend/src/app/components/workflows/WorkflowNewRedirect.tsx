@@ -37,8 +37,8 @@ export default function WorkflowNewRedirect() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[linear-gradient(180deg,#f4f6f9_0%,#eef1f6_100%)] px-4 text-center">
-        <p className="max-w-md text-sm leading-relaxed text-slate-700">{error}</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[linear-gradient(180deg,#f4f6f9_0%,#eef1f6_100%)] px-4 text-center dark:bg-slate-950 dark:bg-none">
+        <p className="max-w-md text-sm leading-relaxed text-slate-700 dark:text-slate-300">{error}</p>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
@@ -51,13 +51,13 @@ export default function WorkflowNewRedirect() {
                   setError(e instanceof Error ? e.message : "Could not start a workflow."),
                 );
             }}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Try again
           </button>
           <a
             href="/workflows"
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Back to workflows
           </a>
@@ -67,9 +67,9 @@ export default function WorkflowNewRedirect() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[linear-gradient(180deg,#f4f6f9_0%,#eef1f6_100%)] px-4">
-      <Loader2 className="h-8 w-8 animate-spin text-slate-400" aria-hidden />
-      <p className="text-sm text-slate-600">Creating your workflow…</p>
+    <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[linear-gradient(180deg,#f4f6f9_0%,#eef1f6_100%)] px-4 dark:bg-slate-950 dark:bg-none">
+      <Loader2 className="h-8 w-8 animate-spin text-slate-400 dark:text-slate-500" aria-hidden />
+      <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Creating your workflow…</p>
     </div>
   );
 }

@@ -375,9 +375,13 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
             type: "image_url",
             image_url: { url: uploadedFile.fileUrl },
           });
+        } else {
           contentParts.push({
-            type: "text",
-            text: `${uploadedFile.file?.name || 'File'}: ${uploadedFile.fileUrl}`,
+            type: "file_url",
+            file_url: {
+              url: uploadedFile.fileUrl,
+              name: uploadedFile.displayName || uploadedFile.file?.name || "file",
+            },
           });
         }
       }
@@ -523,6 +527,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
       onFilesDropped={handleQueuedFiles}
       onDragActiveChange={setDragActive}
       dragActive={dragActive}
+      supportsFileUpload={supportsImageUpload || false}
     >
       {renderWalletModal()}
 

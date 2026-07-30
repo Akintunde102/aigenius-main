@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+
+const STORAGE_KEY = "aigenius_desktop_sidebar_open";
 
 interface MobileSidebarHandlerProps {
     children: (handlers: {
@@ -8,7 +10,62 @@ interface MobileSidebarHandlerProps {
 }
 
 export function MobileSidebarHandler({ children }: MobileSidebarHandlerProps) {
-    const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
+    const [mobileSidebarOpen, setMobileSidebarOpenState] = useState<boolean>(() => {
+        if (typeof window === "undefined") return false;
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) return false;
+
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved !== null) {
+            return saved === "true";
+        }
+        return true;
+    });
+
+    const setMobileSidebarOpen = (open: boolean) => {
+        setMobileSidebarOpenState(open);
+        if (typeof window !== "undefined" && window.innerWidth > 768) {
+            try {
+                localStorage.setItem(STORAGE_KEY, String(open));
+            } catch {
+                /* ignore private mode storage exceptions */
+            }
+        }
+    };
+
+    // Keyboard shortcut (Cmd+B / Ctrl+B) to toggle sidebar on desktop
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+                const target = e.target as HTMLElement | null;
+                if (
+                    target &&
+                    (target.tagName === "INPUT" ||
+                        target.tagName === "TEXTAREA" ||
+                        target.isContentEditable)
+                ) {
+                    return;
+                }
+                e.preventDefault();
+                setMobileSidebarOpenState((current) => {
+                    const next = !current;
+                    if (window.innerWidth > 768) {
+                        try {
+                            localStorage.setItem(STORAGE_KEY, String(next));
+                        } catch {
+                            /* ignore storage error */
+                        }
+                    }
+                    return next;
+                });
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, []);
 
     // Prevent body scroll when mobile sidebar is open
     useEffect(() => {
@@ -31,8 +88,6 @@ export function MobileSidebarHandler({ children }: MobileSidebarHandlerProps) {
     }, [mobileSidebarOpen]);
 
     // On mobile, close sidebar when tapping outside the drawer.
-    // Desktop: no click-outside — the sidebar is a persistent collapsible panel,
-    // not an overlay modal.  The close button in the header handles dismissal.
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const handleClickOutside = (event: MouseEvent) => {
