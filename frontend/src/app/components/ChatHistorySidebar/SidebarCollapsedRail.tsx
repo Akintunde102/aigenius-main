@@ -27,7 +27,7 @@ export const SidebarCollapsedRail = React.memo<SidebarCollapsedRailProps>(
             type="button"
             data-mobile-toggle
             aria-label="Open sidebar"
-            title="Show conversations"
+            title="Show conversations (⌘B)"
             className="flex h-8 w-9 shrink-0 items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
             style={{
               border: "1px solid var(--sidebar-icon-btn-border)",

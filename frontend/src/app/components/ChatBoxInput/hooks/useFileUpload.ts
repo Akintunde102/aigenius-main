@@ -28,7 +28,7 @@ interface UploadItem {
     isImage: boolean;
 }
 
-interface PendingFile extends UploadItem {
+export interface PendingFile extends UploadItem {
     status: 'uploading' | 'queued';
 }
 
@@ -41,9 +41,8 @@ export const useFileUpload = ({
     supportsFileUpload = true
 }: UseFileUploadProps) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [currentItem, setCurrentItem] = useState<UploadItem | null>(null);
-    const [queuedItems, setQueuedItems] = useState<UploadItem[]>([]);
-    const uploadStartedRef = useRef(false);
+    const [pendingItems, setPendingItems] = useState<UploadItem[]>([]);
+    const dispatchedIdsRef = useRef<Set<string>>(new Set());
 
     const validateFile = useCallback((file: File): { isValid: boolean; error?: string } => {
         if (file.size > FILE_VALIDATION.maxSize) {
@@ -102,48 +101,41 @@ export const useFileUpload = ({
         }
 
         if (validItems.length > 0) {
-            setQueuedItems((prev) => [...prev, ...validItems]);
+            setPendingItems((prev) => [...prev, ...validItems]);
         }
     }, [supportsFileUpload, disabled, onFileUpload, validateFile, createUploadItem]);
 
-    const startNextUpload = useCallback(() => {
-        if (disabled || uploading || !onFileUpload) {
-            return;
-        }
-
-        if (!currentItem && queuedItems.length > 0) {
-            const [nextItem, ...rest] = queuedItems;
-            setQueuedItems(rest);
-            setCurrentItem(nextItem);
-            uploadStartedRef.current = false;
-            onFileUpload(nextItem.file);
-        }
-    }, [disabled, uploading, onFileUpload, currentItem, queuedItems]);
-
+    // Dispatch all undispatched pending items immediately
     useEffect(() => {
-        if (uploading && currentItem) {
-            uploadStartedRef.current = true;
-        }
+        if (disabled || !onFileUpload) return;
 
-        if (!uploading && currentItem && uploadStartedRef.current) {
-            revokePreview(currentItem);
-            setCurrentItem(null);
-            uploadStartedRef.current = false;
-        }
+        pendingItems.forEach((item) => {
+            if (!dispatchedIdsRef.current.has(item.id)) {
+                dispatchedIdsRef.current.add(item.id);
+                onFileUpload(item.file);
+            }
+        });
+    }, [pendingItems, disabled, onFileUpload]);
 
-        if (!uploading && !currentItem) {
-            startNextUpload();
+    // When uploading transitions to false (all done), clear completed items
+    const prevUploadingRef = useRef(uploading);
+    useEffect(() => {
+        if (prevUploadingRef.current && !uploading) {
+            // All uploads finished — clear pending items and revoke previews
+            setPendingItems((prev) => {
+                prev.forEach(revokePreview);
+                return [];
+            });
+            dispatchedIdsRef.current.clear();
         }
-    }, [uploading, currentItem, startNextUpload, revokePreview]);
+        prevUploadingRef.current = uploading;
+    }, [uploading, revokePreview]);
 
     useEffect(() => {
         return () => {
-            if (currentItem) {
-                revokePreview(currentItem);
-            }
-            queuedItems.forEach(revokePreview);
+            pendingItems.forEach(revokePreview);
         };
-    }, [currentItem, queuedItems, revokePreview]);
+    }, [pendingItems, revokePreview]);
 
     const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         // Read files first: in some browsers, clearing the input clears the FileList
@@ -208,27 +200,23 @@ export const useFileUpload = ({
     }, [onFileUpload, supportsFileUpload, disabled, queueFiles]);
 
     const pendingFiles = useMemo<PendingFile[]>(() => {
-        const items: PendingFile[] = [];
-        if (currentItem) {
-            items.push({ ...currentItem, status: 'uploading' });
-        }
-        queuedItems.forEach((item) => items.push({ ...item, status: 'queued' }));
-        return items;
-    }, [currentItem, queuedItems]);
+        return pendingItems.map((item) => ({
+            ...item,
+            status: dispatchedIdsRef.current.has(item.id) ? 'uploading' as const : 'queued' as const
+        }));
+    }, [pendingItems]);
 
     const removePendingFile = useCallback((id: string) => {
-        if (currentItem?.id === id) {
-            revokePreview(currentItem);
-            setCurrentItem(null);
-            uploadStartedRef.current = false;
-            onCancelUpload?.();
-        }
-        setQueuedItems((prev) => {
+        setPendingItems((prev) => {
             const item = prev.find((i) => i.id === id);
             if (item) revokePreview(item);
             return prev.filter((i) => i.id !== id);
         });
-    }, [currentItem, revokePreview, onCancelUpload]);
+        if (dispatchedIdsRef.current.has(id)) {
+            dispatchedIdsRef.current.delete(id);
+            onCancelUpload?.();
+        }
+    }, [revokePreview, onCancelUpload]);
 
     return {
         fileInputRef,

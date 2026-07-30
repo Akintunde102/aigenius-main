@@ -129,7 +129,7 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
             <button
               type="button"
               aria-label="Close sidebar"
-              title="Close sidebar"
+              title="Close sidebar (⌘B)"
               className="flex h-8 w-9 shrink-0 items-center justify-center rounded-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 sm:h-7"
               style={{
                 border: "1px solid var(--sidebar-icon-btn-border)",

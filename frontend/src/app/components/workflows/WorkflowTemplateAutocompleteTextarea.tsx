@@ -148,7 +148,7 @@ export const WorkflowTemplateAutocompleteTextarea = forwardRef<HTMLTextAreaEleme
           onKeyDown={onKeyDown}
           spellCheck={false}
           className={cn(
-            "block min-h-[100px] w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-teal-400/80 focus:ring-2 focus:ring-teal-500/20 ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-teal-500/30 focus-visible:border-teal-400/70",
+            "block min-h-[100px] w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-teal-400/80 focus:ring-2 focus:ring-teal-500/20 ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-teal-500/30 focus-visible:border-teal-400/70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500",
             className,
           )}
         />
@@ -157,7 +157,7 @@ export const WorkflowTemplateAutocompleteTextarea = forwardRef<HTMLTextAreaEleme
             ref={menuRef}
             role="listbox"
             aria-label="Template completions"
-            className="absolute left-0 right-0 z-[90] mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200/90 bg-white py-1 shadow-lg ring-1 ring-slate-900/5"
+            className="absolute left-0 right-0 z-[90] mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200/90 bg-white py-1 shadow-lg ring-1 ring-slate-900/5 dark:border-slate-700 dark:bg-slate-900 dark:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.6)] dark:ring-0"
           >
             {filtered.map((item, i) => (
               <button
@@ -167,14 +167,16 @@ export const WorkflowTemplateAutocompleteTextarea = forwardRef<HTMLTextAreaEleme
                 aria-selected={i === highlight}
                 className={cn(
                   "flex w-full flex-col gap-0.5 px-3 py-2 text-left text-[11px] transition",
-                  i === highlight ? "bg-teal-50 text-teal-950" : "text-slate-800 hover:bg-slate-50",
+                  i === highlight
+                    ? "bg-teal-50 text-teal-950 dark:bg-teal-950/80 dark:text-teal-200"
+                    : "text-slate-800 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800",
                 )}
                 onMouseEnter={() => setHighlight(i)}
                 onMouseDown={(ev) => ev.preventDefault()}
                 onClick={() => applyPick(item.insertText)}
               >
-                <span className="font-mono text-[10px] text-teal-900">{item.label}</span>
-                {item.detail ? <span className="text-[10px] text-slate-500">{item.detail}</span> : null}
+                <span className="font-mono text-[10px] text-teal-900 dark:text-teal-300">{item.label}</span>
+                {item.detail ? <span className="text-[10px] text-slate-500 dark:text-slate-400">{item.detail}</span> : null}
               </button>
             ))}
           </div>

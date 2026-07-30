@@ -63,3 +63,45 @@ export function createDebouncedDraftPersist(
     }, delayMs);
   };
 }
+
+export const COMPOSER_FILES_STORAGE_KEY = "aigenius-composer-files-v1";
+
+export interface StoredUploadedFile {
+  fileUrl: string;
+  isImage: boolean;
+  displayName: string;
+  mimeType?: string;
+  source: "local" | "library";
+  libraryFileId?: string;
+}
+
+export function loadComposerFilesMap(): Record<string, StoredUploadedFile[]> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = sessionStorage.getItem(COMPOSER_FILES_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return {};
+    }
+    return parsed as Record<string, StoredUploadedFile[]>;
+  } catch {
+    return {};
+  }
+}
+
+export function persistComposerFilesMap(map: Record<string, StoredUploadedFile[]>): void {
+  if (typeof window === "undefined") return;
+  try {
+    const cleaned = Object.fromEntries(
+      Object.entries(map).filter(([, v]) => Array.isArray(v) && v.length > 0)
+    );
+    if (Object.keys(cleaned).length === 0) {
+      sessionStorage.removeItem(COMPOSER_FILES_STORAGE_KEY);
+    } else {
+      sessionStorage.setItem(COMPOSER_FILES_STORAGE_KEY, JSON.stringify(cleaned));
+    }
+  } catch (e) {
+    console.warn("composerDraftStorage: persist files failed", e);
+  }
+}
