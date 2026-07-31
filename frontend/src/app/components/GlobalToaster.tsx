@@ -13,6 +13,10 @@ export default function GlobalToaster() {
           color: "#fff",
           border: "1px solid rgba(148, 163, 184, 0.2)",
           backdropFilter: "blur(12px)",
+          maxWidth: "480px",
+          wordBreak: "break-word",
+          overflowWrap: "anywhere",
+          lineHeight: "1.4",
         },
         success: {
           iconTheme: {

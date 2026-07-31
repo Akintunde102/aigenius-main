@@ -89,10 +89,10 @@ function formatTriggerLabel(triggerType?: string) {
 // inside the component to ensure Next.js state synchronization.
 
 function statusTone(status?: string) {
-  if (status === "completed") return "text-emerald-700 bg-emerald-50 border-emerald-200";
-  if (status === "failed") return "text-rose-700 bg-rose-50 border-rose-200";
-  if (status === "running") return "text-sky-700 bg-sky-50 border-sky-200";
-  return "text-slate-700 bg-slate-50 border-slate-200";
+  if (status === "completed") return "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/50 dark:border-emerald-800/70";
+  if (status === "failed") return "text-rose-700 bg-rose-50 border-rose-200 dark:text-rose-300 dark:bg-rose-950/50 dark:border-rose-800/70";
+  if (status === "running") return "text-sky-700 bg-sky-50 border-sky-200 dark:text-sky-300 dark:bg-sky-950/50 dark:border-sky-800/70";
+  return "text-slate-700 bg-slate-50 border-slate-200 dark:text-slate-300 dark:bg-slate-900/60 dark:border-slate-700";
 }
 
 function isTerminalWorkflowRun(status?: string) {
@@ -157,19 +157,19 @@ const HistorySnapshotStepCard = memo(function HistorySnapshotStepCard({
 
   return (
     <div className="w-full max-w-[20rem]">
-      <div className="my-0 w-full overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-b from-white to-slate-50/40 shadow-[0_10px_32px_-14px_rgba(15,23,42,0.22)] ring-1 ring-slate-900/[0.04]">
-        <div className="flex items-center gap-2 border-b border-slate-200/70 bg-white/95 px-2.5 py-2 sm:px-3">
+      <div className="my-0 w-full overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-b from-white to-slate-50/40 shadow-[0_10px_32px_-14px_rgba(15,23,42,0.22)] ring-1 ring-slate-900/[0.04] dark:border-slate-800/90 dark:from-[#18191c] dark:to-[#141518] dark:ring-0">
+        <div className="flex items-center gap-2 border-b border-slate-200/70 bg-white/95 px-2.5 py-2 sm:px-3 dark:border-slate-800/80 dark:bg-[#1e2024]">
           <div
             className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md text-[10px] font-semibold ${theme.tileIconBg} ${theme.tileIconText}`}
           >
             {stepIndex + 1}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold leading-tight text-[var(--app-ink-800)]">{displayTitle}</p>
-            <p className="mt-0.5 truncate text-[10px] text-slate-500">{category}</p>
+            <p className="truncate text-sm font-semibold leading-tight text-[var(--app-ink-800)] dark:text-slate-100">{displayTitle}</p>
+            <p className="mt-0.5 truncate text-[10px] text-slate-500 dark:text-slate-400">{category}</p>
           </div>
           <span
-            className="shrink-0 tabular-nums text-[10px] text-slate-500"
+            className="shrink-0 tabular-nums text-[10px] text-slate-500 dark:text-slate-400"
             title={`Step ${stepIndex + 1} of ${stepCount}`}
           >
             {stepIndex + 1}/{stepCount}
@@ -183,14 +183,14 @@ const HistorySnapshotStepCard = memo(function HistorySnapshotStepCard({
         </div>
 
         <WorkflowValuesPanel>
-          <ul className="divide-y divide-slate-200/70 text-[11px] leading-snug">
+          <ul className="divide-y divide-slate-200/70 text-[11px] leading-snug dark:divide-slate-800/80">
             {summaryLines.map((line, index) => (
               <li
                 key={`${line.label}-${index}`}
                 className="flex flex-col gap-1 py-2.5 first:pt-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3"
               >
-                <span className="shrink-0 font-medium text-teal-950/70">{line.label}</span>
-                <span className="min-w-0 tabular-nums text-slate-800 [overflow-wrap:anywhere] sm:text-right">
+                <span className="shrink-0 font-medium text-teal-950/70 dark:text-teal-300">{line.label}</span>
+                <span className="min-w-0 tabular-nums text-slate-800 dark:text-slate-200 [overflow-wrap:anywhere] sm:text-right">
                   {line.value}
                 </span>
               </li>
@@ -199,15 +199,15 @@ const HistorySnapshotStepCard = memo(function HistorySnapshotStepCard({
         </WorkflowValuesPanel>
 
         {billedUsd || walletAfter ? (
-          <div className="border-t border-slate-200/70 bg-slate-50/85 px-2.5 py-2">
-            <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-600">
+          <div className="border-t border-slate-200/70 bg-slate-50/85 px-2.5 py-2 dark:border-slate-800/80 dark:bg-[#141518]">
+            <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-600 dark:text-slate-400">
               {billedUsd ? (
-                <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-medium">
+                <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-medium dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-200">
                   Cost {billedUsd}
                 </span>
               ) : null}
               {walletAfter ? (
-                <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-medium">
+                <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-medium dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-200">
                   Wallet {walletAfter}
                 </span>
               ) : null}
@@ -216,18 +216,18 @@ const HistorySnapshotStepCard = memo(function HistorySnapshotStepCard({
         ) : null}
 
         {output ? (
-          <div className="border-t border-slate-200/70">
+          <div className="border-t border-slate-200/70 dark:border-slate-800/80">
             {runStep?.error ? (
-              <div className="bg-rose-50/90 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-800">Error</p>
-                <pre className="workflow-scroll-light mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-snug text-rose-950 [overflow-wrap:anywhere]">
+              <div className="bg-rose-50/90 px-2.5 py-2 dark:bg-rose-950/80">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-800 dark:text-rose-200">Error</p>
+                <pre className="workflow-scroll-light mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-snug text-rose-950 dark:text-rose-200 [overflow-wrap:anywhere]">
                   {output}
                 </pre>
               </div>
             ) : (
-              <div className="bg-white/80 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Output</p>
-                <pre className="workflow-scroll-light mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-snug text-slate-700 [overflow-wrap:anywhere]">
+              <div className="bg-white/80 px-2.5 py-2 dark:bg-[#141518]">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Output</p>
+                <pre className="workflow-scroll-light mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-snug text-slate-700 dark:text-slate-200 [overflow-wrap:anywhere]">
                   {output}
                 </pre>
               </div>
@@ -252,11 +252,11 @@ function HistoryTimelinePanel({
 }) {
   if (minimized) {
     return (
-      <div className="rounded-xl border border-slate-800/90 bg-[#141416]/95 p-1 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.4)] backdrop-blur-sm">
+      <div className="rounded-xl border border-slate-200/90 bg-white/95 p-1 shadow-md backdrop-blur-sm dark:border-slate-800/90 dark:bg-[#141416]/95 dark:shadow-[0_8px_30px_-8px_rgba(15,23,42,0.4)]">
         <button
           type="button"
           onClick={onToggleMinimized}
-          className="rounded-lg px-3 py-2 text-[11px] font-medium text-slate-200 transition hover:bg-white/10 hover:text-white"
+          className="rounded-lg px-3 py-2 text-[11px] font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white"
         >
           Show Steps timeline
         </button>
@@ -265,7 +265,7 @@ function HistoryTimelinePanel({
   }
 
   return (
-    <div className="w-[20rem] rounded-xl border border-slate-800/90 bg-[#141416]/95 p-3 text-slate-200 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.4)] backdrop-blur-sm">
+    <div className="w-[20rem] rounded-xl border border-slate-200/90 bg-white/95 p-3 text-slate-800 shadow-md backdrop-blur-sm dark:border-slate-800/90 dark:bg-[#141416]/95 dark:text-slate-200 dark:shadow-[0_8px_30px_-8px_rgba(15,23,42,0.4)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-slate-500">Steps timeline</p>
@@ -277,12 +277,12 @@ function HistoryTimelinePanel({
               {formatTriggerLabel(detail.run.triggerType)}
             </span>
           </div>
-          <p className="mt-2 text-[10px] text-slate-400">{formatDateTime(runListItem?.createdAt)}</p>
+          <p className="mt-2 text-[10px] text-slate-500 dark:text-slate-400">{formatDateTime(runListItem?.createdAt)}</p>
         </div>
         <button
           type="button"
           onClick={onToggleMinimized}
-          className="shrink-0 rounded-lg px-2 py-1 text-[10px] font-medium text-slate-400 transition hover:bg-white/10 hover:text-white"
+          className="shrink-0 rounded-lg px-2 py-1 text-[10px] font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
           aria-label="Minimize steps timeline"
         >
           Minimize
@@ -290,17 +290,17 @@ function HistoryTimelinePanel({
       </div>
 
       {detail.failureSummary ? (
-        <p className="mt-3 rounded-lg border border-slate-700/80 bg-slate-950/30 px-2.5 py-2 text-[10px] leading-relaxed text-slate-300">
+        <p className="mt-3 rounded-lg border border-rose-200/80 bg-rose-50/90 px-2.5 py-2 text-[10px] leading-relaxed text-rose-950 dark:border-slate-700/80 dark:bg-slate-950/30 dark:text-slate-300">
           {detail.failureSummary}
         </p>
       ) : null}
 
       <div className="workflow-scroll mt-3 max-h-[28rem] space-y-2 overflow-y-auto pr-1">
         {detail.steps.map((step) => (
-          <div key={`${step.stepId}-${step.stepIndex}`} className="rounded border border-slate-700/80 bg-slate-950/30 px-2.5 py-2">
+          <div key={`${step.stepId}-${step.stepIndex}`} className="rounded border border-slate-200/80 bg-slate-50/80 px-2.5 py-2 dark:border-slate-700/80 dark:bg-slate-950/30">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate text-[11px] font-medium text-slate-100">{step.stepId}</p>
+                <p className="truncate text-[11px] font-medium text-slate-800 dark:text-slate-100">{step.stepId}</p>
                 <p className="truncate text-[10px] text-slate-500">{friendlyToolName(step.toolName)}</p>
               </div>
               <span className="shrink-0">
@@ -308,23 +308,23 @@ function HistoryTimelinePanel({
               </span>
             </div>
             {typeof step.billedUsd === "number" || typeof step.walletAfter === "number" ? (
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
                 {typeof step.billedUsd === "number" ? (
-                  <span className="rounded border border-slate-700/80 bg-slate-900/70 px-1.5 py-0.5">
+                  <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 dark:border-slate-700/80 dark:bg-slate-900/70">
                     Cost {formatWorkflowBilledUsd(step.billedUsd)}
                   </span>
                 ) : null}
                 {typeof step.walletAfter === "number" ? (
-                  <span className="rounded border border-slate-700/80 bg-slate-900/70 px-1.5 py-0.5">
+                  <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 dark:border-slate-700/80 dark:bg-slate-900/70">
                     Wallet {formatWorkflowWalletBalance(step.walletAfter)}
                   </span>
                 ) : null}
               </div>
             ) : null}
             {step.error ? (
-              <p className="mt-2 text-[10px] leading-relaxed text-rose-300">{step.error}</p>
+              <p className="mt-2 text-[10px] leading-relaxed text-rose-600 dark:text-rose-300">{step.error}</p>
             ) : step.result ? (
-              <pre className="workflow-scroll mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-slate-900/80 p-2 text-[10px] leading-relaxed text-slate-300">
+              <pre className="workflow-scroll mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-slate-100 p-2 text-[10px] leading-relaxed text-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
                 {formatWorkflowToolOutputForDisplay(String(step.result))}
               </pre>
             ) : null}
@@ -404,12 +404,12 @@ const WorkflowSnapshotCanvas = memo(function WorkflowSnapshotCanvas({
   if (!bounds || steps.length === 0) {
     return (
       <div className="absolute inset-0 flex items-center justify-center px-4 py-12 sm:px-6">
-        <div className="w-full max-w-lg rounded-2xl border border-slate-200/90 bg-white/85 px-8 py-12 text-center shadow-[0_24px_64px_-16px_rgba(15,23,42,0.14)] backdrop-blur-[2px]">
-          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-slate-100/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)]">
-            <History className="h-7 w-7 text-slate-500" aria-hidden />
+        <div className="w-full max-w-lg rounded-2xl border border-slate-200/90 bg-white/85 px-8 py-12 text-center shadow-lg backdrop-blur-[2px] dark:border-slate-800/90 dark:bg-[#18191c]/90 dark:text-slate-200">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-slate-100/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] dark:border-slate-700 dark:from-slate-800 dark:to-slate-900">
+            <History className="h-7 w-7 text-slate-500 dark:text-slate-400" aria-hidden />
           </div>
-          <h2 className="text-lg font-semibold tracking-tight text-slate-900">No historical canvas snapshot</h2>
-          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+          <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">No historical canvas snapshot</h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
             This run was recorded before visual workflow snapshots were stored.
           </p>
         </div>
@@ -421,11 +421,11 @@ const WorkflowSnapshotCanvas = memo(function WorkflowSnapshotCanvas({
     <>
       {/* Read-only badge — does NOT block pointer events on the canvas */}
       <div className="pointer-events-none absolute right-3 top-3 z-10">
-        <div className="rounded-xl border border-slate-200/90 bg-white/95 p-1 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.18)] backdrop-blur-sm">
+        <div className="rounded-xl border border-slate-200/90 bg-white/95 p-1 shadow-md backdrop-blur-sm dark:border-slate-800/90 dark:bg-[#141416]/95 dark:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.4)]">
           <button
             type="button"
             disabled
-            className="flex cursor-not-allowed items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] text-slate-400"
+            className="flex cursor-not-allowed items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] text-slate-400 dark:text-slate-400"
             title="History is read-only"
           >
             <Play className="h-3.5 w-3.5" aria-hidden />
@@ -850,40 +850,40 @@ export default function WorkflowExecutionsView() {
         the header from jumping and sidebars from extending past the screen. */}
       <div className="flex h-screen flex-col overflow-hidden" style={workflowShellBgStyle()}>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white/80 backdrop-blur-[2px]">
-          <div className="sticky top-0 z-30 w-full shrink-0 border-b border-slate-800/90 bg-[#141416] text-slate-200 shadow-[0_1px_0_0_rgba(0,0,0,0.4)]">
+          <div className="sticky top-0 z-30 w-full shrink-0 border-b border-slate-200/90 bg-white/95 text-slate-800 shadow-sm backdrop-blur-md dark:border-slate-800/90 dark:bg-[#141416] dark:text-slate-200 dark:shadow-[0_1px_0_0_rgba(0,0,0,0.4)]">
             <div className="flex h-9 min-h-9 flex-nowrap items-center gap-x-1.5 px-2.5 sm:h-10 sm:min-h-10 sm:gap-x-2 sm:px-3">
               <Link
                 href="/"
-                className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-medium text-slate-400 transition hover:bg-white/10 hover:text-slate-100"
+                className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-100"
               >
                 <ArrowLeft className="h-3 w-3" aria-hidden />
                 Back
               </Link>
-              <span className="select-none text-slate-600" aria-hidden>
+              <span className="select-none text-slate-400 dark:text-slate-600" aria-hidden>
                 ›
               </span>
               <Link
                 href="/workflows"
-                className="shrink-0 text-[11px] font-normal text-slate-400 transition hover:text-slate-100 hover:underline"
+                className="shrink-0 text-[11px] font-normal text-slate-500 transition hover:text-slate-900 hover:underline dark:text-slate-400 dark:hover:text-slate-100"
               >
                 Workflows
               </Link>
-              <span className="select-none text-slate-600" aria-hidden>
+              <span className="select-none text-slate-400 dark:text-slate-600" aria-hidden>
                 ›
               </span>
               <Link
                 href={`/workflow/${workflowId}`}
-                className="shrink-0 text-[11px] font-normal text-slate-400 transition hover:text-slate-100 hover:underline"
+                className="shrink-0 text-[11px] font-normal text-slate-500 transition hover:text-slate-900 hover:underline dark:text-slate-400 dark:hover:text-slate-100"
               >
                 {workflow?.name || "Workflow"}
               </Link>
-              <span className="select-none text-slate-600" aria-hidden>
+              <span className="select-none text-slate-400 dark:text-slate-600" aria-hidden>
                 ›
               </span>
-              <span className="truncate text-[12px] font-medium text-slate-100">History</span>
+              <span className="truncate text-[12px] font-medium text-slate-900 dark:text-slate-100">History</span>
               <button
                 type="button"
-                className="inline-flex h-6 items-center gap-1 rounded bg-white/15 px-1.5 text-[10px] font-medium text-sky-300"
+                className="inline-flex h-6 items-center gap-1 rounded bg-slate-200 px-1.5 text-[10px] font-medium text-teal-800 dark:bg-white/15 dark:text-sky-300"
                 aria-pressed
                 title="Viewing workflow history"
               >
@@ -891,14 +891,14 @@ export default function WorkflowExecutionsView() {
                 History
               </button>
               <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-0.5 sm:gap-2">
-                <span className="hidden rounded border border-slate-700/80 bg-slate-900/60 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-400 sm:inline-flex">
+                <span className="hidden rounded border border-slate-200/90 bg-slate-100/80 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-500 dark:border-slate-700/80 dark:bg-slate-900/60 dark:text-slate-400 sm:inline-flex">
                   Read only
                 </span>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 shrink-0 rounded-md border-slate-600/90 bg-slate-800/90 px-2 text-[11px] font-medium text-slate-100 shadow-sm transition hover:bg-slate-700 hover:text-white sm:px-2.5"
+                  className="h-7 shrink-0 rounded-md border-slate-200/90 bg-slate-100/80 px-2 text-[11px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-200/80 hover:text-slate-900 dark:border-slate-600/90 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white sm:px-2.5"
                   onClick={() => setIntegrationsOpen(true)}
                   title="Manage integrations"
                 >
@@ -909,7 +909,7 @@ export default function WorkflowExecutionsView() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 shrink-0 rounded-md border-slate-600/90 bg-slate-800/90 px-2 text-[11px] font-medium text-slate-100 shadow-sm transition hover:bg-slate-700 hover:text-white sm:px-2.5"
+                  className="h-7 shrink-0 rounded-md border-slate-200/90 bg-slate-100/80 px-2 text-[11px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-200/80 hover:text-slate-900 dark:border-slate-600/90 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white sm:px-2.5"
                   onClick={() => {
                     setShowWalletModal(true);
                     void refreshWalletCredits();
@@ -924,7 +924,7 @@ export default function WorkflowExecutionsView() {
                   variant="outline"
                   size="sm"
                   disabled
-                  className="h-7 rounded-md border-slate-700/80 bg-slate-900/60 px-2.5 text-[11px] font-medium text-slate-400 opacity-100"
+                  className="h-7 rounded-md border-slate-200/90 bg-slate-100/80 px-2.5 text-[11px] font-medium text-slate-400 opacity-100 dark:border-slate-700/80 dark:bg-slate-900/60 dark:text-slate-400"
                   title="Execution history is not playable"
                 >
                   <Play className="mr-1 h-3 w-3" aria-hidden />
@@ -932,7 +932,7 @@ export default function WorkflowExecutionsView() {
                 </Button>
                 <Link
                   href={`/workflow/${workflowId}`}
-                  className="inline-flex h-7 items-center justify-center rounded-md border border-slate-600/90 bg-slate-800/90 px-2.5 text-[11px] font-medium text-slate-100 shadow-sm transition hover:bg-slate-700 hover:text-white"
+                  className="inline-flex h-7 items-center justify-center rounded-md border border-slate-200/90 bg-slate-100/80 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-200/80 hover:text-slate-900 dark:border-slate-600/90 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white"
                 >
                   Open live canvas
                 </Link>
@@ -980,12 +980,12 @@ export default function WorkflowExecutionsView() {
                 </div>
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center px-4 py-12 sm:px-6">
-                  <div className="w-full max-w-lg rounded-2xl border border-slate-200/90 bg-white/85 px-8 py-12 text-center shadow-[0_24px_64px_-16px_rgba(15,23,42,0.14)] backdrop-blur-[2px]">
-                    <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-slate-100/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)]">
-                      <History className="h-7 w-7 text-slate-500" aria-hidden />
+                  <div className="w-full max-w-lg rounded-2xl border border-slate-200/90 bg-white/85 px-8 py-12 text-center shadow-lg backdrop-blur-[2px] dark:border-slate-800/90 dark:bg-[#18191c]/90 dark:text-slate-200">
+                    <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-slate-100/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] dark:border-slate-700 dark:from-slate-800 dark:to-slate-900">
+                      <History className="h-7 w-7 text-slate-500 dark:text-slate-400" aria-hidden />
                     </div>
-                    <h2 className="text-lg font-semibold tracking-tight text-slate-900">Select an execution</h2>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">Select an execution</h2>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                       Pick a historical run to inspect the exact canvas snapshot and step outputs.
                     </p>
                   </div>
@@ -994,12 +994,12 @@ export default function WorkflowExecutionsView() {
             </section>
 
             {/* Aside: fixed width, full height of the content area, internally scrollable */}
-            <aside className="flex w-[22rem] shrink-0 flex-col overflow-hidden border-l border-slate-800/90 bg-[#141416] text-slate-200">
-              <div className="border-b border-slate-700/80 px-3 py-3">
+            <aside className="flex w-[22rem] shrink-0 flex-col overflow-hidden border-l border-slate-200/90 bg-slate-50/90 text-slate-800 dark:border-slate-800/90 dark:bg-[#141416] dark:text-slate-200">
+              <div className="border-b border-slate-200/80 px-3 py-3 dark:border-slate-700/80">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-slate-500">Execution history</p>
-                    <p className="mt-1 text-[12px] font-medium text-slate-100">
+                    <p className="mt-1 text-[12px] font-medium text-slate-800 dark:text-slate-100">
                       {visibleRuns.length} run{visibleRuns.length === 1 ? "" : "s"}
                     </p>
                   </div>
@@ -1007,7 +1007,7 @@ export default function WorkflowExecutionsView() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-7 w-7 rounded-md border-slate-600/80 bg-slate-800/90 px-0 text-slate-100"
+                    className="h-7 w-7 rounded-md border-slate-200/80 bg-white px-0 text-slate-700 shadow-sm hover:bg-slate-100 dark:border-slate-600/80 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700"
                     onClick={() => void refreshRunHistoryBoard({ notifyError: true, refreshSelectedDetail: true })}
                     title="Refresh runs"
                   >
@@ -1019,7 +1019,7 @@ export default function WorkflowExecutionsView() {
                     type="button"
                     className={`inline-flex h-7 w-7 items-center justify-center rounded-md border transition ${deleteMode
                         ? "border-rose-700/70 bg-rose-950/25 text-rose-100"
-                        : "border-slate-600/80 bg-slate-800/90 text-slate-100 hover:bg-slate-700"
+                        : "border-slate-200/80 bg-white text-slate-700 shadow-sm hover:bg-slate-100 dark:border-slate-600/80 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700"
                       }`}
                     onClick={() => {
                       setDeleteMode((current) => !current);
@@ -1052,14 +1052,14 @@ export default function WorkflowExecutionsView() {
 
               {/* Scrollable run list — flex-1 min-h-0 ensures it shrinks to available space */}
               <div className="workflow-scroll min-h-0 flex-1 overflow-y-auto">
-                <div className="border-b border-slate-700/80 p-3">
+                <div className="border-b border-slate-200/80 p-3 dark:border-slate-700/80">
                   <div className="mb-3 flex flex-wrap gap-1.5">
                     <button
                       type="button"
                       onClick={() => setScheduleFilter("all")}
                       className={`rounded border px-2 py-1 text-[10px] font-medium transition ${scheduleFilter === "all"
-                          ? "border-sky-500/50 bg-sky-500/10 text-sky-200"
-                          : "border-slate-700/80 bg-slate-950/30 text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                          ? "border-teal-600/60 bg-teal-50 text-teal-900 font-semibold dark:border-sky-500/50 dark:bg-sky-500/10 dark:text-sky-200"
+                          : "border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:border-slate-700/80 dark:bg-slate-950/30 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200"
                         }`}
                     >
                       All runs
@@ -1068,8 +1068,8 @@ export default function WorkflowExecutionsView() {
                       type="button"
                       onClick={() => setScheduleFilter("unscheduled")}
                       className={`rounded border px-2 py-1 text-[10px] font-medium transition ${scheduleFilter === "unscheduled"
-                          ? "border-sky-500/50 bg-sky-500/10 text-sky-200"
-                          : "border-slate-700/80 bg-slate-950/30 text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                          ? "border-teal-600/60 bg-teal-50 text-teal-900 font-semibold dark:border-sky-500/50 dark:bg-sky-500/10 dark:text-sky-200"
+                          : "border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:border-slate-700/80 dark:bg-slate-950/30 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200"
                         }`}
                     >
                       Manual / API
@@ -1080,8 +1080,8 @@ export default function WorkflowExecutionsView() {
                         type="button"
                         onClick={() => setScheduleFilter(schedule.id)}
                         className={`max-w-[10rem] truncate rounded border px-2 py-1 text-[10px] font-medium transition ${scheduleFilter === schedule.id
-                            ? "border-sky-500/50 bg-sky-500/10 text-sky-200"
-                            : "border-slate-700/80 bg-slate-950/30 text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                            ? "border-teal-600/60 bg-teal-50 text-teal-900 font-semibold dark:border-sky-500/50 dark:bg-sky-500/10 dark:text-sky-200"
+                            : "border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:border-slate-700/80 dark:bg-slate-950/30 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200"
                           }`}
                         title={schedule.name}
                       >
@@ -1091,7 +1091,7 @@ export default function WorkflowExecutionsView() {
                   </div>
                   <div className="space-y-2">
                     {visibleRuns.length === 0 ? (
-                      <div className="rounded border border-slate-700/80 bg-slate-900/45 p-3 text-[11px] text-slate-400">
+                      <div className="rounded border border-slate-200/80 bg-white p-3 text-[11px] text-slate-500 dark:border-slate-700/80 dark:bg-slate-900/45 dark:text-slate-400">
                         No executions match this filter.
                       </div>
                     ) : (
@@ -1099,8 +1099,8 @@ export default function WorkflowExecutionsView() {
                         <div
                           key={run.id}
                           className={`block w-full rounded border px-2.5 py-2 text-left transition ${selectedRunId === run.id
-                              ? "border-sky-500/60 bg-sky-500/10"
-                              : "border-slate-700/80 bg-slate-950/30 hover:border-slate-600 hover:bg-slate-900/60"
+                              ? "border-teal-500/60 bg-teal-50/80 shadow-sm dark:border-sky-500/60 dark:bg-sky-500/10"
+                              : "border-slate-200/90 bg-white shadow-sm hover:border-slate-300 hover:bg-slate-50/80 dark:border-slate-700/80 dark:bg-slate-950/30 dark:hover:border-slate-600 dark:hover:bg-slate-900/60"
                             }`}
                         >
                           <div className="flex items-start gap-2">
@@ -1123,14 +1123,14 @@ export default function WorkflowExecutionsView() {
                               className="min-w-0 flex-1 text-left"
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-[11px] font-medium text-slate-100">{workflowStepRunStatusLabel(run.status as never)}</span>
+                                <span className="text-[11px] font-medium text-slate-800 dark:text-slate-100">{workflowStepRunStatusLabel(run.status as never)}</span>
                               </div>
-                              <p className="mt-1 text-[10px] text-slate-400">{formatDateTime(run.createdAt)}</p>
+                              <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">{formatDateTime(run.createdAt)}</p>
                               <p className="mt-1 line-clamp-3 text-[10px] leading-relaxed text-slate-500">
                                 {run.failureSummary ?? "Completed without a recorded failure."}
                               </p>
                               <div className="mt-2 flex items-end justify-between gap-2">
-                                <span className="max-w-[10rem] truncate rounded border border-slate-700/70 bg-slate-900/45 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                                <span className="max-w-[10rem] truncate rounded border border-slate-200 bg-slate-100/80 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.18em] text-slate-600 dark:border-slate-700/70 dark:bg-slate-900/45 dark:text-slate-400">
                                   {run.triggeringScheduleId
                                     ? run.triggeringScheduleName ?? scheduleNameById.get(run.triggeringScheduleId) ?? "Scheduled"
                                     : "Manual"}

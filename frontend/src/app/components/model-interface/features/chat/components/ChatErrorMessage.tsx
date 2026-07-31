@@ -26,7 +26,10 @@ export function ChatErrorMessage({
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 top-0 z-[1100] flex justify-center px-3 pt-3 sm:px-4 sm:pt-4"
+      className="pointer-events-none fixed inset-x-0 top-0 z-[1100] flex justify-center px-3 sm:px-4"
+      style={{
+        paddingTop: "calc(0.75rem + var(--aigenius-desktop-titlebar-top, 0px))",
+      }}
       role="alert"
       aria-live="assertive"
     >

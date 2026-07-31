@@ -42,7 +42,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     }
 
     if (!isNonAuthProtectedPage) {
-      getUserDetails().then((data) => {
+      getUserDetails(true).then((data) => {
         if (data) {
           storage(storageConstants.LOGGED_USER_DETAILS).setObject(data);
         }

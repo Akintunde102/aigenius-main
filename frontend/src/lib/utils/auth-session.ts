@@ -2,6 +2,7 @@ import axios from 'axios';
 import { storageConstants } from '@/lib/constants';
 import { LINKS } from '@/lib/links';
 import { storage } from '@/lib/utils/store';
+import { clearChatStorage } from '@/lib/utils/chatStorage';
 
 export function clearAuthSession() {
     if (typeof window !== 'undefined') {
@@ -15,6 +16,12 @@ export function clearAuthSession() {
                 },
             },
         ).catch(() => undefined);
+
+        // Clear local IndexedDB cached chat logs and workspace state
+        void clearChatStorage().catch(err => console.error("Failed to clear chat IndexedDB storage:", err));
+        localStorage.removeItem('aigenius-active-code-project-v1');
+        localStorage.removeItem('aigenius-active-editor-context-v1');
+        localStorage.removeItem('aigenius-conversation-scroll-state-v1');
     }
     storage(storageConstants.NOBOX_CLIENT_TOKEN).removeItem();
     storage(storageConstants.NOBOX_TOKEN).removeItem();

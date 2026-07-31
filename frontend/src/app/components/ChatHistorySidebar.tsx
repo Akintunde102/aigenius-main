@@ -125,6 +125,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         activeProject,
         selectProject,
         addProject,
+        removeProject,
     } = useCodeProjects();
 
     React.useEffect(() => {
@@ -243,6 +244,24 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         }
     }, [codeProjects, selectProject]);
 
+    const handleDeleteProject = React.useCallback(async (projectId: string) => {
+        const activeSessionBelongsToProject = chatHistory.some(
+            (session) => session.id === currentSessionId && session.codeProjectId === projectId
+        );
+
+        await removeProject(projectId);
+
+        if (setChatHistory) {
+            setChatHistory(
+                chatHistory.filter((session) => session.codeProjectId !== projectId)
+            );
+        }
+
+        if (activeSessionBelongsToProject) {
+            handleNewChat();
+        }
+    }, [chatHistory, currentSessionId, removeProject, setChatHistory, handleNewChat]);
+
     const infoProject = infoProjectId
         ? codeProjects.find((p) => p.id === infoProjectId) ?? null
         : null;
@@ -284,6 +303,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                     chatHistory={(chatHistory || []).filter((s) => s.conversationKind !== "orphan_question")}
                     isActive={activeProject?.id === infoProject.id}
                     onClose={() => setInfoProjectId(null)}
+                    onDelete={handleDeleteProject}
                 />
             ) : null}
 

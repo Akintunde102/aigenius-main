@@ -12,6 +12,7 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
   onSubmit?: (e: React.FormEvent) => void;
   submitTitle?: string;
   hasUploadedFiles?: boolean;
+  sendBlocked?: boolean;
 }> = React.memo(({
   value,
   onChange,
@@ -20,6 +21,7 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
   textareaDisabled = false,
   uploading,
   responseInProgress = false,
+  sendBlocked = false,
   onStopGeneration,
   textareaRef,
   sidebarStyle = false,
@@ -56,8 +58,8 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
     }
   }, [value, textareaRef, mini]);
 
-  const sendBlocked = responseInProgress || uploading;
-  const canSend = (value.trim() || hasUploadedFiles) && !sendBlocked;
+  const isSendBlocked = responseInProgress || uploading || sendBlocked;
+  const canSend = (value.trim() || hasUploadedFiles) && !isSendBlocked;
 
   return (
     <div className={`flex items-end gap-2 w-full ${mini ? 'px-1' : ''}`}>
@@ -99,7 +101,7 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
             e.preventDefault();
             onStopGeneration();
           }}
-          className="chat-composer-send flex-shrink-0 rounded-full p-1.5 text-white transition-colors"
+          className="flex-shrink-0 rounded-full bg-red-500 p-2 text-white shadow-md transition-all hover:bg-red-600 active:scale-95 dark:bg-red-600 dark:hover:bg-red-700"
           title="Stop generation"
           aria-label="Stop generation"
           style={{ marginBottom: '2px' }}

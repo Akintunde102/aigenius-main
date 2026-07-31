@@ -24,7 +24,8 @@ const LINKEDIN_CONNECT_RESULT_KEY = 'linkedin_connect_result';
 export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose }) => {
   const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
   const [linkedinConnected, setLinkedinConnected] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -35,8 +36,12 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
   const gmailConnectUrlRef = useRef<string | null>(null);
   const linkedinConnectUrlRef = useRef<string | null>(null);
 
-  const loadStatus = async () => {
-    setLoading(true);
+  const loadStatus = async (isInitial = false) => {
+    if (isInitial) {
+      setInitialLoading(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     try {
       const [gmailStatus, linkedinStatus] = await Promise.all([getGmailStatus(), getLinkedInStatus()]);
@@ -47,12 +52,13 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
       setGmailConnected(false);
       setLinkedinConnected(false);
     } finally {
+      setInitialLoading(false);
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadStatus();
+    loadStatus(true);
   }, []);
 
   useEffect(() => {
@@ -173,11 +179,12 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
     setSuccessMessage(null);
     setConnectInWindowUrl(null);
 
+    let w: Window | null = null;
     const url = gmailConnectUrlRef.current;
     if (url) {
       // Open popup directly with OAuth URL (same user gesture) so it loads Google, not about:blank
       // Note: We can't use noopener because the popup needs to postMessage back to the opener
-      const w = window.open(url, 'gmail-connect', 'width=500,height=600');
+      w = window.open(url, 'gmail-connect', 'width=500,height=600');
       if (!w) {
         setConnectInWindowUrl(url);
         setError('Popup blocked. Use "Connect in this window" below, or allow popups and try again.');
@@ -194,7 +201,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
           setActionLoading(false);
           return;
         }
-        const w = window.open(fetchedUrl, 'gmail-connect', 'width=500,height=600');
+        w = window.open(fetchedUrl, 'gmail-connect', 'width=500,height=600');
         if (!w) {
           setConnectInWindowUrl(fetchedUrl);
           setError('Popup blocked. Use "Connect in this window" below, or allow popups and try again.');
@@ -211,12 +218,32 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
     const timeoutId = setTimeout(() => {
       setActionLoading(false);
       setError('Connection timed out. Please try again.');
-    }, 120000);
+    }, 300000);
+
+    let checkClosedInterval: ReturnType<typeof setInterval>;
+
     const clearTimeoutOnCallback = (e: MessageEvent) => {
-      if (e.data?.type === 'gmail-integration-callback') clearTimeout(timeoutId);
+      if (e.data?.type === 'gmail-integration-callback') {
+        clearTimeout(timeoutId);
+        if (checkClosedInterval) clearInterval(checkClosedInterval);
+        setActionLoading(false);
+      }
     };
+
+    checkClosedInterval = setInterval(() => {
+      if (w && w.closed) {
+        clearInterval(checkClosedInterval);
+        clearTimeout(timeoutId);
+        window.removeEventListener('message', clearTimeoutOnCallback);
+        setActionLoading(false);
+      }
+    }, 1000);
+
     window.addEventListener('message', clearTimeoutOnCallback);
-    setTimeout(() => window.removeEventListener('message', clearTimeoutOnCallback), 121000);
+    setTimeout(() => {
+      window.removeEventListener('message', clearTimeoutOnCallback);
+      if (checkClosedInterval) clearInterval(checkClosedInterval);
+    }, 301000);
   };
 
   const handleConnectInWindow = () => {
@@ -229,9 +256,10 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
     setSuccessMessage(null);
     setConnectInWindowUrl(null);
 
+    let w: Window | null = null;
     const url = linkedinConnectUrlRef.current;
     if (url) {
-      const w = window.open(url, 'linkedin-connect', 'width=500,height=600');
+      w = window.open(url, 'linkedin-connect', 'width=500,height=600');
       if (!w) {
         setConnectInWindowUrl(url);
         setError('Popup blocked. Use "Connect in this window" below, or allow popups and try again.');
@@ -247,7 +275,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
           setActionLoading(false);
           return;
         }
-        const w = window.open(fetchedUrl, 'linkedin-connect', 'width=500,height=600');
+        w = window.open(fetchedUrl, 'linkedin-connect', 'width=500,height=600');
         if (!w) {
           setConnectInWindowUrl(fetchedUrl);
           setError('Popup blocked. Use "Connect in this window" below, or allow popups and try again.');
@@ -264,12 +292,32 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
     const timeoutId = setTimeout(() => {
       setActionLoading(false);
       setError('Connection timed out. Please try again.');
-    }, 120000);
+    }, 300000);
+
+    let checkClosedInterval: ReturnType<typeof setInterval>;
+
     const clearTimeoutOnCallback = (e: MessageEvent) => {
-      if (e.data?.type === 'linkedin-integration-callback') clearTimeout(timeoutId);
+      if (e.data?.type === 'linkedin-integration-callback') {
+        clearTimeout(timeoutId);
+        if (checkClosedInterval) clearInterval(checkClosedInterval);
+        setActionLoading(false);
+      }
     };
+
+    checkClosedInterval = setInterval(() => {
+      if (w && w.closed) {
+        clearInterval(checkClosedInterval);
+        clearTimeout(timeoutId);
+        window.removeEventListener('message', clearTimeoutOnCallback);
+        setActionLoading(false);
+      }
+    }, 1000);
+
     window.addEventListener('message', clearTimeoutOnCallback);
-    setTimeout(() => window.removeEventListener('message', clearTimeoutOnCallback), 121000);
+    setTimeout(() => {
+      window.removeEventListener('message', clearTimeoutOnCallback);
+      if (checkClosedInterval) clearInterval(checkClosedInterval);
+    }, 301000);
   };
 
   const handleDisconnectLinkedIn = async () => {
@@ -333,9 +381,16 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                 <FiMail size={20} />
               </div>
               <div className="min-w-0">
-                <h2 id="integrations-modal-title" className="text-base font-semibold">
-                  Integrations
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 id="integrations-modal-title" className="text-base font-semibold">
+                    Integrations
+                  </h2>
+                  {loading && (
+                    <span className="text-[10px] animate-pulse font-medium text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                      Syncing...
+                    </span>
+                  )}
+                </div>
                 <p className="mt-0.5 text-xs" style={{ color: "var(--modal-muted-fg)" }}>Connect external accounts for tools</p>
               </div>
             </div>
@@ -355,7 +410,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
           Connect your accounts so AI models with tool support can use them (e.g. Gmail or your LinkedIn
           profile).
         </p>
-        {loading ? (
+        {initialLoading ? (
           <div className="py-6 text-center" style={{ color: "var(--modal-muted-fg)" }}>Loading…</div>
         ) : (
           <div className="space-y-4">
@@ -455,15 +510,6 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        className="text-sm text-blue-600 hover:underline disabled:opacity-50"
-                        onClick={handleConnectLinkedIn}
-                        disabled={actionLoading}
-                        title="Opens LinkedIn again so you can grant any new permissions (e.g. posting)"
-                      >
-                        Update permissions
-                      </button>
-                      <button
-                        type="button"
                         className="text-sm text-red-600 hover:underline disabled:opacity-50"
                         onClick={handleDisconnectLinkedIn}
                         disabled={actionLoading}
@@ -506,6 +552,19 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                     Only works with AI models that support tools. Requires LinkedIn app with Sign In with
                     LinkedIn (OpenID Connect).
                   </p>
+                  {linkedinConnected && (
+                    <div className="mt-3 pt-2 border-t" style={{ borderColor: "var(--modal-border)" }}>
+                      <button
+                        type="button"
+                        className="text-xs text-blue-600 hover:underline disabled:opacity-50 font-medium"
+                        onClick={handleConnectLinkedIn}
+                        disabled={actionLoading}
+                        title="Opens LinkedIn again so you can grant any new permissions (e.g. posting)"
+                      >
+                        Update permissions / Re-authorize
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -93,6 +93,9 @@ export function sortSidebarSessions(sessions: ChatSession[]): ChatSession[] {
 
 /**
  * Group sessions under project headers. General only appears when unassigned chats exist.
+ *
+ * Project conversations stay inline within their project bucket (highlighted when active).
+ * Only general (non-project) conversations are extracted to "Open Now".
  */
 export function groupSidebarSessionsByProject(
   sessions: ChatSession[],
@@ -118,9 +121,15 @@ export function groupSidebarSessionsByProject(
     const hasActiveSession = Boolean(
       activeSessionId && list.some((s) => s.id === activeSessionId),
     );
-    const sessionsForList = activeSessionId
-      ? list.filter((s) => s.id !== activeSessionId)
-      : list;
+
+    // All buckets keep the active session inline (highlighted in-place).
+    // "Open Now" section is currently disabled — if re-enabled, uncomment the
+    // General-bucket stripping below:
+    // const isProjectBucket = projectId !== null;
+    // const sessionsForList = (!isProjectBucket && activeSessionId)
+    //   ? list.filter((s) => s.id !== activeSessionId)
+    //   : list;
+    const sessionsForList = list;
 
     return {
       projectId,
@@ -145,8 +154,8 @@ export function groupSidebarSessionsByProject(
     byProject.delete(null);
   }
 
-  for (const [projectId, list] of byProject.entries()) {
-    if (!list.length) continue;
+  byProject.forEach((list, projectId) => {
+    if (!list.length) return;
     buckets.push(
       toBucket(
         projectId,
@@ -154,7 +163,8 @@ export function groupSidebarSessionsByProject(
         list,
       ),
     );
-  }
+  });
 
   return buckets;
 }
+

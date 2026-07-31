@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import type { RefObject } from "react";
 import type { CloudFile } from "@/app/components/file/file.interface";
 import { useFileUpload } from "../features/file-upload/hooks";
@@ -19,6 +19,13 @@ import {
   isAttachableCloudFile,
   isImageCloudFile,
 } from "@/app/components/user-files/user-files.utils";
+
+import { DRAFT_SESSION_KEY } from "../features/chat/hooks/chatOperations.constants";
+import {
+  loadComposerFilesMap,
+  persistComposerFilesMap,
+  StoredUploadedFile,
+} from "@/lib/utils/composerDraftStorage";
 
 type Params = {
   chat: ChatMessage[];
@@ -41,14 +48,78 @@ export function useModelInterfaceAttachments({
   setError,
   chatContainerRef,
 }: Params) {
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFileEntry[]>([]);
-  const [attachmentIndex, setAttachmentIndex] = useState<AttachmentIndexItem[]>(
-    [],
+  const activeSessionKey = currentSessionId ?? DRAFT_SESSION_KEY;
+  const activeSessionKeyRef = useRef(activeSessionKey);
+  activeSessionKeyRef.current = activeSessionKey;
+
+  const [filesMap, setFilesMap] = useState<Record<string, UploadedFileEntry[]>>(() => {
+    const loaded = loadComposerFilesMap();
+    const result: Record<string, UploadedFileEntry[]> = {};
+    for (const [k, list] of Object.entries(loaded)) {
+      if (Array.isArray(list)) {
+        result[k] = list.map((item) => ({
+          fileUrl: item.fileUrl,
+          isImage: item.isImage,
+          displayName: item.displayName,
+          mimeType: item.mimeType,
+          source: item.source || "local",
+          libraryFileId: item.libraryFileId,
+        }));
+      }
+    }
+    return result;
+  });
+
+  const uploadedFiles = useMemo(
+    () => filesMap[activeSessionKey] || [],
+    [filesMap, activeSessionKey]
   );
 
+  const setUploadedFiles = useCallback(
+    (action: React.SetStateAction<UploadedFileEntry[]>) => {
+      const targetKey = activeSessionKeyRef.current;
+      setFilesMap((prev) => {
+        const current = prev[targetKey] || [];
+        const next = typeof action === "function" ? action(current) : action;
+        const updated = {
+          ...prev,
+          [targetKey]: next,
+        };
+
+        const serializableMap: Record<string, StoredUploadedFile[]> = {};
+        for (const [key, entries] of Object.entries(updated)) {
+          const list = entries as UploadedFileEntry[];
+          if (Array.isArray(list) && list.length > 0) {
+            serializableMap[key] = list.map((e: UploadedFileEntry) => ({
+              fileUrl: e.fileUrl,
+              isImage: e.isImage,
+              displayName: e.displayName,
+              mimeType: e.mimeType,
+              source: e.source,
+              libraryFileId: e.libraryFileId,
+            }));
+          }
+        }
+        persistComposerFilesMap(serializableMap);
+        return updated;
+      });
+    },
+    []
+  );
+
+  const [attachmentIndex, setAttachmentIndex] = useState<AttachmentIndexItem[]>([]);
+
   useEffect(() => {
-    setAttachmentIndex([]);
-  }, [currentSessionId]);
+    setAttachmentIndex(
+      uploadedFiles.map((entry) => ({
+        name: entry.displayName,
+        url: entry.fileUrl,
+        isImage: entry.isImage,
+        mimeType: entry.mimeType,
+        uploadedAt: Date.now(),
+      }))
+    );
+  }, [uploadedFiles]);
 
   const { handleFileUpload, handleCancelUpload } = useFileUpload({
     setUploading,
@@ -64,20 +135,11 @@ export function useModelInterfaceAttachments({
         mimeType: fileInfo.file.type,
         source: "local",
       };
-      setUploadedFiles((prev) => [...prev, entry]);
-      setAttachmentIndex((prev) => {
-        const nextItem: AttachmentIndexItem = {
-          name: entry.displayName,
-          url: entry.fileUrl,
-          isImage: entry.isImage,
-          mimeType: entry.mimeType,
-          uploadedAt: Date.now(),
-        };
-
-        if (prev.some((it) => it.url === nextItem.url)) {
+      setUploadedFiles((prev) => {
+        if (prev.some((it) => it.fileUrl === entry.fileUrl)) {
           return prev;
         }
-        return [...prev, nextItem];
+        return [...prev, entry];
       });
     },
   });

@@ -19,6 +19,7 @@ type MessageHandlerProps = {
 
 type Props = {
   chat: ChatMessage[];
+  chatHistory?: any[];
   setChat: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   handleSend: (
     input?: string,
@@ -99,6 +100,7 @@ type Props = {
 
 export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatColumn({
   chat,
+  chatHistory = [],
   setChat,
   handleSend,
   chatEndRef,
@@ -198,6 +200,7 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
         <ChatContainer
           ref={chatContainerRef as React.Ref<ChatContainerHandle>}
           chat={chat}
+          chatHistory={chatHistory}
           selectedModel={selectedModel}
           models={models}
           showCosts={showCosts}
