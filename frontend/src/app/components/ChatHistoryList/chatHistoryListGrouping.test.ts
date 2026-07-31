@@ -5,8 +5,10 @@ import { groupSidebarSessionsByProject } from "./chatHistoryListGrouping";
 const projects: CodeProject[] = [
   {
     id: "proj-nobox",
+    userId: "user-1",
     name: "Nobox Website",
     rootPath: "/tmp/nobox",
+    rules: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   },
@@ -15,6 +17,7 @@ const projects: CodeProject[] = [
 function session(id: string, overrides: Partial<ChatSession> = {}): ChatSession {
   return {
     id,
+    modelId: "gpt-4o",
     title: id,
     messages: [{ role: "user", content: "hi", timestamp: 1 }],
     ...overrides,
