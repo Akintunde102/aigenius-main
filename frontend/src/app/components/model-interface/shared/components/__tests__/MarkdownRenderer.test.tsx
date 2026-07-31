@@ -48,7 +48,11 @@ jest.mock('rehype-highlight', () => ({
     },
 }));
 
-import { MarkdownRenderer, shouldOpenWorkflowStudioLinkInNewTab } from '../MarkdownRenderer';
+import {
+    MarkdownRenderer,
+    markdownSanitizeSchema,
+    shouldOpenWorkflowStudioLinkInNewTab,
+} from '../MarkdownRenderer';
 
 describe('shouldOpenWorkflowStudioLinkInNewTab', () => {
     it('matches relative /workflow/:id links', () => {
@@ -71,6 +75,12 @@ describe('shouldOpenWorkflowStudioLinkInNewTab', () => {
         expect(
             shouldOpenWorkflowStudioLinkInNewTab('https://other.example/workflow/f284a24b-df4a-4596-a880-ba92ef255442', origin),
         ).toBe(false);
+    });
+});
+
+describe('markdownSanitizeSchema', () => {
+    it('allows local-file preview links through rehype-sanitize', () => {
+        expect(markdownSanitizeSchema.protocols?.href).toContain('local-file');
     });
 });
 
@@ -105,11 +115,16 @@ describe('MarkdownRenderer', () => {
         expect(reactMarkdownSpy.mock.calls[0][0].children).toBe('  line1\n\nline2  ');
     });
 
-    it('wires remark-gfm and rehype-highlight into ReactMarkdown', () => {
+    it('wires remark-gfm and rehype plugins into ReactMarkdown', () => {
         render(<MarkdownRenderer content="x" />);
         const arg = reactMarkdownSpy.mock.calls[0][0];
         expect(arg.remarkPlugins).toHaveLength(1);
-        expect(arg.rehypePlugins).toHaveLength(1);
+        expect(arg.rehypePlugins).toHaveLength(3);
+    });
+
+    it('applies repairLlmMarkdown before passing content to ReactMarkdown', () => {
+        render(<MarkdownRenderer content={'| A | one\\ntwo |'} />);
+        expect(reactMarkdownSpy.mock.calls[0][0].children).toContain('one<br>two');
     });
 
     it('renders mocked markdown subtree so downstream structure can be asserted', () => {

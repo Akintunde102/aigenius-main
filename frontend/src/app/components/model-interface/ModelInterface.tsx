@@ -138,7 +138,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     selectedPersonalityIconUrl,
     setSelectedPersonalityIconUrl,
   } = personalityState;
-  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, showTyping, setShowTyping, showScrollToBottom } = chatState;
+  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, showTyping, setShowTyping, showScrollToBottom } = chatState;
   const { loading, setLoading, error, setError, streaming, setStreaming, streamingEnabled, setStreamingEnabled, imagePreview, setImagePreview, uploading, setUploading, uploadProgress, setUploadProgress, dragActive, setDragActive, showCosts, showNaira, showSaved, setShowSaved, setTotalSpent, optimizationMessage } = uiState;
   const { showModelDetailsModal, setShowModelDetailsModal, showModelSelectionModal, setShowModelSelectionModal } = modalState;
   const { search, setSearch, historySearch, setHistorySearch, orderByCost, setOrderByCost, allModalities, selectedModalities, allOutputModalities, selectedOutputModalities, showWebSearch, setShowWebSearch, showToolsOnly, setShowToolsOnly, pinnedModelIds, favoritesLoaded, orderBy, setOrderBy, orderDir, setOrderDir, selectedProviders, setSelectedProviders, imageFilterOnly, setImageFilterOnly, toggleModality, toggleOutputModality } = filterState;
@@ -637,6 +637,9 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     handleSend={handleSend}
                     chatEndRef={chatEndRef}
                     chatContainerRef={chatContainerRef}
+                    viewSessionId={viewSessionId}
+                    updateSessionMessages={updateSessionMessages}
+                    setLoading={setLoading}
                     selectedModel={selectedModel}
                     models={models}
                     showCosts={showCosts}

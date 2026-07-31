@@ -29,6 +29,9 @@ type Props = {
   ) => void | Promise<boolean | void>;
   chatEndRef: React.RefObject<HTMLDivElement | null>;
   chatContainerRef: RefObject<ChatContainerHandle | null>;
+  viewSessionId?: string | null;
+  updateSessionMessages?: (sessionId: string, messages: ChatMessage[]) => void;
+  setLoading?: (loading: boolean) => void;
   selectedModel: Model | null;
   models: Model[];
   showCosts: boolean;
@@ -102,6 +105,9 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   handleSend,
   chatEndRef,
   chatContainerRef,
+  viewSessionId = null,
+  updateSessionMessages,
+  setLoading,
   selectedModel,
   models,
   showCosts,
@@ -181,6 +187,10 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
       setChat={setChat}
       handleSend={handleSend}
       chatEndRef={chatEndRef as React.RefObject<HTMLDivElement>}
+      viewSessionId={viewSessionId}
+      updateSessionMessages={updateSessionMessages}
+      setLoading={setLoading}
+      handleStop={handleStop}
     >
       {({
         handleDeleteMessage,

@@ -5,6 +5,8 @@ import {
   Code2,
   ExternalLink,
   Eye,
+  Maximize2,
+  Minimize2,
   PanelLeft,
   Save,
   X,
@@ -63,6 +65,8 @@ export function FilePreviewHeader({
   isSaving,
   canSave,
   onOpenInOS,
+  isFullscreen = false,
+  onToggleFullscreen,
   onClose,
   draggable = false,
   isDragging = false,
@@ -81,6 +85,8 @@ export function FilePreviewHeader({
   isSaving: boolean;
   canSave: boolean;
   onOpenInOS: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
   onClose: () => void;
   draggable?: boolean;
   isDragging?: boolean;
@@ -134,6 +140,16 @@ export function FilePreviewHeader({
         <ToolbarButton onClick={onOpenInOS} title="Open in default app">
           <ExternalLink size={15} />
         </ToolbarButton>
+
+        {onToggleFullscreen && (
+          <ToolbarButton
+            onClick={onToggleFullscreen}
+            title={isFullscreen ? 'Exit full screen' : 'Full screen'}
+            active={isFullscreen}
+          >
+            {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+          </ToolbarButton>
+        )}
 
         {isMarkdown && isCode && (
           <ToolbarButton

@@ -39,7 +39,7 @@ function getProject(filePath: string): Project {
     projectCache.set(key, project);
   } else {
     project = tsconfig
-      ? new Project({ tsConfigFilePath: tsconfig, skipAddingFilesFromTsConfig: false })
+      ? new Project({ tsConfigFilePath: tsconfig, skipAddingFilesFromTsConfig: true })
       : new Project({
           compilerOptions: {
             allowJs: true,
@@ -417,6 +417,40 @@ function collectReferenceEdges(sf: SourceFile, symbols: IndexedSymbol[]): Indexe
 }
 
 export function indexTypeScript(filePath: string, content: string): FileIntelligence {
+  return indexTypeScriptWithDepth(filePath, content, 'full');
+}
+
+/** Fast symbols via ts-morph (no cross-file reference / call graph). */
+export function indexTypeScriptSymbols(filePath: string, content: string): FileIntelligence {
+  return indexTypeScriptWithDepth(filePath, content, 'symbols');
+}
+
+/** Deep graph edges only — symbols should already exist from fast index. */
+export function indexTypeScriptDeepEdges(filePath: string, content: string): IndexedEdge[] {
+  const project = getProject(filePath);
+  const absPath = path.resolve(filePath);
+  let sf = project.getSourceFile(absPath);
+  if (sf) {
+    sf.replaceWithText(content);
+  } else {
+    sf = project.createSourceFile(absPath, content, { overwrite: true });
+  }
+  const symbols = collectSymbols(sf);
+  return [
+    ...collectCallEdges(sf, symbols, absPath),
+    ...collectInheritanceEdges(sf, symbols),
+    ...collectReferenceEdges(sf, symbols),
+    ...collectTypeFlowEdges(sf, symbols),
+    ...collectNestJsDiEdges(sf),
+    ...collectReadsWritesEdges(sf, symbols),
+  ];
+}
+
+function indexTypeScriptWithDepth(
+  filePath: string,
+  content: string,
+  depth: 'symbols' | 'full',
+): FileIntelligence {
   const project = getProject(filePath);
   const absPath = path.resolve(filePath);
   let sf = project.getSourceFile(absPath);
@@ -427,14 +461,17 @@ export function indexTypeScript(filePath: string, content: string): FileIntellig
   }
 
   const symbols = collectSymbols(sf);
-  const edges = [
-    ...collectCallEdges(sf, symbols, absPath),
-    ...collectInheritanceEdges(sf, symbols),
-    ...collectReferenceEdges(sf, symbols),
-    ...collectTypeFlowEdges(sf, symbols),
-    ...collectNestJsDiEdges(sf),
-    ...collectReadsWritesEdges(sf, symbols),
-  ];
+  const edges =
+    depth === 'full'
+      ? [
+          ...collectCallEdges(sf, symbols, absPath),
+          ...collectInheritanceEdges(sf, symbols),
+          ...collectReferenceEdges(sf, symbols),
+          ...collectTypeFlowEdges(sf, symbols),
+          ...collectNestJsDiEdges(sf),
+          ...collectReadsWritesEdges(sf, symbols),
+        ]
+      : [...collectInheritanceEdges(sf, symbols)];
 
   return {
     language: 'typescript',

@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { filePreviewEmitter, FilePreviewPayload, closeFilePreview } from './FilePreviewManager';
 import { setActiveEditorContext, clearActiveEditorContext } from '@/lib/code-projects/active-editor-context';
-import { X, PanelLeft, Folder } from 'lucide-react';
+import { PanelLeft, Folder } from 'lucide-react';
 import Editor, { loader } from '@monaco-editor/react';
 import { MarkdownRenderer } from '../model-interface/shared/components/MarkdownRenderer';
 import { useTheme } from '@/lib/providers/ThemeProvider';
@@ -10,9 +10,11 @@ import { defineMonacoAppThemes, getMonacoThemeId } from './monaco-app-theme';
 import { FilePreviewHeader } from './FilePreviewHeader';
 import { FilePreviewExplorer } from './FilePreviewExplorer';
 import { useDraggablePanel } from './useDraggablePanel';
-import { useResizablePanel } from './useResizablePanel';
+import { useResizablePanel, getDefaultPanelSize } from './useResizablePanel';
 import { useExplorerTree } from './useExplorerTree';
 import { PanelResizeHandles } from './PanelResizeHandles';
+import { FilePreviewUnavailable } from './FilePreviewUnavailable';
+import { usePanelDisplayMode } from './usePanelDisplayMode';
 
 // Configure Monaco loader to use local files from public directory
 loader.config({
@@ -114,6 +116,8 @@ export const FilePreviewModal: React.FC = () => {
     );
     const {
         panelSizeStyle,
+        size,
+        setSize,
         isResizing,
         resizeEdges,
         onResizeHandlePointerDown,
@@ -125,6 +129,25 @@ export const FilePreviewModal: React.FC = () => {
         panelPosition,
         setPanelPosition,
     );
+
+    const {
+        isFullscreen,
+        resetDisplayMode,
+        toggleFullscreen,
+        panelChromeStyle,
+    } = usePanelDisplayMode(isSidePanel ? 'side' : 'modal');
+
+    const handleToggleFullscreen = useCallback(() => {
+        const layout = toggleFullscreen(size, panelPosition);
+        if (!layout) {
+            if (!isSidePanel) {
+                setPanelPosition(null);
+            }
+            return;
+        }
+        setSize(layout.size);
+        setPanelPosition(layout.position);
+    }, [isSidePanel, panelPosition, setPanelPosition, setSize, size, toggleFullscreen]);
 
     const handleDragHandlePointerDown = useCallback(
         (event: React.PointerEvent<HTMLElement>) => {
@@ -208,6 +231,21 @@ export const FilePreviewModal: React.FC = () => {
             console.error('[FilePreviewModal] Open in OS error:', err);
         }
     }, [payload]);
+
+    const handleRevealInFolder = useCallback(async () => {
+        if (!payload?.localPath) return;
+        try {
+            const bridge = (window as { aigeniusDesktop?: { revealFileInFolder?: (path: string) => Promise<{ ok: boolean; error?: string }> } }).aigeniusDesktop;
+            await bridge?.revealFileInFolder?.(payload.localPath);
+        } catch (err) {
+            console.error('[FilePreviewModal] Reveal in folder error:', err);
+        }
+    }, [payload]);
+
+    const canOpenOnPc = Boolean(
+        payload?.localPath &&
+        (window as { aigeniusDesktop?: unknown }).aigeniusDesktop,
+    );
 
     // Keyboard Shortcuts
     useEffect(() => {
@@ -304,6 +342,11 @@ export const FilePreviewModal: React.FC = () => {
     useEffect(() => {
         const handleOpen = (p: FilePreviewPayload) => {
             resetTree();
+            resetDisplayMode();
+            if (p.placement !== 'side') {
+                setPanelPosition(null);
+                setSize(getDefaultPanelSize('modal'));
+            }
             setPayload(p);
             setOriginalPayload(p);
             setFolderItems([]);
@@ -321,6 +364,7 @@ export const FilePreviewModal: React.FC = () => {
             setPayload(null);
             setOriginalPayload(null);
             setError(null);
+            resetDisplayMode();
             cleanupBlob();
             resetTree();
             clearActiveEditorContext();
@@ -335,7 +379,7 @@ export const FilePreviewModal: React.FC = () => {
             filePreviewEmitter.off('open', handleOpen);
             filePreviewEmitter.off('close', handleClose);
         };
-    }, [cleanupBlob, resetTree, syncEditorContext]);
+    }, [cleanupBlob, resetDisplayMode, resetTree, setPanelPosition, setSize, syncEditorContext]);
 
     useEffect(() => {
         if (!isOpen || !payload) return;
@@ -407,11 +451,15 @@ export const FilePreviewModal: React.FC = () => {
     const renderMainContent = () => {
         if (error) {
             return (
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6">
-                    <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20 shadow-lg"><X size={40} /></div>
-                    <div className="space-y-2 max-w-md"><h3 className="text-xl font-bold tracking-tight" style={{ color: 'var(--modal-fg)' }}>Preview Unavailable</h3><p className="text-sm leading-relaxed" style={{ color: 'var(--modal-muted-fg)' }}>{error}</p></div>
-                    <button onClick={() => setError(null)} className="app-modal-btn-primary px-5 py-2.5 active:scale-95">Retry Loading</button>
-                </div>
+                <FilePreviewUnavailable
+                    error={error}
+                    fileName={payload.name}
+                    filePath={payload.localPath}
+                    canOpenOnPc={canOpenOnPc}
+                    onOpenInOS={handleOpenInOS}
+                    onRevealInFolder={handleRevealInFolder}
+                    onRetry={() => setError(null)}
+                />
             );
         }
 
@@ -503,6 +551,8 @@ export const FilePreviewModal: React.FC = () => {
             isSaving={isSaving}
             canSave={isDirty}
             onOpenInOS={handleOpenInOS}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreen}
             onClose={closeFilePreview}
             draggable
             isDragging={isDragging}
@@ -541,25 +591,30 @@ export const FilePreviewModal: React.FC = () => {
 
     const hasCustomPosition = draggablePanelStyle?.position === 'fixed';
     const panelChromeClassName = `app-modal-panel relative flex h-full w-full flex-col overflow-hidden shadow-2xl ${
-        isSidePanel ? 'border-l' : 'rounded-2xl'
+        isSidePanel ? 'border-l' : isFullscreen ? '' : 'rounded-2xl'
     }`;
 
     if (isSidePanel) {
+        const sideHostStyle = isFullscreen || hasCustomPosition
+            ? {
+                maxHeight: 'calc(100vh - var(--aigenius-desktop-titlebar-top, 0px))',
+                ...panelSizeStyle,
+                ...draggablePanelStyle,
+            }
+            : {
+                top: 'var(--aigenius-desktop-titlebar-top, 0px)',
+                bottom: 0,
+                right: 0,
+                height: 'calc(100vh - var(--aigenius-desktop-titlebar-top, 0px))',
+                maxHeight: 'calc(100vh - var(--aigenius-desktop-titlebar-top, 0px))',
+                ...panelSizeStyle,
+            };
+
         return (
             <div
                 ref={panelRef}
                 className="file-preview-side-host fixed z-[120] flex animate-in slide-in-from-right duration-300"
-                style={{
-                    top: hasCustomPosition ? undefined : 'var(--aigenius-desktop-titlebar-top, 0px)',
-                    bottom: hasCustomPosition ? undefined : 0,
-                    right: hasCustomPosition ? undefined : 0,
-                    height: hasCustomPosition
-                        ? panelSizeStyle.height
-                        : 'calc(100vh - var(--aigenius-desktop-titlebar-top, 0px))',
-                    maxHeight: 'calc(100vh - var(--aigenius-desktop-titlebar-top, 0px))',
-                    ...panelSizeStyle,
-                    ...draggablePanelStyle,
-                }}
+                style={sideHostStyle}
             >
                 <div
                     className={panelChromeClassName}
@@ -567,10 +622,11 @@ export const FilePreviewModal: React.FC = () => {
                     style={{
                         borderColor: 'var(--modal-border, rgba(255,255,255,0.08))',
                         background: 'var(--modal-bg)',
+                        ...panelChromeStyle,
                     }}
                 >
                     <PanelResizeHandles
-                        edges={resizeEdges}
+                        edges={isFullscreen ? [] : resizeEdges}
                         onResizeHandlePointerDown={onResizeHandlePointerDown}
                         isResizing={isResizing}
                     />
@@ -583,21 +639,26 @@ export const FilePreviewModal: React.FC = () => {
 
     return (
         <div
-            className="fixed inset-0 z-[9999] backdrop-blur-md animate-in fade-in duration-300"
-            style={{ background: 'var(--modal-overlay)' }}
-            onClick={closeFilePreview}
+            className={`fixed inset-0 z-[9999] animate-in fade-in duration-300 ${
+                isFullscreen ? '' : 'backdrop-blur-md'
+            }`}
+            style={{ background: isFullscreen ? 'transparent' : 'var(--modal-overlay)' }}
+            onClick={isFullscreen ? undefined : closeFilePreview}
         >
             <div
                 ref={panelRef}
-                className="app-modal-panel relative flex flex-col overflow-hidden rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300"
+                className={`app-modal-panel relative flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 ${
+                    isFullscreen ? '' : 'rounded-2xl'
+                }`}
                 onClick={(e) => e.stopPropagation()}
                 style={{
                     ...panelSizeStyle,
                     ...draggablePanelStyle,
+                    ...panelChromeStyle,
                 }}
             >
                 <PanelResizeHandles
-                    edges={resizeEdges}
+                    edges={isFullscreen ? [] : resizeEdges}
                     onResizeHandlePointerDown={onResizeHandlePointerDown}
                     isResizing={isResizing}
                 />

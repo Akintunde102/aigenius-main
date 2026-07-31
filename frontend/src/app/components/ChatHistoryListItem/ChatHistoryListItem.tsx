@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
+import { downloadConversationTranscript, type TranscriptFormat } from '@/lib/utils/conversationTranscriptExport';
 import { SessionInfo } from './components/SessionInfo';
 import { ActionButtons } from './components/ActionButtons';
 import { getListItemClassName } from './utils/styles';
@@ -39,6 +40,14 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
         onPublishRequest?.(session);
     };
 
+    const displayTitle = typeof session.title === 'string' && session.title.trim()
+        ? session.title.trim()
+        : deriveChatSessionTitle(session.messages?.[0]?.content);
+
+    const handleDownloadTranscript = useCallback((format: TranscriptFormat) => {
+        downloadConversationTranscript(session, displayTitle || 'Untitled Chat', format);
+    }, [session, displayTitle]);
+
     const handleItemClick = () => {
         // We still check isProcessing to prevent double clicks during global actions
         if (isDeleting || isStarring || isPublishing) {
@@ -46,10 +55,6 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
         }
         onSelect(session);
     };
-
-    const displayTitle = typeof session.title === 'string' && session.title.trim()
-        ? session.title.trim()
-        : deriveChatSessionTitle(session.messages?.[0]?.content);
 
     return (
         <li
@@ -71,6 +76,7 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
                 onStarClick={handleStarClick}
                 onDeleteClick={handleDeleteClick}
                 onPublishClick={onPublishRequest ? handlePublishClick : undefined}
+                onDownloadTranscript={handleDownloadTranscript}
             />
         </li>
     );

@@ -1,0 +1,22 @@
+﻿Full graph = indexFileIntelligence (ts-morph all edge collectors)
+
+--- Cold (first file, empty ts-morph cache) ---
+cold   34870 ms  7 sym  62 edges  client/desktop-server/src/search/indexer/exemptions.ts
+
+--- Cold per file (cache cleared each time) ---
+cold   22436 ms  7 sym  62 edges  client/desktop-server/src/search/indexer/exemptions.ts
+cold   66957 ms  7 sym  18 edges  client/frontend/src/app/components/AIGeniusLogo.tsx
+cold   63366 ms  1 sym  1 edges  client/frontend/src/app/(views)/workflows/page.tsx
+cold   67046 ms  172 sym  695 edges  client/frontend/src/app/(views)/desktop-search-index/page.tsx
+cold   57200 ms  20 sym  109 edges  client/frontend/src/app/components/ChatBoxInput/ChatBoxInput.tsx
+
+--- Warm (same project, sequential, cache retained) ---
+warm    19605 ms  7 sym  62 edges  client/desktop-server/src/search/indexer/exemptions.ts
+warm    42616 ms  7 sym  18 edges  client/frontend/src/app/components/AIGeniusLogo.tsx
+warm     7256 ms  1 sym  1 edges  client/frontend/src/app/(views)/workflows/page.tsx
+warm    13989 ms  172 sym  695 edges  client/frontend/src/app/(views)/desktop-search-index/page.tsx
+warm     6536 ms  20 sym  109 edges  client/frontend/src/app/components/ChatBoxInput/ChatBoxInput.tsx
+
+--- Re-index same file (warm, simulates file save) ---
+warm    13363 ms  172 sym  695 edges  client/frontend/src/app/(views)/desktop-search-index/page.tsx
+warm    14015 ms  172 sym  695 edges  client/frontend/src/app/(views)/desktop-search-index/page.tsx

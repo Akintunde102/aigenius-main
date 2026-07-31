@@ -40,3 +40,13 @@ export function shouldSkipSearchIndexingRelative(relativePath: string): boolean 
   if (isIgnored(norm)) return true;
   return SEARCH_ASSET_PATH_PATTERNS.some((re) => re.test(norm));
 }
+
+const DEEP_GRAPH_SKIP_RE =
+  /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$|\.stories\.(tsx|jsx|ts|js)$/i;
+
+/** Skip expensive ts-morph deep graph for test/story files (fast index still runs). */
+export function shouldSkipDeepGraphIndexing(filePath: string): boolean {
+  if (!filePath) return true;
+  const base = filePath.replace(/\\/g, '/').split('/').pop() ?? '';
+  return DEEP_GRAPH_SKIP_RE.test(base);
+}
