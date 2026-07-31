@@ -62,9 +62,48 @@ function countVisibleMessages(messages: ChatMessage[]): number {
   return messages.filter((message) => message.role !== "system").length;
 }
 
+function getVisibleMessages(messages: ChatMessage[]): ChatMessage[] {
+  return messages.filter((message) => message.role !== "system");
+}
+
+/** Stable identity for prefix comparisons across client/server snapshots. */
+export function messageStableKey(message: ChatMessage): string {
+  return message.messageId ?? message.id ?? `ts_${message.timestamp}`;
+}
+
+/**
+ * True when the first `local` visible messages match the server snapshot in order.
+ * Used to distinguish "server appended new turns" from "local branched via replay".
+ */
+export function localMessagesMatchServerPrefix(
+  localMessages: ChatMessage[],
+  serverMessages: ChatMessage[],
+): boolean {
+  const localVisible = getVisibleMessages(localMessages);
+  const serverVisible = getVisibleMessages(serverMessages);
+
+  if (localVisible.length === 0 || serverVisible.length < localVisible.length) {
+    return false;
+  }
+
+  for (let i = 0; i < localVisible.length; i++) {
+    const local = localVisible[i];
+    const server = serverVisible[i];
+    if (local.role !== server.role) {
+      return false;
+    }
+    if (messageStableKey(local) !== messageStableKey(server)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 /**
  * Whether passive server sync may replace the live local transcript.
- * Only accepts merges when the server snapshot is strictly ahead on message count.
+ * Only accepts merges when the server snapshot is strictly ahead on message count
+ * and extends the local transcript — not when local intentionally branched (replay).
  */
 export function shouldAcceptRemoteConversationSync(
   localMessages: ChatMessage[],
@@ -81,8 +120,24 @@ export function shouldAcceptRemoteConversationSync(
     return false;
   }
 
-  const localVisibleCount = countVisibleMessages(localMessages);
-  return serverVisibleCount > localVisibleCount;
+  const localVisible = getVisibleMessages(localMessages);
+  const localVisibleCount = localVisible.length;
+  if (serverVisibleCount <= localVisibleCount) {
+    return false;
+  }
+
+  // Replay trims to a user turn and resends; server still has the old tail.
+  const lastLocal = localVisible[localVisibleCount - 1];
+  if (lastLocal?.role === "user") {
+    return false;
+  }
+
+  // After replay, local may have a new assistant id while the server still has the old one.
+  if (!localMessagesMatchServerPrefix(localMessages, serverMessages)) {
+    return false;
+  }
+
+  return true;
 }
 
 export function getConversationScrollState(

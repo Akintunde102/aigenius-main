@@ -126,12 +126,22 @@ function migrateIntelligenceColumns(db: Database.Database): void {
       ['index_status', 'TEXT'],
       ['is_generated', 'INTEGER DEFAULT 0'],
       ['last_indexed', 'INTEGER'],
+      ['graph_status', "TEXT NOT NULL DEFAULT 'none'"],
+      ['graph_indexed_at', 'INTEGER'],
+      ['last_accessed_at', 'INTEGER'],
     ];
     for (const [col, type] of adds) {
       if (!names.has(col)) {
         db.exec(`ALTER TABLE file_index ADD COLUMN ${col} ${type}`);
       }
     }
+    db.exec(`
+      UPDATE file_index
+      SET graph_status = 'pending'
+      WHERE graph_status = 'none'
+        AND index_status = 'ok'
+        AND extension IN ('ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs')
+    `);
   }
 
   const symCols = db.prepare('PRAGMA table_info(symbol_index)').all() as { name: string }[];

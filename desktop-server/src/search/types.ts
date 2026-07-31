@@ -21,6 +21,9 @@ export interface IndexedFile {
   index_status?: string;
   is_generated?: number;
   last_indexed?: number;
+  graph_status?: string;
+  graph_indexed_at?: number;
+  last_accessed_at?: number;
 }
 
 /** Message sent to an extraction worker thread. */

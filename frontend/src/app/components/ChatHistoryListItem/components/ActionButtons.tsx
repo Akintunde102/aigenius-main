@@ -1,5 +1,6 @@
 import React from 'react';
 import { FiStar, FiLoader } from 'react-icons/fi';
+import type { TranscriptFormat } from '@/lib/utils/conversationTranscriptExport';
 import { ActionDropdown } from './ActionDropdown';
 
 interface ActionButtonsProps {
@@ -11,6 +12,7 @@ interface ActionButtonsProps {
     onStarClick: (e: React.MouseEvent) => void;
     onDeleteClick: (e: React.MouseEvent) => void;
     onPublishClick?: (e: React.MouseEvent) => void;
+    onDownloadTranscript?: (format: TranscriptFormat) => void;
 }
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
@@ -21,7 +23,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     isPublishing = false,
     onStarClick,
     onDeleteClick,
-    onPublishClick
+    onPublishClick,
+    onDownloadTranscript,
 }) => {
     return (
         <div className="flex shrink-0 items-center gap-0.5">
@@ -50,6 +53,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 onStarClick={onStarClick}
                 onDeleteClick={onDeleteClick}
                 onPublishClick={onPublishClick}
+                onDownloadTranscript={onDownloadTranscript}
             />
         </div>
     );

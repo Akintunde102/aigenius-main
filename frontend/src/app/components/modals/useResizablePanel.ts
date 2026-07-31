@@ -19,7 +19,7 @@ function getViewportLimits() {
     };
 }
 
-function getDefaultSize(variant: DraggablePanelVariant): PanelSize {
+export function getDefaultPanelSize(variant: DraggablePanelVariant): PanelSize {
     const { maxWidth, maxHeight } = getViewportLimits();
     if (variant === 'side') {
         return {
@@ -72,7 +72,7 @@ export function useResizablePanel(
 ) {
     const storageKey = `aigenius-file-preview-size:${variant}`;
     const [size, setSize] = useState<PanelSize>(() =>
-        loadStoredSize(storageKey, getDefaultSize(variant)),
+        loadStoredSize(storageKey, getDefaultPanelSize(variant)),
     );
     const [isResizing, setIsResizing] = useState(false);
     const cleanupResizeRef = useRef<(() => void) | null>(null);
@@ -217,6 +217,7 @@ export function useResizablePanel(
     return {
         panelSizeStyle,
         size,
+        setSize,
         isResizing,
         resizeEdges,
         onResizeHandlePointerDown,

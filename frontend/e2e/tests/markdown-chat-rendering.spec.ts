@@ -108,4 +108,35 @@ test.describe('Chat markdown rendering (browser)', () => {
         await expect(checks).toHaveCount(2);
         await expect(body.locator('del, s').filter({ hasText: 'removed' })).toBeVisible();
     });
+
+    test('repairs LLM table cells with <br> and pseudo-fenced code', async ({ page }) => {
+        const md = [
+            '| Aspect | Details |',
+            '| --- | --- |',
+            '| Architecture | StyleTTS 2.<br>• Mel-to-Wave |',
+            '| How to run | ```bash\\npip install kokoro\\n```\\n```python\\nprint("hi")\\n``` |',
+            '',
+        ].join('\n');
+
+        await stubStreamingCompletion(page, [
+            { choices: [{ delta: { content: md } }] },
+            { usage: { prompt_tokens: 2, completion_tokens: 50, total_tokens: 52 }, cost: 0.0001 },
+            '[DONE]',
+        ]);
+
+        await openChat(page);
+        if (page.url().includes('/login')) {
+            test.skip(true, 'App redirected to login; authenticated shell required.');
+        }
+
+        await sendPrompt(page, 'Render repaired LLM table markdown');
+
+        const body = page.locator('.markdown-body').last();
+        await expect(body.locator('td').filter({ hasText: 'Mel-to-Wave' })).toBeVisible({ timeout: 15_000 });
+        await expect(body.locator('td').filter({ hasText: 'See example below' })).toBeVisible();
+
+        const code = body.locator('pre code');
+        await expect(code.filter({ hasText: 'pip install kokoro' })).toBeVisible();
+        await expect(code.filter({ hasText: 'print("hi")' })).toBeVisible();
+    });
 });

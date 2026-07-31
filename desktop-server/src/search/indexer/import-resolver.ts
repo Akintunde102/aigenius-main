@@ -1,10 +1,12 @@
 import fs from 'fs';
 import path from 'path';
+import { resolveTsConfigAlias } from './tsconfig-paths.js';
 
 const TRY_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json'];
 
 /**
  * Best-effort resolve of a module specifier to an absolute file path on disk.
+ * Handles relative paths, tsconfig path aliases (@/*), and extension/index candidates.
  */
 export function resolveImportPath(importerFile: string, moduleSpec: string): string | null {
   const spec = moduleSpec.trim();
@@ -15,6 +17,11 @@ export function resolveImportPath(importerFile: string, moduleSpec: string): str
   if (spec.startsWith('.') || spec.startsWith('/')) {
     const base = path.resolve(importerDir, spec);
     return resolveFileCandidate(base);
+  }
+
+  const aliasBase = resolveTsConfigAlias(importerFile, spec);
+  if (aliasBase) {
+    return resolveFileCandidate(aliasBase);
   }
 
   return null;
@@ -54,7 +61,7 @@ export function resolveImports(
 ): ResolvedImport[] {
   return imports.map((imp) => ({
     importerPath: path.resolve(importerPath),
-    importedPath: imp.isRelative ? resolveImportPath(importerPath, imp.module) : null,
+    importedPath: resolveImportPath(importerPath, imp.module),
     moduleSpec: imp.module,
     line: imp.line,
     isRelative: imp.isRelative,

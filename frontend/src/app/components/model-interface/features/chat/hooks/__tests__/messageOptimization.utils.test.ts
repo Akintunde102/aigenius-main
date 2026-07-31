@@ -2,7 +2,7 @@ import { optimizeMessagesForAPI } from '../messageOptimization.utils';
 import { ChatMessage } from '@/app/components/model-interface/shared/types';
 
 describe('optimizeMessagesForAPI', () => {
-    it('includes assistant event logs in outbound API messages', () => {
+    it('strips events and thinking from outbound API payload but highlights tool calls in content', () => {
         const messages: ChatMessage[] = [
             {
                 id: 'u1',
@@ -15,7 +15,9 @@ describe('optimizeMessagesForAPI', () => {
                 role: 'assistant',
                 content: 'I used tools before',
                 timestamp: 2,
+                reasoning: 'hidden chain of thought',
                 events: [
+                    { type: 'thinking', content: 'planning…', loading: false, timestamp: 2 },
                     { type: 'text', content: 'I used tools before', order: 0 },
                     {
                         type: 'tool',
@@ -38,12 +40,12 @@ describe('optimizeMessagesForAPI', () => {
 
         const assistantPayload = optimized[1] as unknown as Record<string, unknown>;
         expect(assistantPayload.role).toBe('assistant');
-        expect(assistantPayload.content).toBe('I used tools before');
-        expect(assistantPayload).toHaveProperty('events');
-        expect(assistantPayload.events).toEqual(messages[1].events);
+        expect(assistantPayload.content).toBe('I used tools before\n\n[Called: Search]');
+        expect(assistantPayload).not.toHaveProperty('events');
+        expect(assistantPayload).not.toHaveProperty('reasoning');
     });
 
-    it('keeps replay payload clean across multi-turn histories with event-heavy assistant messages', () => {
+    it('keeps replay history lean across multi-turn threads with event-heavy assistant messages', () => {
         const messages: ChatMessage[] = [
             {
                 id: 'u1',
@@ -101,14 +103,13 @@ describe('optimizeMessagesForAPI', () => {
             },
         ];
 
-        // Simulate replay snapshot (trim after selected user turn).
         const replaySnapshot = messages.slice(0, 3);
         const { messages: optimized } = optimizeMessagesForAPI(replaySnapshot);
 
         expect(optimized).toHaveLength(3);
         const assistantPayload = optimized[1] as unknown as Record<string, unknown>;
-        expect(assistantPayload).toHaveProperty('events');
-        expect(assistantPayload.events).toEqual(messages[1].events);
+        expect(assistantPayload.content).toBe('first answer\n\n[Called: Web Search]');
+        expect(assistantPayload).not.toHaveProperty('events');
         expect(optimized.map((m) => m.role)).toEqual(['user', 'assistant', 'user']);
     });
 });
