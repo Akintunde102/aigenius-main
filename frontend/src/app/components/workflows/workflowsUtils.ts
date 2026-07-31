@@ -1345,12 +1345,83 @@ export function shouldAnimateConnectorPipeFlow(
 const WORKFLOW_RUN_OUTPUT_PREVIEW_MAX = 480;
 
 /**
+ * Sanitizes technical error messages (e.g. OpenRouter upstream 402/401/429 JSON dumps, API keys, internal URLs)
+ * into clean, user-facing error messages suitable for toasts and step status cards.
+ */
+export function sanitizeWorkflowErrorMessage(rawError: string | null | undefined): string {
+  if (!rawError) return "An unexpected error occurred.";
+
+  const text = String(rawError).trim();
+  if (!text) return "An unexpected error occurred.";
+
+  // Detect OpenRouter or Upstream Model Provider Key/Credit limits (402 Payment Required)
+  if (
+    /openrouter_key_limit/i.test(text) ||
+    /402\s*Payment\s*Required/i.test(text) ||
+    /more credits, or fewer max_tokens/i.test(text) ||
+    /adjust the key's total limit/i.test(text) ||
+    /remedy_hint/i.test(text)
+  ) {
+    return "AI model service is temporarily unavailable. Please try again shortly or contact support.";
+  }
+
+  // Detect 401 Unauthorized / Invalid API Key
+  if (
+    /OpenRouter.*401/i.test(text) ||
+    /Invalid API Key/i.test(text) ||
+    /401\s*Unauthorized/i.test(text)
+  ) {
+    return "AI model service authentication issue. Please contact support.";
+  }
+
+  // Detect 429 Rate Limit
+  if (
+    /OpenRouter.*429/i.test(text) ||
+    /Rate limit/i.test(text) ||
+    /429\s*Too Many Requests/i.test(text)
+  ) {
+    return "AI model rate limit reached. Please wait a moment and try again.";
+  }
+
+  // If raw string starts with "OpenRouter API error:" or contains full JSON dumps with internal URLs:
+  if (/OpenRouter API error/i.test(text) || /https:\/\/openrouter\.ai/i.test(text)) {
+    return "AI model service is temporarily unavailable. Please try again shortly.";
+  }
+
+  // Strip raw URLs from generic error messages to prevent spilling key/workspace links
+  let sanitized = text.replace(/https?:\/\/[^\s]+/g, "").trim();
+
+  // If the error message was just a raw JSON string like {"error":...}, try extracting message field
+  if (sanitized.startsWith("{") && sanitized.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(sanitized) as Record<string, unknown>;
+      const errObj = parsed?.error as Record<string, unknown> | undefined;
+      if (errObj?.message && typeof errObj.message === "string") {
+        return sanitizeWorkflowErrorMessage(errObj.message);
+      }
+      if (parsed?.message && typeof parsed.message === "string") {
+        return sanitizeWorkflowErrorMessage(parsed.message);
+      }
+    } catch {
+      /* fallback */
+    }
+  }
+
+  return sanitized || "An unexpected error occurred.";
+}
+
+/**
  * Pretty-prints JSON strings (e.g. minified tool results). Non-JSON text is returned unchanged.
  */
 export function formatWorkflowToolOutputForDisplay(text: string): string {
   const t = text.trim();
   if (t.length === 0) {
     return text;
+  }
+  // Sanitize if it's an error payload / dump
+  const sanitized = sanitizeWorkflowErrorMessage(t);
+  if (sanitized !== t) {
+    return sanitized;
   }
   try {
     const parsed: unknown = JSON.parse(t);

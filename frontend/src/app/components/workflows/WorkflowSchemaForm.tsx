@@ -396,11 +396,11 @@ function SchemaField({
               : null,
           );
         }}
-        className="h-9 rounded-full border border-slate-200 bg-slate-50 px-3 text-xs text-slate-700 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+        className="h-9 rounded-full border border-slate-200 bg-slate-50 px-3 text-xs text-slate-700 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
       >
-        <option value="">Use your own text</option>
+        <option value="" className="dark:bg-slate-900 dark:text-slate-100">Use your own text</option>
         {previousSteps.map((step) => (
-          <option key={step.localId} value={step.stepId}>
+          <option key={step.localId} value={step.stepId} className="dark:bg-slate-900 dark:text-slate-100">
             Use {step.label || friendlyToolName(step.toolName)}
           </option>
         ))}
@@ -431,7 +431,7 @@ function SchemaField({
           aria-labelledby={labelId}
           value={String(fieldValue)}
           onChange={(event) => onChange(event.target.value)}
-          className={`h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-teal-400/80 focus:ring-2 focus:ring-teal-500/20 ${INPUT_FOCUS_NO_OFFSET}`}
+          className={`h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-teal-400/80 focus:ring-2 focus:ring-teal-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${INPUT_FOCUS_NO_OFFSET}`}
         >
           {schema.enum.map((option) => (
             <option key={String(option)} value={String(option)}>
@@ -445,7 +445,7 @@ function SchemaField({
           aria-labelledby={labelId}
           value={workflowSelectControlString(schema, value)}
           onChange={(event) => onChange(parseWorkflowMetaSelectChange(schema, event.target.value))}
-          className={`h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-teal-400/80 focus:ring-2 focus:ring-teal-500/20 ${INPUT_FOCUS_NO_OFFSET}`}
+          className={`h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-teal-400/80 focus:ring-2 focus:ring-teal-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${INPUT_FOCUS_NO_OFFSET}`}
         >
           {schema.metaData.options.map((option) => (
             <option key={String(option.value)} value={String(option.value)}>
@@ -454,16 +454,16 @@ function SchemaField({
           ))}
         </select>
       ) : schema.type === "boolean" ? (
-        <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-[#141518]">
           <input
             id={fieldId}
             aria-labelledby={labelId}
             type="checkbox"
             checked={Boolean(fieldValue)}
             onChange={(event) => onChange(event.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-200"
+            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-200 dark:border-slate-700 dark:bg-slate-800"
           />
-          <span className="text-sm text-slate-700">Turn this on</span>
+          <span className="text-sm text-slate-700 dark:text-slate-200">Turn this on</span>
         </div>
       ) : schema.type === "number" || schema.type === "integer" ? (
         <Input
@@ -472,7 +472,7 @@ function SchemaField({
           type="number"
           value={typeof fieldValue === "number" ? fieldValue : Number(fieldValue) || 0}
           onChange={(event) => onChange(schema.type === "integer" ? Math.round(Number(event.target.value)) : Number(event.target.value))}
-          className={`h-11 rounded-2xl border-slate-200 bg-white ${NUMBER_INPUT_NO_SPINNER} ${INPUT_FOCUS_NO_OFFSET}`}
+          className={`h-11 rounded-2xl border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${NUMBER_INPUT_NO_SPINNER} ${INPUT_FOCUS_NO_OFFSET}`}
         />
       ) : showStringDynPicker ? (
         <WorkflowTemplateAutocompleteTextarea
@@ -495,16 +495,16 @@ function SchemaField({
           value={typeof fieldValue === "string" ? fieldValue : ""}
           onChange={(event) => onChange(event.target.value)}
           placeholder={schema.format === "uri" ? "https://example.com" : ""}
-          className={`block min-h-[100px] w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-teal-400/80 focus:ring-2 focus:ring-teal-500/20 ${INPUT_FOCUS_NO_OFFSET}`}
+          className={`block min-h-[100px] w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-teal-400/80 focus:ring-2 focus:ring-teal-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 ${INPUT_FOCUS_NO_OFFSET}`}
         />
       )}
 
       {tokenStepId ? (
-        <div className="rounded-full bg-sky-50 px-3 py-2 text-xs font-medium text-sky-700">
+        <div className="rounded-full bg-sky-50 px-3 py-2 text-xs font-medium text-sky-700 dark:bg-sky-950/80 dark:text-sky-300">
           {`This field uses the result from "${tokenStepId}".`}
         </div>
       ) : typeof fieldValue === "string" && stringContainsLastResultToken(fieldValue) ? (
-        <div className="rounded-full bg-teal-50 px-3 py-2 text-xs font-medium text-teal-900">
+        <div className="rounded-full bg-teal-50 px-3 py-2 text-xs font-medium text-teal-900 dark:bg-teal-950/80 dark:text-teal-300">
           {isOnlyLastResultToken(fieldValue)
             ? "This field uses the previous step's output ({{ last }})."
             : "This field includes {{ last }} — resolved when you run the workflow."}
@@ -526,12 +526,12 @@ function SchemaField({
       : (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <label htmlFor={fieldId} id={labelId} className="text-sm font-semibold text-slate-800">
+              <label htmlFor={fieldId} id={labelId} className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                 {label}
                 {required ? <span className="ml-1 text-rose-500">*</span> : null}
               </label>
               {schema.description && !hideFieldDescriptions ? (
-                <p className="mt-1 text-sm text-slate-500">{schema.description}</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{schema.description}</p>
               ) : null}
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -542,8 +542,8 @@ function SchemaField({
         );
 
   const shellClass = compact
-    ? "space-y-2 rounded-xl border border-slate-200/60 bg-slate-50/80 px-3 py-2.5"
-    : "space-y-2 rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-sm";
+    ? "space-y-2 rounded-xl border border-slate-200/60 bg-slate-50/80 px-3 py-2.5 dark:border-slate-800/80 dark:bg-[#141518]"
+    : "space-y-2 rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-sm dark:border-slate-800/90 dark:bg-[#18191c]";
 
   if (compact) {
     return (

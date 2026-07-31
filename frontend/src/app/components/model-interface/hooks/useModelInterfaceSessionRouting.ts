@@ -333,10 +333,6 @@ export function useModelInterfaceSessionRouting({
     lastKnownConversationSignaturesRef.current = nextSignatures;
   }, [chatHistory, currentSessionId]);
 
-  useEffect(() => {
-    setUploadedFiles([]);
-  }, [activeRouteConversationId, setUploadedFiles]);
-
   const createNewSessionAndSwitchWrapper = useCallback(
     (_modelId: string) => {
       persistCurrentConversationScroll();

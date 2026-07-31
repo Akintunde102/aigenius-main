@@ -49,15 +49,15 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
     statusLabel,
     disabled = false,
 }) => {
-    const shellClass = shellClassForKind(kind);
+    const ext = fileExtensionLabel(fileName);
 
     if (kind === 'image' && fileUrl) {
         return (
-            <div className={`${shellClass} relative`} title={fileName}>
+            <div className="group relative flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800/80 dark:hover:border-slate-600" title={fileName}>
                 <button
                     type="button"
                     onClick={() => onImagePreview?.(fileUrl)}
-                    className="h-full w-full overflow-hidden"
+                    className="h-full w-full overflow-hidden rounded-xl"
                     title={fileName}
                     aria-label={`Open image ${fileName}`}
                 >
@@ -70,7 +70,7 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
                     />
                 </button>
                 {statusLabel ? (
-                    <span className="absolute left-2 top-2 rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[8px] font-medium text-white">
                         {statusLabel}
                     </span>
                 ) : null}
@@ -79,86 +79,82 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
                         type="button"
                         onClick={onRemove}
                         disabled={disabled}
-                        className="absolute -right-1 -top-1 rounded-full bg-red-500/90 p-0.5 text-white shadow-sm transition hover:bg-red-600 disabled:opacity-50"
+                        className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-red-500/90 text-white shadow-sm transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-600 disabled:opacity-50"
                         title="Remove"
                         aria-label="Remove attachment"
                     >
-                        <X size={10} />
+                        <X size={8} />
                     </button>
                 ) : null}
                 {isLoading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/70">
-                        <Loader2 className="h-5 w-5 animate-spin text-[var(--text-muted,#64748b)]" />
+                    <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 dark:bg-black/60">
+                        <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
                     </div>
                 ) : null}
             </div>
         );
     }
 
-    const body = (
-        <>
-            <div className="relative flex flex-1 items-center justify-center border-b border-[var(--border-subtle,#e5e7eb)] bg-white px-3">
-                {kind === 'audio' && fileUrl ? (
-                    <audio controls src={fileUrl} className="h-8 w-full max-w-full" preload="metadata" />
+    const cardContent = (
+        <div className="group relative flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800/80 dark:hover:border-slate-600" title={fileName}>
+            <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-2">
+                {kind === 'audio' ? (
+                    <Music2 size={20} className="text-slate-400 dark:text-slate-500" />
                 ) : (
-                    <div className="flex h-14 w-11 flex-col gap-1 rounded-sm border border-[var(--border-subtle,#e5e7eb)] bg-[var(--surface-muted,#f8fafc)] p-1.5 shadow-inner">
-                        <div className="h-1 w-full rounded bg-[var(--border-subtle,#e5e7eb)]" />
-                        <div className="h-1 w-4/5 rounded bg-[var(--border-subtle,#e5e7eb)]" />
-                        <div className="h-1 w-full rounded bg-[var(--border-subtle,#e5e7eb)]" />
-                        <div className="mt-auto flex justify-center">
-                            {kind === 'audio' ? (
-                                <Music2 className="h-4 w-4 text-[var(--text-muted,#64748b)]" />
-                            ) : (
-                                <FileText className="h-4 w-4 text-[var(--text-muted,#64748b)]" />
-                            )}
-                        </div>
-                    </div>
+                    <FileText size={20} className="text-slate-400 dark:text-slate-500" />
                 )}
-                {isLoading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/70">
-                        <Loader2 className="h-5 w-5 animate-spin text-[var(--text-muted,#64748b)]" />
-                    </div>
-                ) : null}
+                <span className="max-w-[64px] truncate text-[9px] font-medium text-slate-600 dark:text-slate-300">
+                    {fileName}
+                </span>
+                {ext && (
+                    <span className="rounded bg-orange-100 px-1 py-px text-[8px] font-bold uppercase text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">
+                        {ext}
+                    </span>
+                )}
             </div>
-            <AttachmentCardFooter fileName={fileName} />
             {statusLabel ? (
-                <span className="absolute left-2 top-2 rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[8px] font-medium text-white">
                     {statusLabel}
                 </span>
             ) : null}
             {onRemove ? (
                 <button
                     type="button"
-                    onClick={onRemove}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onRemove();
+                    }}
                     disabled={disabled}
-                    className="absolute -right-1 -top-1 rounded-full bg-red-500/90 p-0.5 text-white shadow-sm transition hover:bg-red-600 disabled:opacity-50"
+                    className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-red-500/90 text-white shadow-sm transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-600 disabled:opacity-50"
                     title="Remove"
                     aria-label="Remove attachment"
                 >
-                    <X size={10} />
+                    <X size={8} />
                 </button>
             ) : null}
-        </>
+            {isLoading ? (
+                <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 dark:bg-black/60">
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                </div>
+            ) : null}
+        </div>
     );
 
-    if (kind === 'file' && fileUrl && !onRemove) {
+    if (fileUrl && !onRemove) {
         return (
             <a
                 href={fileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={shellClass}
                 title={fileName}
                 aria-label={`Open file ${fileName}`}
+                className="inline-block"
             >
-                {body}
+                {cardContent}
             </a>
         );
     }
 
-    return (
-        <div className={shellClass} title={fileName}>
-            {body}
-        </div>
-    );
+    return cardContent;
 };

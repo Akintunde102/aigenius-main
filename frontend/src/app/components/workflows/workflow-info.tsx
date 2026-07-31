@@ -74,24 +74,24 @@ export const workflowModalOverlayClassConfig =
 
 /** Warmer, calmer panel for the step editor (pairs with `workflowModalOverlayClassConfig`). */
 export const workflowModalPanelClassConfig =
-  "relative isolate flex max-h-[min(90vh,920px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-stone-200/90 bg-gradient-to-b from-white via-stone-50/80 to-stone-100/50 shadow-[0_32px_72px_-16px_rgba(0,0,0,0.45)] ring-1 ring-stone-900/[0.06]";
+  "relative isolate flex max-h-[min(90vh,920px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-stone-200/90 bg-gradient-to-b from-white via-stone-50/80 to-stone-100/50 shadow-[0_32px_72px_-16px_rgba(0,0,0,0.45)] ring-1 ring-stone-900/[0.06] dark:border-slate-800/90 dark:from-[#18191c] dark:via-[#16171a] dark:to-[#141518] dark:ring-0";
 
 export const workflowModalOverlayClassTools =
   "fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-2 backdrop-blur-[3px] sm:p-4";
 
 export const workflowModalPanelClass =
-  "relative isolate flex max-h-[min(90vh,920px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-300/60 bg-gradient-to-b from-white to-slate-50/90 shadow-[0_24px_56px_-12px_rgba(15,23,42,0.2)] ring-1 ring-slate-900/[0.04]";
+  "relative isolate flex max-h-[min(90vh,920px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-300/60 bg-gradient-to-b from-white to-slate-50/90 shadow-[0_24px_56px_-12px_rgba(15,23,42,0.2)] ring-1 ring-slate-900/[0.04] dark:border-slate-800/90 dark:from-[#18191c] dark:to-[#141518] dark:ring-0";
 
 export const workflowModalPanelClassWide =
-  "relative isolate flex max-h-[min(85vh,900px)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-300/60 bg-gradient-to-b from-white to-slate-50/90 shadow-[0_24px_56px_-12px_rgba(15,23,42,0.2)] ring-1 ring-slate-900/[0.04]";
+  "relative isolate flex max-h-[min(85vh,900px)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-300/60 bg-gradient-to-b from-white to-slate-50/90 shadow-[0_24px_56px_-12px_rgba(15,23,42,0.2)] ring-1 ring-slate-900/[0.04] dark:border-slate-800/90 dark:from-[#18191c] dark:to-[#141518] dark:ring-0";
 
 const dialogSubtitleClass = "mt-1 text-xs leading-relaxed text-slate-600";
 
 const sectionHeadingClass =
-  "text-[10px] font-semibold uppercase tracking-wide text-teal-900/55";
+  "text-[10px] font-semibold uppercase tracking-wide text-teal-900/55 dark:text-teal-400/80";
 
 const valuesSurfaceClass =
-  "border-b border-teal-900/[0.06] bg-gradient-to-b from-slate-50/95 via-white to-slate-50/40 px-3 py-2.5";
+  "border-b border-teal-900/[0.06] bg-gradient-to-b from-slate-50/95 via-white to-slate-50/40 px-3 py-2.5 dark:border-slate-800/80 dark:from-[#141518] dark:via-[#18191c] dark:to-[#141518]";
 
 export function WorkflowAccentBar() {
   return <div className={workflowAccentBarClass} aria-hidden />;
@@ -194,7 +194,7 @@ export function WorkflowAboutToolPanel({
   return (
     <div
       className={cn(
-        "border-t border-teal-900/[0.08] bg-gradient-to-b from-teal-50/50 to-white px-3 py-2.5",
+        "border-t border-teal-900/[0.08] bg-gradient-to-b from-teal-50/50 to-white px-3 py-2.5 dark:border-slate-800/80 dark:from-[#18191c] dark:to-[#141518]",
         className,
       )}
     >
@@ -207,14 +207,14 @@ export function WorkflowAboutToolPanel({
       {activeTab === "about" ? (
         <div role="tabpanel">
           <WorkflowSectionHeading className="mb-1">{WORKFLOW_INFO_COPY.aboutToolHeading}</WorkflowSectionHeading>
-          <p className="text-[11px] leading-relaxed text-slate-700">{body}</p>
+          <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">{body}</p>
           {normalizedExamples.length > 0 ? (
             <div className="mt-2.5">
               <WorkflowSectionHeading className="mb-1">{WORKFLOW_INFO_COPY.aboutToolExamplesHeading}</WorkflowSectionHeading>
-              <ul className="space-y-1 text-[11px] leading-relaxed text-slate-700">
+              <ul className="space-y-1 text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
                 {normalizedExamples.map((example) => (
                   <li key={example} className="flex gap-1.5">
-                    <span className="mt-[2px] shrink-0 text-teal-700">•</span>
+                    <span className="mt-[2px] shrink-0 text-teal-700 dark:text-teal-400">•</span>
                     <span>{example}</span>
                   </li>
                 ))}
@@ -228,28 +228,28 @@ export function WorkflowAboutToolPanel({
         <div role="tabpanel" className="space-y-2">
           <WorkflowSectionHeading className="mb-1">Return shape (chaining)</WorkflowSectionHeading>
           {!hasChainingContent ? (
-            <p className="text-[11px] leading-relaxed text-slate-600">
+            <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
               No chaining hints are available for this tool yet. Use{" "}
-              <code className="rounded bg-slate-100 px-1 font-mono text-[10px]">{"{{ last }}"}</code> or{" "}
-              <code className="rounded bg-slate-100 px-1 font-mono text-[10px]">{"{{ steps.<id>.result }}"}</code>{" "}
+              <code className="rounded bg-slate-100 px-1 font-mono text-[10px] dark:bg-slate-800 dark:text-slate-300">{"{{ last }}"}</code> or{" "}
+              <code className="rounded bg-slate-100 px-1 font-mono text-[10px] dark:bg-slate-800 dark:text-slate-300">{"{{ steps.<id>.result }}"}</code>{" "}
               to pass the full prior result.
             </p>
           ) : null}
           {returnShapeSummary?.trim() ? (
-            <p className="text-[11px] leading-relaxed text-slate-700">{returnShapeSummary.trim()}</p>
+            <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">{returnShapeSummary.trim()}</p>
           ) : null}
           {paths.length > 0 ? (
-            <p className="text-[10px] leading-relaxed text-slate-600">
-              <span className="font-semibold text-slate-700">Paths:</span>{" "}
-              <span className="font-mono text-[9px] text-teal-900 [overflow-wrap:anywhere]">{paths.join(", ")}</span>
+            <p className="text-[10px] leading-relaxed text-slate-600 dark:text-slate-400">
+              <span className="font-semibold text-slate-700 dark:text-slate-200">Paths:</span>{" "}
+              <span className="font-mono text-[9px] text-teal-900 dark:text-teal-300 [overflow-wrap:anywhere]">{paths.join(", ")}</span>
             </p>
           ) : null}
           {jsonPreview ? (
             <div>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-teal-900/55">Example JSON</p>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-teal-900/55 dark:text-teal-400/80">Example JSON</p>
               <JsonSyntaxBlock
                 value={jsonPreview}
-                preClassName="workflow-scroll-light max-h-40 border-slate-200/80"
+                preClassName="workflow-scroll-light max-h-40 border-slate-200/80 bg-white dark:border-slate-800/90 dark:bg-[#18191c] dark:text-slate-200"
                 codeClassName="text-[10px] leading-snug"
               />
             </div>
@@ -263,13 +263,13 @@ export function WorkflowAboutToolPanel({
           {hasSchema ? (
             <JsonSyntaxBlock
               value={resultJsonSchema}
-              preClassName="workflow-scroll-light max-h-48 border-slate-200/80"
+              preClassName="workflow-scroll-light max-h-48 border-slate-200/80 bg-white dark:border-slate-800/90 dark:bg-[#18191c] dark:text-slate-200"
               codeClassName="text-[10px] leading-snug"
             />
           ) : (
-            <p className="text-[11px] leading-relaxed text-slate-600">
+            <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
               No formal JSON Schema is published for this tool&apos;s response. Check the{" "}
-              <span className="font-medium text-slate-800">Chaining</span> tab for a text summary and example payload, or inspect
+              <span className="font-medium text-slate-800 dark:text-slate-200">Chaining</span> tab for a text summary and example payload, or inspect
               raw output after a run.
             </p>
           )}

@@ -89,12 +89,12 @@ function isRedundantFileLabel(text: string, attachments: MessageAttachment[]): b
     if (!trimmed || attachments.length === 0) return false;
 
     const label = trimmed.replace(/:$/, '').replace(/^\*\*|\*\*$/g, '').trim();
-    if (!label) return false;
 
     return attachments.some(
         (item) =>
-            item.fileName === label
+            (label && item.fileName === label)
             || item.fileUrl === trimmed
+            || (item.fileUrl && trimmed.includes(item.fileUrl))
             || (URL_ONLY.test(trimmed) && item.fileUrl === trimmed),
     );
 }

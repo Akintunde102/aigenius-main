@@ -142,24 +142,24 @@ export default function SchedulesListView() {
   return (
     <div className="flex min-h-screen flex-col" style={workflowShellBgStyle()}>
       <div className="flex min-h-0 flex-1 flex-col bg-white/80 backdrop-blur-[2px]">
-        <header className="sticky top-0 z-30 w-full shrink-0 border-b border-slate-800/90 bg-[#141416] text-slate-200 shadow-[0_1px_0_0_rgba(0,0,0,0.4)]">
+        <header className="sticky top-0 z-30 w-full shrink-0 border-b border-slate-200/90 bg-white/95 text-slate-800 shadow-sm backdrop-blur-md dark:border-slate-800/90 dark:bg-[#141416] dark:text-slate-200 dark:shadow-[0_1px_0_0_rgba(0,0,0,0.4)]">
           <div className="flex min-h-9 flex-col gap-2 px-2.5 py-2 sm:min-h-10 sm:flex-row sm:flex-nowrap sm:items-center sm:gap-x-2 sm:px-3 sm:py-0">
             <div className="flex min-h-9 flex-nowrap items-center gap-x-1.5 sm:min-h-10">
               <Link
                 href="/workflows"
-                className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-medium text-slate-400 transition hover:bg-white/10 hover:text-slate-100"
+                className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-100"
               >
                 <ArrowLeft className="h-3 w-3" aria-hidden />
                 Workflows
               </Link>
-              <span className="select-none text-slate-600" aria-hidden>
+              <span className="select-none text-slate-400 dark:text-slate-600" aria-hidden>
                 ›
               </span>
-              <span className="truncate text-[12px] font-medium text-slate-100">All schedules</span>
+              <span className="truncate text-[12px] font-medium text-slate-900 dark:text-slate-100">All schedules</span>
             </div>
             <div className="relative min-h-[2rem] min-w-0 flex-1 sm:max-w-md">
               <Search
-                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500"
+                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500"
                 aria-hidden
               />
               <input
@@ -168,7 +168,7 @@ export default function SchedulesListView() {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search schedules…"
                 aria-label="Search schedules"
-                className="h-8 w-full rounded-md border border-slate-600/80 bg-slate-900/60 py-1.5 pl-8 pr-2.5 text-[12px] text-slate-100 outline-none ring-0 placeholder:text-slate-500 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 sm:h-7"
+                className="h-8 w-full rounded-md border border-slate-300 bg-slate-100/80 py-1.5 pl-8 pr-2.5 text-[12px] text-slate-900 outline-none ring-0 placeholder:text-slate-400 focus:border-sky-600 focus:ring-1 focus:ring-sky-500/20 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-sky-500/50 dark:focus:ring-sky-500/30 sm:h-7"
               />
             </div>
           </div>
@@ -214,40 +214,40 @@ export default function SchedulesListView() {
                   {filtered.map((s) => {
                     const nextRun = formatNextRun(s.nextRunAt);
                     return (
-                      <div key={`${s.workflowId}-${s.id}`} className="relative rounded-xl border border-[rgba(58,71,87,0.15)] bg-white shadow-[0_8px_28px_-18px_rgba(31,42,55,0.35)] transition hover:shadow-[0_12px_32px_-16px_rgba(31,42,55,0.4)]">
+                      <div key={`${s.workflowId}-${s.id}`} className="relative rounded-xl border border-[rgba(58,71,87,0.15)] bg-white shadow-[0_8px_28px_-18px_rgba(31,42,55,0.35)] transition hover:shadow-[0_12px_32px_-16px_rgba(31,42,55,0.4)] dark:border-slate-800/90 dark:bg-[#18191c] dark:shadow-[0_8px_28px_-18px_rgba(0,0,0,0.6)] dark:hover:border-slate-700">
                         <div className="group block text-left">
-                          <div className="flex items-center gap-2 rounded-t-xl border-b border-[rgba(58,71,87,0.08)] bg-[rgba(255,255,255,0.92)] px-3 py-2.5 pr-11">
-                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${s.enabled ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-500"}`}>
+                          <div className="flex items-center gap-2 rounded-t-xl border-b border-[rgba(58,71,87,0.08)] bg-[rgba(255,255,255,0.92)] px-3 py-2.5 pr-11 dark:border-slate-800/80 dark:bg-[#1e2024]">
+                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${s.enabled ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}>
                               <Power className="h-3.5 w-3.5" aria-hidden />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-semibold text-[var(--app-ink-800)]">
+                              <span className="block truncate text-sm font-semibold text-[var(--app-ink-800)] dark:text-slate-100">
                                 {s.name || "Untitled Schedule"}
                               </span>
-                              <span className="mt-0.5 flex items-center gap-1.5 truncate text-[10px] text-slate-500">
+                              <span className="mt-0.5 flex items-center gap-1.5 truncate text-[10px] text-slate-500 dark:text-slate-400">
                                 <Workflow className="h-2.5 w-2.5" />
                                 {s.workflowName}
                               </span>
                             </div>
                           </div>
-                          <div className="rounded-b-xl border-b border-[rgba(58,71,87,0.08)] bg-[rgba(246,248,252,0.7)] px-3 py-3">
+                          <div className="rounded-b-xl border-b border-[rgba(58,71,87,0.08)] bg-[rgba(246,248,252,0.7)] px-3 py-3 dark:border-slate-800/80 dark:bg-[#141518]">
                             <div className="flex items-center gap-3">
                               <div className="flex-1">
-                                <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Next Run</p>
-                                <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-[var(--app-ink-800)]">
+                                <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">Next Run</p>
+                                <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-[var(--app-ink-800)] dark:text-slate-200">
                                   <Clock className="h-3 w-3 text-sky-500" />
                                   {nextRun}
                                 </div>
                               </div>
                               <div className="shrink-0 text-right">
-                                <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Rule</p>
-                                <p className="mt-1 text-[11px] font-medium text-[var(--app-ink-700)]">
+                                <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">Rule</p>
+                                <p className="mt-1 text-[11px] font-medium text-[var(--app-ink-700)] dark:text-slate-300">
                                   {s.ruleType === "cron" ? "Recurring" : "One-time"}
                                 </p>
                               </div>
                             </div>
-                            <div className="mt-3 rounded-lg border border-[rgba(58,71,87,0.08)] bg-white/60 px-2 py-1.5">
-                                <p className="truncate font-mono text-[10px] text-slate-600">
+                            <div className="mt-3 rounded-lg border border-[rgba(58,71,87,0.08)] bg-white/60 px-2 py-1.5 dark:border-slate-700/80 dark:bg-slate-800/60">
+                                <p className="truncate font-mono text-[10px] text-slate-600 dark:text-slate-300">
                                   {s.expression}
                                 </p>
                             </div>
@@ -257,7 +257,7 @@ export default function SchedulesListView() {
                           <button
                             type="button"
                             aria-label="Schedule actions"
-                            className="rounded-md border border-[rgba(58,71,87,0.12)] bg-white/95 p-1 text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+                            className="rounded-md border border-[rgba(58,71,87,0.12)] bg-white/95 p-1 text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
                             onClick={(e) => {
                               e.stopPropagation();
                               setMenuScheduleId((current) => (current === s.id ? null : s.id));
@@ -267,18 +267,18 @@ export default function SchedulesListView() {
                           </button>
                           {menuScheduleId === s.id ? (
                             <div
-                              className="absolute right-0 mt-1 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-[11px] shadow-lg"
+                              className="absolute right-0 mt-1 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-[11px] shadow-lg dark:border-slate-700 dark:bg-slate-800"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <Link
                                 href={`/workflow/${s.workflowId}`}
-                                className="block px-2.5 py-1.5 text-left text-slate-700 hover:bg-slate-50"
+                                className="block px-2.5 py-1.5 text-left text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
                               >
                                 Edit Workflow
                               </Link>
                               <Link
                                 href={`/workflow/${s.workflowId}/executions`}
-                                className="block px-2.5 py-1.5 text-left text-slate-700 hover:bg-slate-50"
+                                className="block px-2.5 py-1.5 text-left text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
                               >
                                 View History
                               </Link>

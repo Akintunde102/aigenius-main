@@ -62,6 +62,7 @@ import { ChatShellLoadingSkeleton } from "@/app/components/ChatShellLoadingSkele
 import { useModelInterfaceSidebarActions } from "./hooks/useModelInterfaceSidebarActions";
 import { useModelInterfaceLifecycle } from "./hooks/useModelInterfaceLifecycle";
 import { useModelInterfacePersonalitySelection } from "./hooks/useModelInterfacePersonalitySelection";
+import { ChatErrorMessage } from "./features/chat/components/ChatErrorMessage";
 
 interface ModelInterfaceProps {
   routeConversationId?: string | null;
@@ -376,8 +377,11 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
           });
         } else {
           contentParts.push({
-            type: "text",
-            text: `${uploadedFile.file.name}: ${uploadedFile.fileUrl}`,
+            type: "file_url",
+            file_url: {
+              url: uploadedFile.fileUrl,
+              name: uploadedFile.displayName || uploadedFile.file?.name || "file",
+            },
           });
         }
       }
@@ -523,8 +527,33 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
       onFilesDropped={handleQueuedFiles}
       onDragActiveChange={setDragActive}
       dragActive={dragActive}
+      supportsFileUpload={supportsImageUpload || false}
     >
       {renderWalletModal()}
+
+      {error ? (
+        <ChatErrorMessage
+          message={error}
+          canRetry={true}
+          onRetry={async () => {
+            setError("");
+            if (input.trim()) {
+              await handleSend(input.trim());
+            } else {
+              const lastUserMsgIdx = chat.map((m) => m.role).lastIndexOf("user");
+              if (lastUserMsgIdx !== -1) {
+                const lastUserMsg = chat[lastUserMsgIdx];
+                const nextChat = chat.slice(0, lastUserMsgIdx + 1);
+                setChat(nextChat);
+                await handleSend(undefined, undefined, lastUserMsg, nextChat);
+              } else if (refreshWalletFromBackend) {
+                await refreshWalletFromBackend();
+              }
+            }
+          }}
+          onDismiss={() => setError("")}
+        />
+      ) : null}
 
       {optimizationMessage && (
         <div className={`${styles.optimizationMessage} ${styles.fadeIn}`}>
@@ -603,6 +632,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                   />
                   <ModelInterfaceChatColumn
                     chat={chat}
+                    chatHistory={chatHistory}
                     setChat={setChat}
                     handleSend={handleSend}
                     chatEndRef={chatEndRef}

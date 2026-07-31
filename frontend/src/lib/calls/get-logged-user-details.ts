@@ -35,14 +35,6 @@ export const getUserDetails = async (forceRefresh = false) => {
     return cachedUser;
   }
 
-  if (!cachedUser && !forceRefresh) {
-    const storedUser = storage(storageConstants.LOGGED_USER_DETAILS).getObject<any>();
-    if (storedUser) {
-      setMemoryCachedUserDetails(storedUser, now);
-      return storedUser;
-    }
-  }
-
   if (inflightPromise) {
     return inflightPromise;
   }
@@ -68,6 +60,14 @@ export const getUserDetails = async (forceRefresh = false) => {
       setMemoryCachedUserDetails(userData, Date.now());
       storage(storageConstants.LOGGED_USER_DETAILS).setObject(userData);
       return userData;
+    } catch (err) {
+      // Fallback to offline storedUser snapshot if network call fails
+      const storedUser = storage(storageConstants.LOGGED_USER_DETAILS).getObject<any>();
+      if (storedUser) {
+        setMemoryCachedUserDetails(storedUser, Date.now());
+        return storedUser;
+      }
+      throw err;
     } finally {
       inflightPromise = null;
     }

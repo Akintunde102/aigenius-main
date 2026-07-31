@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { FiInfo, FiPlus } from "react-icons/fi";
 import ChatHistoryListItem from "./ChatHistoryListItem";
 import { ChatSession } from '@/app/components/model-interface/shared/types';
@@ -25,6 +25,7 @@ function SidebarSectionHeader({ label }: { label: string }) {
 function ProjectSectionHeader({
     label,
     isActive = false,
+    hasActiveChat = false,
     showInfo = false,
     conversationCount = 0,
     isCollapsed = false,
@@ -35,6 +36,8 @@ function ProjectSectionHeader({
 }: {
     label: string;
     isActive?: boolean;
+    /** True when this project section contains the currently open conversation inline. */
+    hasActiveChat?: boolean;
     showInfo?: boolean;
     conversationCount?: number;
     isCollapsed?: boolean;
@@ -69,10 +72,23 @@ function ProjectSectionHeader({
 
     const countLabel = conversationCount === 1 ? '1 chat' : `${conversationCount} chats`;
 
+    // Build tooltip — adapt for disabled collapse (active chat inline)
+    const buildTitle = () => {
+        if (isCollapsed) return `${label} — double-click to expand`;
+        if (hasActiveChat) return `${label} (active chat open)`;
+        if (isActive) return `${label} (active for new chats) — double-click to collapse`;
+        return `Set ${label} as active project — double-click to collapse`;
+    };
+
     return (
         <div
             className="flex items-start gap-1 px-2 pb-0.5 pt-2.5 first:pt-1.5"
-            style={isActive ? { backgroundColor: "var(--sidebar-icon-btn-hover-bg)" } : undefined}
+            style={{
+                ...(isActive ? { backgroundColor: "var(--sidebar-icon-btn-hover-bg)" } : {}),
+                ...(hasActiveChat
+                    ? { borderLeft: "2px solid var(--sidebar-fg, #e2e8f0)", paddingLeft: "6px" }
+                    : {}),
+            }}
         >
             <div className="min-w-0 flex-1">
                 <button
@@ -81,13 +97,7 @@ function ProjectSectionHeader({
                     onDoubleClick={handleLabelDoubleClick}
                     className="w-full truncate rounded px-1 py-0.5 text-left text-xs font-semibold uppercase tracking-widest transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
                     style={{ color: "var(--sidebar-muted-fg)" }}
-                    title={
-                        isCollapsed
-                            ? `${label} — double-click to expand`
-                            : isActive
-                                ? `${label} (active for new chats) — double-click to collapse`
-                                : `Set ${label} as active project — double-click to collapse`
-                    }
+                    title={buildTitle()}
                 >
                     {label}
                 </button>
@@ -215,9 +225,26 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
         [chatHistory],
     );
 
-    const pinnedSession = useMemo(
+    const activeSession = useMemo(
         () => sortedSessions.find((s) => rowIsActive(s)) ?? null,
         [sortedSessions, rowIsActive],
+    );
+
+    const activeSessionId = activeSession?.id ?? null;
+
+    // Only show "Open Now" for non-project conversations.
+    // Project conversations stay inline within their project section.
+    // Also check activeProjectId for sessions not yet persisted with codeProjectId.
+    const pinnedSession = useMemo(
+        () => {
+            if (!activeSession) return null;
+            // Explicitly scoped to a project — stays inline
+            if (activeSession.codeProjectId) return null;
+            // Active project set for the current session — stays inline
+            if (activeProjectId && activeSessionId === activeSession.id) return null;
+            return activeSession;
+        },
+        [activeSession, activeProjectId, activeSessionId],
     );
 
     const pinnedSessionId = pinnedSession?.id ?? null;
@@ -225,14 +252,37 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
     const projectBuckets = useMemo(
         () => (codeProjects.length > 0
             ? groupSidebarSessionsByProject(sortedSessions, codeProjects, {
-                activeSessionId: pinnedSessionId,
+                activeSessionId: activeSessionId,
                 activeProjectId,
             })
             : []),
-        [sortedSessions, codeProjects, pinnedSessionId, activeProjectId],
+        [sortedSessions, codeProjects, activeSessionId, activeProjectId],
     );
 
     const useProjectLayout = codeProjects.length > 0;
+
+    // Ref for the scrollable conversation list container
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    // Prevents re-scrolling on every re-render — only scroll once on mount/reload
+    const hasScrolledRef = useRef(false);
+
+
+
+    // After initial render, scroll the active session into view
+    useEffect(() => {
+        if (hasScrolledRef.current || isInitialLoading) return;
+        // Short delay so the full list (incl. auto-expanded sections) is laid out
+        const timer = setTimeout(() => {
+            const container = scrollContainerRef.current;
+            if (!container) return;
+            const activeEl = container.querySelector<HTMLElement>('[data-active-session]');
+            if (activeEl) {
+                activeEl.scrollIntoView({ block: 'center', behavior: 'auto' });
+                hasScrolledRef.current = true;
+            }
+        }, 150);
+        return () => clearTimeout(timer);
+    }, [isInitialLoading, activeSessionId]);
 
     // Stable Handlers
     const handleSelect = useCallback((session: ChatSession) => {
@@ -343,7 +393,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
 
     const renderFlatSessionList = (
         sessions: ChatSession[],
-        sectionKey: string,
+        _sectionKey: string,
         emptyHint?: string,
     ) => {
         if (!sessions.length) {
@@ -357,39 +407,16 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
             );
         }
 
-        const expanded = recentExpandedByKey[sectionKey] ?? false;
-        const setExpanded = (updater: boolean | ((current: boolean) => boolean)) => {
-            setRecentExpandedByKey((prev) => {
-                const current = prev[sectionKey] ?? false;
-                const next = typeof updater === 'function' ? updater(current) : updater;
-                return { ...prev, [sectionKey]: next };
-            });
-        };
-        const visible = expanded
-            ? sessions
-            : sessions.slice(0, RECENT_INITIAL_VISIBLE);
-        const extraCount = Math.max(0, sessions.length - RECENT_INITIAL_VISIBLE);
-
         return (
             <ul className="m-0 list-none space-y-0.5 px-3 pb-1.5">
-                {visible.map((session) => renderRow(session, false))}
-                {extraCount > 0 ? (
-                    <li className="list-none px-0 pt-0.5">
-                        <button
-                            type="button"
-                            className="w-full rounded-md px-2 py-1 text-left text-[13px] leading-snug text-slate-500 transition-colors hover:text-slate-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40 focus-visible:ring-offset-0"
-                            onClick={() => setExpanded((e) => !e)}
-                        >
-                            {expanded ? "...show less" : "...open more"}
-                        </button>
-                    </li>
-                ) : null}
+                {sessions.map((session) => renderRow(session, rowIsActive(session)))}
             </ul>
         );
     };
 
     return (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {/* === "Open Now" section — commented out, keeping code for easy revert ===
             {pinnedSession ? (
                 <div className="shrink-0 px-0 pb-1">
                     <SidebarSectionHeader label="Open now" />
@@ -398,13 +425,18 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                     </ul>
                 </div>
             ) : null}
+            === end "Open Now" section === */}
 
-            <div className="conversation-list-scroll flex min-h-0 flex-1 flex-col overflow-y-auto pb-4">
+            <div ref={scrollContainerRef} className="conversation-list-scroll flex min-h-0 flex-1 flex-col overflow-y-auto pb-10">
                 <ChatLoadingIndicator isLoading={isInitialLoading} />
                 {useProjectLayout ? (
                     projectBuckets.map((bucket) => {
                         const sectionKey = bucket.projectId ?? 'general';
-                        const isCollapsed = collapsedSections[sectionKey] ?? false;
+                        // Auto-expand project sections that contain the active chat
+                        const hasInlineActive = bucket.projectId !== null && bucket.hasActiveSession;
+                        const isCollapsed = hasInlineActive
+                            ? false
+                            : (collapsedSections[sectionKey] ?? false);
 
                         return (
                         <div key={sectionKey} className="mb-1">
@@ -412,6 +444,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                                 label={bucket.label}
                                 conversationCount={bucket.conversationCount}
                                 isCollapsed={isCollapsed}
+                                hasActiveChat={hasInlineActive}
                                 isActive={
                                     bucket.projectId
                                         ? activeProjectId === bucket.projectId
@@ -423,7 +456,12 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                                         ? () => onSelectProject(bucket.projectId)
                                         : undefined
                                 }
-                                onToggleCollapse={() => toggleSectionCollapsed(sectionKey)}
+                                onToggleCollapse={
+                                    // Prevent collapsing when the active chat is inline
+                                    hasInlineActive
+                                        ? undefined
+                                        : () => toggleSectionCollapsed(sectionKey)
+                                }
                                 onInfo={
                                     bucket.projectId && onProjectInfo
                                         ? () => onProjectInfo(bucket.projectId as string)
@@ -439,9 +477,6 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                                 ? renderFlatSessionList(
                                     bucket.sessions,
                                     sectionKey,
-                                    bucket.hasActiveSession
-                                        ? "Current chat is open above."
-                                        : undefined,
                                 )
                                 : null}
                         </div>

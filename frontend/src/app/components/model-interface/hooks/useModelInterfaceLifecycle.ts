@@ -117,7 +117,7 @@ export function useModelInterfaceLifecycle({
   useEffect(() => {
     let cancelled = false;
 
-    void getUserDetails()
+    void getUserDetails(true)
       .then((user) => {
         if (!cancelled) {
           setCurrentUser(user ?? null);

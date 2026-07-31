@@ -56,7 +56,7 @@ function WorkflowStepConfigLastRunPanel({ execution }: { execution?: WorkflowSte
 
   if (!execution) {
     return (
-      <p className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-3 text-xs leading-relaxed text-slate-600">
+      <p className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-3 text-xs leading-relaxed text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
         Run the workflow once to capture this step&apos;s result or error here.
       </p>
     );
@@ -79,43 +79,43 @@ function WorkflowStepConfigLastRunPanel({ execution }: { execution?: WorkflowSte
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-stone-600">
+      <p className="text-[11px] text-stone-600 dark:text-slate-400">
         Status:{" "}
-        <span className="font-semibold text-stone-800">{statusLabel}</span>
+        <span className="font-semibold text-stone-800 dark:text-slate-200">{statusLabel}</span>
       </p>
 
       {showError ? (
-        <div className="rounded-xl border border-rose-200/80 bg-rose-50/90 px-3 py-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-800">Error</p>
+        <div className="rounded-xl border border-rose-200/80 bg-rose-50/90 px-3 py-2.5 dark:border-rose-900/60 dark:bg-rose-950/60">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-800 dark:text-rose-200">Error</p>
           <div className="workflow-scroll-light mt-1 max-h-[min(50vh,280px)] overflow-y-auto">
             {err ? (
               <JsonOrPlainTextBlock
                 text={displayErr}
-                preClassName="max-h-none border-rose-200/80 bg-white/95 text-rose-950"
-                codeClassName="text-[11px] text-rose-950"
+                preClassName="max-h-none border-rose-200/80 bg-white/95 text-rose-950 dark:border-rose-900/60 dark:bg-[#18191c] dark:text-rose-200"
+                codeClassName="text-[11px] text-rose-950 dark:text-rose-200"
               />
             ) : (
-              <p className="text-[11px] text-rose-950">No error message was returned.</p>
+              <p className="text-[11px] text-rose-950 dark:text-rose-200">No error message was returned.</p>
             )}
           </div>
         </div>
       ) : null}
 
       {showResult ? (
-        <div className="rounded-xl border border-slate-200/80 bg-slate-50/90 px-3 py-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Result</p>
+        <div className="rounded-xl border border-slate-200/80 bg-slate-50/90 px-3 py-2.5 dark:border-slate-800 dark:bg-[#141518]">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Result</p>
           <div className="workflow-scroll-light mt-1 max-h-[min(50vh,280px)] overflow-y-auto">
             <JsonOrPlainTextBlock
               text={displayResult}
-              preClassName="max-h-none border-slate-200/80 bg-white/95 text-slate-800"
-              codeClassName="text-[11px] text-slate-800"
+              preClassName="max-h-none border-slate-200/80 bg-white/95 text-slate-800 dark:border-slate-800/90 dark:bg-[#18191c] dark:text-slate-200"
+              codeClassName="text-[11px] text-slate-800 dark:text-slate-200"
             />
           </div>
         </div>
       ) : null}
 
       {!showError && !showResult && idleHint ? (
-        <p className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-3 text-xs leading-relaxed text-slate-600">{idleHint}</p>
+        <p className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-3 text-xs leading-relaxed text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">{idleHint}</p>
       ) : null}
     </div>
   );
@@ -205,17 +205,17 @@ export function WorkflowStepConfigModal({
           Edit tool fields for this step. Use the Response tab for return shape, example JSON, and response schema.
           Changes apply as you type.
         </p>
-        <div className="flex shrink-0 items-center gap-3 border-b border-stone-200/80 bg-gradient-to-r from-white via-stone-50/90 to-white px-3 py-3 sm:px-4">
+        <div className="flex shrink-0 items-center gap-3 border-b border-stone-200/80 bg-gradient-to-r from-white via-stone-50/90 to-white px-3 py-3 sm:px-4 dark:border-slate-800/80 dark:from-[#18191c] dark:via-[#16171a] dark:to-[#18191c]">
           <BrandLogo size="compact" asStatic className="min-w-0 shrink [&_span]:sr-only" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold tracking-tight text-stone-800">
+            <p className="truncate text-sm font-semibold tracking-tight text-stone-800 dark:text-slate-100">
               {stepTool ? friendlyToolName(stepTool.function.name) : friendlyToolName(step.toolName)}
             </p>
-            <p className="truncate text-[11px] text-stone-500">{step.toolName}</p>
+            <p className="truncate text-[11px] text-stone-500 dark:text-slate-400">{step.toolName}</p>
           </div>
           <button
             type="button"
-            className="shrink-0 rounded-lg p-1.5 text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40"
+            className="shrink-0 rounded-lg p-1.5 text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             onClick={handleClose}
             title="Close"
           >
@@ -225,7 +225,7 @@ export function WorkflowStepConfigModal({
         </div>
 
         <div
-          className="flex shrink-0 gap-1 border-b border-stone-200/80 bg-stone-50/40 px-2 py-1.5 sm:px-3"
+          className="flex shrink-0 gap-1 border-b border-stone-200/80 bg-stone-50/40 px-2 py-1.5 sm:px-3 dark:border-slate-800/80 dark:bg-[#141518]"
           role="tablist"
           aria-label="Configure step sections"
         >
@@ -236,8 +236,8 @@ export function WorkflowStepConfigModal({
             id="workflow-step-config-tab-configure"
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 ${
               activeTab === "configure"
-                ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200/90"
-                : "text-stone-600 hover:bg-white/70 hover:text-stone-900"
+                ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200/90 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700"
+                : "text-stone-600 hover:bg-white/70 hover:text-stone-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200"
             }`}
             onClick={() => setActiveTab("configure")}
           >
@@ -250,8 +250,8 @@ export function WorkflowStepConfigModal({
             id="workflow-step-config-tab-response"
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 ${
               activeTab === "response"
-                ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200/90"
-                : "text-stone-600 hover:bg-white/70 hover:text-stone-900"
+                ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200/90 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700"
+                : "text-stone-600 hover:bg-white/70 hover:text-stone-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200"
             }`}
             onClick={() => setActiveTab("response")}
           >
@@ -264,8 +264,8 @@ export function WorkflowStepConfigModal({
             id="workflow-step-config-tab-last-run"
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 ${
               activeTab === "lastRun"
-                ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200/90"
-                : "text-stone-600 hover:bg-white/70 hover:text-stone-900"
+                ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200/90 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700"
+                : "text-stone-600 hover:bg-white/70 hover:text-stone-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200"
             }`}
             onClick={() => setActiveTab("lastRun")}
           >
@@ -277,14 +277,14 @@ export function WorkflowStepConfigModal({
           role="tabpanel"
           id="workflow-step-config-tabpanel"
           aria-labelledby={workflowStepConfigActiveTabId(activeTab)}
-          className="workflow-scroll-light min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-stone-50/90 via-white to-stone-50/50 px-3.5 py-4 sm:px-4"
+          className="workflow-scroll-light min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-stone-50/90 via-white to-stone-50/50 px-3.5 py-4 sm:px-4 dark:from-[#18191c] dark:via-[#16171a] dark:to-[#141518]"
         >
           {activeTab === "lastRun" ? (
             <WorkflowStepConfigLastRunPanel execution={execution} />
           ) : activeTab === "response" ? (
             <div className="space-y-3">
               {!stepTool ? (
-                <p className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs leading-relaxed text-amber-950/90">
+                <p className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs leading-relaxed text-amber-950/90 dark:border-amber-900/60 dark:bg-amber-950/80 dark:text-amber-200">
                   This step has no tool metadata. Remove it from the canvas and add a tool again.
                 </p>
               ) : (
@@ -299,14 +299,14 @@ export function WorkflowStepConfigModal({
                   chainingPaths={getChainingPathsForWorkflowTool(stepTool)}
                   exampleJson={stepTool.workflowToolResponse?.exampleJson}
                   resultJsonSchema={stepTool.workflowToolResponse?.resultJsonSchema ?? null}
-                  className="rounded-xl border border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-white shadow-sm"
+                  className="rounded-xl border border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-white shadow-sm dark:border-slate-800/90 dark:from-[#18191c] dark:to-[#141518]"
                 />
               )}
             </div>
           ) : (
             <div className="space-y-5">
               {!stepTool ? (
-                <p className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs leading-relaxed text-amber-950/90">
+                <p className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs leading-relaxed text-amber-950/90 dark:border-amber-900/60 dark:bg-amber-950/80 dark:text-amber-200">
                   This step has no tool metadata. Remove it from the canvas and add a tool again.
                 </p>
               ) : null}
@@ -338,20 +338,20 @@ export function WorkflowStepConfigModal({
                     }
                   />
 
-                  <details className="group rounded-xl border border-dashed border-slate-200/90 bg-slate-50/50">
-                    <summary className="cursor-pointer list-none rounded-xl px-3 py-2 text-[11px] text-slate-600 transition hover:bg-slate-100/80 hover:text-slate-800 [&::-webkit-details-marker]:hidden">
-                      <span className="font-mono text-[10px] tracking-tight text-slate-500 group-open:text-slate-700">
+                  <details className="group rounded-xl border border-dashed border-slate-200/90 bg-slate-50/50 dark:border-slate-800 dark:bg-[#141518]">
+                    <summary className="cursor-pointer list-none rounded-xl px-3 py-2 text-[11px] text-slate-600 transition hover:bg-slate-100/80 hover:text-slate-800 [&::-webkit-details-marker]:hidden dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200">
+                      <span className="font-mono text-[10px] tracking-tight text-slate-500 group-open:text-slate-700 dark:text-slate-400">
                         {"{…}"}
                       </span>
                       <span className="ml-1.5 font-medium">Args as JSON</span>
-                      <span className="ml-1.5 text-[10px] font-normal text-slate-400">advanced</span>
+                      <span className="ml-1.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">advanced</span>
                     </summary>
-                    <div className="border-t border-slate-200/80 px-3 pb-3 pt-2">
+                    <div className="border-t border-slate-200/80 px-3 pb-3 pt-2 dark:border-slate-800">
                       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                        <p className="min-w-0 flex-1 text-[10px] leading-relaxed text-slate-500">
+                        <p className="min-w-0 flex-1 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
                           Raw JSON only when needed. Invalid JSON is ignored until it parses. You can insert{" "}
-                          <code className="rounded bg-slate-100 px-1 font-mono text-[9px] text-slate-700">{"{{ last }}"}</code> or{" "}
-                          <code className="rounded bg-slate-100 px-1 font-mono text-[9px] text-slate-700">{"{{steps.<id>.result}}"}</code>{" "}
+                          <code className="rounded bg-slate-100 px-1 font-mono text-[9px] text-slate-700 dark:bg-slate-800 dark:text-slate-300">{"{{ last }}"}</code> or{" "}
+                          <code className="rounded bg-slate-100 px-1 font-mono text-[9px] text-slate-700 dark:bg-slate-800 dark:text-slate-300">{"{{steps.<id>.result}}"}</code>{" "}
                           at the caret.
                         </p>
                         <WorkflowDynamicValueInserter
@@ -392,7 +392,7 @@ export function WorkflowStepConfigModal({
                         }}
                         spellCheck={false}
                         aria-label="Step arguments as JSON"
-                        className="block min-h-[140px] w-full resize-none rounded-lg border border-slate-200 bg-white p-2.5 font-mono text-[11px] leading-relaxed text-slate-800 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] outline-none focus:border-sky-400/80 focus:ring-2 focus:ring-sky-500/25"
+                        className="block min-h-[140px] w-full resize-none rounded-lg border border-slate-200 bg-white p-2.5 font-mono text-[11px] leading-relaxed text-slate-800 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] outline-none focus:border-sky-400/80 focus:ring-2 focus:ring-sky-500/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                       />
                     </div>
                   </details>
@@ -402,11 +402,11 @@ export function WorkflowStepConfigModal({
           )}
         </div>
 
-        <div className="border-t border-stone-200/80 bg-stone-100/40 px-3.5 py-3 sm:px-4">
+        <div className="border-t border-stone-200/80 bg-stone-100/40 px-3.5 py-3 sm:px-4 dark:border-slate-800/80 dark:bg-[#141518]">
           <Button
             type="button"
             variant="outline"
-            className="h-11 w-full rounded-xl border-stone-700 bg-stone-900 text-sm font-medium text-white shadow-md hover:bg-stone-800 hover:text-white focus-visible:ring-teal-500/45"
+            className="h-11 w-full rounded-xl border-stone-700 bg-stone-900 text-sm font-medium text-white shadow-md hover:bg-stone-800 hover:text-white focus-visible:ring-teal-500/45 dark:border-slate-600 dark:bg-teal-600 dark:hover:bg-teal-500"
             onClick={handleClose}
           >
             Done

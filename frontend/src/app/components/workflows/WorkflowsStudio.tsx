@@ -46,6 +46,7 @@ import {
   resolveStepCanvasCoords,
   formatWorkflowDraftForApi,
   formatWorkflowToolOutputForDisplay,
+  sanitizeWorkflowErrorMessage,
   formatScheduleSummary,
   formatIntervalScheduleLabel,
   formatWorkflowBilledUsd,
@@ -225,7 +226,7 @@ function HookConnector({
       type="button"
       data-no-workflow-drag
       onClick={onClick}
-      className={`group relative flex shrink-0 items-center justify-center rounded-lg border border-dashed border-[rgba(58,71,87,0.18)] bg-[rgba(255,255,255,0.55)] text-[rgba(58,71,87,0.35)] shadow-sm transition hover:border-teal-400/50 hover:bg-white/90 hover:text-teal-700 ${isV ? "mx-auto h-16 w-full max-w-[3.5rem]" : "h-10 w-14"
+      className={`group relative flex shrink-0 items-center justify-center rounded-lg border border-dashed border-[rgba(58,71,87,0.18)] bg-[rgba(255,255,255,0.55)] text-[rgba(58,71,87,0.35)] shadow-sm transition hover:border-teal-400/50 hover:bg-white/90 hover:text-teal-700 dark:border-slate-700/80 dark:bg-slate-900/70 dark:text-slate-400 dark:hover:border-teal-500/60 dark:hover:bg-slate-800 dark:hover:text-teal-300 ${isV ? "mx-auto h-16 w-full max-w-[3.5rem]" : "h-10 w-14"
         }`}
       title="Add next step"
       aria-label="Add next step"
@@ -270,19 +271,19 @@ function WorkflowStepExecutionOutput({ execution }: { execution: WorkflowStepExe
   return (
     <div
       data-no-workflow-drag
-      className="border-t border-slate-200/70"
+      className="border-t border-slate-200/70 dark:border-slate-800/80"
       onPointerDown={(e) => e.stopPropagation()}
     >
       {showMeta ? (
-        <div className="border-b border-slate-200/60 bg-slate-50/85 px-2.5 py-2">
-          <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-600">
+        <div className="border-b border-slate-200/60 bg-slate-50/85 px-2.5 py-2 dark:border-slate-800/80 dark:bg-[#141518]">
+          <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-600 dark:text-slate-400">
             {billedUsd ? (
-              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-medium">
+              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-medium dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                 Cost {billedUsd}
               </span>
             ) : null}
             {walletAfter ? (
-              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-medium">
+              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-medium dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                 Wallet {walletAfter}
               </span>
             ) : null}
@@ -290,29 +291,29 @@ function WorkflowStepExecutionOutput({ execution }: { execution: WorkflowStepExe
         </div>
       ) : null}
       {showFailed ? (
-        <div className="bg-rose-50/90 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-800">Error</p>
+        <div className="bg-rose-50/90 px-2.5 py-2 dark:bg-rose-950/80">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-800 dark:text-rose-200">Error</p>
           <div className="workflow-scroll-light mt-1 max-h-40 overflow-y-auto">
             {err ? (
               <JsonOrPlainTextBlock
                 text={displayErr}
-                preClassName="max-h-none border-rose-200/80 bg-white/95 text-rose-950"
-                codeClassName="text-[10px] text-rose-950"
+                preClassName="max-h-none border-rose-200/80 bg-white/95 text-rose-950 dark:border-rose-900/60 dark:bg-[#18191c] dark:text-rose-200"
+                codeClassName="text-[10px] text-rose-950 dark:text-rose-200"
               />
             ) : (
-              <p className="text-[10px] text-rose-950">No error message was returned.</p>
+              <p className="text-[10px] text-rose-950 dark:text-rose-200">No error message was returned.</p>
             )}
           </div>
         </div>
       ) : null}
       {showOutput ? (
-        <div className="border-t border-slate-200/60 bg-slate-50/90 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Output</p>
+        <div className="border-t border-slate-200/60 bg-slate-50/90 px-2.5 py-2 dark:border-slate-800/80 dark:bg-[#141518]">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Output</p>
           <div className="workflow-scroll-light mt-1 max-h-40 overflow-y-auto">
             <JsonOrPlainTextBlock
               text={displayResult}
-              preClassName="max-h-none border-slate-200/80 bg-white/95 text-slate-800"
-              codeClassName="text-[10px] text-slate-800"
+              preClassName="max-h-none border-slate-200/80 bg-white/95 text-slate-800 dark:border-slate-800/90 dark:bg-[#18191c] dark:text-slate-200"
+              codeClassName="text-[10px] text-slate-800 dark:text-slate-200"
             />
           </div>
         </div>
@@ -369,10 +370,10 @@ function WorkflowStepChatCard({
   return (
     <div className="w-full max-w-[min(100%,22rem)]">
       <div
-        className="my-0 w-full overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-b from-white to-slate-50/40 shadow-[0_10px_32px_-14px_rgba(15,23,42,0.22)] ring-1 ring-slate-900/[0.04] transition hover:shadow-[0_14px_36px_-12px_rgba(15,23,42,0.28)]"
+        className="my-0 w-full overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-b from-white to-slate-50/40 shadow-[0_10px_32px_-14px_rgba(15,23,42,0.22)] ring-1 ring-slate-900/[0.04] transition hover:shadow-[0_14px_36px_-12px_rgba(15,23,42,0.28)] dark:border-slate-800/90 dark:from-[#18191c] dark:to-[#141518] dark:shadow-[0_10px_32px_-14px_rgba(0,0,0,0.6)] dark:ring-0"
         title="Double-click the title to rename; double-click values to configure"
       >
-        <div className="flex items-center gap-2 border-b border-slate-200/70 bg-white/95 px-2.5 py-2 sm:px-3">
+        <div className="flex items-center gap-2 border-b border-slate-200/70 bg-white/95 px-2.5 py-2 sm:px-3 dark:border-slate-800/80 dark:bg-[#1e2024]">
           <div
             className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md ${th.tileIconBg} ${th.tileIconText}`}
           >
@@ -406,17 +407,17 @@ function WorkflowStepChatCard({
                     setLabelDraft(step.label ?? "");
                   }
                 }}
-                className="w-full rounded-md border border-teal-400/80 bg-white px-1.5 py-0.5 text-sm font-semibold text-[var(--app-ink-800)] shadow-sm outline-none ring-2 ring-teal-500/25"
+                className="w-full rounded-md border border-teal-400/80 bg-white px-1.5 py-0.5 text-sm font-semibold text-[var(--app-ink-800)] shadow-sm outline-none ring-2 ring-teal-500/25 dark:bg-slate-900 dark:text-slate-100"
                 aria-label="Step label"
               />
             ) : (
               <>
-                <p className="truncate text-sm font-semibold leading-tight text-[var(--app-ink-800)]">{displayTitle}</p>
-                <p className="mt-0.5 truncate text-[10px] text-slate-500">{category}</p>
+                <p className="truncate text-sm font-semibold leading-tight text-[var(--app-ink-800)] dark:text-slate-100">{displayTitle}</p>
+                <p className="mt-0.5 truncate text-[10px] text-slate-500 dark:text-slate-400">{category}</p>
               </>
             )}
           </div>
-          <span className="shrink-0 tabular-nums text-[10px] text-slate-500" title={`Step ${index + 1} of ${total}`}>
+          <span className="shrink-0 tabular-nums text-[10px] text-slate-500 dark:text-slate-400" title={`Step ${index + 1} of ${total}`}>
             {index + 1}/{total}
           </span>
           {execution ? (
@@ -449,7 +450,7 @@ function WorkflowStepChatCard({
               e.stopPropagation();
               setAboutOpen((o) => !o);
             }}
-            className={`shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-teal-50 hover:text-teal-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/35 ${aboutOpen ? "text-teal-800" : ""
+            className={`shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-teal-50 hover:text-teal-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/35 dark:hover:bg-teal-950/60 dark:hover:text-teal-200 ${aboutOpen ? "text-teal-800 dark:text-teal-300" : ""
               }`}
             aria-expanded={aboutOpen}
             aria-label={aboutOpen ? WORKFLOW_INFO_COPY.aboutToolAriaHide : WORKFLOW_INFO_COPY.aboutToolAriaShow}
@@ -464,7 +465,7 @@ function WorkflowStepChatCard({
               e.stopPropagation();
               onOpenMenu(e);
             }}
-            className="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/35"
+            className="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/35 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             aria-label="Step actions"
             title="Step actions"
           >
@@ -479,14 +480,14 @@ function WorkflowStepChatCard({
           }}
         >
           <WorkflowValuesPanel>
-            <ul className="divide-y divide-slate-200/70 text-[11px] leading-snug">
+            <ul className="divide-y divide-slate-200/70 text-[11px] leading-snug dark:divide-slate-800">
               {summaryLines.map((line, i) => (
                 <li
                   key={`${line.label}-${i}`}
                   className="flex flex-col gap-1 py-2.5 first:pt-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3"
                 >
-                  <span className="shrink-0 font-medium text-teal-950/70">{line.label}</span>
-                  <span className="min-w-0 tabular-nums text-slate-800 [overflow-wrap:anywhere] sm:text-right">
+                  <span className="shrink-0 font-medium text-teal-950/70 dark:text-slate-400">{line.label}</span>
+                  <span className="min-w-0 tabular-nums text-slate-800 [overflow-wrap:anywhere] sm:text-right dark:text-slate-200">
                     {line.value}
                   </span>
                 </li>
@@ -1102,7 +1103,7 @@ export default function WorkflowsStudio() {
                 next[ev.stepId] = {
                   status: "failed",
                   result: null,
-                  error: ev.error ?? "Step failed",
+                  error: sanitizeWorkflowErrorMessage(ev.error) ?? "Step failed",
                   invokeCode: ev.invokeCode ?? null,
                   billedUsd: ev.billedUsd ?? null,
                   walletAfter: ev.walletAfter ?? null,
@@ -1111,7 +1112,7 @@ export default function WorkflowsStudio() {
               return next;
             });
             if (ev.type === "run_failed" && ev.error) {
-              toast.error(ev.error);
+              toast.error(sanitizeWorkflowErrorMessage(ev.error));
             }
             if (ev.type === "run_cancelled") {
               toast.success("Run stopped.");
@@ -1127,12 +1128,12 @@ export default function WorkflowsStudio() {
               : streamErr instanceof Error
                 ? streamErr.message
                 : "Run progress stream ended unexpectedly.";
-          toast.error(message);
+          toast.error(sanitizeWorkflowErrorMessage(message));
         }
       }
       void refreshRunHistory(saved.id);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not start the run.");
+      toast.error(sanitizeWorkflowErrorMessage(e instanceof Error ? e.message : "Could not start the run."));
     } finally {
       if (monitor != null && runMonitorRef.current === monitor) {
         runMonitorRef.current = null;
@@ -1725,25 +1726,25 @@ export default function WorkflowsStudio() {
     <div className="flex min-h-screen flex-col" style={workflowShellBgStyle()}>
       <div className="flex min-h-0 flex-1 flex-col bg-white/80 backdrop-blur-[2px]">
         {/* Fixed title bar — stays at top; canvas scrolls/pans beneath */}
-        <div className="sticky top-0 z-30 w-full shrink-0 border-b border-slate-800/90 bg-[#141416] text-slate-200 shadow-[0_1px_0_0_rgba(0,0,0,0.4)]">
+        <div className="sticky top-0 z-30 w-full shrink-0 border-b border-slate-200/90 bg-white/95 text-slate-800 shadow-sm backdrop-blur-md dark:border-slate-800/90 dark:bg-[#141416] dark:text-slate-200 dark:shadow-[0_1px_0_0_rgba(0,0,0,0.4)]">
           <div className="flex h-9 min-h-9 flex-nowrap items-center gap-x-1.5 px-2.5 sm:h-10 sm:min-h-10 sm:gap-x-2 sm:px-3">
             <Link
               href="/"
-              className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-medium text-slate-400 transition hover:bg-white/10 hover:text-slate-100"
+              className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-100"
             >
               <ArrowLeft className="h-3 w-3" aria-hidden />
               Back
             </Link>
-            <span className="select-none text-slate-600" aria-hidden>
+            <span className="select-none text-slate-400 dark:text-slate-600" aria-hidden>
               ›
             </span>
             <Link
               href="/workflows"
-              className="shrink-0 text-[11px] font-normal text-slate-400 transition hover:text-slate-100 hover:underline"
+              className="shrink-0 text-[11px] font-normal text-slate-500 transition hover:text-slate-900 hover:underline dark:text-slate-400 dark:hover:text-slate-100"
             >
               Workflows
             </Link>
-            <span className="select-none text-slate-600" aria-hidden>
+            <span className="select-none text-slate-400 dark:text-slate-600" aria-hidden>
               ›
             </span>
             <button
@@ -1752,7 +1753,7 @@ export default function WorkflowsStudio() {
                 e.stopPropagation();
                 setDescriptionOpen((o) => !o);
               }}
-              className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md p-0 transition ${descriptionOpen ? "bg-white/15 text-cyan-300" : "text-slate-400 hover:bg-white/10 hover:text-slate-100"
+              className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md p-0 transition ${descriptionOpen ? "bg-slate-200 text-teal-800 dark:bg-white/15 dark:text-cyan-300" : "text-slate-400 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-white/10 dark:hover:text-slate-100"
                 }`}
               aria-expanded={descriptionOpen}
               aria-controls="workflow-description-panel"
@@ -1767,7 +1768,7 @@ export default function WorkflowsStudio() {
               onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
               placeholder="Untitled workflow"
               aria-label="Workflow name"
-              className="h-6 min-w-0 flex-1 border-0 bg-transparent px-0.5 py-0 text-[12px] font-medium leading-none text-slate-100 outline-none ring-0 placeholder:text-slate-500 focus:ring-1 focus:ring-cyan-500/50 focus:ring-offset-0 rounded-sm"
+              className="h-6 min-w-0 flex-1 border-0 bg-transparent px-0.5 py-0 text-[12px] font-medium leading-none text-slate-900 outline-none ring-0 placeholder:text-slate-400 focus:ring-1 focus:ring-cyan-500/50 focus:ring-offset-0 rounded-sm dark:text-slate-100 dark:placeholder:text-slate-500"
             />
             <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-0.5 sm:gap-2">
               <span
@@ -1776,7 +1777,7 @@ export default function WorkflowsStudio() {
                 aria-relevant="text"
                 className={cn(
                   "min-w-[8.5rem] text-right text-[10px] leading-tight sm:min-w-[11rem]",
-                  saveState === "error" ? "text-amber-400/95" : "text-slate-500",
+                  saveState === "error" ? "text-amber-500 dark:text-amber-400/95" : "text-slate-500",
                 )}
                 title={
                   saveState === "saved" && lastSavedAt
@@ -1789,9 +1790,9 @@ export default function WorkflowsStudio() {
               <button
                 type="button"
                 onClick={handleHeaderMenuToggle}
-                className={`inline-flex h-7 shrink-0 items-center rounded-md border px-2.5 text-slate-100 shadow-sm transition ${headerMenuOpen
-                    ? "border-cyan-500/60 bg-slate-700/95 text-cyan-200"
-                    : "border-slate-600/90 bg-slate-800/90 hover:bg-slate-700 hover:text-white"
+                className={`inline-flex h-7 shrink-0 items-center rounded-md border px-2.5 shadow-sm transition ${headerMenuOpen
+                    ? "border-cyan-500/60 bg-slate-100 text-cyan-800 dark:bg-slate-700/95 dark:text-cyan-200"
+                    : "border-slate-200/90 bg-slate-100/80 text-slate-700 hover:bg-slate-200/80 hover:text-slate-900 dark:border-slate-600/90 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white"
                   }`}
                 aria-expanded={headerMenuOpen}
                 aria-controls="workflow-header-menu-panel"
@@ -1808,7 +1809,7 @@ export default function WorkflowsStudio() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 shrink-0 rounded-md border-slate-600/90 bg-slate-800/90 px-2 text-[11px] font-medium text-slate-100 shadow-sm transition hover:bg-slate-700 hover:text-white sm:px-2.5"
+                className="h-7 shrink-0 rounded-md border-slate-200/90 bg-slate-100/80 px-2 text-[11px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-200/80 hover:text-slate-900 dark:border-slate-600/90 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white sm:px-2.5"
                 onClick={() => setIntegrationsOpen(true)}
                 title="Manage integrations (e.g. Gmail)"
               >
@@ -1819,7 +1820,7 @@ export default function WorkflowsStudio() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 shrink-0 rounded-md border-slate-600/90 bg-slate-800/90 px-2 text-[11px] font-medium text-slate-100 shadow-sm transition hover:bg-slate-700 hover:text-white sm:px-2.5"
+                className="h-7 shrink-0 rounded-md border-slate-200/90 bg-slate-100/80 px-2 text-[11px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-200/80 hover:text-slate-900 dark:border-slate-600/90 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white sm:px-2.5"
                 onClick={handleOpenCreditsModal}
                 title={creditsHoverTitle}
               >
@@ -1836,8 +1837,8 @@ export default function WorkflowsStudio() {
                     : !runReadiness.isValid
                 }
                 className={`h-7 rounded-md px-2.5 text-[11px] font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${playState === "running"
-                    ? "border-rose-600/70 bg-rose-950/30 text-rose-100 hover:bg-rose-900/50 hover:text-white"
-                    : "border-emerald-600/70 bg-emerald-950/30 text-emerald-100 hover:bg-emerald-900/50 hover:text-white"
+                    ? "border-rose-600 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-900 dark:border-rose-600/70 dark:bg-rose-950/40 dark:text-rose-100 dark:hover:bg-rose-900/60 dark:hover:text-white"
+                    : "border-emerald-600 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-600/70 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-900/60 dark:hover:text-white"
                   }`}
                 onClick={() => void (playState === "running" ? handleStopRun() : handlePlay())}
                 title={
@@ -1865,7 +1866,7 @@ export default function WorkflowsStudio() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 rounded-md border-slate-600/90 bg-slate-800/90 px-2.5 text-[11px] font-medium text-slate-100 shadow-sm transition hover:bg-slate-700 hover:text-white"
+                className="h-7 rounded-md border-slate-200/90 bg-slate-100/80 px-2.5 text-[11px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-200/80 hover:text-slate-900 dark:border-slate-600/90 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white"
                 onClick={() => void persistDraft("manual")}
                 title={
                   persistValidation.isValid
@@ -1879,7 +1880,7 @@ export default function WorkflowsStudio() {
             </div>
           </div>
           {descriptionOpen || headerMenuOpen ? (
-            <div id="workflow-header-menu-panel" className="border-t border-slate-700/80 bg-[#141416] px-2.5 py-2 sm:px-3">
+            <div id="workflow-header-menu-panel" className="border-t border-slate-200/90 bg-white/95 text-slate-800 backdrop-blur-md px-2.5 py-2 dark:border-slate-800/90 dark:bg-[#141416] dark:text-slate-200 sm:px-3">
               <div className="flex flex-col gap-3">
                 {descriptionOpen ? (
                   <label id="workflow-description-panel" className="block">
@@ -1892,7 +1893,7 @@ export default function WorkflowsStudio() {
                       onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
                       placeholder="What does this workflow do? Shown when you need context for this automation."
                       rows={4}
-                      className="w-full resize-y rounded border border-slate-600/80 bg-slate-900/60 px-2 py-1.5 text-[11px] leading-relaxed text-slate-100 shadow-[inset_0_1px_2px_rgba(0,0,0,0.25)] outline-none placeholder:text-slate-500 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+                      className="w-full resize-y rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] leading-relaxed text-slate-800 outline-none placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400/30 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30"
                     />
                   </label>
                 ) : null}
@@ -1905,8 +1906,8 @@ export default function WorkflowsStudio() {
                           type="button"
                           onClick={() => setScheduleOpen((open) => !open)}
                           className={`inline-flex h-7 items-center rounded-md border px-2.5 text-[11px] font-medium transition ${scheduleOpen
-                              ? "border-cyan-500/60 bg-cyan-500/10 text-cyan-200"
-                              : "border-slate-700/80 bg-slate-950/35 text-slate-300 hover:border-slate-600 hover:bg-slate-900/60"
+                              ? "border-teal-500/60 bg-teal-50 text-teal-900 font-semibold dark:border-cyan-500/60 dark:bg-cyan-500/10 dark:text-cyan-200"
+                              : "border-slate-200/90 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700/80 dark:bg-slate-950/35 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-900/60"
                             }`}
                         >
                           <Clock3 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
@@ -1917,8 +1918,8 @@ export default function WorkflowsStudio() {
                           type="button"
                           onClick={createAndOpenSchedule}
                           className={`inline-flex h-7 items-center rounded-md border px-2 text-[11px] font-medium transition ${scheduleAddOpen
-                              ? "border-cyan-500/60 bg-cyan-500/10 text-cyan-200"
-                              : "border-slate-700/80 bg-slate-950/35 text-slate-200 hover:border-slate-600 hover:bg-slate-900/60"
+                              ? "border-teal-500/60 bg-teal-50 text-teal-900 font-semibold dark:border-cyan-500/60 dark:bg-cyan-500/10 dark:text-cyan-200"
+                              : "border-slate-200/90 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700/80 dark:bg-slate-950/35 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900/60"
                             }`}
                           title="Add schedule"
                         >
@@ -1930,8 +1931,8 @@ export default function WorkflowsStudio() {
                         type="button"
                         onClick={() => setHistoryOpen((open) => !open)}
                         className={`inline-flex h-7 items-center rounded-md border px-2.5 text-[11px] font-medium transition ${historyOpen
-                            ? "border-cyan-500/60 bg-cyan-500/10 text-cyan-200"
-                            : "border-slate-700/80 bg-slate-950/35 text-slate-300 hover:border-slate-600 hover:bg-slate-900/60"
+                            ? "border-teal-500/60 bg-teal-50 text-teal-900 font-semibold dark:border-cyan-500/60 dark:bg-cyan-500/10 dark:text-cyan-200"
+                            : "border-slate-200/90 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700/80 dark:bg-slate-950/35 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-900/60"
                           }`}
                       >
                         <History className="mr-1.5 h-3.5 w-3.5" aria-hidden />
@@ -1944,13 +1945,13 @@ export default function WorkflowsStudio() {
                       {scheduleOpen ? (
                         <div
                           id="workflow-schedule-panel"
-                          className="flex min-h-0 flex-col overflow-hidden rounded border border-slate-700/80 bg-slate-900/45 p-3"
+                          className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white p-3 shadow-md dark:border-slate-700/80 dark:bg-slate-900/45"
                           style={{ maxHeight: headerPanelMaxHeight }}
                         >
                           <div className="flex items-center justify-between gap-3">
                             <div>
                               <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Schedules</p>
-                              <p className="mt-1 text-[11px] text-slate-300">
+                              <p className="mt-1 text-[11px] text-slate-700 dark:text-slate-300">
                                 {draft.schedules.length === 0
                                   ? "No schedules yet"
                                   : `${enabledScheduleCount} active · ${draft.schedules.length - enabledScheduleCount} paused`}
@@ -1959,13 +1960,13 @@ export default function WorkflowsStudio() {
                           </div>
 
                           <div className="mt-3 min-h-0 flex-1">
-                            <div className="flex h-full min-h-0 flex-col rounded border border-slate-700/80 bg-slate-950/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                              <div className="border-b border-slate-700/80 px-2.5 py-2">
+                            <div className="flex h-full min-h-0 flex-col rounded-lg border border-slate-200/90 bg-slate-50/80 dark:border-slate-700/80 dark:bg-slate-950/20">
+                              <div className="border-b border-slate-200/80 px-2.5 py-2 dark:border-slate-700/80">
                                 <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Schedule list</p>
                               </div>
                               <div className="workflow-scroll workflow-header-scroll min-h-0 flex-1 space-y-2 overflow-y-auto px-2.5 py-2 pr-1.5">
                                 {draft.schedules.length === 0 ? (
-                                  <p className="text-[11px] text-slate-400">Add a one-time or recurring schedule.</p>
+                                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Add a one-time or recurring schedule.</p>
                                 ) : (
                                   draft.schedules.map((schedule) => (
                                     <button
@@ -1973,17 +1974,17 @@ export default function WorkflowsStudio() {
                                       type="button"
                                       onClick={() => openScheduleEditor(schedule.id)}
                                       className={`block w-full rounded-lg border px-2.5 py-2 text-left transition ${selectedSchedule?.id === schedule.id
-                                          ? "border-cyan-500/60 bg-cyan-500/10 shadow-[0_0_0_1px_rgba(6,182,212,0.08)]"
-                                          : "border-slate-700/80 bg-slate-950/30 hover:border-slate-600 hover:bg-slate-900/60"
+                                          ? "border-teal-500/60 bg-teal-50/80 shadow-sm dark:border-cyan-500/60 dark:bg-cyan-500/10"
+                                          : "border-slate-200/90 bg-white text-slate-800 hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-950/30 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-900/60"
                                         }`}
                                     >
                                       <div className="flex items-center justify-between gap-2">
-                                        <span className="text-[11px] font-medium text-slate-100">{schedule.name || "Untitled schedule"}</span>
+                                        <span className="text-[11px] font-medium text-slate-800 dark:text-slate-100">{schedule.name || "Untitled schedule"}</span>
                                         <div className="flex items-center gap-1.5">
                                           <span
                                             className={`rounded border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${schedule.enabled
-                                                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
-                                                : "border-slate-600/60 bg-slate-800/70 text-slate-400"
+                                                ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200"
+                                                : "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-400"
                                               }`}
                                           >
                                             {schedule.enabled ? "Active" : "Paused"}
@@ -1993,7 +1994,7 @@ export default function WorkflowsStudio() {
                                           </span>
                                         </div>
                                       </div>
-                                      <p className="mt-1 text-[10px] text-slate-400">{formatScheduleSummary(schedule)}</p>
+                                      <p className="mt-1 text-[10px] text-slate-600 dark:text-slate-400">{formatScheduleSummary(schedule)}</p>
                                       <div className="mt-2 space-y-1 text-[9px] uppercase tracking-wide text-slate-500">
                                         <p>Created {formatDateTime(schedule.createdAt)}</p>
                                         <p>Updated {formatDateTime(schedule.updatedAt)}</p>
@@ -2010,18 +2011,18 @@ export default function WorkflowsStudio() {
                       {scheduleAddOpen ? (
                         <div
                           id="workflow-schedule-add-panel"
-                          className="flex min-h-0 flex-col overflow-hidden rounded border border-slate-700/80 bg-slate-900/45 p-3"
+                          className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white p-3 shadow-md dark:border-slate-700/80 dark:bg-slate-900/45"
                           style={{ maxHeight: headerPanelMaxHeight }}
                         >
                           <div className="flex items-center justify-between gap-3">
                             <div>
                               <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Add schedule</p>
-                              <p className="mt-1 text-[11px] text-slate-300">Create a one-time or recurring run without replacing the list or history panels.</p>
+                              <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">Create a one-time or recurring run without replacing the list or history panels.</p>
                             </div>
                             <button
                               type="button"
                               onClick={() => setScheduleAddOpen(false)}
-                              className="inline-flex h-7 items-center rounded-md border border-slate-700/80 bg-slate-950/35 px-2.5 text-[11px] font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-900/60"
+                              className="inline-flex h-7 items-center rounded-md border border-slate-200/90 bg-white px-2.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700/80 dark:bg-slate-950/35 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-900/60"
                             >
                               Close
                             </button>
@@ -2029,7 +2030,7 @@ export default function WorkflowsStudio() {
 
                           <div className="workflow-scroll workflow-header-scroll mt-3 min-h-0 flex-1 overflow-y-auto pr-1.5">
                             {selectedSchedule ? (
-                              <div className="space-y-3 rounded border border-slate-700/80 bg-slate-950/30 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                              <div className="space-y-3 rounded-lg border border-slate-200/90 bg-slate-50/80 p-3 dark:border-slate-700/80 dark:bg-slate-950/30">
                                 <div className="space-y-2">
                                   <span className="block text-[10px] font-medium uppercase tracking-wide text-slate-500">Name</span>
                                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -2039,25 +2040,25 @@ export default function WorkflowsStudio() {
                                       value={selectedSchedule.name}
                                       onChange={(e) => updateSelectedSchedule((schedule) => ({ ...schedule, name: e.target.value }))}
                                       aria-label="Schedule name"
-                                      className="min-h-[34px] min-w-0 flex-1 rounded border border-slate-600/80 bg-slate-900/60 px-2 py-1.5 text-[11px] text-slate-100 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+                                      className="min-h-[34px] min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400/30 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30"
                                     />
-                                    <label className="flex shrink-0 cursor-pointer items-center gap-2 text-[11px] text-slate-300">
+                                    <label className="flex shrink-0 cursor-pointer items-center gap-2 text-[11px] text-slate-700 dark:text-slate-300">
                                       <input
                                         type="checkbox"
                                         checked={selectedSchedule.enabled}
                                         onChange={(e) => updateSelectedSchedule((schedule) => ({ ...schedule, enabled: e.target.checked }))}
-                                        className="rounded border-slate-600"
+                                        className="rounded border-slate-300 dark:border-slate-600"
                                       />
                                       Enabled
                                     </label>
                                   </div>
                                 </div>
 
-                                <div className="rounded border border-slate-700/70 bg-slate-900/50 px-2 py-1.5">
+                                <div className="rounded border border-slate-200/90 bg-white px-2 py-1.5 dark:border-slate-700/70 dark:bg-slate-900/50">
                                   <div className="flex flex-wrap items-center justify-between gap-2">
                                     <div className="min-w-0">
                                       <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Timezone</p>
-                                      <p className="truncate text-[11px] leading-snug text-slate-300">{selectedSchedule.timezone || "Auto-detected"}</p>
+                                      <p className="truncate text-[11px] leading-snug text-slate-800 dark:text-slate-300">{selectedSchedule.timezone || "Auto-detected"}</p>
                                     </div>
                                     <button
                                       type="button"
@@ -2066,7 +2067,7 @@ export default function WorkflowsStudio() {
                                           current === selectedSchedule.id ? null : selectedSchedule.id,
                                         );
                                       }}
-                                      className="inline-flex h-7 shrink-0 items-center rounded-md border border-slate-700/80 bg-slate-950/35 px-2.5 text-[11px] font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-900/60"
+                                      className="inline-flex h-7 shrink-0 items-center rounded-md border border-slate-200/90 bg-white px-2.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700/80 dark:bg-slate-950/35 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-900/60"
                                     >
                                       {timezoneOverrideOpenForScheduleId === selectedSchedule.id ? "Hide timezone" : "Pick different timezone"}
                                     </button>
@@ -2078,7 +2079,7 @@ export default function WorkflowsStudio() {
                                         type="text"
                                         value={selectedSchedule.timezone}
                                         onChange={(e) => updateSelectedSchedule((schedule) => ({ ...schedule, timezone: e.target.value }))}
-                                        className="w-full rounded border border-slate-600/80 bg-slate-900/60 px-2 py-1.5 text-[11px] text-slate-100 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+                                        className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400/30 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30"
                                       />
                                     </label>
                                   ) : null}
@@ -2086,12 +2087,12 @@ export default function WorkflowsStudio() {
 
                                 <div className="space-y-1.5">
                                   <span className="block text-[10px] font-medium uppercase tracking-wide text-slate-500">Frequency</span>
-                                  <div className="grid grid-cols-2 gap-1 rounded-md border border-slate-700/70 bg-slate-900/40 p-1" role="group" aria-label="Schedule frequency">
+                                  <div className="grid grid-cols-2 gap-1 rounded-md border border-slate-200/90 bg-slate-100/80 p-1 dark:border-slate-700/70 dark:bg-slate-900/40" role="group" aria-label="Schedule frequency">
                                     <button
                                       type="button"
                                       className={`min-h-[34px] rounded px-2 py-1.5 text-[11px] font-medium transition ${selectedSchedule.mode === "once"
-                                          ? "bg-cyan-500/25 text-cyan-100 ring-1 ring-cyan-500/40"
-                                          : "text-slate-400 hover:bg-slate-800/80 hover:text-slate-200"
+                                          ? "bg-white text-teal-900 shadow-sm ring-1 ring-slate-200 dark:bg-cyan-500/25 dark:text-cyan-100 dark:ring-cyan-500/40"
+                                          : "text-slate-600 hover:bg-white/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-200"
                                         }`}
                                       onClick={() => updateSelectedSchedule((schedule) => ({ ...schedule, mode: "once" }))}
                                     >
@@ -2100,8 +2101,8 @@ export default function WorkflowsStudio() {
                                     <button
                                       type="button"
                                       className={`min-h-[34px] rounded px-2 py-1.5 text-[11px] font-medium transition ${selectedSchedule.mode === "repeat"
-                                          ? "bg-cyan-500/25 text-cyan-100 ring-1 ring-cyan-500/40"
-                                          : "text-slate-400 hover:bg-slate-800/80 hover:text-slate-200"
+                                          ? "bg-white text-teal-900 shadow-sm ring-1 ring-slate-200 dark:bg-cyan-500/25 dark:text-cyan-100 dark:ring-cyan-500/40"
+                                          : "text-slate-600 hover:bg-white/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-200"
                                         }`}
                                       onClick={() => updateSelectedSchedule((schedule) => ({ ...schedule, mode: "repeat" }))}
                                     >
@@ -2118,7 +2119,7 @@ export default function WorkflowsStudio() {
                                       type="datetime-local"
                                       value={selectedSchedule.scheduledAt}
                                       onChange={(e) => updateSelectedSchedule((schedule) => ({ ...schedule, scheduledAt: e.target.value }))}
-                                      className="w-full rounded border border-slate-600/80 bg-slate-900/60 px-2 py-1.5 text-[11px] text-slate-100 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+                                      className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400/30 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30"
                                     />
                                   </label>
                                 ) : (
@@ -2135,13 +2136,13 @@ export default function WorkflowsStudio() {
                                                 ...schedule,
                                                 repeatPreset: e.target.value as WorkflowScheduleDraft["repeatPreset"],
                                               }))}
-                                              className="w-32 shrink-0 rounded border border-slate-600/80 bg-slate-900/60 px-2 py-1.5 text-[11px] text-slate-100 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+                                              className="w-32 shrink-0 rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400/30 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30"
                                             >
-                                              <option value="daily">Daily</option>
-                                              <option value="weekdays">Weekdays</option>
-                                              <option value="weekly">Weekly</option>
-                                              <option value="interval">Every…</option>
-                                              <option value="custom">Custom cron</option>
+                                              <option value="daily" className="dark:bg-slate-900 dark:text-slate-100">Daily</option>
+                                              <option value="weekdays" className="dark:bg-slate-900 dark:text-slate-100">Weekdays</option>
+                                              <option value="weekly" className="dark:bg-slate-900 dark:text-slate-100">Weekly</option>
+                                              <option value="interval" className="dark:bg-slate-900 dark:text-slate-100">Every…</option>
+                                              <option value="custom" className="dark:bg-slate-900 dark:text-slate-100">Custom cron</option>
                                             </select>
                                             <input
                                               id="schedule-repeat-interval"
@@ -2150,7 +2151,7 @@ export default function WorkflowsStudio() {
                                               step="1"
                                               value={selectedSchedule.repeatInterval}
                                               onChange={(e) => updateSelectedSchedule((schedule) => ({ ...schedule, repeatInterval: e.target.value }))}
-                                              className="h-[34px] w-20 shrink-0 rounded border border-slate-600/80 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+                                              className="h-[34px] w-20 shrink-0 rounded border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-800 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400/30 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30"
                                             />
                                             <select
                                               id="schedule-repeat-unit"
@@ -2159,19 +2160,19 @@ export default function WorkflowsStudio() {
                                                 ...schedule,
                                                 repeatUnit: e.target.value as WorkflowScheduleDraft["repeatUnit"],
                                               }))}
-                                              className="min-w-0 flex-1 rounded border border-slate-600/80 bg-slate-900/60 px-2 py-1.5 text-[11px] text-slate-100 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+                                              className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400/30 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30"
                                             >
-                                              <option value="seconds">Seconds</option>
-                                              <option value="minutes">Minutes</option>
-                                              <option value="hours">Hours</option>
-                                              <option value="days">Days</option>
-                                              <option value="months">Months</option>
-                                              <option value="years">Years</option>
-                                              <option value="decades">Decades</option>
-                                              <option value="centuries">Centuries</option>
+                                              <option value="seconds" className="dark:bg-slate-900 dark:text-slate-100">Seconds</option>
+                                              <option value="minutes" className="dark:bg-slate-900 dark:text-slate-100">Minutes</option>
+                                              <option value="hours" className="dark:bg-slate-900 dark:text-slate-100">Hours</option>
+                                              <option value="days" className="dark:bg-slate-900 dark:text-slate-100">Days</option>
+                                              <option value="months" className="dark:bg-slate-900 dark:text-slate-100">Months</option>
+                                              <option value="years" className="dark:bg-slate-900 dark:text-slate-100">Years</option>
+                                              <option value="decades" className="dark:bg-slate-900 dark:text-slate-100">Decades</option>
+                                              <option value="centuries" className="dark:bg-slate-900 dark:text-slate-100">Centuries</option>
                                             </select>
                                           </div>
-                                          <p className="mt-1 text-[10px] text-slate-400">
+                                          <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
                                             {formatIntervalScheduleLabel(selectedSchedule)}
                                           </p>
                                         </>
@@ -2183,13 +2184,13 @@ export default function WorkflowsStudio() {
                                             ...schedule,
                                             repeatPreset: e.target.value as WorkflowScheduleDraft["repeatPreset"],
                                           }))}
-                                          className="w-full rounded border border-slate-600/80 bg-slate-900/60 px-2 py-1.5 text-[11px] text-slate-100 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+                                          className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400/30 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30"
                                         >
-                                          <option value="daily">Daily</option>
-                                          <option value="weekdays">Weekdays</option>
-                                          <option value="weekly">Weekly</option>
-                                          <option value="interval">Every…</option>
-                                          <option value="custom">Custom cron</option>
+                                          <option value="daily" className="dark:bg-slate-900 dark:text-slate-100">Daily</option>
+                                          <option value="weekdays" className="dark:bg-slate-900 dark:text-slate-100">Weekdays</option>
+                                          <option value="weekly" className="dark:bg-slate-900 dark:text-slate-100">Weekly</option>
+                                          <option value="interval" className="dark:bg-slate-900 dark:text-slate-100">Every…</option>
+                                          <option value="custom" className="dark:bg-slate-900 dark:text-slate-100">Custom cron</option>
                                         </select>
                                       )}
                                     </label>
@@ -2203,13 +2204,13 @@ export default function WorkflowsStudio() {
                                               type="time"
                                               value={selectedSchedule.repeatTime}
                                               onChange={(e) => updateSelectedSchedule((schedule) => ({ ...schedule, repeatTime: e.target.value }))}
-                                              className="w-full rounded border border-slate-600/80 bg-slate-900/60 px-2 py-1.5 text-[11px] text-slate-100 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+                                              className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400/30 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30"
                                             />
                                             <p className="mt-1 text-[10px] text-slate-500">Monthly intervals run on day 1 at the chosen time.</p>
                                           </label>
                                         ) : null}
                                         {["years", "decades", "centuries"].includes(selectedSchedule.repeatUnit) ? (
-                                          <p className="text-[10px] leading-relaxed text-amber-300 sm:col-span-2">
+                                          <p className="text-[10px] leading-relaxed text-amber-600 dark:text-amber-300 sm:col-span-2">
                                             These units are visible here, but cron-based workflow schedules cannot represent them yet.
                                           </p>
                                         ) : null}
@@ -2223,7 +2224,7 @@ export default function WorkflowsStudio() {
                                           value={selectedSchedule.repeatTime}
                                           onChange={(e) => updateSelectedSchedule((schedule) => ({ ...schedule, repeatTime: e.target.value }))}
                                           disabled={selectedSchedule.repeatPreset === "custom"}
-                                          className="w-full rounded border border-slate-600/80 bg-slate-900/60 px-2 py-1.5 text-[11px] text-slate-100 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 disabled:opacity-50"
+                                          className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400/30 disabled:opacity-50 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30"
                                         />
                                       </label>
                                     )}
@@ -2234,15 +2235,15 @@ export default function WorkflowsStudio() {
                                           id="schedule-repeat-weekday"
                                           value={selectedSchedule.repeatWeekday}
                                           onChange={(e) => updateSelectedSchedule((schedule) => ({ ...schedule, repeatWeekday: e.target.value }))}
-                                          className="w-full rounded border border-slate-600/80 bg-slate-900/60 px-2 py-1.5 text-[11px] text-slate-100 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+                                          className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400/30 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30"
                                         >
-                                          <option value="0">Sunday</option>
-                                          <option value="1">Monday</option>
-                                          <option value="2">Tuesday</option>
-                                          <option value="3">Wednesday</option>
-                                          <option value="4">Thursday</option>
-                                          <option value="5">Friday</option>
-                                          <option value="6">Saturday</option>
+                                          <option value="0" className="dark:bg-slate-900 dark:text-slate-100">Sunday</option>
+                                          <option value="1" className="dark:bg-slate-900 dark:text-slate-100">Monday</option>
+                                          <option value="2" className="dark:bg-slate-900 dark:text-slate-100">Tuesday</option>
+                                          <option value="3" className="dark:bg-slate-900 dark:text-slate-100">Wednesday</option>
+                                          <option value="4" className="dark:bg-slate-900 dark:text-slate-100">Thursday</option>
+                                          <option value="5" className="dark:bg-slate-900 dark:text-slate-100">Friday</option>
+                                          <option value="6" className="dark:bg-slate-900 dark:text-slate-100">Saturday</option>
                                         </select>
                                       </label>
                                     ) : null}
@@ -2255,20 +2256,20 @@ export default function WorkflowsStudio() {
                                           value={selectedSchedule.customCron}
                                           onChange={(e) => updateSelectedSchedule((schedule) => ({ ...schedule, customCron: e.target.value }))}
                                           placeholder="15 9 * * 1-5"
-                                          className="w-full rounded border border-slate-600/80 bg-slate-900/60 px-2 py-1.5 text-[11px] text-slate-100 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+                                          className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400/30 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30"
                                         />
                                       </label>
                                     ) : null}
                                   </div>
                                 )}
 
-                                <div className="mt-1 border-t border-slate-700/60 pt-3">
+                                <div className="mt-1 border-t border-slate-200/80 pt-3 dark:border-slate-700/60">
                                   <div className="flex items-center justify-between gap-2">
                                     <Button
                                       type="button"
                                       size="sm"
                                       variant="outline"
-                                      className="h-7 rounded-md border-rose-700/70 bg-rose-950/20 px-2.5 text-[11px] font-medium text-rose-100 hover:bg-rose-900/40"
+                                      className="h-7 rounded-md border-rose-200 bg-rose-50 px-2.5 text-[11px] font-medium text-rose-700 hover:bg-rose-100 dark:border-rose-700/70 dark:bg-rose-950/20 dark:text-rose-100 dark:hover:bg-rose-900/40"
                                       onClick={() => {
                                         setDraft((current) => ({
                                           ...current,
@@ -2284,7 +2285,7 @@ export default function WorkflowsStudio() {
                                     <Button
                                       type="button"
                                       size="sm"
-                                      className="h-7 rounded-md bg-cyan-600 px-2.5 text-[11px] font-medium text-white hover:bg-cyan-500"
+                                      className="h-7 rounded-md bg-teal-600 px-2.5 text-[11px] font-medium text-white hover:bg-teal-500 dark:bg-cyan-600 dark:hover:bg-cyan-500"
                                       disabled={scheduleSaving}
                                       onClick={() => void handleScheduleSave()}
                                     >
@@ -2292,14 +2293,14 @@ export default function WorkflowsStudio() {
                                       Save schedules
                                     </Button>
                                   </div>
-                                  <div className="mt-3 space-y-0.5 border-t border-slate-700/40 pt-3 text-[10px] text-slate-500">
+                                  <div className="mt-3 space-y-0.5 border-t border-slate-200/80 pt-3 text-[10px] text-slate-500 dark:border-slate-700/40">
                                     <p>Created {formatDateTime(selectedSchedule.createdAt)}</p>
                                     <p>Updated {formatDateTime(selectedSchedule.updatedAt)}</p>
                                   </div>
                                 </div>
                               </div>
                             ) : (
-                              <div className="rounded border border-dashed border-slate-700/80 bg-slate-950/20 px-3 py-6 text-[11px] text-slate-400">
+                              <div className="rounded border border-dashed border-slate-200/90 bg-slate-50/50 px-3 py-6 text-[11px] text-slate-500 dark:border-slate-700/80 dark:bg-slate-950/20 dark:text-slate-400">
                                 Click the plus button to start a new schedule.
                               </div>
                             )}
@@ -2310,19 +2311,19 @@ export default function WorkflowsStudio() {
                       {historyOpen ? (
                         <div
                           id="workflow-history-panel"
-                          className="flex min-h-0 flex-col overflow-hidden rounded border border-slate-700/80 bg-slate-900/45 p-3"
+                          className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white p-3 shadow-md dark:border-slate-700/80 dark:bg-slate-900/45"
                           style={{ maxHeight: headerPanelMaxHeight }}
                         >
                           <div className="flex items-center justify-between gap-3">
                             <div>
                               <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Recent runs</p>
-                              <p className="mt-1 text-[11px] text-slate-300">Inspect previous runs and their historical canvas state.</p>
+                              <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">Inspect previous runs and their historical canvas state.</p>
                             </div>
                             <div className="flex flex-wrap items-center justify-end gap-2">
                               {draft.workflowId ? (
                                 <button
                                   type="button"
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-600/80 bg-slate-800/90 text-slate-100 transition hover:bg-slate-700"
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200/90 bg-white text-slate-700 shadow-sm hover:bg-slate-100 dark:border-slate-600/80 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700"
                                   onClick={() => {
                                     if (draft.workflowId) {
                                       void refreshRunHistory(draft.workflowId);
@@ -2338,7 +2339,7 @@ export default function WorkflowsStudio() {
                                 type="button"
                                 className={`inline-flex h-7 w-7 items-center justify-center rounded-md border transition ${historyDeleteMode
                                     ? "border-rose-700/70 bg-rose-950/25 text-rose-100"
-                                    : "border-slate-600/80 bg-slate-800/90 text-slate-100 hover:bg-slate-700"
+                                    : "border-slate-200/90 bg-white text-slate-700 shadow-sm hover:bg-slate-100 dark:border-slate-600/80 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700"
                                   }`}
                                 onClick={() => {
                                   setHistoryDeleteMode((current) => !current);
@@ -2371,18 +2372,18 @@ export default function WorkflowsStudio() {
 
                           <div className="workflow-scroll mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                             {historyLoading ? (
-                              <p className="text-[11px] text-slate-400">Loading history…</p>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400">Loading history…</p>
                             ) : historyError ? (
-                              <p className="text-[11px] text-rose-300">{historyError}</p>
+                              <p className="text-[11px] text-rose-600 dark:text-rose-300">{historyError}</p>
                             ) : runHistory.length === 0 ? (
-                              <p className="text-[11px] text-slate-400">No runs yet.</p>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400">No runs yet.</p>
                             ) : (
                               runHistory.map((run) => (
                                 <div
                                   key={run.id}
-                                  className={`block w-full rounded border px-2.5 py-2 text-left transition ${historySelectedRunId === run.id
-                                      ? "border-cyan-500/60 bg-cyan-500/10"
-                                      : "border-slate-700/80 bg-slate-950/30 hover:border-slate-600 hover:bg-slate-900/60"
+                                  className={`block w-full rounded-lg border px-2.5 py-2 text-left transition ${historySelectedRunId === run.id
+                                      ? "border-teal-500/60 bg-teal-50/80 shadow-sm dark:border-cyan-500/60 dark:bg-cyan-500/10"
+                                      : "border-slate-200/90 bg-white text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-950/30 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-900/60"
                                     }`}
                                 >
                                   <div className="flex items-start gap-2">
@@ -2409,12 +2410,12 @@ export default function WorkflowsStudio() {
                                       title="Click to inspect here. Double-click to open full history."
                                     >
                                       <div className="flex items-center justify-between gap-2">
-                                        <span className="text-[11px] font-medium text-slate-100">{run.status}</span>
+                                        <span className="text-[11px] font-medium text-slate-800 dark:text-slate-100">{run.status}</span>
                                       </div>
-                                      <p className="mt-1 text-[10px] text-slate-400">Created {formatDateTime(run.createdAt)}</p>
+                                      <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">Created {formatDateTime(run.createdAt)}</p>
                                       <div className="mt-2 flex items-end justify-between gap-2">
                                         <div className="flex items-center gap-1.5">
-                                          <span className="rounded border border-slate-700/70 bg-slate-900/45 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                                          <span className="rounded border border-slate-200 bg-slate-100/80 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.18em] text-slate-600 dark:border-slate-700/70 dark:bg-slate-900/45 dark:text-slate-400">
                                             {run.triggeringScheduleId ? (run.triggeringScheduleName ?? "Scheduled") : "Manual"}
                                           </span>
                                           {run.scheduledAt ? (
@@ -2471,24 +2472,26 @@ export default function WorkflowsStudio() {
         >
           {draft.steps.length > 0 ? (
             <div className="pointer-events-none absolute right-3 top-3 z-10">
-              <div className="pointer-events-auto flex flex-col gap-0.5 rounded-xl border border-slate-200/90 bg-white/95 p-1 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.18)] backdrop-blur-sm">
+              <div className="pointer-events-auto flex flex-col gap-0.5 rounded-xl border border-slate-200/90 bg-white/95 p-1 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.18)] backdrop-blur-sm dark:border-slate-800/90 dark:bg-[#18191c]/95 dark:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.6)]">
                 <button
                   type="button"
-                  className="rounded-lg px-2 py-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                  className="rounded-lg px-2 py-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
                   onClick={() => handleZoomStep("in")}
-                  title="Zoom in"
+                  title="Zoom in (+)"
+                  aria-label="Zoom in (+)"
                 >
                   <ZoomIn className="mx-auto h-4 w-4" aria-hidden />
-                  <span className="sr-only">Zoom in</span>
+                  <span className="sr-only">Zoom in (+)</span>
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg px-2 py-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                  className="rounded-lg px-2 py-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
                   onClick={() => handleZoomStep("out")}
-                  title="Zoom out"
+                  title="Zoom out (-)"
+                  aria-label="Zoom out (-)"
                 >
                   <ZoomOut className="mx-auto h-4 w-4" aria-hidden />
-                  <span className="sr-only">Zoom out</span>
+                  <span className="sr-only">Zoom out (-)</span>
                 </button>
               </div>
             </div>
@@ -2496,21 +2499,21 @@ export default function WorkflowsStudio() {
 
           {draft.steps.length === 0 ? (
             <div className="absolute inset-0 flex items-center justify-center px-4 py-12 sm:px-6">
-              <div className="w-full max-w-lg rounded-2xl border border-slate-200/90 bg-white/85 px-8 py-12 text-center shadow-[0_24px_64px_-16px_rgba(15,23,42,0.14)] backdrop-blur-[2px]">
-                <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-slate-100/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)]">
-                  <Layers className="h-7 w-7 text-slate-500" aria-hidden />
+              <div className="w-full max-w-lg rounded-2xl border border-slate-200/90 bg-white/85 px-8 py-12 text-center shadow-[0_24px_64px_-16px_rgba(15,23,42,0.14)] backdrop-blur-[2px] dark:border-slate-800/90 dark:bg-[#18191c]/90 dark:shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]">
+                <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-slate-100/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] dark:border-slate-700/80 dark:from-slate-800 dark:to-slate-900/80">
+                  <Layers className="h-7 w-7 text-slate-500 dark:text-slate-400" aria-hidden />
                 </div>
-                <h2 className="text-lg font-semibold tracking-tight text-slate-900">Start your workflow</h2>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">Start your workflow</h2>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                   Add tools to run in order. Pan the canvas, connect steps, and changes save automatically when you edit.
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Tip: hold <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">Space</kbd>{" "}
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+                  Tip: hold <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">Space</kbd>{" "}
                   and drag to move the board.
                 </p>
                 <Button
                   type="button"
-                  className="mt-8 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 focus-visible:ring-offset-2"
+                  className="mt-8 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 focus-visible:ring-offset-2 dark:bg-teal-600 dark:hover:bg-teal-500"
                   onClick={() => openAddModal(0)}
                 >
                   <Plus className="mr-2 h-4 w-4" aria-hidden />
@@ -2738,13 +2741,13 @@ export default function WorkflowsStudio() {
       {menu && (
         <div
           ref={menuRef}
-          className="fixed z-[200] min-w-[10rem] overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg"
+          className="fixed z-[200] min-w-[10rem] overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg dark:border-slate-700 dark:bg-[#18191c] dark:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.6)]"
           style={{ left: menu.x, top: menu.y }}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
-            className="flex w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+            className="flex w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
             onClick={() => {
               setConfigStepId(menu.stepId);
               setMenu(null);
@@ -2754,7 +2757,7 @@ export default function WorkflowsStudio() {
           </button>
           <button
             type="button"
-            className="flex w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+            className="flex w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
             onClick={() => {
               moveStep(menu.stepId, "up");
               setMenu(null);
@@ -2765,7 +2768,7 @@ export default function WorkflowsStudio() {
           </button>
           <button
             type="button"
-            className="flex w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+            className="flex w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
             onClick={() => {
               moveStep(menu.stepId, "down");
               setMenu(null);
@@ -2776,7 +2779,7 @@ export default function WorkflowsStudio() {
           </button>
           <button
             type="button"
-            className="flex w-full px-3 py-2 text-left text-rose-600 hover:bg-rose-50"
+            className="flex w-full px-3 py-2 text-left text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
             onClick={() => {
               removeStep(menu.stepId);
               setMenu(null);

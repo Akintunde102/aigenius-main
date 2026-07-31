@@ -17,10 +17,14 @@ export type CreateCodeProjectInput = {
 };
 
 export async function listCodeProjects(): Promise<CodeProject[]> {
-  const res = await authorizedRequest<CodeProject[]>({
-    call: 'getGatewayCodeProjects',
-  });
-  return Array.isArray(res) ? res : [];
+  try {
+    const res = await authorizedRequest<CodeProject[]>({
+      call: 'getGatewayCodeProjects',
+    });
+    return Array.isArray(res) ? res : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function createCodeProject(input: CreateCodeProjectInput): Promise<CodeProject> {
