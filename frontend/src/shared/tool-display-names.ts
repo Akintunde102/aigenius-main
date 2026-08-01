@@ -19,6 +19,9 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
     keep_delete_note: 'Delete Note',
     convert_to_pdf_and_upload: 'Convert to PDF',
     web_fetch: 'Fetch web page',
+    serper_google_search: 'Google search',
+    get_wallet_balance: 'Wallet balance',
+    workflow_agent: 'Workflow agent',
     // Keep key in sync with backend `CALL_MODEL_FUNCTION_NAME` ('call_model').
     call_model: 'Call model (non-streaming)',
     workflow_intent: 'Workflow agent',
@@ -55,7 +58,23 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
 };
 
 export function getToolDisplayName(toolName: string): string {
-    return TOOL_DISPLAY_NAMES[toolName] ?? toolName;
+    const mapped = TOOL_DISPLAY_NAMES[toolName];
+    if (mapped) return mapped;
+    return humanizeToolName(toolName);
+}
+
+function humanizeToolName(toolName: string): string {
+    const desktopSuffix = toolName.startsWith('local_') ? ' (desktop)' : '';
+    const firecrawlPrefix = toolName.startsWith('firecrawl_') ? 'Firecrawl ' : '';
+    const base = toolName.replace(/^(local_|firecrawl_)/, '');
+    const words = base.split('_').filter(Boolean);
+    if (words.length === 0) return toolName;
+
+    const label = words
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+    return `${firecrawlPrefix}${label}${desktopSuffix}`;
 }
 
 /**

@@ -1,7 +1,7 @@
 import type { ThinkingEvent, ToolEvent } from '@/app/components/model-interface/shared/types';
 import type { ChatMessageRenderBlock } from './cluster-tool-display-blocks';
+import { resolveStreamingToolRowLabel } from './cluster-tool-display-blocks';
 import { formatNounCount, getToolActivityNoun } from '@/shared/tool-activity-nouns';
-import { buildToolClusterSummary } from './work-activity-summary.utils';
 
 export type WorkTimelineItem =
   | { kind: 'thinking'; event: ThinkingEvent }
@@ -118,15 +118,5 @@ export function buildAssistantTurnSummary(items: WorkTimelineItem[]): string | n
 }
 
 export function buildSingleToolTimelineLabel(event: ToolEvent): string {
-  if (event.loading) return 'Working…';
-
-  const rich = buildToolClusterSummary([event]);
-  if (rich) return rich;
-
-  const noun = getToolActivityNoun(event.tool);
-  if (event.success === false) {
-    return `Failed ${noun.singular}`;
-  }
-
-  return `1 ${noun.singular}`;
+  return resolveStreamingToolRowLabel(event);
 }

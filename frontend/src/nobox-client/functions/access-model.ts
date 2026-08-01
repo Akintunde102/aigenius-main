@@ -19,7 +19,7 @@ import {
 } from '@/lib/tool-permissions';
 import { getActiveCodeProject } from '@/lib/code-projects/active-code-project';
 import { activeEditorForRuntime } from '@/lib/code-projects/active-editor-context';
-import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
+import { getChatProjectScopeId, getChatProjectScopeSnapshot } from '@/lib/code-projects/chat-project-scope';
 
 // Constants
 const OPENAI_CHAT_COMPLETIONS_PATH = '/gateway/*/openai/v1/chat/completions';
@@ -294,10 +294,15 @@ async function mergeRuntimeContextIntoRequestBody(
   }
   const base = { clientNowIso, clientTimezone };
   const projectScopeId = getChatProjectScopeId();
-  const activeCodeProject =
+  const scopeSnapshot = getChatProjectScopeSnapshot();
+  const activeFromStorage =
     projectScopeId && getActiveCodeProject()?.id === projectScopeId
       ? getActiveCodeProject()
       : null;
+  const activeCodeProject =
+    scopeSnapshot?.id === projectScopeId
+      ? scopeSnapshot
+      : activeFromStorage;
   const activeEditor = projectScopeId ? activeEditorForRuntime() : null;
   const activeProjectPayload = activeCodeProject
     ? {

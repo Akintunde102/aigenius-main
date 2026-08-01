@@ -76,19 +76,23 @@ export function resolveMarkdownHrefForDesktop(href: string): ResolvedDesktopHref
 export function buildDesktopLocalLinksGuidance(platform: string, userHomeDir: string): string {
   const plat = platform.trim().toLowerCase() || 'unknown';
   const home = userHomeDir.trim() || 'unknown';
-  const examplePath =
+  const exampleAbsolute =
     plat === 'win32'
-      ? `${home.replace(/\\/g, '/')}/Projects/site/index.html`
+      ? `${home}\\Projects\\site\\index.html`
       : `${home}/Projects/site/index.html`;
-  const exampleHref = toLocalFileHref(examplePath);
+  const exampleHref = toLocalFileHref(exampleAbsolute);
 
   return [
     '### Local paths and preview links (desktop)',
     `The user’s OS is **${plat}**; home directory: \`${home}\`.`,
-    '- Use **absolute paths** with separators natural to this OS. Do **not** assume Windows (`C:\\`, `start`, `explorer`, `cmd`) unless platform is `win32`.',
+    '- **You resolve every preview link.** The app does not guess paths — compute the correct **full absolute path** before writing each link.',
+    '- Format: `[label](local-file://ENCODED_PATH)` where `ENCODED_PATH` = `encodeURIComponent(fullAbsolutePath)` (OS-native separators).',
+    `- Example on this machine: [index.html](${exampleHref}).`,
+    '- **Path sources (prefer in order):** exact paths returned by `local_*` tools → active code project root + relative segment → open-editor path → shell `cwd` → home + verified relative segment.',
+    '- **Never** put repo-relative, `~/…`, or partial paths in the href — only the complete absolute path you verified or computed.',
+    '- Link **label** may be short (`src/auth.ts`); the **href** must always be the full absolute path.',
     '- Do **not** use `file://` links in chat — they are not clickable in the app.',
-    `- For in-app **preview/open**, use markdown: \`[label](local-file://ENCODED_PATH)\` where ENCODED_PATH is \`encodeURIComponent(absolutePath)\`. Example: [index.html](${exampleHref}).`,
-    '- After creating files (e.g. a website), link the **project folder** and **index.html** (or main entry) with `local-file://` preview links.',
+    '- After creating files (e.g. a website), link the **project folder** and main entry file with fully resolved `local-file://` preview links.',
     '- For a **local dev server**, link `http://127.0.0.1:PORT/...` (opens in the system browser on desktop).',
     '- Prefer tool `local_open_in_os` with an absolute path over shell `start` / `open` / `xdg-open` in your reply text.',
   ].join('\n');

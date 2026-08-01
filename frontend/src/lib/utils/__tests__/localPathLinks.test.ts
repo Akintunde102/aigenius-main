@@ -70,6 +70,6 @@ describe('localPathLinks', () => {
     expect(text).toContain('darwin');
     expect(text).toContain('/Users/clinton');
     expect(text).toContain('local-file://');
-    expect(text).toContain('Do **not** assume Windows');
+    expect(text).toContain('You resolve every preview link');
   });
 });

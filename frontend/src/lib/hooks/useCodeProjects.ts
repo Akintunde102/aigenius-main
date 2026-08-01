@@ -15,7 +15,7 @@ import {
   subscribeActiveCodeProject,
   type ActiveCodeProjectSnapshot,
 } from '@/lib/code-projects/active-code-project';
-import { setChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
+import { applyChatProjectScopeFromSession } from '@/lib/code-projects/apply-chat-project-scope';
 
 export function useCodeProjects() {
   const [projects, setProjects] = useState<CodeProject[]>([]);
@@ -64,7 +64,12 @@ export function useCodeProjects() {
     const created = await createCodeProject(input);
     setProjects((prev) => [created, ...prev]);
     selectProject(created);
-    setChatProjectScopeId(created.id);
+    applyChatProjectScopeFromSession(created.id, {
+      id: created.id,
+      name: created.name,
+      rootPath: created.rootPath,
+      rules: created.rules,
+    });
     return created;
   }, [selectProject]);
 

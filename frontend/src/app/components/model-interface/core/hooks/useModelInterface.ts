@@ -40,7 +40,7 @@ import {
   Personality as PersonaType,
 } from "@/lib/calls/model-chat-conversation";
 import { resolveViewSessionId } from "../../conversation/conversationViewSession";
-import { setChatProjectScopeId } from "@/lib/code-projects/chat-project-scope";
+import { applyChatProjectScopeFromSession } from "@/lib/code-projects/apply-chat-project-scope";
 
 export function useModelInterface(options?: {
   onInsufficientFunds?: () => void;
@@ -405,13 +405,13 @@ export function useModelInterface(options?: {
 
   const enhancedSwitchToSession = useCallback((session: ChatSession) => {
     setPendingOrphanReply(null);
-    setChatProjectScopeId(session.codeProjectId ?? null);
+    applyChatProjectScopeFromSession(session.codeProjectId);
     switchToSession(session, setCurrentSessionId, setChatHistory);
   }, [switchToSession, setCurrentSessionId, setChatHistory]);
 
   const enhancedCreateNewSession = useCallback((_modelId: string) => {
     setPendingOrphanReply(null);
-    setChatProjectScopeId(null);
+    applyChatProjectScopeFromSession(null);
     createAndSwitchToNewSession(setCurrentSessionId);
   }, [createAndSwitchToNewSession, setCurrentSessionId]);
 

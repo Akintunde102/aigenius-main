@@ -4,11 +4,11 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { JsonSyntaxBlock } from '@/app/components/JsonSyntaxBlock';
 import { FiLoader, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { valueToDisplayString } from '@/lib/utils/messageTextUtils';
-import { getToolDisplayName } from './toolDisplayNames';
 import { ERROR_MESSAGES } from '../hooks/chatOperations.constants';
 import { WorkflowIntentTranscriptExpand } from './WorkflowIntentTranscriptExpand';
 import { MarkdownRenderer } from '@/app/components/model-interface/shared/components/MarkdownRenderer';
 import { ToolSearchFilesHover } from './tool-ui/ToolSearchFilesHover';
+import { resolveStreamingToolRowLabel } from './cluster-tool-display-blocks';
 import type { ToolStreamingCardProps } from './tool-streaming-card.types';
 import cardStyles from './DefaultToolStreamingCard.module.scss';
 
@@ -17,13 +17,14 @@ export function DefaultToolStreamingCard({
   result,
   arguments: toolArgsProp,
   groupItem = false,
+  detailsOnly = false,
 }: ToolStreamingCardProps) {
   const { tool, displayName, logs, loading, success } = streaming_tool;
   const toolArgs = toolArgsProp ?? streaming_tool.arguments;
   const [activityOpen, setActivityOpen] = useState(false);
   const [inputOpen, setInputOpen] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
-  const [containerCollapsed, setContainerCollapsed] = useState(groupItem);
+  const [containerCollapsed, setContainerCollapsed] = useState(groupItem && !detailsOnly);
   const wasLoadingRef = useRef(loading);
   const wasGroupLoadingRef = useRef(loading);
 
@@ -71,11 +72,17 @@ export function DefaultToolStreamingCard({
       ? (parsedResult as { agent_run_id: string }).agent_run_id
       : null;
 
-  const activityTitle = toolArgs?.activityTitle as string | undefined;
-  const resolvedDisplayName = activityTitle || displayName || getToolDisplayName(tool);
+  const resolvedDisplayName = resolveStreamingToolRowLabel({
+    tool,
+    displayName,
+    arguments: toolArgs ?? {},
+    result,
+    loading,
+    success,
+  });
 
   useEffect(() => {
-    if (!groupItem) return;
+    if (!groupItem || detailsOnly) return;
     if (loading) {
       setContainerCollapsed(false);
       wasGroupLoadingRef.current = true;
@@ -88,7 +95,7 @@ export function DefaultToolStreamingCard({
       setResultOpen(false);
       wasGroupLoadingRef.current = false;
     }
-  }, [groupItem, loading]);
+  }, [groupItem, detailsOnly, loading]);
 
   useEffect(() => {
     if (groupItem) return;
@@ -140,13 +147,15 @@ export function DefaultToolStreamingCard({
 
   return (
     <div className={`${cardStyles.root} ${groupItem ? cardStyles.rootGroupItem : 'my-1 w-full text-[12px] leading-snug text-slate-600 dark:text-zinc-400'}`}>
-      {groupItem ? (
-        <ToolSearchFilesHover tool={tool} arguments={toolArgs} result={result}>
-          {toggleButton}
-        </ToolSearchFilesHover>
-      ) : (
-        toggleButton
-      )}
+      {!detailsOnly ? (
+        groupItem ? (
+          <ToolSearchFilesHover tool={tool} arguments={toolArgs} result={result}>
+            {toggleButton}
+          </ToolSearchFilesHover>
+        ) : (
+          toggleButton
+        )
+      ) : null}
 
       {!containerCollapsed && (
         <div

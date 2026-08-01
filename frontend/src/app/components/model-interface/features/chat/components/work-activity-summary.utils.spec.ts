@@ -29,11 +29,28 @@ describe('countToolClusterActivity', () => {
     ];
 
     expect(countToolClusterActivity(events)).toMatchObject({
-      uniqueFiles: 3,
-      searches: 2,
+      searchFiles: 2,
+      searches: 1,
       reads: 0,
+      directories: 1,
       commands: 0,
       edits: 0,
+    });
+  });
+
+  it('counts batch read files from reads[] arguments', () => {
+    const events: ToolEvent[] = [
+      makeTool({
+        tool: 'local_read_file',
+        arguments: {
+          reads: [{ path: 'a.ts' }, { path: 'b.ts' }, { path: 'c.ts' }],
+        },
+      }),
+    ];
+
+    expect(countToolClusterActivity(events)).toMatchObject({
+      reads: 3,
+      searchFiles: 0,
     });
   });
 
@@ -44,7 +61,7 @@ describe('countToolClusterActivity', () => {
     ];
 
     expect(countToolClusterActivity(events)).toMatchObject({
-      uniqueFiles: 0,
+      searchFiles: 0,
       searches: 0,
       commands: 1,
     });
@@ -71,13 +88,46 @@ describe('buildToolClusterSummary', () => {
     expect(buildToolClusterSummary(events)).toBe('Explored 7 files, 3 searches');
   });
 
-  it('falls back to step count when no activity can be derived', () => {
+  it('formats batch reads with the file count', () => {
+    const events: ToolEvent[] = [
+      makeTool({
+        tool: 'local_read_file',
+        arguments: {
+          reads: [{ path: 'a.ts' }, { path: 'b.ts' }, { path: 'c.ts' }, { path: 'd.ts' }],
+        },
+      }),
+    ];
+
+    expect(buildToolClusterSummary(events)).toBe('Read 4 files');
+  });
+
+  it('describes list directory without explored-file wording', () => {
+    const events: ToolEvent[] = [
+      makeTool({
+        tool: 'local_list_directory',
+        arguments: { path: 'C:/proj/src' },
+        result: '### Directory listing\n1. **a.ts**\n   - **Path**: C:/proj/src/a.ts',
+      }),
+    ];
+
+    expect(buildToolClusterSummary(events)).toBe('Listed src');
+  });
+
+  it('describes uncategorized tools with display names', () => {
+    const events: ToolEvent[] = [
+      makeTool({ tool: 'local_retrieval_memory_upsert', result: '{"ok":true}' }),
+    ];
+
+    expect(buildToolClusterSummary(events)).toBe('Retrieval memory save (desktop)');
+  });
+
+  it('describes mixed uncategorized tools with activity nouns', () => {
     const events: ToolEvent[] = [
       makeTool({ tool: 'gmail_send', result: '{"success":true}' }),
       makeTool({ tool: 'web_fetch', result: '{"success":true}' }),
     ];
 
-    expect(buildToolClusterSummary(events)).toBe('2 tools');
+    expect(buildToolClusterSummary(events)).toBe('1 email sent, 1 web fetch');
   });
 
   it('returns null for an empty cluster', () => {

@@ -3,6 +3,7 @@ import { useConversationQuery } from '@/lib/hooks/useConversationQuery';
 import { normalizeSessionMessages } from '@/lib/utils/messageContentUtils';
 import { shouldAcceptRemoteConversationSync } from '@/lib/utils/conversationScrollMemory';
 import { upsertSessionMessagesInHistory } from '@/app/components/model-interface/conversation/sessionMessagesMap';
+import { applyChatProjectScopeFromSession } from '@/lib/code-projects/apply-chat-project-scope';
 import type { ChatMessage, ChatSession } from '@/app/components/model-interface/shared/types';
 import type { ChatUpdater } from './useChatData';
 
@@ -36,6 +37,7 @@ export function useActiveConversationSync({
 
     const normalized = normalizeSessionMessages({
       id: remoteConversation.id,
+      codeProjectId: remoteConversation.codeProjectId ?? null,
       title: remoteConversation.session.title,
       modelId: remoteConversation.session.modelId,
       messages: remoteConversation.session.messages,
@@ -53,6 +55,8 @@ export function useActiveConversationSync({
     if (!shouldAcceptRemoteConversationSync(chat, serverMessages)) {
       return;
     }
+
+    applyChatProjectScopeFromSession(normalized.codeProjectId);
 
     setChatForSession(conversationId, serverMessages, { passive: true });
     setChatHistory((prev) =>

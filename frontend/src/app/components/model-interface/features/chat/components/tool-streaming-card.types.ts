@@ -8,4 +8,6 @@ export type ToolStreamingCardProps = {
   arguments?: Record<string, unknown>;
   /** Compact row inside {@link ToolStreamingGroup} — title + chevron; input/result on expand */
   groupItem?: boolean;
+  /** Parent row already shows the label (e.g. work-summary timeline). */
+  detailsOnly?: boolean;
 };

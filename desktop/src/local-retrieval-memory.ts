@@ -10,6 +10,8 @@ const MAX_DESCRIPTION_LEN = 500;
 const MAX_TAGS = 24;
 const MAX_TAG_LEN = 48;
 const MAX_BODY_CHARS = 200_000;
+/** Max characters returned to the model from `local_retrieval_memory_get` (full entry may be larger on disk). */
+export const RETRIEVAL_MEMORY_TOOL_BODY_MAX_CHARS = 12_000;
 
 export type RetrievalMemoryEntry = {
   slug: string;
@@ -232,8 +234,11 @@ export async function getRetrievalMemoryBySlugFromTool(raw: Record<string, unkno
   }
   const entry = await getRetrievalMemoryService().getBySlug(slug);
   if (!entry) {
-    return { ok: true, result: JSON.stringify({ found: false, slug }) };
+    return { ok: true, result: JSON.stringify({ found: false, slug, hint: 'Check the Retrieval memory catalog in the system prompt for valid slugs.' }) };
   }
+  const totalBodyChars = entry.body.length;
+  const bodyTruncated = totalBodyChars > RETRIEVAL_MEMORY_TOOL_BODY_MAX_CHARS;
+  const body = bodyTruncated ? entry.body.slice(0, RETRIEVAL_MEMORY_TOOL_BODY_MAX_CHARS) : entry.body;
   return {
     ok: true,
     result: JSON.stringify({
@@ -243,7 +248,14 @@ export async function getRetrievalMemoryBySlugFromTool(raw: Record<string, unkno
       description: entry.description,
       tags: entry.tags,
       updatedAtIso: entry.updatedAtIso,
-      body: entry.body,
+      body,
+      ...(bodyTruncated
+        ? {
+            truncated: true,
+            totalBodyChars,
+            returnedBodyChars: body.length,
+          }
+        : {}),
     }),
   };
 }
