@@ -41,6 +41,23 @@ export function extractWorkTimelineItems(blocks: ChatMessageRenderBlock[]): Work
   return items;
 }
 
+function extractWorkTimelineItemsFromBlock(block: ChatMessageRenderBlock): WorkTimelineItem[] {
+  if (block.type === 'thinking') {
+    if (!block.event.content.trim()) return [];
+    return [{ kind: 'thinking', event: block.event }];
+  }
+
+  if (block.type === 'tool_cluster') {
+    return block.events.map((event) => ({ kind: 'tool' as const, event }));
+  }
+
+  if (block.type === 'tool') {
+    return [{ kind: 'tool', event: block.event }];
+  }
+
+  return [];
+}
+
 export function buildAssistantRenderSegments(
   blocks: ChatMessageRenderBlock[],
   streaming: boolean,
@@ -49,23 +66,29 @@ export function buildAssistantRenderSegments(
     return blocks.map((block) => ({ type: 'block', block }));
   }
 
-  const workItems = extractWorkTimelineItems(blocks);
-  if (workItems.length === 0) {
-    return blocks.map((block) => ({ type: 'block', block }));
-  }
-
   const segments: AssistantRenderSegment[] = [];
-  let summaryInserted = false;
+  let pendingWorkItems: WorkTimelineItem[] = [];
+
+  const flushWorkSummary = () => {
+    if (pendingWorkItems.length === 0) return;
+    segments.push({ type: 'work_summary', items: pendingWorkItems });
+    pendingWorkItems = [];
+  };
 
   for (const block of blocks) {
     if (isWorkRenderBlock(block)) {
-      if (!summaryInserted) {
-        segments.push({ type: 'work_summary', items: workItems });
-        summaryInserted = true;
-      }
+      pendingWorkItems.push(...extractWorkTimelineItemsFromBlock(block));
       continue;
     }
+
+    flushWorkSummary();
     segments.push({ type: 'block', block });
+  }
+
+  flushWorkSummary();
+
+  if (segments.length === 0) {
+    return blocks.map((block) => ({ type: 'block', block }));
   }
 
   return segments;
