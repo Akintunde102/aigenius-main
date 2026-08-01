@@ -76,7 +76,7 @@ describe('buildAssistantRenderSegments', () => {
     expect(segments[0]).toMatchObject({ type: 'block' });
   });
 
-  it('replaces all work blocks with one summary segment when done', () => {
+  it('replaces contiguous work blocks with one summary before the following text', () => {
     const blocks: ChatMessageRenderBlock[] = [
       { type: 'thinking', event: makeThinking('a') },
       { type: 'tool', event: makeTool({ tool: 'local_read_file' }) },
@@ -87,6 +87,36 @@ describe('buildAssistantRenderSegments', () => {
     expect(segments).toHaveLength(2);
     expect(segments[0]).toMatchObject({ type: 'work_summary' });
     expect(segments[1]).toMatchObject({ type: 'block', block: { type: 'text' } });
+  });
+
+  it('inserts separate summaries between text segments when work is interleaved', () => {
+    const blocks: ChatMessageRenderBlock[] = [
+      { type: 'thinking', event: makeThinking('plan') },
+      { type: 'tool', event: makeTool({ tool: 'local_list_directory', timestamp: 1 }) },
+      { type: 'text', content: 'first paragraph', endsWithLastTextEvent: false },
+      { type: 'thinking', event: makeThinking('next') },
+      { type: 'tool', event: makeTool({ tool: 'local_read_file', timestamp: 2 }) },
+      { type: 'text', content: 'second paragraph', endsWithLastTextEvent: true },
+    ];
+
+    const segments = buildAssistantRenderSegments(blocks, false);
+    expect(segments).toHaveLength(4);
+    expect(segments[0]).toMatchObject({
+      type: 'work_summary',
+      items: [
+        { kind: 'thinking' },
+        { kind: 'tool', event: { tool: 'local_list_directory' } },
+      ],
+    });
+    expect(segments[1]).toMatchObject({ type: 'block', block: { type: 'text', content: 'first paragraph' } });
+    expect(segments[2]).toMatchObject({
+      type: 'work_summary',
+      items: [
+        { kind: 'thinking' },
+        { kind: 'tool', event: { tool: 'local_read_file' } },
+      ],
+    });
+    expect(segments[3]).toMatchObject({ type: 'block', block: { type: 'text', content: 'second paragraph' } });
   });
 });
 
