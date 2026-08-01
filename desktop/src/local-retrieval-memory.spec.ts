@@ -6,6 +6,7 @@ import {
     getRetrievalMemoryService,
     initLocalRetrievalMemory,
     LocalRetrievalMemoryService,
+    RETRIEVAL_MEMORY_TOOL_BODY_MAX_CHARS,
     upsertRetrievalMemoryFromTool,
 } from './local-retrieval-memory';
 
@@ -164,6 +165,20 @@ describe('tool helpers', () => {
         if (!out.ok) throw new Error('unexpected');
         const j = JSON.parse(out.result);
         expect(j.found).toBe(false);
+        expect(j.hint).toContain('catalog');
+    });
+
+    it('truncates oversized body in tool responses', async () => {
+        await getRetrievalMemoryService().upsert({
+            slug: 'big-note',
+            body: 'a'.repeat(RETRIEVAL_MEMORY_TOOL_BODY_MAX_CHARS + 500),
+        });
+        const out = await getRetrievalMemoryBySlugFromTool({ slug: 'big-note' });
+        expect(out.ok).toBe(true);
+        if (!out.ok) throw new Error('unexpected');
+        const j = JSON.parse(out.result);
+        expect(j.truncated).toBe(true);
+        expect(j.body.length).toBe(RETRIEVAL_MEMORY_TOOL_BODY_MAX_CHARS);
     });
 
     it('upsertRetrievalMemoryFromTool generates slug when omitted', async () => {

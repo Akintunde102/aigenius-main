@@ -69,4 +69,18 @@ describe('search-tool-hover.utils', () => {
       lineEnd: 8,
     });
   });
+
+  it('shows batch read paths from arguments before results arrive', () => {
+    const preview = buildSearchToolHoverPreview(
+      'local_read_file',
+      {
+        reads: [{ path: 'src/a.ts' }, { path: 'src/b.ts' }],
+      },
+      undefined,
+    );
+
+    expect(preview?.headerLabel).toBe('Read files');
+    expect(preview?.files).toHaveLength(2);
+    expect(preview?.files[0]).toMatchObject({ name: 'a.ts' });
+  });
 });

@@ -6,34 +6,7 @@ import {
 const FENCED_CODE_BLOCK_RE = /```[\s\S]*?```/g;
 const INLINE_CODE_RE = /`([^`\n]+)`/g;
 
-const GIT_BRANCH_PREFIX_RE =
-  /^(feat|fix|chore|docs|style|refactor|test|ci|build|perf|revert|hotfix|release)\//i;
-
-export type LinkifyMarkdownFilePathsOptions = {
-  /** Active code project root; required to resolve repo-relative paths. */
-  projectRoot?: string | null;
-};
-
-function normalizeSlashes(value: string): string {
-  return value.replace(/\\/g, '/');
-}
-
-function joinFilesystemPath(root: string, relative: string): string {
-  const rootNorm = root.replace(/\\/g, '/').replace(/\/+$/, '');
-  const relNorm = relative.replace(/\\/g, '/').replace(/^\.?\//, '');
-  const joined = `${rootNorm}/${relNorm}`;
-  return root.includes('\\') ? joined.replace(/\//g, '\\') : joined;
-}
-
-function looksLikeGitBranch(value: string): boolean {
-  const normalized = normalizeSlashes(value);
-  if (!GIT_BRANCH_PREFIX_RE.test(normalized)) {
-    return false;
-  }
-  return !/\.[A-Za-z0-9]{1,16}$/.test(normalized);
-}
-
-/** True when inline code likely names a file or directory (not a symbol, branch, or URL). */
+/** True when inline code is an absolute filesystem path the model already resolved. */
 export function looksLikeLinkableFilePath(value: string): boolean {
   const trimmed = value.trim();
   if (!trimmed || /\s/.test(trimmed)) {
@@ -42,47 +15,25 @@ export function looksLikeLinkableFilePath(value: string): boolean {
   if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('local-file://')) {
     return false;
   }
-  if (isAbsoluteFilesystemPath(trimmed)) {
-    return true;
-  }
-
-  const normalized = normalizeSlashes(trimmed);
-  if (/\.[A-Za-z0-9]{1,16}$/.test(normalized)) {
-    return true;
-  }
-  if (normalized.includes('/')) {
-    return !looksLikeGitBranch(normalized);
-  }
-  return /^[\w@][\w.-]*\.[a-z0-9]{1,16}$/i.test(normalized);
+  return isAbsoluteFilesystemPath(trimmed);
 }
 
-export function resolveLinkableFileAbsolutePath(
-  input: string,
-  projectRoot?: string | null,
-): string | null {
+/** Only absolute paths are linkable — the model must resolve full paths in its markdown links. */
+export function resolveLinkableFileAbsolutePath(input: string): string | null {
   const trimmed = input.trim();
-  if (!trimmed) {
+  if (!trimmed || !isAbsoluteFilesystemPath(trimmed)) {
     return null;
   }
-  if (isAbsoluteFilesystemPath(trimmed)) {
-    return trimmed;
-  }
-  if (!projectRoot?.trim()) {
-    return null;
-  }
-  return joinFilesystemPath(projectRoot.trim(), trimmed);
+  return trimmed;
 }
 
-function linkifyInlineCodeSegment(
-  segment: string,
-  options: LinkifyMarkdownFilePathsOptions,
-): string {
+function linkifyInlineCodeSegment(segment: string): string {
   return segment.replace(INLINE_CODE_RE, (full, inner: string) => {
     const trimmed = inner.trim();
     if (!looksLikeLinkableFilePath(trimmed)) {
       return full;
     }
-    const absolute = resolveLinkableFileAbsolutePath(trimmed, options.projectRoot);
+    const absolute = resolveLinkableFileAbsolutePath(trimmed);
     if (!absolute) {
       return full;
     }
@@ -91,13 +42,11 @@ function linkifyInlineCodeSegment(
 }
 
 /**
- * Rewrites inline `` `path` `` spans into `[path](local-file://…)` preview links on desktop.
- * Skips fenced code blocks and leaves non-path inline code unchanged.
+ * Rewrites inline `` `C:\full\path` `` / `` `/abs/path` `` spans into `[path](local-file://…)` on desktop.
+ * Only absolute paths the model already chose are converted — relative paths are left unchanged
+ * so the model must emit proper `[label](local-file://…)` links with a full absolute href.
  */
-export function linkifyMarkdownFilePaths(
-  markdown: string,
-  options: LinkifyMarkdownFilePathsOptions = {},
-): string {
+export function linkifyMarkdownFilePaths(markdown: string): string {
   if (!markdown) {
     return markdown;
   }
@@ -108,11 +57,11 @@ export function linkifyMarkdownFilePaths(
 
   for (const match of markdown.matchAll(FENCED_CODE_BLOCK_RE)) {
     const index = match.index ?? 0;
-    result += linkifyInlineCodeSegment(markdown.slice(lastIndex, index), options);
+    result += linkifyInlineCodeSegment(markdown.slice(lastIndex, index));
     result += match[0];
     lastIndex = index + match[0].length;
   }
 
-  result += linkifyInlineCodeSegment(markdown.slice(lastIndex), options);
+  result += linkifyInlineCodeSegment(markdown.slice(lastIndex));
   return result;
 }

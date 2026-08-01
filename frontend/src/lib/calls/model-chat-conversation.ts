@@ -20,6 +20,7 @@ export interface ConversationMetadata {
 export interface ModelChatConversation {
     id: string;
     userId: string;
+    codeProjectId?: string | null;
     type: ConversationType;
     conversationKind?: 'default' | 'orphan_question';
     parentConversationId?: string | null;

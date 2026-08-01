@@ -45,7 +45,7 @@ export function ToolSearchFilesHover({
       {open ? (
         <div className={styles.popover} role="tooltip">
           <div className={styles.header}>
-            <span>Searched files</span>
+            <span>{preview.headerLabel ?? 'Searched files'}</span>
             <span className={styles.scope}>{preview.scopeLabel}</span>
           </div>
           {preview.files.length > 0 ? (

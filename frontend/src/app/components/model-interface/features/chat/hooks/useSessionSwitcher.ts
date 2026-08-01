@@ -7,6 +7,7 @@ import { CHAT_CONVERSATION_STALE_MS, chatQueryKeys } from '@/lib/hooks/chat-quer
 import { SetChatForSession } from './chatOperations.types';
 import { DRAFT_SESSION_KEY } from './chatOperations.constants';
 import { bumpDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
+import { applyChatProjectScopeFromSession } from '@/lib/code-projects/apply-chat-project-scope';
 
 interface UseSessionSwitcherOptions {
     currentSessionId: string | null;
@@ -57,6 +58,8 @@ export function useSessionSwitcher({ currentSessionId, chatMap, setChatForSessio
         setChatHistory?: React.Dispatch<React.SetStateAction<ChatSession[]>>
     ) => {
         if (!session.id) return;
+
+        applyChatProjectScopeFromSession(session.codeProjectId);
 
         // 1. Key change — chat derives from chatMap[session.id] automatically.
         setCurrentSessionId(session.id);

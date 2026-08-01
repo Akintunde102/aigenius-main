@@ -8,7 +8,7 @@ import SidebarFooter from "./ChatHistorySidebar/SidebarFooter";
 import { CreateCodeProjectModal } from "./ChatHistorySidebar/CreateCodeProjectModal";
 import { CodeProjectInfoModal } from "./ChatHistorySidebar/CodeProjectInfoModal";
 import { useCodeProjects } from "@/lib/hooks/useCodeProjects";
-import { setChatProjectScopeId } from "@/lib/code-projects/chat-project-scope";
+import { applyChatProjectScopeFromSession } from "@/lib/code-projects/apply-chat-project-scope";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
 import WalletModal from "./ChatHistorySidebar/WalletModal";
 import IntegrationsModal from "./ChatHistorySidebar/IntegrationsModal";
@@ -123,7 +123,6 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     const {
         projects: codeProjects,
         activeProject,
-        selectProject,
         addProject,
         removeProject,
     } = useCodeProjects();
@@ -162,15 +161,21 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
 
     const handleSessionSwitch = React.useCallback((session: ChatSession) => {
         const scopeId = session.codeProjectId ?? null;
-        setChatProjectScopeId(scopeId);
 
         if (session.codeProjectId) {
             const project = codeProjects.find((p) => p.id === session.codeProjectId);
             if (project) {
-                selectProject(project);
+                applyChatProjectScopeFromSession(project.id, {
+                    id: project.id,
+                    name: project.name,
+                    rootPath: project.rootPath,
+                    rules: project.rules,
+                });
+            } else {
+                applyChatProjectScopeFromSession(scopeId);
             }
         } else {
-            selectProject(null);
+            applyChatProjectScopeFromSession(null);
         }
 
         if (switchToSession) {
@@ -183,18 +188,23 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         if (isMobile && setMobileSidebarOpen) {
             setMobileSidebarOpen(false);
         }
-    }, [codeProjects, isMobile, selectProject, setChat, setCurrentSessionId, setMobileSidebarOpen, switchToSession]);
+    }, [codeProjects, isMobile, setChat, setCurrentSessionId, setMobileSidebarOpen, switchToSession]);
 
     const startNewChatInScope = React.useCallback((projectId: string | null) => {
-        setChatProjectScopeId(projectId);
-
         if (projectId) {
             const project = codeProjects.find((p) => p.id === projectId);
             if (project) {
-                selectProject(project);
+                applyChatProjectScopeFromSession(project.id, {
+                    id: project.id,
+                    name: project.name,
+                    rootPath: project.rootPath,
+                    rules: project.rules,
+                });
+            } else {
+                applyChatProjectScopeFromSession(projectId);
             }
         } else {
-            selectProject(null);
+            applyChatProjectScopeFromSession(null);
         }
 
         if (createNewSessionAndSwitch && models.length > 0) {
@@ -220,7 +230,6 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         setError,
         setMobileSidebarOpen,
         setTotalSpent,
-        selectProject,
     ]);
 
     const handleNewChat = React.useCallback(() => {
@@ -232,17 +241,22 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     }, [startNewChatInScope]);
 
     const handleSelectProject = React.useCallback((projectId: string | null) => {
-        setChatProjectScopeId(projectId);
-
         if (projectId) {
             const project = codeProjects.find((p) => p.id === projectId);
             if (project) {
-                selectProject(project);
+                applyChatProjectScopeFromSession(project.id, {
+                    id: project.id,
+                    name: project.name,
+                    rootPath: project.rootPath,
+                    rules: project.rules,
+                });
+            } else {
+                applyChatProjectScopeFromSession(projectId);
             }
         } else {
-            selectProject(null);
+            applyChatProjectScopeFromSession(null);
         }
-    }, [codeProjects, selectProject]);
+    }, [codeProjects]);
 
     const handleDeleteProject = React.useCallback(async (projectId: string) => {
         const activeSessionBelongsToProject = chatHistory.some(

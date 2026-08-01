@@ -1,3 +1,9 @@
+import {
+  extractReadFilePathsFromArgs,
+  isReadFileTool,
+  LIST_DIRECTORY_TOOL,
+} from './tool-activity-label.utils';
+
 export const SEARCH_TOOLS_WITH_FILE_HOVER = new Set([
   'local_grep',
   'local_rag_query',
@@ -10,6 +16,9 @@ export const SEARCH_TOOLS_WITH_FILE_HOVER = new Set([
   'local_symbol_blast_radius',
   'local_import_blast_radius',
   'local_list_directory',
+  'local_read_file',
+  'read_file',
+  'read_local_file',
 ]);
 
 export type SearchToolFileEntry = {
@@ -22,6 +31,7 @@ export type SearchToolFileEntry = {
 export type SearchToolHoverPreview = {
   scopeLabel: string;
   files: SearchToolFileEntry[];
+  headerLabel?: string;
 };
 
 export function isSearchToolWithFileHover(tool: string): boolean {
@@ -35,19 +45,33 @@ export function buildSearchToolHoverPreview(
 ): SearchToolHoverPreview | null {
   if (!isSearchToolWithFileHover(tool)) return null;
 
-  const files = extractSearchToolFiles(tool, result);
-  if (files.length === 0 && !result?.trim()) return null;
+  const argReadPaths = isReadFileTool(tool) ? extractReadFilePathsFromArgs(args) : [];
+  const files = argReadPaths.length > 0
+    ? argReadPaths.map((filePath) => ({
+      name: fileNameFromPath(filePath),
+      path: filePath,
+    }))
+    : extractSearchToolFiles(tool, result);
+
+  if (files.length === 0 && !result?.trim() && argReadPaths.length === 0) return null;
 
   const scopeLabel = buildSearchScopeLabel(tool, args);
   if (files.length === 0 && !scopeLabel) return null;
 
   return {
     scopeLabel,
+    headerLabel: resolveHoverHeaderLabel(tool),
     files: files.map((f) => ({
       ...f,
       path: relativizePathForDisplay(f.path, args),
     })),
   };
+}
+
+function resolveHoverHeaderLabel(tool: string): string {
+  if (isReadFileTool(tool)) return 'Read files';
+  if (tool === LIST_DIRECTORY_TOOL) return 'Directory listing';
+  return 'Searched files';
 }
 
 function buildSearchScopeLabel(tool: string, args: Record<string, unknown> | undefined): string {
@@ -57,8 +81,9 @@ function buildSearchScopeLabel(tool: string, args: Record<string, unknown> | und
     ?? pickString(args?.path)
     ?? pickString(args?.input);
 
-  const extensions = Array.isArray(args?.extensions)
-    ? args.extensions.filter((e): e is string => typeof e === 'string' && e.trim().length > 0)
+  const rawExtensions = args?.extensions;
+  const extensions = Array.isArray(rawExtensions)
+    ? rawExtensions.filter((e): e is string => typeof e === 'string' && e.trim().length > 0)
     : [];
 
   if (prefix && extensions.length > 0) {
@@ -67,6 +92,9 @@ function buildSearchScopeLabel(tool: string, args: Record<string, unknown> | und
   }
 
   if (prefix) {
+    if (tool === LIST_DIRECTORY_TOOL) {
+      return normalizePathSlashes(prefix);
+    }
     return `${normalizePathSlashes(prefix)}/**/*`;
   }
 
@@ -180,6 +208,24 @@ function extractFilesFromJson(value: unknown, tool: string): SearchToolFileEntry
     );
   }
 
+  const results = Array.isArray(obj.results) ? obj.results : null;
+  if (results && isReadFileTool(tool)) {
+    return dedupeEntries(
+      results.flatMap((item) => {
+        if (!item || typeof item !== 'object') return [];
+        const path = pickString((item as Record<string, unknown>).path);
+        if (!path) return [];
+        const row = item as Record<string, unknown>;
+        return [{
+          name: fileNameFromPath(path),
+          path,
+          line: pickLine(row.line_start ?? row.start_line),
+          lineEnd: pickLine(row.line_end ?? row.end_line),
+        }];
+      }),
+    );
+  }
+
   const paths = Array.isArray(obj.paths) ? obj.paths : null;
   if (paths && tool.includes('blast')) {
     return dedupeEntries(
@@ -206,6 +252,25 @@ function extractFilesFromJson(value: unknown, tool: string): SearchToolFileEntry
 
 function extractFilesFromMarkdown(tool: string, result: string): SearchToolFileEntry[] {
   const entries: SearchToolFileEntry[] = [];
+
+  if (isReadFileTool(tool)) {
+    for (const line of result.split('\n')) {
+      const headingMatch = line.match(/^####\s+\d+\.\s+(.+)$/);
+      if (headingMatch?.[1]?.trim()) {
+        const filePath = headingMatch[1].trim();
+        entries.push({ name: fileNameFromPath(filePath), path: filePath });
+        continue;
+      }
+
+      const tableMatch = line.match(/^\|\s*\d+\s*\|\s*([^|]+?)\s*\|/);
+      if (tableMatch?.[1]?.trim() && !tableMatch[1].includes('---')) {
+        const name = tableMatch[1].trim();
+        entries.push({ name, path: name });
+      }
+    }
+
+    if (entries.length > 0) return dedupeEntries(entries);
+  }
 
   if (tool === 'local_grep') {
     for (const line of result.split('\n')) {

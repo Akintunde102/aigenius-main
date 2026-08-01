@@ -2,6 +2,8 @@
  * Per-tool activity nouns for turn summaries (e.g. "6 reads, 4 searches").
  * Keep labels short and lowercase — they appear mid-sentence in aggregate summaries.
  */
+import { getToolDisplayName } from './tool-display-names';
+
 export type ToolActivityNoun = {
   singular: string;
   plural: string;
@@ -22,6 +24,9 @@ export const TOOL_ACTIVITY_NOUNS: Record<string, ToolActivityNoun> = {
   keep_delete_note: { singular: 'note delete', plural: 'note deletes' },
   convert_to_pdf_and_upload: { singular: 'PDF conversion', plural: 'PDF conversions' },
   web_fetch: { singular: 'web fetch', plural: 'web fetches' },
+  serper_google_search: { singular: 'web search', plural: 'web searches' },
+  get_wallet_balance: { singular: 'balance check', plural: 'balance checks' },
+  workflow_agent: { singular: 'workflow run', plural: 'workflow runs' },
   call_model: { singular: 'model call', plural: 'model calls' },
   workflow_intent: { singular: 'workflow run', plural: 'workflow runs' },
   workflow_inner_create: { singular: 'workflow create', plural: 'workflow creates' },
@@ -56,10 +61,12 @@ export const TOOL_ACTIVITY_NOUNS: Record<string, ToolActivityNoun> = {
   local_retrieval_memory_upsert: { singular: 'memory save', plural: 'memory saves' },
 };
 
-const FALLBACK_NOUN: ToolActivityNoun = { singular: 'tool use', plural: 'tool uses' };
-
 export function getToolActivityNoun(tool: string): ToolActivityNoun {
-  return TOOL_ACTIVITY_NOUNS[tool] ?? FALLBACK_NOUN;
+  const mapped = TOOL_ACTIVITY_NOUNS[tool];
+  if (mapped) return mapped;
+
+  const label = getToolDisplayName(tool).toLowerCase();
+  return { singular: label, plural: label };
 }
 
 export function formatNounCount(count: number, noun: ToolActivityNoun, failed = false): string {

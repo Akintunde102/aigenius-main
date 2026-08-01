@@ -15,6 +15,7 @@ type AppNavigationRouter = {
   replace: (href: string) => void;
 };
 import { getConversationById } from "@/lib/calls/model-chat-conversation";
+import { applyChatProjectScopeFromSession } from "@/lib/code-projects/apply-chat-project-scope";
 import { upsertChatHistorySession } from "@/lib/utils/modelChatConversationUtils";
 import { normalizeSessionMessages } from "@/lib/utils/messageContentUtils";
 import {
@@ -502,6 +503,7 @@ export function useModelInterfaceSessionRouting({
 
         const normalizedSession = normalizeSessionMessages({
           id: conversation.id,
+          codeProjectId: conversation.codeProjectId ?? null,
           title: conversation.session.title,
           modelId: conversation.session.modelId,
           messages: conversation.session.messages,
@@ -516,6 +518,7 @@ export function useModelInterfaceSessionRouting({
         }) as ChatSession;
 
         applySessionPersonalityState(normalizedSession);
+        applyChatProjectScopeFromSession(normalizedSession.codeProjectId);
         const loadedId = normalizedSession.id || null;
         setCurrentSessionId(loadedId);
         if (loadedId) {

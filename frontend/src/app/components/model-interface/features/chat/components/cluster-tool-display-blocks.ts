@@ -1,17 +1,34 @@
 import type { ChatMessageDisplayBlock } from '@/app/components/model-interface/features/messages/components/chatMessageDisplay.utils';
 import type { ToolEvent } from '@/app/components/model-interface/shared/types';
+import { getToolActivityNoun } from '@/shared/tool-activity-nouns';
 import { getToolDisplayName } from './toolDisplayNames';
+import { buildToolActivityLabel } from './tool-ui/tool-activity-label.utils';
+import { buildToolClusterSummary } from './work-activity-summary.utils';
 
 export type ChatMessageRenderBlock =
   | ChatMessageDisplayBlock
   | { type: 'tool_cluster'; events: ToolEvent[] };
 
-export function resolveStreamingToolRowLabel(event: Pick<ToolEvent, 'tool' | 'displayName' | 'arguments'>): string {
+export function resolveStreamingToolRowLabel(
+  event: Pick<ToolEvent, 'tool' | 'displayName' | 'arguments' | 'result' | 'loading' | 'success'>,
+): string {
   const args = event.arguments;
   const activityTitle = typeof args?.activityTitle === 'string' ? args.activityTitle.trim() : '';
   if (activityTitle) return activityTitle;
+
+  if (event.success === false) {
+    const noun = getToolActivityNoun(event.tool);
+    return `Failed ${noun.singular}`;
+  }
+
+  const direct = buildToolActivityLabel(event);
+  if (direct) return direct;
+
+  const rich = buildToolClusterSummary([event as ToolEvent]);
+  if (rich) return rich;
+
   const dn = event.displayName?.trim();
-  if (dn) return dn;
+  if (dn && dn !== event.tool) return dn;
   return getToolDisplayName(event.tool);
 }
 

@@ -44,6 +44,8 @@ export function ToolStreamingGroup({
     ? 'Working…'
     : completedSummary ?? 'Worked';
 
+  const isSingleCompactTool = compactEvents.length === 1 && patchEvents.length === 0;
+
   useEffect(() => {
     if (requestInProgress) {
       setOpen(true);
@@ -56,6 +58,27 @@ export function ToolStreamingGroup({
       wasWorkingRef.current = false;
     }
   }, [requestInProgress]);
+
+  if (isSingleCompactTool) {
+    const evt = compactEvents[0];
+    return (
+      <div className={styles.group}>
+        <ToolStreamingCard
+          groupItem
+          streaming_tool={{
+            tool: evt.tool,
+            displayName: evt.displayName,
+            logs: evt.logs,
+            loading: evt.loading,
+            success: evt.success,
+            arguments: evt.arguments,
+          }}
+          result={evt.result}
+          arguments={evt.arguments}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.group}>

@@ -87,6 +87,7 @@ function ToolTimelineRow({
         <div className={styles.timelineBody}>
           <ToolStreamingCard
             groupItem
+            detailsOnly
             streaming_tool={{
               tool: event.tool,
               displayName: event.displayName,
