@@ -231,15 +231,44 @@ export const ModelSelectionModal = React.memo(({
     if (previewedRecentModel) {
       sections.push({ title: "Recently picked", models: [previewedRecentModel] });
     }
-    sections.push({ title: "Others", models: filteredOtherModels });
+    if (filteredOtherModels.length > 0) {
+      const hasNamedSectionsAbove =
+        filteredMainModels.length > 0 || previewedRecentModel != null;
+      sections.push({
+        title: hasNamedSectionsAbove ? "Others" : "",
+        models: filteredOtherModels,
+      });
+    }
     return sections;
   }, [filteredMainModels, filteredOtherModels, previewedRecentModel]);
 
-  // Auto-switch to "all" if favorites are empty
+  // Reset tab when the modal opens so "All Models" is ready immediately (no empty first paint).
+  useEffect(() => {
+    if (!isOpen) {
+      hasAutoSwitchedRef.current = false;
+      return;
+    }
+
+    if (favoritesLoaded === false) {
+      return;
+    }
+
+    if (pinnedModelIds.length > 0) {
+      setActiveTab("favorites");
+      setShowFilterSortRow(false);
+    } else {
+      setActiveTab("all");
+      setShowFilterSortRow(true);
+      hasAutoSwitchedRef.current = true;
+    }
+  }, [isOpen, favoritesLoaded, pinnedModelIds.length, setActiveTab]);
+
+  // Fallback: auto-switch to "all" if favorites are empty while still on favorites tab
   useEffect(() => {
     if (!hasAutoSwitchedRef.current && favoritesLoaded && pinnedModelIds.length === 0 && activeTab === "favorites") {
       hasAutoSwitchedRef.current = true;
       setActiveTab("all");
+      setShowFilterSortRow(true);
     }
   }, [favoritesLoaded, pinnedModelIds.length, activeTab, setActiveTab]);
 
@@ -380,6 +409,7 @@ export const ModelSelectionModal = React.memo(({
           <div className={`flex-1 min-h-0 overflow-y-auto ${isMobile ? "p-2 pb-4" : "p-4 pb-8"}`} ref={parentRef}>
             <ModelSelectionGrid
               parentRef={parentRef}
+              listKey={activeTab}
               models={
                 activeTab === "favorites" ? favoritesSorted :
                   activeTab === "ollama" ? ollamaModelsSorted :

@@ -5,6 +5,8 @@ import { UseWalletManagementProps } from './chatOperations.types';
 import { useWalletSocket } from '@/lib/hooks/useWalletSocket';
 import { isE2eBrowserWalletBypassEnabled } from '@/lib/e2e-wallet-bypass';
 import { WalletPaymentSuccessOptions } from '@/lib/wallet-payment-return';
+import { waitForAccessToken } from '@/lib/api/wait-for-access-token';
+import { subscribeToTokenRefresh } from '@/lib/api/auth-client';
 
 
 /**
@@ -24,19 +26,37 @@ export function useWalletManagement({
 }) {
     const [paymentModalLoading, setPaymentModalLoading] = useState(false);
 
-    // Load wallet on mount
+    // Load wallet once the JWT is available (desktop OAuth can lag storage by a tick).
     useEffect(() => {
+        let cancelled = false;
+
         const loadWallet = async () => {
             try {
+                await waitForAccessToken();
+                if (cancelled) {
+                    return;
+                }
                 const res = await getUserDetails();
-                setWallet(res?.config?.wallet ?? null);
+                if (!cancelled) {
+                    setWallet(res?.config?.wallet ?? null);
+                }
             } catch (error) {
-                console.error('Failed to load wallet:', error);
-                setError('Failed to load wallet balance');
+                if (!cancelled) {
+                    console.error('Failed to load wallet:', error);
+                    setError('Failed to load wallet balance');
+                }
             }
         };
 
-        loadWallet();
+        void loadWallet();
+        const unsubscribe = subscribeToTokenRefresh(() => {
+            void loadWallet();
+        });
+
+        return () => {
+            cancelled = true;
+            unsubscribe();
+        };
     }, [setError, setWallet]);
 
     // Real-time updates: when the server pushes wallet:updated (e.g. after admin grants credits),

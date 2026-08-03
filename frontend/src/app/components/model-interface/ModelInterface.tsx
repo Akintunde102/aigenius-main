@@ -49,6 +49,7 @@ import {
 import { buildConversationMessageSignature } from "@/lib/utils/conversationScrollMemory";
 import { useModelInterfacePersonality } from "./hooks/useModelInterfacePersonality";
 import { useModelInterfaceAttachments } from "./hooks/useModelInterfaceAttachments";
+import { isUploadErrorMessage } from "./features/file-upload/uploadError.utils";
 import { useModelInterfaceWalletGate } from "./hooks/useModelInterfaceWalletGate";
 import { useModelInterfaceSessionRouting } from "./hooks/useModelInterfaceSessionRouting";
 import { useIsDesktopShell } from "@/lib/hooks/useIsDesktopShell";
@@ -138,7 +139,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     selectedPersonalityIconUrl,
     setSelectedPersonalityIconUrl,
   } = personalityState;
-  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, showTyping, setShowTyping, showScrollToBottom } = chatState;
+  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, showTyping, setShowTyping, showScrollToBottom } = chatState;
   const { loading, setLoading, error, setError, streaming, setStreaming, streamingEnabled, setStreamingEnabled, imagePreview, setImagePreview, uploading, setUploading, uploadProgress, setUploadProgress, dragActive, setDragActive, showCosts, showNaira, showSaved, setShowSaved, setTotalSpent, optimizationMessage } = uiState;
   const { showModelDetailsModal, setShowModelDetailsModal, showModelSelectionModal, setShowModelSelectionModal } = modalState;
   const { search, setSearch, historySearch, setHistorySearch, orderByCost, setOrderByCost, allModalities, selectedModalities, allOutputModalities, selectedOutputModalities, showWebSearch, setShowWebSearch, showToolsOnly, setShowToolsOnly, pinnedModelIds, favoritesLoaded, orderBy, setOrderBy, orderDir, setOrderDir, selectedProviders, setSelectedProviders, imageFilterOnly, setImageFilterOnly, toggleModality, toggleOutputModality } = filterState;
@@ -195,6 +196,10 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     setAttachmentIndex,
     handleFileUpload,
     handleCancelUpload,
+    failedUploads,
+    retryFailedUpload,
+    retryAllFailedUploads,
+    removeFailedUpload,
     handleQueuedFiles,
   } = useModelInterfaceAttachments({
     chat,
@@ -209,6 +214,12 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
 
   const handleQueuedFilesRef = useRef(handleQueuedFiles);
   handleQueuedFilesRef.current = handleQueuedFiles;
+
+  useEffect(() => {
+    if (failedUploads.length === 0 && error && isUploadErrorMessage(error)) {
+      setError("");
+    }
+  }, [failedUploads.length, error, setError]);
 
   const currentChatSignature = useMemo(
     () => buildConversationMessageSignature(chat),
@@ -510,13 +521,22 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     setSelectedModel(model);
   };
 
-  if (modelsLoading && chatHistory.length === 0) {
+  const isWorkspaceBootstrapping =
+    (modelsLoading && models.length === 0) ||
+    (isInitialLoading && chatHistory.length === 0);
+
+  if (isWorkspaceBootstrapping) {
     return (
       <ChatShellLoadingSkeleton
         outerMinHeightStyle={
           isDesktopShell
             ? { minHeight: 0, height: "100%", flex: 1 }
             : { minHeight: "calc(var(--vh, 1vh) * 100)" }
+        }
+        statusMessage={
+          modelsLoading && models.length === 0
+            ? "Loading models…"
+            : "Loading conversations…"
         }
       />
     );
@@ -534,8 +554,30 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
       {error ? (
         <ChatErrorMessage
           message={error}
-          canRetry={true}
+          canRetry={
+            /wallet/i.test(error)
+              ? true
+              : isUploadErrorMessage(error)
+                ? failedUploads.some((entry) => entry.status !== 'retrying')
+                : true
+          }
           onRetry={async () => {
+            const isWalletError = /wallet/i.test(error);
+            if (isWalletError && refreshWalletFromBackend) {
+              const balance = await refreshWalletFromBackend();
+              if (balance !== null) {
+                setError("");
+              } else {
+                setError("Failed to load wallet balance");
+              }
+              return;
+            }
+
+            if (isUploadErrorMessage(error)) {
+              retryAllFailedUploads();
+              return;
+            }
+
             setError("");
             if (input.trim()) {
               await handleSend(input.trim());
@@ -547,7 +589,10 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                 setChat(nextChat);
                 await handleSend(undefined, undefined, lastUserMsg, nextChat);
               } else if (refreshWalletFromBackend) {
-                await refreshWalletFromBackend();
+                const balance = await refreshWalletFromBackend();
+                if (balance === null) {
+                  setError("Failed to load wallet balance");
+                }
               }
             }
           }}
@@ -627,6 +672,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     switchToSession={handleSessionSwitch}
                     createNewSessionAndSwitch={createNewSessionAndSwitchWrapper}
                     isSessionActive={isSessionActive}
+                    isInitialLoading={isInitialLoading || (modelsLoading && models.length === 0)}
                     onLogout={handleLogout}
                     userInitials={getSidebarUserInitials(currentUser)}
                   />
@@ -657,6 +703,9 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     uploadProgress={uploadProgress}
                     supportsImageUpload={supportsImageUpload || false}
                     uploadedFiles={uploadedFiles}
+                    failedUploadFiles={failedUploads}
+                    onRetryFailedUpload={retryFailedUpload}
+                    onRemoveFailedUpload={removeFailedUpload}
                     setUploadedFiles={setUploadedFiles}
                     setAttachmentIndex={setAttachmentIndex}
                     setShowModelSelectionModal={setShowModelSelectionModal}

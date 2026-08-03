@@ -333,7 +333,7 @@ function extractFilesFromMarkdown(tool: string, result: string): SearchToolFileE
   const directoryBlocks = result.matchAll(
     /^\d+\.\s+\*\*([^*]+)\*\*\s*\n\s*-\s+\*\*Path\*\*:\s*(?:\[[^\]]*\]\(([^)]+)\)|([^\n]+))/gim,
   );
-  for (const match of directoryBlocks) {
+  for (const match of Array.from(directoryBlocks)) {
     const name = match[1]?.trim();
     const filePath = (match[2] ?? match[3])?.trim();
     if (!filePath) continue;

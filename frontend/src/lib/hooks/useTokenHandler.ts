@@ -3,6 +3,7 @@ import { storageConstants } from '../constants';
 import { navigateTo } from '../utils/navigate';
 import { storage } from '../utils/store';
 import { hasAuthSession } from '../utils/auth-session';
+import { getAccessToken } from '../api/auth-client';
 import {
   DESKTOP_SHELL_ENTRY_QUERY_PARAM,
   isAigeniusDesktopRuntime,
@@ -17,7 +18,7 @@ const useTokenHandler = () => {
         if (!token) {
             const noboxToken = storage(storageConstants.NOBOX_CLIENT_TOKEN).getString();
 
-            if (!noboxToken && !hasAuthSession()) {
+            if (!noboxToken && !hasAuthSession() && !getAccessToken()) {
                 const urlParams = new URLSearchParams(window.location.search);
                 const tokenInUrl = urlParams.get("token");
 

@@ -15,6 +15,8 @@ declare global {
       /** Fires when the Electron main window regains OS focus (e.g. after system-browser payment). */
       onMainWindowFocus?: (handler: () => void) => () => void;
       startWebSignIn?: () => Promise<{ token?: string | null } | null>;
+      startOAuthSignIn?: (options?: { provider?: 'google' }) => Promise<{ token?: string | null } | null>;
+      getUpstreamApiUrl?: () => Promise<string>;
       getChatRuntimeContext?: () => Promise<{
         desktopHost: { platform: string; arch: string; release: string; userHomeDir: string };
         retrievalMemoryCatalog: {
@@ -40,6 +42,7 @@ declare global {
       onQueueChatScreenshot?: (
         handler: (items: Array<{ base64: string; mimeType: string; basename: string }>) => void,
       ) => () => void;
+      [key: string]: any;
     };
   }
 }

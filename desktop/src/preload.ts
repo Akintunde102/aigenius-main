@@ -84,6 +84,8 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
       entries: Array<{ slug: string; name: string; description: string; tags: string[] }>;
     };
   }>,
+  getUpstreamApiUrl: (): Promise<string> =>
+    ipcRenderer.invoke('get-upstream-api-url') as Promise<string>,
   getLocalSearchIndexState: () =>
     ipcRenderer.invoke('get-local-search-index-state') as Promise<{
       reportedAtIso: string;
@@ -278,6 +280,8 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     >,
   startWebSignIn: (): Promise<{ token: string } | null> =>
     ipcRenderer.invoke('web-signin') as Promise<{ token: string } | null>,
+  startOAuthSignIn: (options?: { provider?: 'google' }): Promise<{ token: string } | null> =>
+    ipcRenderer.invoke('start-oauth-signin', options) as Promise<{ token: string } | null>,
   openFile: (path: string): Promise<{ ok: boolean; error: string }> =>
     ipcRenderer.invoke('open-file-path', path) as Promise<{ ok: boolean; error: string }>,
   revealFileInFolder: (path: string): Promise<{ ok: boolean; error?: string }> =>

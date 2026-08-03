@@ -2,6 +2,7 @@ import { serverCall } from "@/servercall/init";
 import { serverCalls } from "@/servercall/store";
 import { storageConstants } from "@/lib/constants";
 import { storage } from "@/lib/utils/store";
+import { waitForAccessToken } from "@/lib/api/wait-for-access-token";
 import {
   USER_DETAILS_CACHE_TTL_MS,
   clearUserDetailsCache,
@@ -41,6 +42,8 @@ export const getUserDetails = async (forceRefresh = false) => {
 
   inflightPromise = (async () => {
     try {
+      await waitForAccessToken();
+
       const res = await serverCall({
         serverCallProps: {
           call: serverCalls.getGatewayLoggedUserDetails,
@@ -48,7 +51,14 @@ export const getUserDetails = async (forceRefresh = false) => {
         authorized: true,
       });
 
-      const userData = res.dataReturned;
+      if (!res?.success) {
+        throw new Error('Failed to load user details');
+      }
+
+      const userData = res.dataReturned as Record<string, any> | null | undefined;
+      if (!userData || typeof userData !== 'object') {
+        throw new Error('User details response was empty');
+      }
 
       if (!userData.config) {
         userData.config = {};

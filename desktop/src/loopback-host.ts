@@ -1,5 +1,5 @@
 /** Canonical loopback hostname for the desktop shell and local dev URLs. */
-export const DEV_LOOPBACK_HOST = 'localhost';
+export const DEV_LOOPBACK_HOST = '127.0.0.1';
 
 export function loopbackHttpOrigin(port: string | number): string {
   return `http://${DEV_LOOPBACK_HOST}:${port}`;

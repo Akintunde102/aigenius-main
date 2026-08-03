@@ -19,7 +19,7 @@ export type CreateCodeProjectInput = {
 export async function listCodeProjects(): Promise<CodeProject[]> {
   try {
     const res = await authorizedRequest<CodeProject[]>({
-      call: 'getGatewayCodeProjects',
+      call: 'getGatewayCodeProjects' as any,
     });
     return Array.isArray(res) ? res : [];
   } catch {
@@ -29,7 +29,7 @@ export async function listCodeProjects(): Promise<CodeProject[]> {
 
 export async function createCodeProject(input: CreateCodeProjectInput): Promise<CodeProject> {
   return authorizedRequest<CodeProject>({
-    call: 'postGatewayCodeProjects',
+    call: 'postGatewayCodeProjects' as any,
     data: input,
   });
 }
@@ -39,7 +39,7 @@ export async function updateCodeProject(
   input: Partial<CreateCodeProjectInput>,
 ): Promise<CodeProject> {
   return authorizedRequest<CodeProject>({
-    call: 'putGatewayCodeProjects',
+    call: 'putGatewayCodeProjects' as any,
     data: input,
     pathArgs: { id },
   });
@@ -47,7 +47,7 @@ export async function updateCodeProject(
 
 export async function deleteCodeProject(id: string): Promise<{ success: boolean }> {
   return authorizedRequest<{ success: boolean }>({
-    call: 'deleteGatewayCodeProjects',
+    call: 'deleteGatewayCodeProjects' as any,
     pathArgs: { id },
   });
 }
@@ -57,7 +57,7 @@ export async function assignConversationCodeProject(
   codeProjectId: string | null,
 ): Promise<unknown> {
   return authorizedRequest({
-    call: 'postGatewayModelChatsConversationCodeProject',
+    call: 'postGatewayModelChatsConversationCodeProject' as any,
     data: { codeProjectId },
     pathArgs: { id: conversationId },
   });

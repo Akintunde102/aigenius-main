@@ -3,6 +3,10 @@ import { Button } from "@/app/components/ui/button";
 import { LINKS } from "@/lib/links";
 import Image from "next/image";
 import { AUTH_CONFIG } from "@/lib/config/auth";
+import { completeDesktopOAuthSession } from "@/lib/utils/complete-desktop-oauth-session";
+import { syncAuthSessionCookiesFromStorage } from "@/lib/utils/auth-session";
+import { resolveAuthenticatedDesktopShellRedirect } from "@/lib/utils/safe-internal-next-path";
+import { resolveDesktopGoogleOAuthUrl } from "@/lib/utils/desktop-google-auth-url";
 
 interface GoogleSignInProps {
     variant?: 'login' | 'signup';
@@ -19,9 +23,43 @@ export const GoogleSignIn = ({
     className = '',
     lightSurface = false,
 }: GoogleSignInProps) => {
-    const handleGoogleSignIn = () => {
-        // Redirect to Google OAuth endpoint
-        window.location.href = LINKS.googleLogin;
+    const handleGoogleSignIn = async () => {
+        const url = LINKS.googleLogin;
+        if (!url || url.includes('undefined')) {
+            console.error('[GoogleSignIn] Missing NEXT_PUBLIC_NOBOX_API_ROOT_URL');
+            return;
+        }
+        if (typeof window !== 'undefined' && window.aigeniusDesktop?.startOAuthSignIn) {
+            try {
+                const res = await window.aigeniusDesktop.startOAuthSignIn({ provider: 'google' });
+                if (res?.token) {
+                    const ok = await completeDesktopOAuthSession(res.token);
+                    if (!ok) {
+                        console.error('[GoogleSignIn] OAuth token exchange failed');
+                        return;
+                    }
+                    syncAuthSessionCookiesFromStorage();
+                    const target = resolveAuthenticatedDesktopShellRedirect(
+                        window.location.pathname,
+                        window.location.search,
+                    );
+                    window.location.replace(target);
+                }
+            } catch (error) {
+                console.error('[GoogleSignIn] Desktop OAuth failed', error);
+            }
+            return;
+        }
+        try {
+            const desktopCallback = sessionStorage.getItem('desktop_callback');
+            if (desktopCallback) {
+                window.location.href = resolveDesktopGoogleOAuthUrl(desktopCallback, LINKS.noboxAPIRootUrl);
+                return;
+            }
+        } catch {
+            /* ignore */
+        }
+        window.location.href = url;
     };
 
     const handleDevLogin = () => {

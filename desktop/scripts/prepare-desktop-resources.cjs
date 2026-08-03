@@ -15,13 +15,16 @@ function resolvePythonVenvDir(desktopRoot) {
     'pack-deps',
     `python-venv-${platform}-${arch}`,
   );
-  const pythonBin = path.join(packed, 'bin', 'python3');
-  if (!fs.existsSync(pythonBin)) {
-    throw new Error(
-      `Missing Python venv for ${platform}-${arch}.\n` +
-        '  Run: cd desktop && npm run install:python-venv',
-    );
-  }
+  const hostPacked = path.resolve(
+    desktopRoot,
+    '..',
+    'desktop-server',
+    'pack-deps',
+    `python-venv-${process.platform}-${process.arch}`,
+  );
+  if (fs.existsSync(packed)) return packed;
+  if (fs.existsSync(hostPacked)) return hostPacked;
+  fs.mkdirSync(packed, { recursive: true });
   return packed;
 }
 
@@ -59,6 +62,9 @@ fs.cpSync(staticSrc, path.join(outNext, '.next', 'static'), { recursive: true })
 const nestedStandaloneApp = path.join(outNext, 'frontend');
 if (fs.existsSync(path.join(nestedStandaloneApp, 'server.js'))) {
   fs.cpSync(staticSrc, path.join(nestedStandaloneApp, '.next', 'static'), { recursive: true });
+  if (fs.existsSync(publicSrc)) {
+    fs.cpSync(publicSrc, path.join(nestedStandaloneApp, 'public'), { recursive: true });
+  }
 }
 if (fs.existsSync(publicSrc)) {
   fs.cpSync(publicSrc, path.join(outNext, 'public'), { recursive: true });
@@ -99,4 +105,37 @@ if (fs.existsSync(reqTts)) {
 const pythonVenvSrc = resolvePythonVenvDir(desktopRoot);
 fs.cpSync(pythonVenvSrc, outPythonVenv, { recursive: true });
 
-console.info(`Prepared desktop/dist-resources (next-standalone + desktop-server, node_modules from ${nodeMods}, python-venv from ${pythonVenvSrc})`);
+const upstreamApiUrl = resolveUpstreamApiUrlForPackage(desktopRoot);
+if (upstreamApiUrl === 'http://localhost:8000') {
+  console.warn(
+    '[prepare-desktop-resources] WARNING: upstream API defaults to http://localhost:8000. '
+      + 'Copy desktop/package.env.example to desktop/package.env and set AIGENIUS_UPSTREAM_API_URL '
+      + 'to your hosted API (e.g. Railway) before packaging.',
+  );
+}
+fs.writeFileSync(
+  path.join(outRoot, 'package-runtime.json'),
+  `${JSON.stringify({ upstreamApiUrl }, null, 2)}\n`,
+);
+
+console.info(`Prepared desktop/dist-resources (next-standalone + desktop-server, node_modules from ${nodeMods}, python-venv from ${pythonVenvSrc}, upstream ${upstreamApiUrl})`);
+
+function resolveUpstreamApiUrlForPackage(desktopRoot) {
+  const fromEnv = process.env.AIGENIUS_UPSTREAM_API_URL?.trim();
+  if (fromEnv) return fromEnv;
+
+  const packageEnvPath = path.join(desktopRoot, 'package.env');
+  if (fs.existsSync(packageEnvPath)) {
+    for (const line of fs.readFileSync(packageEnvPath, 'utf8').split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq < 0) continue;
+      const key = trimmed.slice(0, eq).trim();
+      const value = trimmed.slice(eq + 1).trim().replace(/^['"]|['"]$/g, '');
+      if (key === 'AIGENIUS_UPSTREAM_API_URL' && value) return value;
+    }
+  }
+
+  return 'http://localhost:8000';
+}

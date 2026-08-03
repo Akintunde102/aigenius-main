@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Model } from "@/app/components/model-interface/shared/types";
 import { ModelSelectionCard } from "./ModelSelectionCard";
@@ -13,9 +13,12 @@ type VirtualRow =
   | { type: "model"; model: Model };
 
 const CARD_GAP_PX = 12;
+const HEADER_ROW_HEIGHT_PX = 40;
 
 interface ModelSelectionGridProps {
   parentRef: React.RefObject<HTMLDivElement | null>;
+  /** Busts virtualizer layout when tab/data shape changes (e.g. favorites → all sections). */
+  listKey?: string;
   models?: Model[];
   /** When set, renders titled sections (single virtualized list). */
   sections?: ModelSelectionSection[];
@@ -32,6 +35,7 @@ interface ModelSelectionGridProps {
 
 export const ModelSelectionGrid = React.memo(({
   parentRef,
+  listKey,
   models = [],
   sections,
   isMobile,
@@ -45,7 +49,6 @@ export const ModelSelectionGrid = React.memo(({
   isSortingByReleaseDate,
 }: ModelSelectionGridProps) => {
   const modelRowEstimate = isMobile ? 96 : 108;
-  const headerRowEstimate = isMobile ? 28 : 32;
 
   const virtualRows = useMemo((): VirtualRow[] => {
     const appendModels = (rows: VirtualRow[], list: Model[]) => {
@@ -58,7 +61,9 @@ export const ModelSelectionGrid = React.memo(({
       const rows: VirtualRow[] = [];
       for (const section of sections) {
         if (section.models.length === 0) continue;
-        rows.push({ type: "header", title: section.title });
+        if (section.title.trim()) {
+          rows.push({ type: "header", title: section.title });
+        }
         appendModels(rows, section.models);
       }
       return rows;
@@ -77,10 +82,10 @@ export const ModelSelectionGrid = React.memo(({
     (index: number) => {
       const row = virtualRows[index];
       if (!row) return modelRowEstimate;
-      if (row.type === "header") return headerRowEstimate;
+      if (row.type === "header") return HEADER_ROW_HEIGHT_PX;
       return modelRowEstimate + CARD_GAP_PX;
     },
-    [virtualRows, modelRowEstimate, headerRowEstimate],
+    [virtualRows, modelRowEstimate],
   );
 
   const virtualizer = useVirtualizer({
@@ -89,6 +94,27 @@ export const ModelSelectionGrid = React.memo(({
     estimateSize,
     overscan: 5,
   });
+
+  // Modal portals often mount before the scroll pane has a stable height (especially in
+  // Electron). Without a remeasure, the virtualizer returns zero rows until a tab switch.
+  useLayoutEffect(() => {
+    virtualizer.measure();
+    const frame = requestAnimationFrame(() => {
+      virtualizer.measure();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [listKey, virtualRows.length, virtualizer]);
+
+  useEffect(() => {
+    const scrollEl = parentRef.current;
+    if (!scrollEl) return;
+
+    const observer = new ResizeObserver(() => {
+      requestAnimationFrame(() => virtualizer.measure());
+    });
+    observer.observe(scrollEl);
+    return () => observer.disconnect();
+  }, [parentRef, virtualizer, listKey]);
 
   const slotPadding = isMobile ? "px-2" : "px-4";
 
@@ -117,12 +143,12 @@ export const ModelSelectionGrid = React.memo(({
             <div
               key={String(virtualRow.key)}
               data-index={virtualRow.index}
-              ref={virtualizer.measureElement}
               style={{
                 position: "absolute",
                 top: 0,
                 left: 0,
                 width: "100%",
+                height: HEADER_ROW_HEIGHT_PX,
                 transform: `translateY(${virtualRow.start}px)`,
               }}
               className={slotPadding}

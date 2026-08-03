@@ -272,7 +272,12 @@ export const getAllChatResources = async (): Promise<AllChatResourcesPayload> =>
         },
         authorized: true,
     })
-        .then((r) => normalizeAggregatedResourcesPayload(r.dataReturned))
+        .then((r) => {
+            if (!r?.success) {
+                throw new Error('Failed to load chat resources');
+            }
+            return normalizeAggregatedResourcesPayload(r.dataReturned);
+        })
         .finally(() => {
             getAllChatResourcesInflight = null;
         });

@@ -11,6 +11,13 @@ export interface Model {
     [key: string]: any;
 }
 
+export interface FailedUploadFile {
+    id: string;
+    file: File;
+    status?: 'failed' | 'retrying';
+    progress?: number;
+}
+
 export interface UploadedFileInfo {
     file?: File;
     fileUrl: string;
@@ -30,7 +37,7 @@ export interface ChatBoxInputProps {
         model: Model,
     ) => SendMessageResult | Promise<SendMessageResult>;
     onFileUpload?: (file: File) => void;
-    onCancelUpload?: () => void;
+    onCancelUpload?: (file?: File) => void;
     models: Model[];
     selectedModel: Model;
     onModelChange: (model: Model) => void;
@@ -46,6 +53,9 @@ export interface ChatBoxInputProps {
     /** When set, paperclip opens this menu instead of the native file picker directly. */
     onAttachmentMenuRequest?: () => void;
     uploadedFiles?: UploadedFileInfo[];
+    failedUploadFiles?: FailedUploadFile[];
+    onRetryFailedUpload?: (id: string) => void;
+    onRemoveFailedUpload?: (id: string) => void;
     onRemoveUploadedFile?: (index: number) => void;
     inputValue?: string;
     onInputChange?: (value: string) => void;

@@ -15,7 +15,16 @@ export function createApp(): Hono {
     cors({
       origin: corsAllowedOrigins(),
       allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Session-ID'],
+      allowHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'X-Session-ID',
+        'x-aigenius-desktop',
+        'x-e2e-wallet-bypass',
+        'Accept',
+      ],
+      exposeHeaders: ['X-Conversation-Id'],
       credentials: true,
     }),
   );

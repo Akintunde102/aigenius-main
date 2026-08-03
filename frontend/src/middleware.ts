@@ -30,7 +30,9 @@ function isPublicPath(pathname: string): boolean {
         pathname.startsWith('/_next') ||
         pathname.startsWith('/assets') ||
         pathname.startsWith('/public') ||
-        pathname.startsWith('/api')
+        pathname.startsWith('/api') ||
+        // Monaco ships from `public/monaco-editor` (see FilePreviewModal); must not auth-redirect loader.js.
+        pathname.startsWith('/monaco-editor')
     ) {
         return true;
     }

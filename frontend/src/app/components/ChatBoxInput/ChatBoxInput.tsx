@@ -1,5 +1,5 @@
 import React, { useRef, useImperativeHandle, forwardRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { FileText, Loader2, X } from 'lucide-react';
+import { FileText, Loader2, X, AlertCircle, RotateCcw } from 'lucide-react';
 import { UploadProgressBar } from './UploadProgressBar';
 import { ChatTextarea } from './ChatTextarea';
 import { ChatControls } from './ChatControls';
@@ -41,6 +41,9 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     supportsFileUpload = true,
     onAttachmentMenuRequest,
     uploadedFiles = [],
+    failedUploadFiles = [],
+    onRetryFailedUpload,
+    onRemoveFailedUpload,
     onRemoveUploadedFile,
     inputValue: externalInputValue,
     onInputChange,
@@ -120,12 +123,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
         }
     }, [uploading, resetFileInfo]);
 
-    const activePendingFiles = useMemo(() => {
-        const uploadedNames = new Set(
-            uploadedFiles.map((u) => u.displayName || u.file?.name).filter(Boolean)
-        );
-        return pendingFiles.filter((item: PendingFile) => !uploadedNames.has(item.file.name));
-    }, [pendingFiles, uploadedFiles]);
+    const activePendingFiles = pendingFiles;
 
     const isAnyFileUploading = uploading || activePendingFiles.length > 0;
     const hasFilesButModelUnsupported = uploadedFiles.length > 0 && !supportsFileUpload;
@@ -178,7 +176,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     const styles = getContainerStyles(sidebarStyle);
 
     const attachmentPreviews =
-        uploadedFiles.length > 0 || activePendingFiles.length > 0 ? (
+        uploadedFiles.length > 0 || activePendingFiles.length > 0 || failedUploadFiles.length > 0 ? (
             <div className="mb-2 flex flex-wrap gap-2 px-1">
                 {uploadedFiles.map((item, idx) => {
                     const displayName = item.displayName || item.file?.name || 'attachment';
@@ -223,6 +221,97 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                                     className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-red-500/90 text-white shadow-sm transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-600"
                                     title="Remove"
                                     aria-label="Remove file"
+                                >
+                                    <X size={8} />
+                                </button>
+                            )}
+                        </div>
+                    );
+                })}
+
+                {failedUploadFiles.map((item) => {
+                    const ext = item.file.name.split('.').pop()?.toUpperCase() || '';
+                    const isImage = item.file.type.startsWith('image/');
+                    const isRetrying = item.status === 'retrying';
+                    const progress = isRetrying && typeof item.progress === 'number' ? item.progress : 0;
+                    const radius = 14;
+                    const circumference = 2 * Math.PI * radius;
+                    const strokeDashoffset = circumference - (progress / 100) * circumference;
+                    return (
+                        <div
+                            key={`failed-${item.id}`}
+                            className={`group relative flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-xl border shadow-sm ${
+                                isRetrying
+                                    ? 'border-sky-200 bg-slate-50 dark:border-sky-800/60 dark:bg-slate-800/80'
+                                    : 'border-red-300 bg-red-50 dark:border-red-800/60 dark:bg-red-950/40'
+                            }`}
+                            title={isRetrying ? `Retrying upload: ${item.file.name}` : `Upload failed: ${item.file.name}`}
+                        >
+                            <div className="absolute inset-0 overflow-hidden rounded-xl">
+                                <div className={`flex h-full w-full flex-col items-center justify-center gap-1 p-2 ${isRetrying ? 'opacity-60' : ''}`}>
+                                    {isImage ? (
+                                        <AlertCircle size={20} className={isRetrying ? 'text-sky-400' : 'text-red-500'} />
+                                    ) : (
+                                        <FileText size={20} className={isRetrying ? 'text-slate-400 dark:text-slate-500' : 'text-red-400'} />
+                                    )}
+                                    <span className={`max-w-[64px] truncate text-[9px] font-medium ${
+                                        isRetrying ? 'text-slate-600 dark:text-slate-300' : 'text-red-700 dark:text-red-300'
+                                    }`}>
+                                        {item.file.name}
+                                    </span>
+                                    {ext && (
+                                        <span className={`rounded px-1 py-px text-[8px] font-bold uppercase ${
+                                            isRetrying
+                                                ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
+                                                : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                                        }`}>
+                                            {ext}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            {isRetrying ? (
+                                <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/30 backdrop-blur-[2px] dark:bg-black/50">
+                                    {progress > 0 ? (
+                                        <>
+                                            <svg width="36" height="36" viewBox="0 0 36 36" className="-rotate-90">
+                                                <circle cx="18" cy="18" r={radius} fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white/20" />
+                                                <circle
+                                                    cx="18" cy="18" r={radius}
+                                                    fill="none" stroke="currentColor" strokeWidth="2.5"
+                                                    strokeDasharray={circumference}
+                                                    strokeDashoffset={strokeDashoffset}
+                                                    strokeLinecap="round"
+                                                    className="text-sky-400 transition-all duration-300"
+                                                />
+                                            </svg>
+                                            <span className="absolute text-[9px] font-bold text-white">
+                                                {Math.round(progress)}%
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <Loader2 className="h-5 w-5 animate-spin text-sky-400" />
+                                    )}
+                                </div>
+                            ) : null}
+                            {!isRetrying && onRetryFailedUpload && (
+                                <button
+                                    type="button"
+                                    onClick={() => onRetryFailedUpload(item.id)}
+                                    className="absolute bottom-1 left-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-sm hover:bg-red-600"
+                                    title="Retry upload"
+                                    aria-label={`Retry upload for ${item.file.name}`}
+                                >
+                                    <RotateCcw size={10} />
+                                </button>
+                            )}
+                            {onRemoveFailedUpload && (
+                                <button
+                                    type="button"
+                                    onClick={() => onRemoveFailedUpload(item.id)}
+                                    className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-red-500/90 text-white shadow-sm transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-600"
+                                    title={isRetrying ? 'Cancel upload' : 'Remove'}
+                                    aria-label={isRetrying ? `Cancel upload for ${item.file.name}` : 'Remove failed upload'}
                                 >
                                     <X size={8} />
                                 </button>
@@ -293,8 +382,8 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                                 type="button"
                                 onClick={() => removePendingFile(item.id)}
                                 className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-red-500/90 text-white shadow-sm transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-600"
-                                title="Remove"
-                                aria-label="Remove file"
+                                title={item.status === 'uploading' && uploading ? 'Cancel upload' : 'Remove'}
+                                aria-label={item.status === 'uploading' && uploading ? `Cancel upload for ${item.file.name}` : 'Remove file'}
                             >
                                 <X size={8} />
                             </button>
@@ -476,6 +565,8 @@ export default React.memo(ChatBoxInput, (prevProps, nextProps) => {
         prevProps.onFileUpload === nextProps.onFileUpload &&
         prevProps.onCancelUpload === nextProps.onCancelUpload &&
         prevProps.onRemoveUploadedFile === nextProps.onRemoveUploadedFile &&
+        prevProps.onRetryFailedUpload === nextProps.onRetryFailedUpload &&
+        prevProps.onRemoveFailedUpload === nextProps.onRemoveFailedUpload &&
         prevProps.onInputChange === nextProps.onInputChange &&
         prevProps.onStreamingToggle === nextProps.onStreamingToggle &&
         prevProps.inputValue === nextProps.inputValue &&
@@ -497,7 +588,7 @@ export default React.memo(ChatBoxInput, (prevProps, nextProps) => {
         prevProps.hideModelSelector === nextProps.hideModelSelector &&
         prevProps.hideUpload === nextProps.hideUpload &&
         prevProps.supportsFileUpload === nextProps.supportsFileUpload &&
-        // Reference equality: same-length but different files must still re-render.
-        prevProps.uploadedFiles === nextProps.uploadedFiles
+        prevProps.uploadedFiles === nextProps.uploadedFiles &&
+        prevProps.failedUploadFiles === nextProps.failedUploadFiles
     );
 });

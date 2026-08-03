@@ -24,6 +24,37 @@ function apiConnectOrigins(apiRootUrl) {
 
 const configuredApiOrigins = apiConnectOrigins(resolvedNoboxApiRootUrl);
 
+function readDesktopUpstreamFromPackageEnv() {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const packageEnvPath = path.join(__dirname, '..', 'desktop', 'package.env');
+        if (!fs.existsSync(packageEnvPath)) {
+            return undefined;
+        }
+        for (const line of fs.readFileSync(packageEnvPath, 'utf8').split('\n')) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('#')) continue;
+            const eq = trimmed.indexOf('=');
+            if (eq < 0) continue;
+            const key = trimmed.slice(0, eq).trim();
+            const value = trimmed.slice(eq + 1).trim().replace(/^['"]|['"]$/g, '');
+            if (key === 'AIGENIUS_UPSTREAM_API_URL' && value) {
+                return value;
+            }
+        }
+    } catch {
+        /* ignore */
+    }
+    return undefined;
+}
+
+const desktopUpstreamApiUrl =
+    process.env.NEXT_PUBLIC_DESKTOP_UPSTREAM_API_URL ||
+    readDesktopUpstreamFromPackageEnv();
+
+const desktopUpstreamOrigins = apiConnectOrigins(desktopUpstreamApiUrl);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     // Build optimizations
@@ -37,7 +68,7 @@ const nextConfig = {
     // Performance optimizations
     experimental: {
         optimizeCss: false,
-        optimizePackageImports: ['antd', 'react-icons', '@radix-ui/react-*'],
+        optimizePackageImports: ['antd', '@radix-ui/react-*'],
     },
     transpilePackages: ['react-pdf', 'pdfjs-dist'],
 
@@ -46,13 +77,20 @@ const nextConfig = {
         const prodConnectSrc = [
             "connect-src 'self'",
             ...configuredApiOrigins,
+            ...desktopUpstreamOrigins,
+            'https://*.up.railway.app',
+            'wss://*.up.railway.app',
             'http://localhost:8000',
             'http://localhost:8001',
             'http://localhost:28001',
             'http://localhost:3001',
+            'http://localhost:23001',
+            'http://127.0.0.1:23001',
             'http://localhost:7486',
             'ws://localhost:8000',
             'ws://localhost:3001',
+            'ws://localhost:23001',
+            'ws://127.0.0.1:23001',
             'wss://localhost:8000',
             'wss://localhost:3001',
             'https://api.nobox.cloud',
@@ -68,13 +106,20 @@ const nextConfig = {
         const devConnectSrc = [
             "connect-src 'self'",
             ...configuredApiOrigins,
+            ...desktopUpstreamOrigins,
+            'https://*.up.railway.app',
+            'wss://*.up.railway.app',
             'http://localhost:3000',
             'http://localhost:3001',
+            'http://localhost:23001',
+            'http://127.0.0.1:23001',
             'http://localhost:8000',
             'http://localhost:5000',
             'http://localhost:8001',
             'http://localhost:28001',
             'http://localhost:7486',
+            'ws://localhost:23001',
+            'ws://127.0.0.1:23001',
             'https://api.nobox.cloud',
             'https://api.paystack.co',
             'https://api.aigenius.chat',

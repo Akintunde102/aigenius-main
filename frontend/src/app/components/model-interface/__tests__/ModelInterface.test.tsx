@@ -161,6 +161,7 @@ function buildMockModelInterface(overrides: {
                 messages: [{ id: 'assistant-1', role: 'assistant', content: 'Existing response', timestamp: 1, modelId: 'm1' }],
             }],
             setChatHistory: jest.fn(),
+            isInitialLoading: false,
             savedChats: [],
             setSavedChats: jest.fn(),
             savedFullChats: [],

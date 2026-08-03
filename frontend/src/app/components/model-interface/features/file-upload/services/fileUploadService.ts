@@ -1,4 +1,4 @@
-import { AxiosProgressEvent } from "axios";
+import { AxiosProgressEvent, isCancel } from "axios";
 import { authHttp } from "@/lib/api/auth-client";
 import { sendUpload, sendUploadStream } from "@/app/components/file/constants";
 import { ChatMessage } from '@/app/components/model-interface/shared/types';
@@ -18,8 +18,27 @@ export interface StreamUploadResponse {
 
 export interface UploadCallbacks {
     onSuccess: (data: StreamUploadResponse) => void;
-    onError: (error: any) => void;
+    onError: (error: unknown) => void;
     onProgress: (progress: { percent: number }) => void;
+    onStarted?: (controls: { cancel: () => void }) => void;
+}
+
+function isUploadAbortError(error: unknown): boolean {
+    if (isCancel(error)) {
+        return true;
+    }
+    if (error instanceof DOMException && error.name === 'AbortError') {
+        return true;
+    }
+    if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code?: string }).code === 'ERR_CANCELED'
+    ) {
+        return true;
+    }
+    return false;
 }
 
 export const customUpload = async ({
@@ -28,11 +47,15 @@ export const customUpload = async ({
     onSuccess,
     onError,
     onProgress,
+    onStarted,
 }: {
     file: File;
     /** Persisted on the upload row so “My files” can link back to `/chat/:id`. */
     conversationId?: string | null;
 } & UploadCallbacks) => {
+    const controller = new AbortController();
+    onStarted?.({ cancel: () => controller.abort() });
+
     try {
         if (!file) throw new Error("No File to upload");
 
@@ -69,6 +92,7 @@ export const customUpload = async ({
                 headers: {
                     'Content-Type': file.type || mimeTypes[extension],
                 },
+                signal: controller.signal,
                 onUploadProgress: (progressEvent: AxiosProgressEvent) => {
                     const val = (progressEvent.loaded / (progressEvent.total || progressEvent.loaded));
                     const percent = Math.floor(val * 100);
@@ -80,6 +104,9 @@ export const customUpload = async ({
         const data = response.data as StreamUploadResponse;
         onSuccess(data);
     } catch (error) {
+        if (isUploadAbortError(error)) {
+            return;
+        }
         logApiError(error, 'file-upload', 'POST');
         onError(error);
     }

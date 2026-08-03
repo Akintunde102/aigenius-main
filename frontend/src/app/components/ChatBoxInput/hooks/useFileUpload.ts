@@ -14,7 +14,7 @@ const FILE_VALIDATION = {
 
 interface UseFileUploadProps {
     onFileUpload?: (file: File) => void;
-    onCancelUpload?: () => void;
+    onCancelUpload?: (file?: File) => void;
     onAttachmentMenuRequest?: () => void;
     uploading?: boolean;
     disabled?: boolean;
@@ -117,16 +117,18 @@ export const useFileUpload = ({
         });
     }, [pendingItems, disabled, onFileUpload]);
 
-    // When uploading transitions to false (all done), clear completed items
+    // When uploading finishes, clear only items that were already dispatched.
+    // Clearing everything races with a newly queued file picked right as the prior upload ends.
     const prevUploadingRef = useRef(uploading);
     useEffect(() => {
         if (prevUploadingRef.current && !uploading) {
-            // All uploads finished — clear pending items and revoke previews
             setPendingItems((prev) => {
-                prev.forEach(revokePreview);
-                return [];
+                const completing = prev.filter((item) => dispatchedIdsRef.current.has(item.id));
+                const completingIds = new Set(completing.map((item) => item.id));
+                completing.forEach(revokePreview);
+                completing.forEach((item) => dispatchedIdsRef.current.delete(item.id));
+                return prev.filter((item) => !completingIds.has(item.id));
             });
-            dispatchedIdsRef.current.clear();
         }
         prevUploadingRef.current = uploading;
     }, [uploading, revokePreview]);
@@ -204,18 +206,23 @@ export const useFileUpload = ({
             ...item,
             status: dispatchedIdsRef.current.has(item.id) ? 'uploading' as const : 'queued' as const
         }));
-    }, [pendingItems]);
+    }, [pendingItems, uploading]);
 
     const removePendingFile = useCallback((id: string) => {
         setPendingItems((prev) => {
             const item = prev.find((i) => i.id === id);
-            if (item) revokePreview(item);
+            if (!item) {
+                return prev;
+            }
+
+            if (dispatchedIdsRef.current.has(id)) {
+                dispatchedIdsRef.current.delete(id);
+                onCancelUpload?.(item.file);
+            }
+
+            revokePreview(item);
             return prev.filter((i) => i.id !== id);
         });
-        if (dispatchedIdsRef.current.has(id)) {
-            dispatchedIdsRef.current.delete(id);
-            onCancelUpload?.();
-        }
     }, [revokePreview, onCancelUpload]);
 
     return {
