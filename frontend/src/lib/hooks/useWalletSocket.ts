@@ -1,8 +1,11 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { canUseHttpOnlyRefreshCookie } from '@/lib/utils/auth-session';
 import { getAccessToken, refreshAccessToken, subscribeToTokenRefresh } from '@/lib/api/auth-client';
+import { resolveDesktopUpstreamApiRootUrl, getLocalMiniServerApiRootUrl } from '@/lib/api/resolve-gateway-api-root';
 import { clearUserDetailsCache } from '@/lib/calls/get-logged-user-details';
+import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
 
 interface WalletUpdatedPayload {
     userId: string;
@@ -12,6 +15,20 @@ interface WalletUpdatedPayload {
 
 interface UseWalletSocketOptions {
     onWalletUpdated: (newBalance: number) => void;
+}
+
+async function resolveWalletSocketBaseUrl(): Promise<string | null> {
+    const localApi = getLocalMiniServerApiRootUrl();
+    if (!localApi) {
+        return null;
+    }
+
+    if (!isAigeniusDesktopRuntime()) {
+        return localApi;
+    }
+
+    const upstream = await resolveDesktopUpstreamApiRootUrl();
+    return upstream || localApi;
 }
 
 /**
@@ -26,74 +43,79 @@ export function useWalletSocket({ onWalletUpdated }: UseWalletSocketOptions) {
     const callbackRef = useRef(onWalletUpdated);
     const retryingRefreshRef = useRef(false);
 
-    // Keep callbackRef fresh without reconnecting the socket
     useEffect(() => {
         callbackRef.current = onWalletUpdated;
     }, [onWalletUpdated]);
 
     useEffect(() => {
-        const backendUrl = process.env.NEXT_PUBLIC_NOBOX_API_ROOT_URL;
-        const token = getAccessToken();
+        let cancelled = false;
+        let unsubscribe: (() => void) | undefined;
 
-        if (!token || !backendUrl) return;
+        void (async () => {
+            const token = getAccessToken();
+            const backendUrl = await resolveWalletSocketBaseUrl();
 
-        const socket = io(`${backendUrl}/wallet`, {
-            auth: { token },
-            transports: ['websocket'],
-            reconnectionAttempts: 5,
-            reconnectionDelay: 3000,
-        });
-
-        socketRef.current = socket;
-
-        socket.on('connect', () => {
-            // Only log if we stayed connected for more than a brief moment
-            // to avoid spamming during React dev-mode double mounts.
-        });
-
-        socket.on('wallet:updated', (payload: WalletUpdatedPayload) => {
-            console.log('[WalletSocket] wallet:updated', payload);
-            clearUserDetailsCache();
-            callbackRef.current(payload.newBalance);
-        });
-
-        socket.on('disconnect', (reason) => {
-            if (reason !== 'io client disconnect') {
-                console.log('[WalletSocket] disconnected:', reason);
-            }
-        });
-
-        socket.on('connect_error', (err) => {
-            console.warn('[WalletSocket] connect_error:', err.message);
-            if (retryingRefreshRef.current) {
+            if (!token || !backendUrl || cancelled) {
                 return;
             }
 
-            retryingRefreshRef.current = true;
-            refreshAccessToken()
-                .then((newToken) => {
-                    socket.auth = { token: newToken };
-                    socket.connect();
-                })
-                .catch(() => undefined)
-                .finally(() => {
-                    retryingRefreshRef.current = false;
-                });
-        });
+            const socket = io(`${backendUrl}/wallet`, {
+                auth: { token },
+                transports: ['websocket'],
+                reconnectionAttempts: 5,
+                reconnectionDelay: 3000,
+            });
 
-        const unsubscribe = subscribeToTokenRefresh(() => {
-            const latestToken = getAccessToken();
-            if (!latestToken) return;
-            socket.auth = { token: latestToken };
-            if (!socket.connected) {
-                socket.connect();
-            }
-        });
+            socketRef.current = socket;
+
+            socket.on('wallet:updated', (payload: WalletUpdatedPayload) => {
+                console.log('[WalletSocket] wallet:updated', payload);
+                clearUserDetailsCache();
+                callbackRef.current(payload.newBalance);
+            });
+
+            socket.on('disconnect', (reason) => {
+                if (reason !== 'io client disconnect') {
+                    console.log('[WalletSocket] disconnected:', reason);
+                }
+            });
+
+            socket.on('connect_error', (err) => {
+                console.warn('[WalletSocket] connect_error:', err.message);
+                if (!canUseHttpOnlyRefreshCookie()) {
+                    return;
+                }
+                if (retryingRefreshRef.current) {
+                    return;
+                }
+
+                retryingRefreshRef.current = true;
+                refreshAccessToken()
+                    .then((newToken) => {
+                        socket.auth = { token: newToken };
+                        socket.connect();
+                    })
+                    .catch(() => undefined)
+                    .finally(() => {
+                        retryingRefreshRef.current = false;
+                    });
+            });
+
+            unsubscribe = subscribeToTokenRefresh(() => {
+                const latestToken = getAccessToken();
+                if (!latestToken) return;
+                socket.auth = { token: latestToken };
+                if (!socket.connected) {
+                    socket.connect();
+                }
+            });
+        })();
 
         return () => {
-            unsubscribe();
-            socket.disconnect();
+            cancelled = true;
+            unsubscribe?.();
+            socketRef.current?.disconnect();
             socketRef.current = null;
         };
-    }, []); // intentionally empty — connect once per mount
+    }, []);
 }

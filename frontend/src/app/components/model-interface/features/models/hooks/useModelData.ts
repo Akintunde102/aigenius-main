@@ -1,14 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Model } from '@/app/components/model-interface/shared/types';
-import { LINKS } from '@/lib/links';
 import { authorizedRequest } from '@/lib/calls/request';
 import { getTestingModelName, isTestingModelEnforced } from '@/lib/testing-model';
 import { isAigeniusDesktopRuntime, getAigeniusDesktopBridgeFromBrowsingContext } from '@/lib/utils/desktop-runtime';
+import { waitForAccessToken } from '@/lib/api/wait-for-access-token';
+import { subscribeToTokenRefresh } from '@/lib/api/auth-client';
 
 let inflightModelsPromise: Promise<any> | null = null;
 let cachedModels: any[] | null = null;
 let cachedModelsAt = 0;
 const MODELS_TTL_MS = 10000;
+
+/** Cleared after OAuth so a stale empty cache cannot block the next session. */
+export function clearModelsCache(): void {
+    cachedModels = null;
+    cachedModelsAt = 0;
+    inflightModelsPromise = null;
+}
 
 const OLLAMA_CLOUD_MODELS: Model[] = [
     {
@@ -76,6 +84,14 @@ function mergeUniqueModels(models: any[], additions: Model[]): any[] {
     ];
 }
 
+async function fetchCloudModelsList(): Promise<any[]> {
+    const data = await authorizedRequest<unknown>({
+        call: 'getGatewayModelChatsModels',
+    });
+    const raw = Array.isArray(data) ? data : (data as { data?: unknown })?.data ?? data;
+    return Array.isArray(raw) ? raw : [];
+}
+
 export function useModelData() {
     const [models, setModels] = useState<Model[]>([]);
     const [modelsLoading, setModelsLoading] = useState(true);
@@ -106,37 +122,43 @@ export function useModelData() {
         models.find(m => m.id === id)
     ).filter((m): m is Model => Boolean(m));
 
-    // Load models (deduped/cached)
+    // Load models (deduped/cached) once auth JWT is available
     useEffect(() => {
         let cancelled = false;
+
         const run = async () => {
+            try {
+                await waitForAccessToken();
+            } catch {
+                if (!cancelled) {
+                    setModelsLoading(false);
+                    setError('Sign-in is still loading. Please try again.');
+                }
+                return;
+            }
+
+            if (cancelled) {
+                return;
+            }
+
             const now = Date.now();
-            const hasFreshCache = Boolean(cachedModels && now - cachedModelsAt < MODELS_TTL_MS);
+            const hasFreshCache =
+                cachedModels !== null && now - cachedModelsAt < MODELS_TTL_MS;
             if (!hasFreshCache) {
                 setModelsLoading(true);
             }
             try {
                 let list: any[] = [];
-                if (hasFreshCache && cachedModels) {
-                    list = cachedModels;
+                if (hasFreshCache) {
+                    list = cachedModels ?? [];
                 } else {
                     if (!inflightModelsPromise) {
-                        inflightModelsPromise = (async () => {
-                            try {
-                                const data = await authorizedRequest<any>({
-                                    call: 'getGatewayModelChatsModels',
-                                });
-                                // API returns { data: Model[] } — extract the array
-                                const raw = data?.data ?? data;
-                                const modelsList = Array.isArray(raw) ? raw : [];
+                        inflightModelsPromise = fetchCloudModelsList()
+                            .then((modelsList) => {
                                 cachedModels = modelsList;
                                 cachedModelsAt = Date.now();
                                 return modelsList;
-                            } catch (err) {
-                                console.warn('Failed to fetch cloud models (might be offline):', err);
-                                return [];
-                            }
-                        })()
+                            })
                             .finally(() => {
                                 inflightModelsPromise = null;
                             });
@@ -144,8 +166,8 @@ export function useModelData() {
                     list = await inflightModelsPromise;
                 }
 
-                // Append local Ollama models if on desktop
                 if (isAigeniusDesktopRuntime()) {
+                    list = mergeUniqueModels(list, OLLAMA_CLOUD_MODELS);
                     try {
                         const bridge = getAigeniusDesktopBridgeFromBrowsingContext();
                         if (bridge?.runLocalDesktopTool) {
@@ -165,11 +187,9 @@ export function useModelData() {
                                 }));
                                 list = mergeUniqueModels(list, ollamaModels);
                             }
-                            list = mergeUniqueModels(list, OLLAMA_CLOUD_MODELS);
                         }
                     } catch (err) {
                         console.warn('Failed to fetch local Ollama models:', err);
-                        list = mergeUniqueModels(list, OLLAMA_CLOUD_MODELS);
                     }
                 }
 
@@ -218,7 +238,14 @@ export function useModelData() {
             }
         };
         run();
-        return () => { cancelled = true; };
+        const unsubscribe = subscribeToTokenRefresh(() => {
+            clearModelsCache();
+            void run();
+        });
+        return () => {
+            cancelled = true;
+            unsubscribe();
+        };
     }, []);
 
     // Persist selected model when changed

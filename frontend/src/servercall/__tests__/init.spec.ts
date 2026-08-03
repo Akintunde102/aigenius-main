@@ -32,8 +32,11 @@ jest.mock('@/lib/api/auth-client', () => ({
     __esModule: true,
     handleSessionExpired: (...args: any[]) => mockHandleSessionExpired(...args),
     isRefreshableAuthError: (...args: any[]) => mockIsRefreshableAuthError(...args),
+    isAuthorizationFailure: (...args: any[]) => mockIsRefreshableAuthError(...args),
     isSessionTerminalError: (...args: any[]) => mockIsSessionTerminalError(...args),
     refreshAccessToken: (...args: any[]) => mockRefreshAccessToken(...args),
+    getValidAccessToken: () => 'test-token',
+    isJwtExpired: () => false,
     shouldLogoutOnRefreshFailure: (e: unknown) => {
         if (e instanceof Error && e.message === 'network') {
             return false;
@@ -57,6 +60,14 @@ jest.mock('@/lib/links', () => ({
         internalPages: { login: { github: '/login' } },
         noboxAPIRootUrl: 'http://api.test',
     },
+}));
+
+jest.mock('@/lib/api/resolve-gateway-api-root', () => ({
+    __esModule: true,
+    getLocalMiniServerApiRootUrl: () => 'http://api.test',
+    resolveGatewayApiBaseCandidates: jest.fn().mockResolvedValue(['http://api.test']),
+    isDesktopProxyFailure: (error: unknown) =>
+        typeof error === 'string' && error === 'Desktop proxy failed',
 }));
 
 jest.mock('@/lib/constants', () => ({

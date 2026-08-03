@@ -9,7 +9,7 @@ import {
 } from "@/lib/api/auth-client";
 import { ScheduleRunToast } from "@/app/components/schedule-notifications/ScheduleRunToast";
 import {
-  SCHEDULE_NOTIFICATIONS_EVENTS_URL,
+  getScheduleNotificationsEventsUrl,
   type ScheduleNotificationSsePayload,
   type ScheduleRunNotificationDto,
 } from "@/lib/schedule-notifications/scheduleNotificationsApi";
@@ -130,16 +130,20 @@ export async function runScheduleNotificationEventsSubscription(
 
 export function useScheduleNotificationEvents(): void {
   useEffect(() => {
-    const url = SCHEDULE_NOTIFICATIONS_EVENTS_URL;
     let controller = new AbortController();
+    let disposed = false;
 
-    const start = () =>
-      runScheduleNotificationEventsSubscription(url, () => getAccessToken(), controller.signal).catch(
+    const start = async () => {
+      if (disposed) return;
+      const url = await getScheduleNotificationsEventsUrl();
+      if (disposed) return;
+      await runScheduleNotificationEventsSubscription(url, () => getAccessToken(), controller.signal).catch(
         (err: unknown) => {
           if (err instanceof Error && err.name === "AbortError") return;
           console.warn("Schedule notification SSE error", err);
         },
       );
+    };
 
     void start();
 
@@ -150,6 +154,7 @@ export function useScheduleNotificationEvents(): void {
     });
 
     return () => {
+      disposed = true;
       unsubscribe();
       controller.abort();
     };

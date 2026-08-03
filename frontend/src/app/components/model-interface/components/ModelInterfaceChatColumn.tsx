@@ -5,6 +5,7 @@ import {
 } from "../features";
 import type { ChatMessage, Model, PendingOrphanReply } from "../shared/types";
 import type { ChatContainerHandle } from "../features/chat/components/ChatContainer";
+import type { FailedUploadEntry } from "../features/file-upload/hooks/useFileUpload";
 import type { AudioStatus } from "../features/chat/hooks/audioMode.utils";
 import type {
   AttachmentIndexItem,
@@ -53,6 +54,9 @@ type Props = {
   uploadProgress: number | null;
   supportsImageUpload: boolean;
   uploadedFiles: UploadedFileEntry[];
+  failedUploadFiles?: FailedUploadEntry[];
+  onRetryFailedUpload?: (id: string) => void;
+  onRemoveFailedUpload?: (id: string) => void;
   setUploadedFiles: React.Dispatch<React.SetStateAction<UploadedFileEntry[]>>;
   setAttachmentIndex: React.Dispatch<
     React.SetStateAction<AttachmentIndexItem[]>
@@ -126,6 +130,9 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   uploadProgress,
   supportsImageUpload,
   uploadedFiles,
+  failedUploadFiles = [],
+  onRetryFailedUpload,
+  onRemoveFailedUpload,
   setUploadedFiles,
   setAttachmentIndex,
   setShowModelSelectionModal,
@@ -224,6 +231,9 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           uploadProgress={uploadProgress}
           supportsImageUpload={supportsImageUpload || false}
           uploadedFiles={uploadedFiles}
+          failedUploadFiles={failedUploadFiles}
+          onRetryFailedUpload={onRetryFailedUpload}
+          onRemoveFailedUpload={onRemoveFailedUpload}
           onRemoveUploadedFile={handleRemoveUploadedFile}
           onModelNameClick={() => setShowModelSelectionModal(true)}
           requestModelPick={requestModelPick}

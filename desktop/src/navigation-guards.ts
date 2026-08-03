@@ -196,22 +196,14 @@ function oauthChildWindowOptions(parent: BrowserWindow): Electron.BrowserWindowC
 }
 
 /**
- * OAuth handoff child window — callbacks return to the main shell via registerLocalOriginHandoff.
- * Paystack checkout intentionally uses the system browser (approval modal), not this window.
+ * Google and other IdPs block OAuth inside embedded Electron windows (blank popup). Use the system
+ * browser instead; desktop sign-in completes via `start-oauth-signin` loopback callback.
  */
-function openHandoffChildWindow(parent: BrowserWindow, url: string): void {
+function openOauthInSystemBrowser(_parent: BrowserWindow, url: string): void {
   if (!isHttpOrHttpsUrl(url) || !isOauthSignInUrl(url)) {
     return;
   }
-  const child = new BrowserWindow({
-    ...oauthChildWindowOptions(parent),
-    title: 'Sign in',
-  });
-  attachMainShellNavigationGuards(child);
-  child.once('ready-to-show', () => {
-    child.show();
-  });
-  void child.loadURL(url);
+  void shell.openExternal(url);
 }
 
 function openHostedPaymentInSystemBrowser(parent: BrowserWindow, url: string): void {
@@ -276,7 +268,7 @@ export function attachMainShellNavigationGuards(win: BrowserWindow): void {
     if (isOauthSignInUrl(url)) {
       if (isTopLevelShellWindow(win)) {
         event.preventDefault();
-        openHandoffChildWindow(win, url);
+        openOauthInSystemBrowser(win, url);
       }
       return;
     }
@@ -342,17 +334,8 @@ export function deliverOpenExternalOrAuthUrl(sender: Electron.WebContents, url: 
   if (!isHttpOrHttpsUrl(url)) {
     return false;
   }
-  if (isNoboxAuthBackendFlowUrl(url)) {
-    void win.loadURL(url);
-    return true;
-  }
-  if (isOauthSignInUrl(url)) {
-    if (isTopLevelShellWindow(win)) {
-      openHandoffChildWindow(win, url);
-    } else {
-      void win.loadURL(url);
-    }
-    return true;
+  if (isNoboxAuthBackendFlowUrl(url) || isOauthSignInUrl(url)) {
+    return false;
   }
   return false;
 }

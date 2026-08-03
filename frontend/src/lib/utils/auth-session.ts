@@ -3,6 +3,26 @@ import { storageConstants } from '@/lib/constants';
 import { LINKS } from '@/lib/links';
 import { storage } from '@/lib/utils/store';
 import { clearChatStorage } from '@/lib/utils/chatStorage';
+import {
+    isAigeniusDesktopRuntime,
+    isDesktopShellFromBuild,
+    isLikelyElectronRenderer,
+} from '@/lib/utils/desktop-runtime';
+
+/**
+ * Desktop OAuth completes in the system browser; the HttpOnly refresh cookie is never
+ * available to the Electron renderer. Skip refresh-and-logout flows that assume it exists.
+ */
+export function canUseHttpOnlyRefreshCookie(): boolean {
+    if (typeof window === 'undefined') {
+        return true;
+    }
+    return !(
+        isDesktopShellFromBuild()
+        || isAigeniusDesktopRuntime()
+        || isLikelyElectronRenderer()
+    );
+}
 
 export function clearAuthSession() {
     if (typeof window !== 'undefined') {
@@ -32,11 +52,23 @@ export function setAuthSessionTokens(args: { clientToken: string; authToken: str
     const { clientToken, authToken } = args;
     storage(storageConstants.NOBOX_CLIENT_TOKEN).setString(clientToken);
     storage(storageConstants.NOBOX_TOKEN).setString(authToken);
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+            new CustomEvent('auth:token-refreshed', { detail: { token: authToken } }),
+        );
+    }
 }
 
 export function hasAuthSession(): boolean {
     return Boolean(storage(storageConstants.NOBOX_CLIENT_TOKEN).getString())
         || Boolean(storage(storageConstants.NOBOX_TOKEN).getString());
+}
+
+const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+
+function writeAuthCookie(key: string, value: string): void {
+    document.cookie =
+        `${encodeURIComponent(key)}=${encodeURIComponent(value)}; path=/; max-age=${AUTH_COOKIE_MAX_AGE_SECONDS}; SameSite=Lax`;
 }
 
 /** Ensures auth keys in localStorage are mirrored to cookies (Next middleware is cookie-only). */
@@ -48,9 +80,9 @@ export function syncAuthSessionCookiesFromStorage(): void {
     const token = storage(storageConstants.NOBOX_TOKEN).getString();
 
     if (clientToken) {
-        document.cookie = `nobox_client_token=${clientToken}; path=/; max-age=31536000; SameSite=Lax`;
+        writeAuthCookie(storageConstants.NOBOX_CLIENT_TOKEN, clientToken);
     }
     if (token) {
-        document.cookie = `nobox_token=${token}; path=/; max-age=31536000; SameSite=Lax`;
+        writeAuthCookie(storageConstants.NOBOX_TOKEN, token);
     }
 }

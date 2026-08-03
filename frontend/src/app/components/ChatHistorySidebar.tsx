@@ -129,7 +129,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
 
     React.useEffect(() => {
         if (!isAigeniusDesktopRuntime()) return;
-        const bridge = window.aigeniusDesktop;
+        const bridge = window.aigeniusDesktop as any;
         if (!bridge || typeof bridge.setCodeProjectIndex !== "function") return;
 
         if (activeProject?.rootPath) {

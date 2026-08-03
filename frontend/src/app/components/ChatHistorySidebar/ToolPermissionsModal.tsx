@@ -3,10 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FiShield, FiX } from 'react-icons/fi';
-import {
-  useToolPermissions,
-  type DesktopToolPermissionEntry,
-} from '@/lib/hooks/useToolPermissions';
+import { useToolPermissions } from '@/lib/hooks/useToolPermissions';
+import { type DesktopToolPermissionEntry } from '@/lib/hooks/useDesktopToolPermissions';
 
 interface ToolPermissionsModalProps {
   onClose: () => void;

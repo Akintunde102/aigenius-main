@@ -1,6 +1,6 @@
 import { authorizedFetch, getAccessToken, subscribeToTokenRefresh } from '@/lib/api/auth-client';
+import { resolveGatewayApiRootUrl } from '@/lib/api/resolve-gateway-api-root';
 import { startTransition, useEffect, useRef } from 'react';
-import { LINKS } from '@/lib/links';
 import { addOrMergeSessionToLocalHistory, upsertChatHistorySession } from '@/lib/utils/modelChatConversationUtils';
 import { normalizeSessionMessages } from '@/lib/utils/messageContentUtils';
 import { ChatSession } from '@/app/components/model-interface/shared/types';
@@ -136,7 +136,6 @@ export function useConversationEvents(setChatHistory?: SetChatHistory): void {
     useEffect(() => {
         if (!setChatHistory) return;
 
-        const url = `${LINKS.noboxAPIRootUrl}${CONVERSATION_EVENTS_PATH}`;
         let controller = new AbortController();
         let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
         let reconnectAttempt = 0;
@@ -165,6 +164,10 @@ export function useConversationEvents(setChatHistory?: SetChatHistory): void {
         };
 
         const start = async () => {
+            if (disposed) return;
+
+            const apiRoot = await resolveGatewayApiRootUrl();
+            const url = `${apiRoot}${CONVERSATION_EVENTS_PATH}`;
             if (disposed) return;
 
             try {

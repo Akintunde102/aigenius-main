@@ -1,6 +1,6 @@
 # AIGenius desktop (Electron)
 
-Linux-focused shell that runs the Next.js app and a small **Hono** companion server (`../desktop-server`) on `localhost`. Packaged builds use **`ELECTRON_RUN_AS_NODE=1`** so the same Electron binary runs `server.js` and the mini-server without shipping a separate Node runtime.
+Linux-focused shell that runs the Next.js app and a small **Hono** companion server (`../desktop-server`) on `localhost`. Packaged builds use **`utilityProcess.fork`** on macOS (no extra Dock icon) and **`ELECTRON_RUN_AS_NODE` spawn** on other platforms.
 
 ## Development
 
@@ -37,6 +37,8 @@ Linux-focused shell that runs the Next.js app and a small **Hono** companion ser
    **Mini-server CORS:** set `AIGENIUS_DESKTOP_CORS_ORIGINS` to a comma-separated list if the UI origin is not `http://localhost:3001` / `http://localhost:3001` (must include the exact origin the renderer uses).
 
    **Upstream API:** the mini-server proxies to `AIGENIUS_UPSTREAM_API_URL` (default `http://localhost:8000`). Point it at your Nest gateway if the API is not local.
+
+   **Hosted API (Railway / production) when packaging:** copy `package.env.example` → `package.env` and set `AIGENIUS_UPSTREAM_API_URL` to your Railway URL, then run `npm run package:mac:full`. The UI still talks to the local mini-server on `127.0.0.1:8001`; only backend API traffic is proxied to Railway. You do **not** need local Nest on port 8000.
 
    **OAuth return URL:** backend must send the browser back to the same origin/port as this Next app. Set `CLIENT_AUTH_PATH` and/or `FRONTEND_URL` / `DASHBOARD_URL` in `backend/env/.local.env` to `http://localhost:3001` (or `http://localhost:3001`). If those still pointed at port **3000** while Next runs on **3001**, you would see a failed load and then `/login` again.
 
@@ -117,11 +119,11 @@ Install workspace deps once from `client/` so Electron is present (hoisted to `c
 cd client && npm install
 ```
 
-Packaging uses the local Electron binary (`electronDist` → `../node_modules/electron/dist`) and does **not** re-download from GitHub.
+Packaging uses the local Electron binary (`electronDist` → `desktop/node_modules/electron/dist`) and does **not** re-download from GitHub.
 
 `prepackage` also runs **`npm run install:server-deps`**, which installs a complete isolated `node_modules` tree under `desktop-server/pack-deps/<platform>-<arch>/`. This is required because workspace hoisting leaves `desktop-server/node_modules` incomplete (e.g. missing `@hono/node-server`), which causes `Timeout waiting for http://127.0.0.1:8001/health` at launch.
 
-**If you still see the health timeout after packaging:** quit all AIGenius instances, free ports `8001` and `3001` (`lsof -ti :8001 | xargs kill` if needed), and check `~/Library/Logs/AIGenius/mini-server.log`. Child servers use `utilityProcess.fork` (no Dock icon); `ELECTRON_RUN_AS_NODE` spawn is only a fallback when utility processes are unavailable. A stale `mini-server.log` over ~5 MB is rotated automatically on the next launch.
+**If you still see the health timeout after packaging:** quit all AIGenius instances, free ports `8001` and `3001` (`lsof -ti :8001 | xargs kill` if needed), and check `~/Library/Logs/AIGenius/mini-server.log`. On macOS, mini-server and Next use `utilityProcess.fork` (no Dock icon); `ELECTRON_RUN_AS_NODE` spawn is the fallback on other platforms. A stale `mini-server.log` over ~5 MB is rotated automatically on the next launch.
 
 From `desktop/`:
 

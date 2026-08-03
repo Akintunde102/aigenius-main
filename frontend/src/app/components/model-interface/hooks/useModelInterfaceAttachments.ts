@@ -121,7 +121,7 @@ export function useModelInterfaceAttachments({
     );
   }, [uploadedFiles]);
 
-  const { handleFileUpload, handleCancelUpload } = useFileUpload({
+  const { handleFileUpload, handleCancelUpload, failedUploads, retryFailedUpload, retryAllFailedUploads, removeFailedUpload } = useFileUpload({
     setUploading,
     setUploadProgress,
     setError,
@@ -279,6 +279,10 @@ export function useModelInterfaceAttachments({
     setAttachmentIndex,
     handleFileUpload,
     handleCancelUpload,
+    failedUploads,
+    retryFailedUpload,
+    retryAllFailedUploads,
+    removeFailedUpload,
     handleQueuedFiles,
     handleAttachSavedFiles,
     openLocalFilePicker,

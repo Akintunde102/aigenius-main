@@ -128,7 +128,7 @@ export function buildAssistantTurnSummary(items: WorkTimelineItem[]): string | n
     buckets.set(nounKey, bucket);
   }
 
-  for (const bucket of buckets.values()) {
+  for (const bucket of Array.from(buckets.values())) {
     if (bucket.success > 0) {
       parts.push(formatNounCount(bucket.success, bucket.noun));
     }

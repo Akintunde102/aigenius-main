@@ -13,6 +13,7 @@ import type { AudioStatus } from '../hooks/audioMode.utils';
 import styles from './ChatContainer.module.scss';
 
 import type { UploadedFileEntry } from '@/app/components/model-interface/ModelInterface.helpers';
+import type { FailedUploadEntry } from '@/app/components/model-interface/features/file-upload/hooks/useFileUpload';
 import { FEATURE_FLAGS } from '@/lib/config/features';
 
 interface ChatContainerProps {
@@ -44,9 +45,12 @@ interface ChatContainerProps {
     uploadProgress: number | null;
     supportsImageUpload: boolean;
     uploadedFiles: UploadedFileEntry[];
+    failedUploadFiles?: FailedUploadEntry[];
+    onRetryFailedUpload?: (id: string) => void;
+    onRemoveFailedUpload?: (id: string) => void;
     onRemoveUploadedFile?: (index: number) => void;
     onModelNameClick: () => void;
-    onCancelUpload?: () => void;
+    onCancelUpload?: (file?: File) => void;
     setIsTyping?: (typing: boolean) => void; // <-- new prop
     streaming?: boolean; // in-progress state
     streamingEnabled?: boolean; // user preference
@@ -118,6 +122,9 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     uploadProgress,
     supportsImageUpload,
     uploadedFiles,
+    failedUploadFiles = [],
+    onRetryFailedUpload,
+    onRemoveFailedUpload,
     onRemoveUploadedFile,
     onModelNameClick,
     onCancelUpload,
@@ -391,6 +398,9 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         uploadProgress={uploadProgress}
                         supportsFileUpload={supportsImageUpload}
                         uploadedFiles={uploadedFiles}
+                        failedUploadFiles={failedUploadFiles}
+                        onRetryFailedUpload={onRetryFailedUpload}
+                        onRemoveFailedUpload={onRemoveFailedUpload}
                         onRemoveUploadedFile={onRemoveUploadedFile}
                         onCancelUpload={onCancelUpload}
                         className="p-0"

@@ -1,4 +1,7 @@
-import 'dotenv/config';
+// .env loading is dev-only; packaged apps don't ship dotenv (devDependency).
+if (!__filename.includes('app.asar')) {
+  require('dotenv/config');
+}
 
 if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = 'production';
@@ -33,7 +36,6 @@ import { setupCrashHandlers } from './crash-handler';
 import { checkInotifyLimit } from './utils/sys-limits';
 import fs from 'fs';
 import path from 'path';
-import { spawn, ChildProcess } from 'child_process';
 import http from 'http';
 import os from 'os';
 import crypto from 'crypto';
@@ -42,7 +44,12 @@ import { DEV_LOOPBACK_HOST, loopbackHttpUrl } from './loopback-host';
 import { setActiveCodeProjectIndex } from './active-code-project';
 import { refreshProjectArchitectureMemory } from './project-architecture-memory';
 import { setMainActiveEditor } from './active-editor-main';
-import { startIndexerUtilityProcess, markIndexerAppQuitting } from './indexer-utility-process';
+import { startIndexerUtilityProcess, stopIndexerUtilityProcess } from './indexer-utility-process';
+import {
+  killManagedDesktopChild,
+  spawnDesktopChild,
+  type ManagedDesktopChild,
+} from './desktop-child-process';
 import { saveLastCodeProject } from './last-code-project';
 import { MINI_SERVER_PORT } from './mini-server-port';
 import net from 'net';
@@ -74,6 +81,143 @@ if (!SECRET_TOKEN) {
 /** Must match frontend `DESKTOP_SHELL_ENTRY_QUERY_PARAM` (longer preload poll on this route). */
 const FRONTEND_URL = `${loopbackHttpUrl(FRONTEND_PORT, '/desktop-login')}?aigenius_shell=1`;
 const WEBSITE_LOGIN_URL = loopbackHttpUrl(FRONTEND_PORT, '/login');
+
+type DesktopBrowserSignInOptions = {
+  /** Skip the login page and start Google OAuth in the system browser. */
+  autoProvider?: 'google';
+};
+
+function buildUpstreamGoogleAuthUrl(upstream: string, desktopCallback: string): string {
+  const params = new URLSearchParams({
+    callback_url: desktopCallback,
+    callback_client: 'desktop',
+  });
+  return `${upstream.replace(/\/+$/, '')}/auth/_/google?${params.toString()}`;
+}
+
+/**
+ * OAuth in an embedded Electron window is blocked by Google (blank popup). Use the system browser
+ * and a loopback callback so the shell receives the issued token.
+ */
+function runDesktopBrowserSignIn(
+  event: Electron.IpcMainInvokeEvent,
+  options: DesktopBrowserSignInOptions = {},
+): Promise<{ token: string } | null> {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      const u = new URL(req.url || '', `http://${req.headers.host}`);
+      const token = u.searchParams.get('token');
+
+      if (token) {
+        const websiteBase = WEBSITE_LOGIN_URL.replace('/login', '');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`
+            <html>
+              <head>
+                <title>Sign-in Successful</title>
+                <meta http-equiv="refresh" content="2;url=${websiteBase}/desktop-success">
+                <style>
+                  body {
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100vh;
+                    margin: 0;
+                    background: #0c0d0f;
+                    color: white;
+                    text-align: center;
+                  }
+                  .container {
+                    max-width: 400px;
+                    padding: 2rem;
+                  }
+                  .icon {
+                    font-size: 4rem;
+                    margin-bottom: 1rem;
+                    color: #10b981;
+                  }
+                  h1 {
+                    font-size: 1.5rem;
+                    margin-bottom: 0.5rem;
+                  }
+                  p {
+                    color: #9ca3af;
+                    line-height: 1.5;
+                  }
+                  .spinner {
+                    margin-top: 2rem;
+                    display: inline-block;
+                    width: 1.5rem;
+                    height: 1.5rem;
+                    border: 3px solid rgba(255,255,255,.1);
+                    border-radius: 50%;
+                    border-top-color: #10b981;
+                    animation: spin 1s ease-in-out infinite;
+                  }
+                  @keyframes spin {
+                    to { transform: rotate(360deg); }
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="container">
+                  <div class="icon">✓</div>
+                  <h1>Sign-in Successful</h1>
+                  <p>AIGenius Desktop has been authenticated. You can close this tab and return to the app.</p>
+                  <div class="spinner"></div>
+                </div>
+                <script>setTimeout(() => { try { window.close(); } catch (_) {} }, 1500);</script>
+              </body>
+            </html>
+          `);
+        server.close();
+
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (win) {
+          if (win.isMinimized()) win.restore();
+          win.show();
+          win.focus();
+        }
+
+        resolve({ token });
+      } else {
+        res.writeHead(400);
+        res.end('Missing token');
+      }
+    });
+
+    server.listen(0, DEV_LOOPBACK_HOST, () => {
+      const addr = server.address() as net.AddressInfo;
+      const callbackUrl = loopbackHttpUrl(addr.port, '/');
+      const upstream = resolveUpstreamApiUrl();
+
+      if (options.autoProvider === 'google') {
+        void shell.openExternal(buildUpstreamGoogleAuthUrl(upstream, callbackUrl));
+        return;
+      }
+
+      const params = new URLSearchParams({
+        desktop_callback: callbackUrl,
+        api_root: upstream,
+      });
+      const authUrl = `${WEBSITE_LOGIN_URL}?${params.toString()}`;
+      void shell.openExternal(authUrl);
+    });
+
+    server.on('error', (err) => {
+      console.error('[aigenius-desktop] Web sign-in server error:', err);
+      resolve(null);
+    });
+
+    setTimeout(() => {
+      if (server.listening) {
+        server.close();
+        resolve(null);
+      }
+    }, 5 * 60 * 1000);
+  });
+}
 
 const DESKTOP_BRIDGE_DEBUG = process.env.AIGENIUS_DESKTOP_BRIDGE_DEBUG === '1';
 
@@ -142,7 +286,7 @@ function attachDesktopBridgeDebugLogging(win: BrowserWindow, preloadPath: string
   });
 }
 
-const children: ChildProcess[] = [];
+const children: ManagedDesktopChild[] = [];
 
 function repoRootFromDesktopDist(): string {
   return path.join(__dirname, '..', '..');
@@ -162,6 +306,34 @@ function desktopServerEntry(): string {
   return path.join(desktopServerDir(), 'dist', 'index.js');
 }
 
+function readPackagedRuntimeConfig(): { upstreamApiUrl?: string } {
+  if (!app.isPackaged) {
+    return {};
+  }
+  try {
+    const configPath = path.join(process.resourcesPath, 'package-runtime.json');
+    if (!fs.existsSync(configPath)) {
+      return {};
+    }
+    const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8')) as { upstreamApiUrl?: string };
+    return typeof parsed === 'object' && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function resolveUpstreamApiUrl(): string {
+  const fromEnv = process.env.AIGENIUS_UPSTREAM_API_URL?.trim();
+  if (fromEnv) {
+    return fromEnv;
+  }
+  const fromPackage = readPackagedRuntimeConfig().upstreamApiUrl?.trim();
+  if (fromPackage) {
+    return fromPackage;
+  }
+  return 'http://localhost:8000';
+}
+
 function nextStandaloneDir(): string {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, 'next-standalone');
@@ -169,50 +341,15 @@ function nextStandaloneDir(): string {
   return path.join(repoRootFromDesktopDist(), 'frontend', '.next', 'standalone');
 }
 
-function nextServerScript(): string {
-  return path.join(nextStandaloneDir(), 'server.js');
-}
-
-function spawnAsNode(scriptPath: string, opts: { cwd: string; env: NodeJS.ProcessEnv; logPath?: string }): ChildProcess {
-  const env = { ...opts.env };
-  env.ELECTRON_RUN_AS_NODE = '1';
-
-  let stdioConfig: any = 'inherit';
-  let outStream: fs.WriteStream | null = null;
-  if (opts.logPath) {
-    try {
-      outStream = fs.createWriteStream(opts.logPath, { flags: 'a' });
-      outStream.on('error', (err) => {
-        console.error(`[aigenius-desktop] Log write stream error for ${opts.logPath}:`, err);
-      });
-      stdioConfig = ['ignore', 'pipe', 'pipe'];
-    } catch (err) {
-      console.error(`[aigenius-desktop] Failed to create log stream for ${opts.logPath}:`, err);
-    }
+/** Monorepo Next standalone output nests `server.js` under `frontend/`. */
+function resolveNextStandaloneLaunch(): { scriptPath: string; cwd: string } {
+  const root = nextStandaloneDir();
+  const nestedDir = path.join(root, 'frontend');
+  const nestedScript = path.join(nestedDir, 'server.js');
+  if (fs.existsSync(nestedScript)) {
+    return { scriptPath: nestedScript, cwd: nestedDir };
   }
-
-  // Use the same Node version as Electron (bundled) to avoid host Node incompatibility (e.g. Node 24 vs Electron's Node 22)
-  const child = spawn(process.execPath, [scriptPath], {
-    cwd: opts.cwd,
-    env,
-    stdio: stdioConfig,
-  });
-
-  if (outStream && child.stdout && child.stderr) {
-    const stream = outStream;
-    child.stdout.on('data', (chunk: Buffer) => {
-      process.stdout.write(chunk);
-      if (stream.writable) stream.write(chunk);
-    });
-    child.stderr.on('data', (chunk: Buffer) => {
-      process.stderr.write(chunk);
-      if (stream.writable) stream.write(chunk);
-    });
-    child.on('close', () => stream.end());
-  }
-
-  children.push(child);
-  return child;
+  return { scriptPath: path.join(root, 'server.js'), cwd: root };
 }
 
 function waitForHttpUntil(
@@ -271,11 +408,25 @@ function waitForFrontendPageReady(url: string, timeoutMs: number, intervalMs: nu
 
 function killChildren(): void {
   for (const c of children) {
-    if (!c.killed) {
-      c.kill('SIGTERM');
-    }
+    killManagedDesktopChild(c);
   }
   children.length = 0;
+  stopIndexerUtilityProcess();
+}
+
+let appShutdownStarted = false;
+
+async function shutdownDesktopApp(): Promise<void> {
+  try {
+    await fetch(loopbackHttpUrl(MINI_SERVER_PORT, '/search/shutdown'), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${SECRET_TOKEN}`, 'Content-Length': '0' },
+      signal: AbortSignal.timeout(2000),
+    });
+  } catch {
+    /* sidecar may already be gone or not started — always proceed */
+  }
+  killChildren();
 }
 
 function defaultScreenshotBasename(): string {
@@ -566,39 +717,47 @@ async function startBackendProcesses(): Promise<void> {
   const token = process.env.AIGENIUS_SECRET_TOKEN || SECRET_TOKEN;
 
   if (!useExternalServer) {
-    spawnAsNode(serverEntry, {
-      cwd: desktopServerDir(),
-      env: {
-        ...process.env,
-        PORT: miniPort,
-        HOST: DEV_LOOPBACK_HOST,
-        AIGENIUS_USER_DATA_PATH: userDataPath,
-        ...(process.env.AIGENIUS_SKIP_SEARCH === '1' ? {} : { AIGENIUS_DB_PATH: dbPath }),
-        AIGENIUS_MODELS_DIR: modelsDir,
-        AIGENIUS_TREE_SITTER: '1',
-        AIGENIUS_EXTERNAL_INDEXER: process.env.AIGENIUS_EXTERNAL_INDEXER === '0' ? '0' : '1',
-        AIGENIUS_INDEXER_IPC_PORT: INDEXER_IPC_PORT,
-        AIGENIUS_SECRET_TOKEN: token,
-      },
-      logPath: path.join(logsDir, 'mini-server.log'),
-    });
+    children.push(
+      spawnDesktopChild(serverEntry, {
+        cwd: desktopServerDir(),
+        serviceName: 'aigenius-mini-server',
+        env: {
+          ...process.env,
+          PORT: miniPort,
+          HOST: DEV_LOOPBACK_HOST,
+          AIGENIUS_FRONTEND_PORT: FRONTEND_PORT,
+          DEV_WEB_PORT: FRONTEND_PORT,
+          AIGENIUS_USER_DATA_PATH: userDataPath,
+          ...(process.env.AIGENIUS_SKIP_SEARCH === '1' ? {} : { AIGENIUS_DB_PATH: dbPath }),
+          AIGENIUS_MODELS_DIR: modelsDir,
+          AIGENIUS_TREE_SITTER: '1',
+          AIGENIUS_EXTERNAL_INDEXER: process.env.AIGENIUS_EXTERNAL_INDEXER === '0' ? '0' : '1',
+          AIGENIUS_INDEXER_IPC_PORT: INDEXER_IPC_PORT,
+          AIGENIUS_SECRET_TOKEN: token,
+          AIGENIUS_UPSTREAM_API_URL: resolveUpstreamApiUrl(),
+        },
+        logPath: path.join(logsDir, 'mini-server.log'),
+      }),
+    );
   } else {
     console.info('[aigenius-desktop] Using external mini-server (Docker). Skipping local spawn.');
   }
 
   if (app.isPackaged) {
-    const nextRoot = nextStandaloneDir();
-    const serverJs = nextServerScript();
-    spawnAsNode(serverJs, {
-      cwd: nextRoot,
-      env: {
-        ...process.env,
-        PORT: FRONTEND_PORT,
-        HOSTNAME: DEV_LOOPBACK_HOST,
-        NODE_ENV: 'production',
-      },
-      logPath: path.join(logsDir, 'frontend.log'),
-    });
+    const { scriptPath: serverJs, cwd: nextCwd } = resolveNextStandaloneLaunch();
+    children.push(
+      spawnDesktopChild(serverJs, {
+        cwd: nextCwd,
+        serviceName: 'aigenius-next',
+        env: {
+          ...process.env,
+          PORT: FRONTEND_PORT,
+          HOSTNAME: DEV_LOOPBACK_HOST,
+          NODE_ENV: 'production',
+        },
+        logPath: path.join(logsDir, 'frontend.log'),
+      }),
+    );
   }
 
   // Dev: Next must already be running (Tilt `web` resource). Wait for UI before the indexer
@@ -761,24 +920,24 @@ if (!gotLock) {
   });
 
   app.on('before-quit', (event) => {
-    markIndexerAppQuitting();
-    // Hold the quit so the sidecar has time to flush the SQLite WAL checkpoint.
-    // We prevent default, send the shutdown signal, wait for the response (or a
-    // 2 s hard deadline), kill the child processes, then re-trigger quit.
+    if (appShutdownStarted) {
+      return;
+    }
     event.preventDefault();
+    appShutdownStarted = true;
+
+    const forceExitTimer = setTimeout(() => {
+      console.warn('[aigenius-desktop] Shutdown timed out; forcing exit');
+      app.exit(0);
+    }, 5000);
+
     void (async () => {
       try {
-        await fetch(loopbackHttpUrl(MINI_SERVER_PORT, '/search/shutdown'), {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${SECRET_TOKEN}`, 'Content-Length': '0' },
-          signal: AbortSignal.timeout(2000),
-        });
-      } catch {
-        /* sidecar may already be gone or not started — always proceed */
+        await shutdownDesktopApp();
+      } finally {
+        clearTimeout(forceExitTimer);
+        app.quit();
       }
-      killChildren();
-      // Remove this listener before re-triggering to avoid an infinite loop.
-      app.quit();
     })();
   });
 
@@ -1102,113 +1261,12 @@ if (!gotLock) {
     },
   );
 
-  ipcMain.handle('web-signin', async (event) => {
-    return new Promise((resolve) => {
-      const server = http.createServer((req, res) => {
-        const u = new URL(req.url || '', `http://${req.headers.host}`);
-        const token = u.searchParams.get('token');
+  ipcMain.handle('get-upstream-api-url', async () => resolveUpstreamApiUrl());
 
-        if (token) {
-          const websiteBase = WEBSITE_LOGIN_URL.replace('/login', '');
-          res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end(`
-            <html>
-              <head>
-                <title>Sign-in Successful</title>
-                <meta http-equiv="refresh" content="2;url=${websiteBase}/desktop-success">
-                <style>
-                  body {
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    height: 100vh;
-                    margin: 0;
-                    background: #0c0d0f;
-                    color: white;
-                    text-align: center;
-                  }
-                  .container {
-                    max-width: 400px;
-                    padding: 2rem;
-                  }
-                  .icon {
-                    font-size: 4rem;
-                    margin-bottom: 1rem;
-                    color: #10b981;
-                  }
-                  h1 {
-                    font-size: 1.5rem;
-                    margin-bottom: 0.5rem;
-                  }
-                  p {
-                    color: #9ca3af;
-                    line-height: 1.5;
-                  }
-                  .spinner {
-                    margin-top: 2rem;
-                    display: inline-block;
-                    width: 1.5rem;
-                    height: 1.5rem;
-                    border: 3px solid rgba(255,255,255,.1);
-                    border-radius: 50%;
-                    border-top-color: #10b981;
-                    animation: spin 1s ease-in-out infinite;
-                  }
-                  @keyframes spin {
-                    to { transform: rotate(360deg); }
-                  }
-                </style>
-              </head>
-              <body>
-                <div class="container">
-                  <div class="icon">✓</div>
-                  <h1>Sign-in Successful</h1>
-                  <p>AIGenius Desktop has been authenticated. We are taking you back to the website...</p>
-                  <div class="spinner"></div>
-                </div>
-              </body>
-            </html>
-          `);
-          server.close();
-
-          // Bring the app window to focus
-          const win = BrowserWindow.fromWebContents(event.sender);
-          if (win) {
-            if (win.isMinimized()) win.restore();
-            win.show();
-            win.focus();
-          }
-
-          resolve({ token });
-        } else {
-          res.writeHead(400);
-          res.end('Missing token');
-        }
-      });
-
-      server.listen(0, DEV_LOOPBACK_HOST, () => {
-        const addr = server.address() as any;
-        const port = addr.port;
-        const callbackUrl = loopbackHttpUrl(port, '/');
-        const authUrl = `${WEBSITE_LOGIN_URL}?desktop_callback=${encodeURIComponent(callbackUrl)}`;
-        void shell.openExternal(authUrl);
-      });
-
-      server.on('error', (err) => {
-        console.error('[aigenius-desktop] Web sign-in server error:', err);
-        resolve(null);
-      });
-
-      // Timeout after 5 minutes
-      setTimeout(() => {
-        if (server.listening) {
-          server.close();
-          resolve(null);
-        }
-      }, 5 * 60 * 1000);
-    });
-  });
+  ipcMain.handle('web-signin', async (event) => runDesktopBrowserSignIn(event));
+  ipcMain.handle('start-oauth-signin', async (event, options?: { provider?: 'google' }) =>
+    runDesktopBrowserSignIn(event, options?.provider === 'google' ? { autoProvider: 'google' } : {}),
+  );
 
   ipcMain.handle('shell-new-window', async (_event, relativePath?: string) => {
     const w = createWindow(relativePath);
@@ -1323,9 +1381,7 @@ if (!gotLock) {
   });
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-      app.quit();
-    }
+    app.quit();
   });
 
   app.on('will-quit', () => {

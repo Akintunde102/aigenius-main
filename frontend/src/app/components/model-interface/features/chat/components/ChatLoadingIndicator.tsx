@@ -7,7 +7,7 @@ interface ChatLoadingIndicatorProps {
 
 const ChatLoadingIndicator: React.FC<ChatLoadingIndicatorProps> = ({
     isLoading,
-    message = "Loading conversations..."
+    message = "Loading…"
 }) => {
     if (!isLoading) return null;
 

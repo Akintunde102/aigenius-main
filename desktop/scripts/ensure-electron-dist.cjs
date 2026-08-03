@@ -58,7 +58,7 @@ function main() {
   throw new Error(
     'Electron binary not found. Install deps from the client workspace root:\n' +
       '  cd client && npm install\n' +
-      'Then re-run packaging. electron-builder is configured to use ../node_modules/electron/dist.',
+      'Then re-run packaging. electron-builder is configured to use node_modules/electron/dist.',
   );
 }
 

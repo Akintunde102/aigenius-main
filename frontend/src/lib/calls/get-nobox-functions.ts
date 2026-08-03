@@ -2,8 +2,8 @@ import {
     Config,
     getFunctions,
 } from "@/nobox-client";
+import { resolveGatewayApiRootUrl } from '@/lib/api/resolve-gateway-api-root';
 import { getLoggedUserToken } from './get-token';
-import { LINKS } from '../links';
 
 interface GetNoboxModelArgs {
     project: any;
@@ -13,7 +13,7 @@ const getNoboxFunctions = async ({
     project,
 }: GetNoboxModelArgs) => {
     const token = getLoggedUserToken();
-    const endpoint = LINKS.noboxAPIRootUrl;
+    const endpoint = await resolveGatewayApiRootUrl();
 
     console.log('[getNoboxFunctions] Initializing with', {
         projectId: project.id,
@@ -23,7 +23,7 @@ const getNoboxFunctions = async ({
 
     if (token) {
         const config: Config = {
-            endpoint: LINKS.noboxAPIRootUrl,
+            endpoint,
             project: project,
             token,
             autoCreate: true,

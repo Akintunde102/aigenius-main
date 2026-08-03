@@ -17,6 +17,7 @@ build/
 .env.*
 !.env.example
 !env.example
+desktop/package.env
 
 # Logs
 logs/

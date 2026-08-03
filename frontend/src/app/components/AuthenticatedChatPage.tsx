@@ -6,13 +6,12 @@
  */
 import React, { useEffect, useLayoutEffect, useState } from "react";
 import { useSearchParams, useParams, useRouter } from "next/navigation";
-import axios from "axios";
 import dynamic from "next/dynamic";
-import { LINKS } from "@/lib/links";
 import HomePage from "@/app/components/HomePage";
 import { initializeChatStorage } from "@/lib/utils/chatStorageInit";
 import "@/lib/utils/chatStorageUtils";
-import { hasAuthSession, setAuthSessionTokens } from "@/lib/utils/auth-session";
+import { hasAuthSession } from "@/lib/utils/auth-session";
+import { exchangeOAuthAccessTokenForSession } from "@/lib/utils/oauth-connection-token";
 import { useCrossTabActiveConversationSync } from "@/app/components/model-interface/conversation/useCrossTabActiveConversationSync";
 import { prefetchPublicRoutes } from "@/lib/public-route-prefetch";
 import { ChatShellLoadingSkeleton } from "@/app/components/ChatShellLoadingSkeleton";
@@ -69,29 +68,14 @@ export default function AuthenticatedChatPage({
     setLoading(true);
     const getAuthConnectionToken = async () => {
       try {
-        const response = await axios.get(
-          `${LINKS.noboxAPIRootUrl}/auth/_/connection_token`,
-          {
-            headers: {
-              Authorization: `Bearer ${tokenInUrl}`,
-              "Content-Type": "application/json",
-            },
-          },
-        );
-
-        const { token } = response.data;
-
-        if (!token) {
+        const ok = await exchangeOAuthAccessTokenForSession(tokenInUrl);
+        if (!ok) {
           setLoading(false);
           setAuthReady(true);
           return;
         }
 
-        setAuthSessionTokens({
-          authToken: tokenInUrl,
-          clientToken: token,
-        });
-        setToken(token);
+        setToken("authenticated");
         setLoading(false);
         setAuthReady(true);
 

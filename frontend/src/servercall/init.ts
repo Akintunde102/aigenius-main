@@ -1,6 +1,15 @@
-import { getAccessToken, handleSessionExpired as expireAuthSession, isRefreshableAuthError, isSessionTerminalError, refreshAccessToken, shouldLogoutOnRefreshFailure } from '@/lib/api/auth-client';
+import { getValidAccessToken, handleSessionExpired as expireAuthSession, isAuthorizationFailure, isJwtExpired, isRefreshableAuthError, isSessionTerminalError, refreshAccessToken, shouldLogoutOnRefreshFailure } from '@/lib/api/auth-client';
+import {
+    getLocalMiniServerApiRootUrl,
+    isDesktopProxyFailure,
+    resolveGatewayApiBaseCandidates,
+} from '@/lib/api/resolve-gateway-api-root';
 import { LINKS } from '@/lib/links';
+import { getLoggedUserToken } from '@/lib/calls/get-token';
+import { canUseHttpOnlyRefreshCookie } from '@/lib/utils/auth-session';
+import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
 import { createServerCall } from 'servercall';
+import { isSuccessfulServerResponseBody, normalizeServerResponseBody } from '@/servercall/response-body';
 
 /**
  * Force a clean logout and redirect to login.
@@ -12,6 +21,24 @@ import { createServerCall } from 'servercall';
 const handleSessionExpired = (reason?: string) => {
     // Clear cached tokens and user data so the next login starts fresh
     expireAuthSession();
+}
+
+function resolveAuthorizedRequestToken(): string {
+    const accessToken = getValidAccessToken();
+    if (accessToken) {
+        return accessToken;
+    }
+
+    const fallback = getLoggedUserToken();
+    if (!fallback) {
+        return '';
+    }
+
+    // Gateway auth middleware expects a JWT; avoid sending the API key when the JWT slot is empty.
+    if (fallback.split('.').length !== 3 || isJwtExpired(fallback)) {
+        return '';
+    }
+    return fallback;
 }
 
 const rawHandleServerError = (args: any) => {
@@ -41,35 +68,71 @@ const rawHandleServerError = (args: any) => {
     throw mappedDataMessageError || errorMessage || error;
 };
 
-const baseServerCall = createServerCall({
-    baseUrl: LINKS.noboxAPIRootUrl,
+const serverCallConfig = {
     logger: console,
-    defaultAuthSource: () => getAccessToken() || "",
-    defaultResponseDataDept: (response: any) => response?.['data'],
-    successFieldDept: (response: any) => !!response.data,
+    defaultAuthSource: () => resolveAuthorizedRequestToken(),
+    defaultResponseDataDept: (response: any) => normalizeServerResponseBody(response?.data),
+    successFieldDept: (response: any) => isSuccessfulServerResponseBody(response?.data),
     handleServerError: rawHandleServerError,
-});
+};
 
-async function executeAuthorizedServerCall(args: any, allowRetry = true): Promise<any> {
+const serverCallsByBase = new Map<string, ReturnType<typeof createServerCall>>();
+
+function getServerCallForBase(baseUrl: string) {
+    const normalized = baseUrl.replace(/\/+$/, '');
+    let call = serverCallsByBase.get(normalized);
+    if (!call) {
+        call = createServerCall({
+            baseUrl: normalized,
+            ...serverCallConfig,
+        });
+        serverCallsByBase.set(normalized, call);
+    }
+    return call;
+}
+
+const defaultLocalBase = getLocalMiniServerApiRootUrl() || LINKS.noboxAPIRootUrl;
+const baseServerCall = getServerCallForBase(defaultLocalBase);
+
+async function executeAuthorizedServerCall(
+    args: any,
+    allowRetry = true,
+    baseIndex = 0,
+    bases?: string[],
+): Promise<any> {
+    const candidates = bases ?? await resolveGatewayApiBaseCandidates();
+    const baseUrl = candidates[baseIndex] ?? candidates[0] ?? defaultLocalBase;
+    const call = getServerCallForBase(baseUrl);
+
     try {
-        return await (baseServerCall as any)(args);
+        return await (call as any)(args);
     } catch (error: any) {
+        if (baseIndex + 1 < candidates.length && isDesktopProxyFailure(error)) {
+            return executeAuthorizedServerCall(args, allowRetry, baseIndex + 1, candidates);
+        }
+
         if (isSessionTerminalError(error)) {
             handleSessionExpired('revoked');
             throw error;
         }
 
-        if (allowRetry && isRefreshableAuthError(error)) {
-            try {
-                await refreshAccessToken();
-            } catch (refreshError) {
-                if (shouldLogoutOnRefreshFailure(refreshError)) {
-                    handleSessionExpired('refresh_failed');
+        if (allowRetry && isAuthorizationFailure(error)) {
+            if (canUseHttpOnlyRefreshCookie()) {
+                try {
+                    await refreshAccessToken();
+                } catch (refreshError) {
+                    if (shouldLogoutOnRefreshFailure(refreshError)) {
+                        handleSessionExpired('refresh_failed');
+                    }
+                    throw refreshError;
                 }
-                throw refreshError;
+
+                return executeAuthorizedServerCall(args, false, baseIndex, candidates);
             }
 
-            return executeAuthorizedServerCall(args, false);
+            if (isAigeniusDesktopRuntime()) {
+                handleSessionExpired('desktop_auth');
+            }
         }
 
         throw error;

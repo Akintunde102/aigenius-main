@@ -21,17 +21,17 @@
     "install:python-venv": "node scripts/prepare-python-venv.cjs",
     "prepackage": "node scripts/ensure-electron-dist.cjs && npm run compile && npm run build:server && cd ../frontend && npm run build:desktop && cd ../desktop && npm run install:server-deps && npm run install:python-venv && npm run prepare:resources",
     "prepackage:mac": "npm run prepackage",
-    "prepackage:win": "npm run compile && npm run install:server-deps:win32 && npm run build:server && cd ../frontend && npm run build:desktop && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 npm run prepare:resources",
+    "prepackage:win": "npm run compile && npm run install:server-deps:win32 && npm run build:server && cd ../frontend && npm run build:desktop && cd ../desktop && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 npm run install:python-venv && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 npm run prepare:resources",
     "package": "electron-builder --linux deb flatpak",
     "package:deb": "electron-builder --linux deb",
     "package:deb:full": "npm run prepackage && electron-builder --linux deb",
     "package:flatpak": "electron-builder --linux flatpak",
-    "package:mac": "electron-builder --mac",
-    "package:mac:dir": "electron-builder --mac dir",
-    "package:mac:full": "npm run prepackage:mac && electron-builder --mac",
-    "package:win": "electron-builder --win",
+    "package:mac": "electron-builder --mac -c.electronDist=node_modules/electron/dist",
+    "package:mac:dir": "electron-builder --mac dir -c.electronDist=node_modules/electron/dist",
+    "package:mac:full": "npm run prepackage:mac && electron-builder --mac -c.electronDist=node_modules/electron/dist",
+    "package:win": "electron-builder --win --x64",
     "package:win:dir": "electron-builder --win dir",
-    "package:win:full": "npm run prepackage:win && electron-builder --win",
+    "package:win:full": "npm run prepackage:win && electron-builder --win --x64",
     "dev:frontend": "cd ../frontend && npm run dev",
     "dev:electron:only": "cross-env ELECTRON_DISABLE_SANDBOX=1 electron .",
     "dev:electron": "npm run compile && npm run dev:electron:only",
@@ -58,7 +58,6 @@
     "appId": "chat.aigenius.desktop",
     "productName": "AIGenius",
     "electronVersion": "33.2.1",
-    "electronDist": "../node_modules/electron/dist",
     "directories": {
       "output": "release"
     },
@@ -92,6 +91,10 @@
       {
         "from": "dist-resources/python-venv",
         "to": "python-venv"
+      },
+      {
+        "from": "dist-resources/package-runtime.json",
+        "to": "package-runtime.json"
       }
     ],
     "linux": {

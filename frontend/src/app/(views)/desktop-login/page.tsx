@@ -8,7 +8,7 @@ import { GoogleSignIn } from "@/app/components/auth/GoogleSignIn";
 import { DesktopSessionRestoringView } from "@/app/components/DesktopSessionRestoringView";
 import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
 import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-details";
-import { setAccessToken } from "@/lib/api/auth-client";
+import { completeDesktopOAuthSession } from "@/lib/utils/complete-desktop-oauth-session";
 import { cn } from "@/lib/utils";
 import {
   hasAuthSession,
@@ -141,13 +141,16 @@ export default function DesktopLoginPage() {
                   }
                   const res = await window.aigeniusDesktop.startWebSignIn();
                   if (res?.token) {
-                    setAccessToken(res.token);
+                    const ok = await completeDesktopOAuthSession(res.token);
+                    if (!ok) {
+                      return;
+                    }
                     syncAuthSessionCookiesFromStorage();
                     const target = resolveAuthenticatedDesktopShellRedirect(
                       pathname,
                       window.location.search,
                     );
-                    window.location.assign(target);
+                    window.location.replace(target);
                   }
                 }}
                 className={cn(

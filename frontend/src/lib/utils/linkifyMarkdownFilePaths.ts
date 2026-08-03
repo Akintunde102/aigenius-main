@@ -55,7 +55,7 @@ export function linkifyMarkdownFilePaths(markdown: string): string {
   let lastIndex = 0;
   FENCED_CODE_BLOCK_RE.lastIndex = 0;
 
-  for (const match of markdown.matchAll(FENCED_CODE_BLOCK_RE)) {
+  for (const match of Array.from(markdown.matchAll(FENCED_CODE_BLOCK_RE))) {
     const index = match.index ?? 0;
     result += linkifyInlineCodeSegment(markdown.slice(lastIndex, index));
     result += match[0];

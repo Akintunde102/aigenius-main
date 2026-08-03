@@ -121,7 +121,12 @@ export type ServerCallsKeyType =
     | "getGatewayAdminCreditsHistory"
     | "getGatewayAdminUsersSearch"
     | "postGatewayAudioTranscribe"
-    | "postGatewayAudioSynthesize";
+    | "postGatewayAudioSynthesize"
+    | "getGatewayCodeProjects"
+    | "postGatewayCodeProjects"
+    | "putGatewayCodeProjects"
+    | "deleteGatewayCodeProjects"
+    | "postGatewayModelChatsConversationCodeProject";
 
 
 export const serverCalls: ServerCallsType<ServerCallsKeyType> = {

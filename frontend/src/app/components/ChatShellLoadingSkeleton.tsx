@@ -19,6 +19,8 @@ function pulseBar(className: string) {
 type ChatShellLoadingSkeletonProps = {
   /** Outer min-height; defaults to full viewport for standalone loading screens. */
   outerMinHeightStyle?: CSSProperties;
+  /** Optional status line under the center placeholder (e.g. auth / workspace boot). */
+  statusMessage?: string;
 };
 
 /**
@@ -27,6 +29,7 @@ type ChatShellLoadingSkeletonProps = {
  */
 export function ChatShellLoadingSkeleton({
   outerMinHeightStyle,
+  statusMessage = "Loading your workspace…",
 }: ChatShellLoadingSkeletonProps) {
   const shell = workflowShellBgStyle();
   const canvas = workflowCanvasSurfaceStyle();
@@ -61,9 +64,18 @@ export function ChatShellLoadingSkeleton({
         }}
       >
         <div className="flex min-h-0 flex-1 flex-col px-3 py-4 md:px-6">
-          <div className="mx-auto flex w-full max-w-[720px] flex-1 flex-col items-center justify-center">
-            {pulseBar("h-4 w-56")}
-            <div className="mt-3 h-3 w-40 rounded bg-slate-200/50 animate-pulse dark:bg-zinc-700/45" />
+          <div className="mx-auto flex w-full max-w-[720px] flex-1 flex-col items-center justify-center gap-3">
+            <div
+              className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-sky-500 dark:border-zinc-700 dark:border-t-sky-400"
+              role="status"
+              aria-label={statusMessage}
+            />
+            {statusMessage ? (
+              <p className="text-sm font-medium text-slate-500 dark:text-zinc-400">
+                {statusMessage}
+              </p>
+            ) : null}
+            {pulseBar("h-4 w-56 opacity-0")}
           </div>
         </div>
         <div className="shrink-0 border-t border-slate-200/60 bg-white/95 px-3 py-3 dark:border-zinc-700/70 dark:bg-zinc-900/90 md:px-6">

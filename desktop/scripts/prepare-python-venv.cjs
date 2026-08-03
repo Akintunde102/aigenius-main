@@ -12,8 +12,8 @@ const { execSync, spawnSync } = require('child_process');
 
 const desktopRoot = path.resolve(__dirname, '..');
 const serverRoot = path.resolve(desktopRoot, '..', 'desktop-server');
-const platform = (process.argv[2] || process.platform).trim();
-const arch = (process.argv[3] || process.arch).trim();
+const platform = (process.argv[2] || process.env.AIGENIUS_PACKAGE_PLATFORM || process.platform).trim();
+const arch = (process.argv[3] || process.env.AIGENIUS_PACKAGE_ARCH || process.arch).trim();
 const venvRoot = path.join(serverRoot, 'pack-deps', `python-venv-${platform}-${arch}`);
 const venvPython = path.join(venvRoot, 'bin', 'python3');
 const requirements = path.join(serverRoot, 'requirements-stt-packaged.txt');

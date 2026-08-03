@@ -4,6 +4,8 @@ import fs from 'fs';
 
 import path from 'path';
 
+import { sanitizeUtilityProcessEnv } from './desktop-child-process';
+
 import { loadLastCodeProject } from './last-code-project';
 
 
@@ -81,13 +83,7 @@ function forkIndexer(opts: {
 
 
   const env: Record<string, string> = {
-
-    ...Object.fromEntries(
-
-      Object.entries(process.env).filter(([, v]) => typeof v === 'string') as [string, string][],
-
-    ),
-
+    ...sanitizeUtilityProcessEnv(process.env),
     AIGENIUS_INDEXER_IPC_PORT: opts.ipcPort,
 
     AIGENIUS_USER_DATA_PATH: opts.userDataPath,
@@ -203,6 +199,34 @@ export function markIndexerAppQuitting(): void {
     restartTimer = null;
 
   }
+
+}
+
+
+
+export function stopIndexerUtilityProcess(): void {
+
+  markIndexerAppQuitting();
+
+  if (!indexerChild) {
+
+    return;
+
+  }
+
+  try {
+
+    indexerChild.kill();
+
+  } catch (err) {
+
+    console.warn('[aigenius-desktop] Failed to kill indexer utility process:', err);
+
+  }
+
+  indexerChild = null;
+
+  lastStartOpts = null;
 
 }
 

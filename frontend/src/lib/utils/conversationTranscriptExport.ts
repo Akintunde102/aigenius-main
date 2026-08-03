@@ -125,7 +125,7 @@ function extractTextFromAssistantMessage(message: ChatMessage): string {
     if (Array.isArray(message.events) && message.events.length > 0) {
         const textParts = message.events
             .filter((event) => event.type === 'text')
-            .map((event) => textPartToPlainString(event.content).trim())
+            .map((event) => textPartToPlainString((event as any).content).trim())
             .filter(Boolean);
         if (textParts.length > 0) {
             return textParts.join('\n\n').trim();

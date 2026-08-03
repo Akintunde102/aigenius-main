@@ -37,7 +37,7 @@ export interface ChatHandlers {
     onSendMessage: (message: string, model: any) => void;
     onFileUpload: (file: File) => void;
     onModelNameClick: () => void;
-    onCancelUpload?: () => void;
+    onCancelUpload?: (file?: File) => void;
     onShowSavedChats?: () => void;
     onStreamingToggle?: (enabled: boolean) => void;
     setImagePreview: (preview: string | null) => void;
@@ -85,7 +85,7 @@ export interface LegacyChatContainerProps {
     input: string;
     setInput: (input: string) => void;
     onModelNameClick: () => void;
-    onCancelUpload?: () => void;
+    onCancelUpload?: (file?: File) => void;
     setIsTyping?: (typing: boolean) => void;
     streaming?: boolean;
     streamingEnabled?: boolean;

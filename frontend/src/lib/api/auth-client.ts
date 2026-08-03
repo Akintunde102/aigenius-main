@@ -4,6 +4,13 @@ import { storageConstants } from '@/lib/constants';
 import { storage } from '@/lib/utils/store';
 import { navigateTo } from '@/lib/utils/navigate';
 import { getE2eWalletBypassHeaders } from '@/lib/e2e-wallet-bypass';
+import {
+    canUseHttpOnlyRefreshCookie,
+} from '@/lib/utils/auth-session';
+import {
+    isAigeniusDesktopRuntime,
+    isDesktopShellFromBuild,
+} from '@/lib/utils/desktop-runtime';
 
 type RetryableAxiosRequestConfig = InternalAxiosRequestConfig & {
     _authRetry?: boolean;
@@ -20,10 +27,42 @@ export function getAccessToken(): string | undefined {
     return storage(storageConstants.NOBOX_TOKEN).getString() ?? undefined;
 }
 
+const JWT_EXPIRY_LEEWAY_SEC = 30;
+
+export function isJwtExpired(token: string, leewaySec = JWT_EXPIRY_LEEWAY_SEC): boolean {
+    const exp = decodeJwtExp(token);
+    if (exp === null) {
+        return false;
+    }
+    return exp * 1000 <= Date.now() + leewaySec * 1000;
+}
+
+/** JWT access token if present and not past `exp` (desktop has no HttpOnly refresh cookie). */
+export function getValidAccessToken(): string | undefined {
+    const token = getAccessToken();
+    if (!token || isJwtExpired(token)) {
+        return undefined;
+    }
+    return token;
+}
+
+export function isAuthorizationFailure(error: unknown): boolean {
+    if (isRefreshableAuthError(error as AxiosError)) {
+        return true;
+    }
+    if (typeof error === 'string' && error === 'Authorization error') {
+        return true;
+    }
+    const response = (error as { response?: { status?: number; data?: unknown } })?.response;
+    if (response?.status !== 401) {
+        return false;
+    }
+    const { mappedDataMessageError, errorMessage } = normalizeAuthError(response?.data);
+    return mappedDataMessageError === 'Authorization error' || errorMessage === 'Authorization error';
+}
+
 export function setAccessToken(token: string) {
     storage(storageConstants.NOBOX_TOKEN).setString(token);
-    // Sync with legacy key to ensure getLoggedUserToken() finds it
-    storage(storageConstants.NOBOX_CLIENT_TOKEN).setString(token);
     if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent(AUTH_TOKEN_REFRESHED_EVENT, { detail: { token } }));
     }
@@ -44,10 +83,20 @@ export function clearStoredAuthSession() {
     }
 }
 
+function resolveLoginPathAfterSessionExpiry(): string {
+    if (typeof window === 'undefined') {
+        return LOGIN_PATH;
+    }
+    if (isDesktopShellFromBuild() || isAigeniusDesktopRuntime()) {
+        return '/desktop-login?aigenius_shell=1';
+    }
+    return LOGIN_PATH;
+}
+
 export function handleSessionExpired() {
     clearStoredAuthSession();
     if (typeof window !== 'undefined') {
-        navigateTo(LOGIN_PATH);
+        navigateTo(resolveLoginPathAfterSessionExpiry());
     }
 }
 
@@ -99,6 +148,9 @@ export function isRefreshableAuthError(error: AxiosError | { response?: { status
  * Network errors, timeouts, and 5xx should not force logout — the user can retry when online.
  */
 export function shouldLogoutOnRefreshFailure(error: unknown): boolean {
+    if (!canUseHttpOnlyRefreshCookie()) {
+        return false;
+    }
     if (error instanceof Error && error.message === 'Refresh response did not include an access token') {
         return true;
     }
@@ -106,6 +158,13 @@ export function shouldLogoutOnRefreshFailure(error: unknown): boolean {
         return false;
     }
     const status = error.response?.status;
+    const errorBody = error.response?.data as { error?: string } | undefined;
+    if (status === 400 && errorBody?.error === 'No refresh token provided') {
+        return false;
+    }
+    if (status === 403 && errorBody?.error === 'Invalid refresh request') {
+        return false;
+    }
     if (status === undefined || status === 0) {
         return false;
     }
@@ -142,7 +201,7 @@ let proactiveRefreshTimer: ReturnType<typeof setInterval> | null = null;
  * expired JWT first (reduces race conditions and failed first requests after idle tabs).
  */
 export function initProactiveAccessTokenRefresh(): void {
-    if (typeof window === 'undefined' || proactiveRefreshTimer) {
+    if (typeof window === 'undefined' || proactiveRefreshTimer || !canUseHttpOnlyRefreshCookie()) {
         return;
     }
 
@@ -186,6 +245,15 @@ function applyAuthHeaders<T extends AxiosRequestConfig>(config: T, token?: strin
 }
 
 export async function refreshAccessToken(): Promise<string> {
+    if (!canUseHttpOnlyRefreshCookie()) {
+        const existing = getValidAccessToken();
+        if (existing) {
+            return existing;
+        }
+        handleSessionExpired();
+        throw new Error('Session expired — please sign in again');
+    }
+
     if (refreshPromise) {
         return refreshPromise;
     }
@@ -223,7 +291,7 @@ export const authHttp = axios.create({
 });
 
 authHttp.interceptors.request.use((config) => {
-    const token = getAccessToken();
+    const token = getValidAccessToken();
     return applyAuthHeaders(config, token);
 });
 
@@ -237,7 +305,12 @@ authHttp.interceptors.response.use(
             return Promise.reject(error);
         }
 
-        if (!originalRequest || originalRequest._authRetry || !isRefreshableAuthError(error)) {
+        if (
+            !originalRequest
+            || originalRequest._authRetry
+            || !isRefreshableAuthError(error)
+            || !canUseHttpOnlyRefreshCookie()
+        ) {
             return Promise.reject(error);
         }
 
@@ -253,7 +326,7 @@ authHttp.interceptors.response.use(
 );
 
 export async function authorizedFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
-    const token = getAccessToken();
+    const token = getValidAccessToken();
     const headers = new Headers(init.headers || {});
     headers.set(REQUESTED_WITH_HEADER, REQUESTED_WITH_VALUE);
     if (token) {
@@ -272,7 +345,10 @@ export async function authorizedFetch(input: RequestInfo | URL, init: RequestIni
         credentials: 'include',
     });
 
-    if (firstResponse.status !== 401) {
+    if (firstResponse.status !== 401 || !canUseHttpOnlyRefreshCookie()) {
+        if (firstResponse.status === 401 && !canUseHttpOnlyRefreshCookie()) {
+            handleSessionExpired();
+        }
         return firstResponse;
     }
 

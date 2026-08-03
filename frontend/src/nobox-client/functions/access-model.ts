@@ -323,9 +323,10 @@ async function mergeRuntimeContextIntoRequestBody(
     digest?: string,
   ): Promise<Record<string, unknown>> {
     let localSearchIndex: unknown;
-    if (desktop && typeof desktop.getLocalSearchIndexState === 'function') {
+    const d = desktop as any;
+    if (d && typeof d.getLocalSearchIndexState === 'function') {
       try {
-        localSearchIndex = await desktop.getLocalSearchIndexState();
+        localSearchIndex = await d.getLocalSearchIndexState();
       } catch {
         localSearchIndex = undefined;
       }
@@ -388,8 +389,8 @@ async function mergeRuntimeContextIntoRequestBody(
         ? extra.retrievalMemoryCatalog
         : undefined;
       const digest =
-        typeof extra?.structuralDigest === 'string' && extra.structuralDigest.trim()
-          ? extra.structuralDigest.trim()
+        typeof (extra as any)?.structuralDigest === 'string' && (extra as any).structuralDigest.trim()
+          ? (extra as any).structuralDigest.trim()
           : undefined;
       if (dh && cat) {
         cachedDesktopIpcRuntime = {
