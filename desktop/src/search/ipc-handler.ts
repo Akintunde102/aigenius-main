@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import { loopbackHttpOrigin } from '../loopback-host';
 
-const MINI_SERVER_PORT = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
+import { MINI_SERVER_PORT } from '../mini-server-port';
 const SERVER_URL = loopbackHttpOrigin(MINI_SERVER_PORT);
 
 /** Returns the auth header value; throws if the token was never injected. */

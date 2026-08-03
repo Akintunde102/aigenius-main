@@ -6,9 +6,9 @@ import { DEV_LOOPBACK_HOST, loopbackHttpUrl } from './loopback-host';
 import { showExternalLinkApprovalDialog } from './external-link-approval-dialog';
 import { isNoboxAuthBackendFlowUrl, isOauthSignInUrl } from './oauth-allowlist';
 import { isHostedPaymentUrl } from './payment-allowlist';
+import { MINI_SERVER_PORT } from './mini-server-port';
 
 const FRONTEND_PORT = resolveFrontendPort();
-const MINI_SERVER_PORT = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
 const API_PORT = process.env.AIGENIUS_API_PORT ?? process.env.DEV_API_PORT ?? '8000';
 
 function parseExtraOrigins(): Set<string> {

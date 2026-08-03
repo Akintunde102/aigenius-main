@@ -6,7 +6,7 @@
  * - `WHISPER_CPP_CLI`, `WHISPER_CPP_MODEL`, `WHISPER_CPP_MODEL_DIR`, `WHISPER_CPP_THREADS`
  */
 
-export const serverPort = parseInt(process.env.PORT ?? '8001', 10);
+export const serverPort = parseInt(process.env.PORT ?? '28001', 10);
 export const serverHostname = process.env.HOST ?? 'localhost';
 export const upstreamApiUrl = process.env.AIGENIUS_UPSTREAM_API_URL ?? 'http://localhost:8000';
 

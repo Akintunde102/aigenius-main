@@ -2,6 +2,7 @@ import path from 'path';
 import type { PatchOp } from './local-apply-patch-types';
 import { getActiveCodeProjectRootPath } from './active-code-project';
 import { loopbackHttpUrl } from './loopback-host';
+import { MINI_SERVER_PORT } from './mini-server-port';
 
 const CODE_EXTS = new Set(['ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs', 'py', 'rs', 'go']);
 const BLAST_RADIUS_TTL_MS = 30 * 60 * 1000;
@@ -88,7 +89,7 @@ export async function fetchBlastRadiusSummaryForPaths(
   paths: string[],
 ): Promise<BlastRadiusSummary | null> {
   const token = process.env.AIGENIUS_SECRET_TOKEN;
-  const port = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
+  const port = MINI_SERVER_PORT;
   if (!token || !paths.length) return null;
 
   const pathPrefix = getActiveCodeProjectRootPath() ?? '';

@@ -8,6 +8,7 @@ import { shouldRequireToolApproval } from './tool-permission-preferences';
 import { applySearchReplaceHunk } from './apply-hunk';
 import { recordTouchedFile } from './edit-session';
 import { loopbackHttpUrl } from './loopback-host';
+import { MINI_SERVER_PORT } from './mini-server-port';
 import {
   checkBlastRadiusGate,
   fetchBlastRadiusSummaryForPaths,
@@ -137,7 +138,7 @@ async function ensureParentDir(filePath: string): Promise<void> {
 
 async function reindexFileQuiet(filePath: string): Promise<void> {
   const token = process.env.AIGENIUS_SECRET_TOKEN;
-  const port = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
+  const port = MINI_SERVER_PORT;
   if (!token) return;
   try {
     await fetch(loopbackHttpUrl(port, '/search/reindex'), {

@@ -1,4 +1,5 @@
 import { loopbackHttpUrl } from './loopback-host';
+import { MINI_SERVER_PORT } from './mini-server-port';
 import { getRetrievalMemoryService } from './local-retrieval-memory';
 
 function projectArchitectureSlug(projectId: string): string {
@@ -17,7 +18,7 @@ export async function refreshProjectArchitectureMemory(
 ): Promise<void> {
   setTimeout(async () => {
     try {
-      const port = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
+      const port = MINI_SERVER_PORT;
       const token = process.env.AIGENIUS_SECRET_TOKEN;
       if (!token) return;
 

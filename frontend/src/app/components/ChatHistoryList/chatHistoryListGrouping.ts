@@ -84,7 +84,7 @@ function resolveSessionProjectId(
   return null;
 }
 
-/** Most recently active first. */
+/** Most recently messaged first (last sent or received message). */
 export function sortSidebarSessions(sessions: ChatSession[]): ChatSession[] {
   return [...sessions].sort(
     (a, b) => lastMessageTimestamp(b) - lastMessageTimestamp(a),
@@ -165,6 +165,35 @@ export function groupSidebarSessionsByProject(
     );
   });
 
-  return buckets;
+  return pinActiveProjectBucket(sortBucketsByLastMessage(buckets));
+}
+
+/** Keep the project containing the open chat at the top; others stay recency-sorted. */
+function pinActiveProjectBucket(
+  buckets: ProjectSidebarBucket[],
+): ProjectSidebarBucket[] {
+  const activeIdx = buckets.findIndex(
+    (b) => b.hasActiveSession && b.projectId !== null,
+  );
+  if (activeIdx <= 0) return buckets;
+  const result = [...buckets];
+  const [active] = result.splice(activeIdx, 1);
+  return [active, ...result];
+}
+
+function bucketLastMessageAt(bucket: ProjectSidebarBucket): number {
+  return bucket.sessions.reduce(
+    (max, session) => Math.max(max, lastMessageTimestamp(session)),
+    0,
+  );
+}
+
+/** Order project sections by the latest message across their conversations. */
+function sortBucketsByLastMessage(
+  buckets: ProjectSidebarBucket[],
+): ProjectSidebarBucket[] {
+  return [...buckets].sort(
+    (a, b) => bucketLastMessageAt(b) - bucketLastMessageAt(a),
+  );
 }
 
