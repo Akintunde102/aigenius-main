@@ -3,6 +3,7 @@ import path from 'path';
 import { getRetrievalMemoryService } from './local-retrieval-memory';
 import { getActiveCodeProjectId, getActiveCodeProjectRootPath } from './active-code-project';
 import { loopbackHttpUrl } from './loopback-host';
+import { MINI_SERVER_PORT } from './mini-server-port';
 
 /** Resolved once when the main process loads this module (Electron app startup). */
 export const USER_HOME_DIR_AT_STARTUP = os.homedir();
@@ -44,7 +45,7 @@ export async function getChatRuntimeContextForIpc(): Promise<{
   const projectRoot = getActiveCodeProjectRootPath();
   if (projectRoot) {
     try {
-      const port = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
+      const port = MINI_SERVER_PORT;
       const token = process.env.AIGENIUS_SECRET_TOKEN;
       if (token) {
         const projectName = path.basename(projectRoot) || getActiveCodeProjectId() || 'Project';

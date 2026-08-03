@@ -38,10 +38,12 @@ import { formatEditSessionHint, getTouchedFilesSnapshot } from './edit-session';
 import { recordBlastRadiusCheck } from './patch-blast-radius-gate';
 import { applyEditorDefaultsToToolArgs } from './active-editor-main';
 import { sidecarFetch } from './sidecar-fetch';
+import { MINI_SERVER_PORT } from './mini-server-port';
 
 const MAX_CMD_LEN = 64_000;
 const MAX_SHELL_OUT = 512 * 1024;
 const SHELL_APPROVAL_FALLBACK_PREVIEW_MAX = 2000;
+const SERVER_URL = loopbackHttpOrigin(MINI_SERVER_PORT);
 
 export { resolveShellProcessClose } from './utils/shell-process-close';
 
@@ -57,9 +59,6 @@ function buildShellApprovalFallbackDetail(command: string): string {
     : '';
   return preview + warning;
 }
-
-const MINI_SERVER_PORT = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
-const SERVER_URL = loopbackHttpOrigin(MINI_SERVER_PORT);
 
 /** Builds the Authorization header for requests to the local sidecar. Fail-closed: throws if the token was never injected. */
 function sidecarAuthHeaders(): Record<string, string> {

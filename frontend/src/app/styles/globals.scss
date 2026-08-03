@@ -368,6 +368,114 @@
     background: var(--chat-accent);
     color: #fff;
   }
+
+  .app-filter-pill {
+    height: 1.75rem;
+    border-radius: 9999px;
+    border: 1px solid var(--modal-border);
+    background: color-mix(in srgb, var(--surface-muted) 88%, transparent);
+    padding: 0 0.625rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--modal-muted-fg);
+    white-space: nowrap;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      box-shadow 0.15s ease;
+
+    &:hover {
+      color: var(--modal-fg);
+      border-color: color-mix(in srgb, var(--modal-fg) 14%, var(--modal-border));
+      background: color-mix(in srgb, var(--sidebar-row-hover) 72%, var(--surface-muted));
+    }
+
+    &:focus-visible {
+      outline: none;
+      border-color: color-mix(in srgb, var(--chat-accent) 45%, var(--modal-border));
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--chat-accent) 18%, transparent);
+    }
+  }
+
+  .app-filter-pill--active {
+    border-color: color-mix(in srgb, var(--chat-accent) 55%, var(--modal-border));
+    background: var(--chat-accent);
+    color: #fff;
+
+    &:hover {
+      border-color: color-mix(in srgb, var(--chat-accent-hover) 70%, var(--modal-border));
+      background: var(--chat-accent-hover);
+      color: #fff;
+    }
+  }
+
+  .app-filter-pill--icon {
+    width: 1.75rem;
+    padding: 0;
+    justify-content: center;
+    align-items: center;
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+
+  .app-filter-pill--image-active {
+    border-color: color-mix(in srgb, #ec4899 55%, var(--modal-border));
+    background: color-mix(in srgb, #ec4899 16%, var(--surface-muted));
+    color: #db2777;
+
+    &:hover {
+      border-color: color-mix(in srgb, #ec4899 65%, var(--modal-border));
+      background: color-mix(in srgb, #ec4899 22%, var(--surface-muted));
+      color: #be185d;
+    }
+  }
+
+  .app-filter-pill--web-active {
+    border-color: color-mix(in srgb, #ea580c 55%, var(--modal-border));
+    background: color-mix(in srgb, #ea580c 16%, var(--surface-muted));
+    color: #c2410c;
+
+    &:hover {
+      border-color: color-mix(in srgb, #ea580c 65%, var(--modal-border));
+      background: color-mix(in srgb, #ea580c 22%, var(--surface-muted));
+      color: #9a3412;
+    }
+  }
+
+  .app-filter-pill-menu {
+    border-radius: 0.75rem;
+    border: 1px solid var(--modal-border);
+    background: var(--modal-bg);
+    color: var(--modal-fg);
+    box-shadow:
+      0 10px 28px -14px rgba(15, 23, 42, 0.45),
+      0 0 0 1px color-mix(in srgb, var(--modal-border) 65%, transparent);
+  }
+
+  .app-filter-pill-menu__item {
+    padding: 0.4375rem 0.75rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--modal-muted-fg);
+    transition: background-color 0.12s ease, color 0.12s ease;
+
+    &:hover {
+      background: var(--sidebar-row-hover);
+      color: var(--modal-fg);
+    }
+  }
+
+  .app-filter-pill-menu__item--selected {
+    color: var(--chat-accent);
+    background: color-mix(in srgb, var(--chat-accent) 10%, transparent);
+
+    &:hover {
+      color: var(--chat-accent-hover);
+      background: color-mix(in srgb, var(--chat-accent) 14%, transparent);
+    }
+  }
 }
 
 /* Sidebar menu row — picks up theme-aware hover from CSS vars defined in :root / .dark above */

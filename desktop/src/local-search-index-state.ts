@@ -2,6 +2,7 @@ import path from 'path';
 import { getActiveCodeProjectId, getActiveCodeProjectRootPath } from './active-code-project';
 import { loopbackHttpUrl } from './loopback-host';
 import { sidecarFetch } from './sidecar-fetch';
+import { MINI_SERVER_PORT } from './mini-server-port';
 
 export type LocalSearchIndexCatalogEntry = {
   projectId: string;
@@ -58,7 +59,7 @@ export async function fetchLocalSearchIndexState(): Promise<LocalSearchIndexStat
 
   let status: SearchStatusPayload | null = null;
   try {
-    const port = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
+    const port = MINI_SERVER_PORT;
     const res = await sidecarFetch(loopbackHttpUrl(port, '/search/status'));
     if (res.ok) {
       status = (await res.json()) as SearchStatusPayload;

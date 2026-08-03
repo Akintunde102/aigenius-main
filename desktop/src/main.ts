@@ -44,6 +44,7 @@ import { refreshProjectArchitectureMemory } from './project-architecture-memory'
 import { setMainActiveEditor } from './active-editor-main';
 import { startIndexerUtilityProcess, markIndexerAppQuitting } from './indexer-utility-process';
 import { saveLastCodeProject } from './last-code-project';
+import { MINI_SERVER_PORT } from './mini-server-port';
 import net from 'net';
 
 function normalizeRendererFilesystemPath(filePath: string): string {
@@ -57,7 +58,6 @@ function normalizeRendererFilesystemPath(filePath: string): string {
   return normalizedPath;
 }
 
-const MINI_SERVER_PORT = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
 const INDEXER_IPC_PORT = process.env.AIGENIUS_INDEXER_IPC_PORT ?? '18012';
 const FRONTEND_PORT = resolveFrontendPort();
 /** Secure token for local sidecar communication (respect pre-set env for external sidecar / Tilt). */
@@ -1028,7 +1028,7 @@ if (!gotLock) {
       });
 
       try {
-        const port = process.env.AIGENIUS_MINI_SERVER_PORT ?? '8001';
+        const port = MINI_SERVER_PORT;
         const token = process.env.AIGENIUS_SECRET_TOKEN;
         if (!token) {
           console.warn('[aigenius-desktop] set-code-project-index: missing AIGENIUS_SECRET_TOKEN');

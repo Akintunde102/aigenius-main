@@ -1,6 +1,9 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react';
-import ChatHistoryList from '@/app/components/ChatHistoryList';
+
+jest.mock('@/app/components/model-interface/features/chat/components', () => ({
+    ChatLoadingIndicator: () => null,
+}));
 
 // Mock the child component to simplify testing the list logic
 jest.mock('@/app/components/ChatHistoryListItem', () => ({
@@ -11,6 +14,8 @@ jest.mock('@/app/components/ChatHistoryListItem', () => ({
         </button>
     ),
 }));
+
+import ChatHistoryList from '@/app/components/ChatHistoryList';
 
 describe('ChatHistoryList', () => {
     it('calls handleSessionSwitch synchronously and defers model restoration in transition', async () => {
@@ -68,5 +73,80 @@ describe('ChatHistoryList', () => {
         expect(onSessionSelect).toHaveBeenCalled();
         
         startTransitionSpy.mockRestore();
+    });
+
+    const baseProject = {
+        id: 'proj-a',
+        userId: 'user-1',
+        name: 'Project A',
+        rootPath: '/tmp/a',
+        rules: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+
+    it('collapses project sections by default and shows chat count', async () => {
+        const { findByText, queryByRole } = render(
+            <ChatHistoryList
+                chatHistory={[
+                    {
+                        id: 'chat-1',
+                        title: 'Hidden Chat',
+                        modelId: 'session-model',
+                        codeProjectId: 'proj-a',
+                        messages: [{ role: 'user', content: 'hi', timestamp: 1 }],
+                    },
+                ]}
+                currentSessionId={null}
+                models={[]}
+                isMobile={false}
+                removeChatHistorySession={jest.fn().mockResolvedValue(true)}
+                setChatHistory={jest.fn()}
+                getChatHistory={jest.fn().mockResolvedValue([])}
+                setSelectedModel={jest.fn()}
+                onStarToggle={jest.fn().mockResolvedValue(undefined)}
+                codeProjects={[baseProject]}
+            />,
+        );
+
+        expect(await findByText('1 chat')).toBeTruthy();
+        expect(queryByRole('button', { name: 'Hidden Chat' })).toBeNull();
+    });
+
+    it('expands the active project with open more when conversations exceed the limit', async () => {
+        const makeChat = (id: string, ts: number) => ({
+            id,
+            title: `Chat ${id}`,
+            modelId: 'session-model',
+            codeProjectId: 'proj-a',
+            messages: [{ role: 'user' as const, content: 'hi', timestamp: ts }],
+        });
+
+        const { findByRole, findByText } = render(
+            <ChatHistoryList
+                chatHistory={[
+                    makeChat('chat-5', 5),
+                    makeChat('chat-4', 4),
+                    makeChat('chat-3', 3),
+                    makeChat('chat-2', 2),
+                    makeChat('chat-1', 1),
+                ]}
+                currentSessionId="chat-5"
+                models={[]}
+                isMobile={false}
+                removeChatHistorySession={jest.fn().mockResolvedValue(true)}
+                setChatHistory={jest.fn()}
+                getChatHistory={jest.fn().mockResolvedValue([])}
+                setSelectedModel={jest.fn()}
+                onStarToggle={jest.fn().mockResolvedValue(undefined)}
+                handleSessionSwitch={jest.fn()}
+                isSessionActive={(id) => id === 'chat-5'}
+                codeProjects={[baseProject]}
+                activeProjectId="proj-a"
+            />,
+        );
+
+        expect(await findByRole('button', { name: 'Chat chat-5' })).toBeTruthy();
+        expect(await findByText('Open more (1)')).toBeTruthy();
     });
 });

@@ -1,5 +1,5 @@
 import React, { forwardRef, useRef, useImperativeHandle, useState, useCallback } from 'react';
-import { ArrowUp, Loader2, Maximize2, Mic, Phone, FolderCode, MessageSquare } from 'lucide-react';
+import { ArrowUp, Loader2, Maximize2, Mic, Phone, MessageSquare } from 'lucide-react';
 import { AudioModeOverlay } from './AudioModeOverlay';
 import { ChatArea } from './ChatArea';
 import { ChatAreaVirtualizedList } from './ChatAreaVirtualizedList';
@@ -10,9 +10,6 @@ import { useBrowserDetection } from '@/app/components/model-interface/shared/hoo
 import { useMobileKeyboard, useMobileLayout } from '@/app/components/model-interface/features/mobile/hooks';
 import { useAnchoredOrphanNotes } from '../hooks/useAnchoredOrphanNotes';
 import type { AudioStatus } from '../hooks/audioMode.utils';
-import { useCodeProjects } from '@/lib/hooks/useCodeProjects';
-import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
-
 import styles from './ChatContainer.module.scss';
 
 import type { UploadedFileEntry } from '@/app/components/model-interface/ModelInterface.helpers';
@@ -161,12 +158,6 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
 }, ref) => {
     const inputRef = useRef<any>(null);
     const orphanInputRef = useRef<HTMLTextAreaElement>(null);
-
-    const { projects } = useCodeProjects();
-    const activeSession = chatHistory.find((s) => s.id === currentSessionId);
-    const projectId = activeSession?.codeProjectId || getChatProjectScopeId();
-    const currentProject = projects.find((p) => p.id === projectId) ?? null;
-
 
     const streamVisibleInChat =
         streaming || (Boolean(isAudioMode) && audioStatus === 'speaking');
@@ -321,32 +312,6 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
             <div
                 className={mainAreaClass}
             >
-                {/* Scope Header - Rendered only for project-scoped chats */}
-                {currentProject ? (
-                    <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-100 bg-white/60 dark:border-zinc-800/80 dark:bg-zinc-950/60 px-6 py-4 backdrop-blur-md z-30">
-                        <div className="flex items-center gap-3 min-w-0">
-                            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 flex-shrink-0">
-                                <FolderCode size={18} />
-                            </div>
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[14px] font-semibold text-slate-900 dark:text-zinc-50 truncate">
-                                        {currentProject.name}
-                                    </span>
-                                    <span className="px-2 py-0.5 text-[10px] font-semibold tracking-wider text-emerald-700 bg-emerald-50 rounded-full dark:text-emerald-400 dark:bg-emerald-950/60 uppercase">
-                                        Project
-                                    </span>
-                                </div>
-                                {currentProject.rootPath && (
-                                    <div className="text-[11px] text-slate-400 dark:text-zinc-500 font-mono truncate mt-0.5" title={currentProject.rootPath}>
-                                        {currentProject.rootPath}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                ) : null}
-
                 <div
                     className={`
                         ${styles.chatAreaContainer}

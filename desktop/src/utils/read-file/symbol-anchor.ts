@@ -2,7 +2,7 @@ import { loopbackHttpOrigin } from '../../loopback-host';
 import { sidecarFetch } from '../../sidecar-fetch';
 import { getActiveCodeProjectRootPath } from '../../active-code-project';
 
-const MINI_SERVER_PORT = Number(process.env.AIGENIUS_MINI_SERVER_PORT ?? 3847);
+import { MINI_SERVER_PORT } from '../../mini-server-port';
 const SERVER_URL = loopbackHttpOrigin(MINI_SERVER_PORT);
 
 function sidecarAuthHeaders(): Record<string, string> {

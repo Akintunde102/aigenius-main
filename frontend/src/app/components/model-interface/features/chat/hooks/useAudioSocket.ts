@@ -1,4 +1,5 @@
 import { devLoopbackOrigin } from '@/lib/dev-loopback-host';
+import { resolveMiniServerPort } from '@/lib/mini-server-port';
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { LINKS } from '@/lib/links';
@@ -15,7 +16,7 @@ export function useAudioSocket() {
     if (socketRef.current?.connected) return;
 
     const token = getAccessToken();
-    const baseUrl = isAigeniusDesktopRuntime() ? devLoopbackOrigin(8001) : LINKS.noboxAPIRootUrl;
+    const baseUrl = isAigeniusDesktopRuntime() ? devLoopbackOrigin(resolveMiniServerPort()) : LINKS.noboxAPIRootUrl;
 
     const socket = io(`${baseUrl}/audio`, {
       auth: { token },

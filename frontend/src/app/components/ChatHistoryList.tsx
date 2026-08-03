@@ -202,11 +202,18 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
 
     // Track processing IDs for local item loading states
     const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
-    const [recentExpandedByKey, setRecentExpandedByKey] = useState<Record<string, boolean>>({});
+    const [sessionsExpandedByKey, setSessionsExpandedByKey] = useState<Record<string, boolean>>({});
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
     const toggleSectionCollapsed = useCallback((sectionKey: string) => {
         setCollapsedSections((prev) => ({
+            ...prev,
+            [sectionKey]: !(prev[sectionKey] ?? true),
+        }));
+    }, []);
+
+    const toggleSessionsExpanded = useCallback((sectionKey: string) => {
+        setSessionsExpandedByKey((prev) => ({
             ...prev,
             [sectionKey]: !prev[sectionKey],
         }));
@@ -393,9 +400,11 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
 
     const renderFlatSessionList = (
         sessions: ChatSession[],
-        _sectionKey: string,
-        emptyHint?: string,
+        sectionKey: string,
+        opts?: { truncate?: boolean; emptyHint?: string },
     ) => {
+        const emptyHint = opts?.emptyHint;
+
         if (!sessions.length) {
             return (
                 <p
@@ -407,10 +416,31 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
             );
         }
 
+        const shouldTruncate = Boolean(
+            opts?.truncate && sessions.length > RECENT_INITIAL_VISIBLE,
+        );
+        const isSessionsExpanded = sessionsExpandedByKey[sectionKey] ?? false;
+        const visibleSessions = shouldTruncate && !isSessionsExpanded
+            ? sessions.slice(0, RECENT_INITIAL_VISIBLE)
+            : sessions;
+        const hiddenCount = sessions.length - RECENT_INITIAL_VISIBLE;
+
         return (
-            <ul className="m-0 list-none space-y-0.5 px-3 pb-1.5">
-                {sessions.map((session) => renderRow(session, rowIsActive(session)))}
-            </ul>
+            <>
+                <ul className="m-0 list-none space-y-0.5 px-3 pb-1.5">
+                    {visibleSessions.map((session) => renderRow(session, rowIsActive(session)))}
+                </ul>
+                {shouldTruncate && !isSessionsExpanded ? (
+                    <button
+                        type="button"
+                        onClick={() => toggleSessionsExpanded(sectionKey)}
+                        className="mb-1.5 w-full px-3 py-0.5 text-left text-[11px] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+                        style={{ color: "var(--sidebar-muted-fg)", opacity: 0.8 }}
+                    >
+                        Open more ({hiddenCount})
+                    </button>
+                ) : null}
+            </>
         );
     };
 
@@ -436,7 +466,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                         const hasInlineActive = bucket.projectId !== null && bucket.hasActiveSession;
                         const isCollapsed = hasInlineActive
                             ? false
-                            : (collapsedSections[sectionKey] ?? false);
+                            : (collapsedSections[sectionKey] ?? true);
 
                         return (
                         <div key={sectionKey} className="mb-1">
@@ -477,6 +507,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                                 ? renderFlatSessionList(
                                     bucket.sessions,
                                     sectionKey,
+                                    { truncate: hasInlineActive },
                                 )
                                 : null}
                         </div>

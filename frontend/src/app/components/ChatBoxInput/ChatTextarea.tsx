@@ -101,12 +101,12 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
             e.preventDefault();
             onStopGeneration();
           }}
-          className="flex-shrink-0 rounded-full bg-red-500 p-2 text-white shadow-md transition-all hover:bg-red-600 active:scale-95 dark:bg-red-600 dark:hover:bg-red-700"
+          className="chat-composer-stop flex-shrink-0 rounded-full p-2 transition-all active:scale-95"
           title="Stop generation"
           aria-label="Stop generation"
           style={{ marginBottom: '2px' }}
         >
-          <Square size={14} fill="currentColor" strokeWidth={0} className="text-white" />
+          <Square size={14} fill="currentColor" strokeWidth={0} />
         </button>
       ) : (
         <button
@@ -144,6 +144,21 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
   cursor: not-allowed;
   background-color: var(--chat-accent-muted);
   color: var(--chat-muted-fg);
+}
+
+.chat-composer-stop {
+  background-color: color-mix(in srgb, var(--app-ink-900) 52%, transparent);
+  color: #fff;
+}
+.chat-composer-stop:hover {
+  background-color: color-mix(in srgb, var(--app-ink-900) 68%, transparent);
+}
+:global(.dark) .chat-composer-stop {
+  background-color: color-mix(in srgb, #fff 16%, transparent);
+  color: #e2e8f0;
+}
+:global(.dark) .chat-composer-stop:hover {
+  background-color: color-mix(in srgb, #fff 24%, transparent);
 }
 
 .blinking-caret {
