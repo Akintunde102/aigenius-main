@@ -49,6 +49,9 @@ import {
 import { buildConversationMessageSignature } from "@/lib/utils/conversationScrollMemory";
 import { useModelInterfacePersonality } from "./hooks/useModelInterfacePersonality";
 import { useModelInterfaceAttachments } from "./hooks/useModelInterfaceAttachments";
+import { AttachmentSourcePickerModal } from "./features/file-upload/components/AttachmentSourcePickerModal";
+import { AttachmentLibraryModal } from "./features/file-upload/components/AttachmentLibraryModal";
+import { useUploadedFilesList } from "@/app/components/user-files/useUploadedFilesList";
 import { isUploadErrorMessage } from "./features/file-upload/uploadError.utils";
 import { useModelInterfaceWalletGate } from "./hooks/useModelInterfaceWalletGate";
 import { useModelInterfaceSessionRouting } from "./hooks/useModelInterfaceSessionRouting";
@@ -106,6 +109,9 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [walletModalFromServerAbort, setWalletModalFromServerAbort] =
     useState(false);
+  const [showAttachmentSourcePicker, setShowAttachmentSourcePicker] = useState(false);
+  const [showAttachmentLibrary, setShowAttachmentLibrary] = useState(false);
+  const attachmentLibrary = useUploadedFilesList();
   useWalletTopUpReturn(setShowWalletModal, 'inline');
 
   const modelInterface = useModelInterface({
@@ -201,6 +207,8 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     retryAllFailedUploads,
     removeFailedUpload,
     handleQueuedFiles,
+    handleAttachSavedFiles,
+    openLocalFilePicker,
   } = useModelInterfaceAttachments({
     chat,
     setChat,
@@ -214,6 +222,10 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
 
   const handleQueuedFilesRef = useRef(handleQueuedFiles);
   handleQueuedFilesRef.current = handleQueuedFiles;
+
+  const handleAttachmentMenuRequest = useCallback(() => {
+    setShowAttachmentSourcePicker(true);
+  }, []);
 
   useEffect(() => {
     if (failedUploads.length === 0 && error && isUploadErrorMessage(error)) {
@@ -699,6 +711,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     handleSave={handleSave}
                     handleChatBoxSend={handleChatBoxSend}
                     handleFileUpload={handleFileUpload}
+                    onAttachmentMenuRequest={handleAttachmentMenuRequest}
                     uploading={uploading}
                     uploadProgress={uploadProgress}
                     supportsImageUpload={supportsImageUpload || false}
@@ -806,6 +819,28 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
               setPublishState={setPublishState}
               onPublishConversation={handlePublishConversation}
             />
+
+            {showAttachmentSourcePicker && (
+              <AttachmentSourcePickerModal
+                onClose={() => setShowAttachmentSourcePicker(false)}
+                onPickLocal={() => {
+                  setShowAttachmentSourcePicker(false);
+                  openLocalFilePicker();
+                }}
+                onPickLibrary={() => {
+                  setShowAttachmentSourcePicker(false);
+                  setShowAttachmentLibrary(true);
+                }}
+              />
+            )}
+
+            {showAttachmentLibrary && (
+              <AttachmentLibraryModal
+                library={attachmentLibrary}
+                onClose={() => setShowAttachmentLibrary(false)}
+                onConfirm={handleAttachSavedFiles}
+              />
+            )}
           </div>
         </div>
       </div>

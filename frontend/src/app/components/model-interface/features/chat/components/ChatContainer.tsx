@@ -15,6 +15,7 @@ import styles from './ChatContainer.module.scss';
 import type { UploadedFileEntry } from '@/app/components/model-interface/ModelInterface.helpers';
 import type { FailedUploadEntry } from '@/app/components/model-interface/features/file-upload/hooks/useFileUpload';
 import { FEATURE_FLAGS } from '@/lib/config/features';
+import { ImagePreviewLightbox } from '@/app/components/model-interface/features/message-types/components/ImagePreviewLightbox';
 
 interface ChatContainerProps {
     chat: ChatMessage[];
@@ -496,6 +497,13 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                     onToggleMini={onMiniModeToggle}
                 />
             )}
+
+            {imagePreview ? (
+                <ImagePreviewLightbox
+                    imageUrl={imagePreview}
+                    onClose={() => setImagePreview(null)}
+                />
+            ) : null}
         </div>
     );
 });

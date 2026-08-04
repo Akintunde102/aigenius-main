@@ -1,5 +1,4 @@
 import React from 'react';
-import Image from 'next/image';
 import { MarkdownRenderer } from '@/app/components/model-interface/shared/components';
 import { MessageAttachmentCard } from './MessageAttachmentCard';
 import {
@@ -51,7 +50,6 @@ interface StructuredMessageProps {
 export const StructuredMessage: React.FC<StructuredMessageProps> = ({
     content,
     onImagePreview,
-    imagePreview,
     setImagePreview,
     streaming = false,
 }) => {
@@ -93,28 +91,6 @@ export const StructuredMessage: React.FC<StructuredMessageProps> = ({
                 );
             })}
 
-            {imagePreview && (
-                <div
-                    className="fixed inset-0 z-[110] flex items-center justify-center bg-black bg-opacity-70"
-                    onClick={() => setImagePreview(null)}
-                    role="presentation"
-                >
-                    <Image
-                        src={imagePreview}
-                        alt="preview"
-                        width={600}
-                        height={400}
-                        style={{
-                            maxWidth: '90%',
-                            maxHeight: '90%',
-                            width: 'auto',
-                            height: 'auto',
-                            borderRadius: 12,
-                            boxShadow: '0 4px 32px rgba(0,0,0,0.3)',
-                        }}
-                    />
-                </div>
-            )}
         </div>
     );
 };
@@ -129,39 +105,15 @@ interface ImageMessageProps {
 export const ImageMessage: React.FC<ImageMessageProps> = ({
     imageUrl,
     onImagePreview,
-    imagePreview,
     setImagePreview,
 }) => (
-  <>
-    <MessageAttachmentCard
-      kind="image"
-      fileName="Image"
-      fileUrl={imageUrl}
-      onImagePreview={(url) => {
-        onImagePreview(url);
-        setImagePreview(url);
-      }}
-    />
-    {imagePreview === imageUrl && (
-      <div
-        className="fixed inset-0 z-[110] flex items-center justify-center bg-black bg-opacity-70"
-        onClick={() => setImagePreview(null)}
-      >
-        <Image
-          src={imageUrl}
-          alt="preview"
-          width={600}
-          height={400}
-          style={{
-            maxWidth: '90%',
-            maxHeight: '90%',
-            width: 'auto',
-            height: 'auto',
-            borderRadius: 12,
-            boxShadow: '0 4px 32px rgba(0,0,0,0.3)',
-          }}
-        />
-      </div>
-    )}
-  </>
+  <MessageAttachmentCard
+    kind="image"
+    fileName="Image"
+    fileUrl={imageUrl}
+    onImagePreview={(url) => {
+      onImagePreview(url);
+      setImagePreview(url);
+    }}
+  />
 );

@@ -4,21 +4,19 @@ import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { FiX } from "react-icons/fi";
 import { UserFilesBrowser } from "@/app/components/user-files/UserFilesBrowser";
-import type { CloudFile } from "@/app/components/file/file.interface";
 import type { UploadedFilesLibraryState } from "@/app/components/user-files/useUploadedFilesList";
+import type { CloudFile } from "@/app/components/file/file.interface";
 
 export interface AttachmentLibraryModalProps {
   onClose: () => void;
-  onAttach: (files: CloudFile[]) => void;
   library: UploadedFilesLibraryState;
-  maxSelection?: number;
+  onConfirm: (files: CloudFile[]) => void;
 }
 
 export function AttachmentLibraryModal({
   onClose,
-  onAttach,
   library,
-  maxSelection = 10,
+  onConfirm,
 }: AttachmentLibraryModalProps) {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -37,6 +35,7 @@ export function AttachmentLibraryModal({
       if (e.key !== "Escape") return;
       if (document.body.dataset.myfilesLightbox === "1") return;
       e.preventDefault();
+      e.stopPropagation();
       onClose();
     };
     window.addEventListener("keydown", onKeyDown, true);
@@ -82,7 +81,7 @@ export function AttachmentLibraryModal({
                 id="attachment-library-title"
                 className={`font-semibold ${isMobile ? "text-base" : "text-lg"}`}
               >
-                Library
+                Choose from My files
               </h2>
               <button
                 type="button"
@@ -103,29 +102,13 @@ export function AttachmentLibraryModal({
               library={library}
               onRequestClose={onClose}
               isMobileLayout={isMobile}
-              maxPickCount={maxSelection}
               onConfirmPick={(files) => {
-                onAttach(files);
+                onConfirm(files);
                 onClose();
               }}
             />
           </div>
         </div>
-        <style jsx>{`
-          :global(.dark) :global(.attachment-library-browser) {
-            background-color: var(--modal-bg) !important;
-            color: var(--modal-fg) !important;
-          }
-          :global(.dark) :global(.attachment-library-browser input) {
-            background-color: var(--modal-bg-muted) !important;
-            color: var(--modal-fg) !important;
-            border-color: var(--modal-border) !important;
-          }
-          :global(.dark) :global(.attachment-library-browser .sticky) {
-            background-color: var(--modal-bg) !important;
-            border-color: var(--modal-border) !important;
-          }
-        `}</style>
       </div>
     ) as any,
     portalTarget,
