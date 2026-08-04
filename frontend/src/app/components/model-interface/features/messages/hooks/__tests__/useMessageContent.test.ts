@@ -81,4 +81,17 @@ https://res.cloudinary.com/demo/raw/upload/v1/resume.pdf`;
         expect(result.fileName).toBe('');
         expect(result.fileUrl).toBe('');
     });
+
+    it('parses persisted PDF enrichment header as file message (not full document text)', () => {
+        const content = `[Attached PDF: Owoseni Clinton's Resume.pdf]
+Source: https://res.cloudinary.com/demo/raw/upload/v1/resume.pdf
+
+Clinton Owoseni
+Full-Stack Developer`;
+        const result = parseFileMessageFromString(content);
+
+        expect(result.isFileMsg).toBe(true);
+        expect(result.fileName).toBe("Owoseni Clinton's Resume.pdf");
+        expect(result.fileUrl).toBe('https://res.cloudinary.com/demo/raw/upload/v1/resume.pdf');
+    });
 });

@@ -193,6 +193,15 @@ export function parseFileMessageFromString(raw: string): ParseFileMessageResult 
         return true;
     };
 
+    // Persisted PDF enrichment format: "[Attached PDF: name]\nSource: https://..."
+    const attachedPdfMatch = normalized.match(
+        /^\[Attached PDF:\s*(.+?)\]\s*\nSource:\s*(https?:\/\/\S+)/,
+    );
+    if (attachedPdfMatch?.[1] && attachedPdfMatch?.[2]) {
+        assignParsedFile(attachedPdfMatch[1], attachedPdfMatch[2]);
+        return result;
+    }
+
     // Single-line: "<fileName>: <url>" (optionally markdown-bold).
     if (!normalized.includes('\n')) {
         const plainMatch = normalized.match(/^(.+?):\s*(https?:\/\/\S+)$/);

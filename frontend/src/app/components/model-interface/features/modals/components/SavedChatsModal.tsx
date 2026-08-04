@@ -7,6 +7,7 @@ import { formatTime } from '@/lib/utils/modelInterfaceUtils';
 import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
 import { useMessageContent } from '../../messages/hooks';
 import { ImageMessage, StructuredMessage } from '../../message-types';
+import { ImagePreviewLightbox } from '../../message-types/components/ImagePreviewLightbox';
 
 
 
@@ -144,6 +145,12 @@ function SavedMessageItem({ msg, idx, isExpanded, onExpand, onInsert, onDelete }
                     )}
                 </div>
             </li>
+            {imagePreview ? (
+                <ImagePreviewLightbox
+                    imageUrl={imagePreview}
+                    onClose={() => setImagePreview(null)}
+                />
+            ) : null}
         </>
     );
 }
