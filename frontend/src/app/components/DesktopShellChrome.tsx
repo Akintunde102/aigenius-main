@@ -29,6 +29,11 @@ function syncDesktopChromeCssVars(): void {
 /**
  * VS Code–style shell: reserves space under the custom title region and exposes a drag band
  * so the window moves when grabbing the top strip (Electron only; no-op in the browser).
+ *
+ * The shell is viewport-locked (100dvh) so app surfaces with `flex-1 min-h-0` chains (chat,
+ * docs, workflow studio) fill exactly one screen and scroll internally. It scrolls vertically
+ * rather than clipping so taller public/marketing pages (landing, published conversations)
+ * remain reachable — those scroll inside the shell instead of the document.
  */
 export default function DesktopShellChrome({
   children,
@@ -55,7 +60,7 @@ export default function DesktopShellChrome({
       />
       <DesktopTitleBarActions />
       <div
-        className="aigenius-desktop-app-shell flex min-h-0 flex-col overflow-hidden"
+        className="aigenius-desktop-app-shell flex min-h-0 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain"
         style={{
           height: "100dvh",
           maxHeight: "100dvh",
