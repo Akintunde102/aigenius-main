@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Download, Menu, X } from "lucide-react";
 import { BrandLogo } from "@/app/components/BrandLogo";
 import { cn } from "@/lib/utils";
 import { prefetchPublicRoutes } from "@/lib/public-route-prefetch";
@@ -23,7 +23,7 @@ function PublicNavLinks({
   const linkWrap =
     layout === "stack"
       ? "flex w-full flex-col gap-1"
-      : "flex flex-wrap items-center gap-x-5 gap-y-2 text-sm";
+      : "flex flex-wrap items-center gap-x-2 gap-y-2 text-sm";
 
   return (
     <nav aria-label="Public navigation" className={cn(linkWrap, className)}>
@@ -33,23 +33,40 @@ function PublicNavLinks({
         onClick={onNavigate}
         className={cn(
           layout === "stack" &&
-          "rounded-lg px-3 py-2.5 text-zinc-200 transition hover:bg-white/5 hover:text-white active:scale-[0.99]",
+            "rounded-lg px-3 py-2.5 text-zinc-200 transition hover:bg-white/5 hover:text-white active:scale-[0.99]",
           layout !== "stack" &&
-          "text-zinc-300 transition-colors hover:text-white py-1.5 px-3 active:scale-[0.99] font-medium",
+            "text-zinc-300 transition-colors hover:text-white py-1.5 px-3 active:scale-[0.99] font-medium",
           FOCUS_RING,
         )}
       >
         Conversations
       </Link>
+
+      {/* Desktop download — placeholder for now */}
+      <button
+        type="button"
+        onClick={() => {}}
+        className={cn(
+          layout === "stack" &&
+            "flex items-center gap-2 rounded-lg px-3 py-2.5 text-zinc-200 transition hover:bg-white/5 hover:text-white active:scale-[0.99]",
+          layout !== "stack" &&
+            "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-zinc-300 transition-colors hover:text-white active:scale-[0.99] font-medium",
+          FOCUS_RING,
+        )}
+      >
+        <Download className="h-3.5 w-3.5" aria-hidden />
+        Desktop app
+      </button>
+
       <Link
         prefetch
         href="/signup"
         onClick={onNavigate}
         className={cn(
           layout === "stack" &&
-          "rounded-lg bg-gradient-to-r from-cyan-600 to-emerald-600 px-3 py-2.5 text-center font-medium text-white shadow-md shadow-cyan-900/40 active:scale-[0.99]",
+            "rounded-lg bg-gradient-to-r from-cyan-600 to-emerald-600 px-3 py-2.5 text-center font-medium text-white shadow-md shadow-cyan-900/40 active:scale-[0.99]",
           layout !== "stack" &&
-          "rounded-lg bg-gradient-to-r from-cyan-600 to-emerald-600 px-4 py-1.5 font-medium text-white shadow-md shadow-cyan-900/30 hover:shadow-cyan-900/50 transition-all hover:brightness-105 active:scale-[0.99]",
+            "rounded-lg bg-gradient-to-r from-cyan-600 to-emerald-600 px-4 py-1.5 font-medium text-white shadow-md shadow-cyan-900/30 hover:shadow-cyan-900/50 transition-all hover:brightness-105 active:scale-[0.99]",
           FOCUS_RING,
         )}
       >
@@ -61,9 +78,9 @@ function PublicNavLinks({
         onClick={onNavigate}
         className={cn(
           layout === "stack" &&
-          "rounded-lg border border-zinc-600 px-3 py-2.5 text-center text-zinc-100 transition hover:border-cyan-400/50 hover:bg-white/5 active:scale-[0.99]",
+            "rounded-lg border border-zinc-600 px-3 py-2.5 text-center text-zinc-100 transition hover:border-cyan-400/50 hover:bg-white/5 active:scale-[0.99]",
           layout !== "stack" &&
-          "rounded-lg border border-zinc-700 px-4 py-1.5 text-zinc-200 font-medium transition-all hover:border-zinc-500 hover:bg-white/5 active:scale-[0.99]",
+            "rounded-lg border border-zinc-700 px-4 py-1.5 text-zinc-200 font-medium transition-all hover:border-zinc-500 hover:bg-white/5 active:scale-[0.99]",
           FOCUS_RING,
         )}
       >
@@ -110,7 +127,7 @@ export function PublicHeader() {
   return (
     <>
       <PrefetchPublicNavRoutes />
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/90 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#05070d]/80 backdrop-blur-md">
         <div className="relative z-[60] mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
           <BrandLogo size="default" />
           <PublicNavLinks className="hidden md:flex" />
@@ -142,7 +159,7 @@ export function PublicHeader() {
             />
             <div
               id="public-mobile-nav"
-              className="relative z-50 border-t border-white/10 bg-zinc-950/98 px-4 py-4 shadow-lg md:hidden"
+              className="relative z-50 border-t border-white/10 bg-[#05070d]/98 px-4 py-4 shadow-lg md:hidden"
             >
               <PublicNavLinks
                 layout="stack"
