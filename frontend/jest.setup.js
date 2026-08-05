@@ -87,6 +87,20 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
     disconnect: jest.fn(),
 }))
 
+// Mock matchMedia (jsdom has none; framer-motion's useReducedMotion needs it)
+if (typeof window.matchMedia === 'undefined') {
+    window.matchMedia = (query) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+    })
+}
+
 // Mock IntersectionObserver
 global.IntersectionObserver = jest.fn().mockImplementation(() => ({
     observe: jest.fn(),

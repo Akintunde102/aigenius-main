@@ -3,9 +3,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
+import { BotMessageSquare, Mic, Wallet } from "lucide-react";
 import { BrandLogo } from "@/app/components/BrandLogo";
 import { GoogleSignIn } from "@/app/components/auth/GoogleSignIn";
 import { DesktopSessionRestoringView } from "@/app/components/DesktopSessionRestoringView";
+import { LandingAmbientBackground } from "@/app/components/ui";
 import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
 import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-details";
 import { completeDesktopOAuthSession } from "@/lib/utils/complete-desktop-oauth-session";
@@ -17,8 +20,23 @@ import {
 import { DESKTOP_SHELL_ENTRY_QUERY_PARAM } from "@/lib/utils/desktop-runtime";
 import { resolveAuthenticatedDesktopShellRedirect } from "@/lib/utils/safe-internal-next-path";
 
-const CARD_SURFACE =
-  "rounded-2xl border border-white/10 bg-zinc-900/90 p-8 shadow-[0_24px_80px_-24px_rgba(0,0,0,0.65)] backdrop-blur-md sm:rounded-3xl sm:p-10";
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const container = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+};
+
+const EASE = [0.22, 1, 0.36, 1] as const;
+
+const TRUST_ITEMS = [
+  { icon: BotMessageSquare, label: "Every top model" },
+  { icon: Mic, label: "Voice dictation" },
+  { icon: Wallet, label: "Pay as you go" },
+] as const;
 
 /**
  * Desktop-oriented sign-in. Public route: no redirect to web `/login` when the Electron bridge is absent
@@ -26,6 +44,7 @@ const CARD_SURFACE =
  */
 export default function DesktopLoginPage() {
   const pathname = usePathname();
+  const reduce = useReducedMotion();
   const didSessionRedirectRef = useRef(false);
   const [storedFirstName, setStoredFirstName] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
@@ -88,148 +107,192 @@ export default function DesktopLoginPage() {
     : "Welcome to AIGenius";
 
   return (
-    <div className="relative flex min-h-dvh flex-1 flex-col overflow-hidden bg-[#0c0d0f] text-zinc-100">
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_60%_at_50%_-10%,rgba(16,185,129,0.16),transparent_55%),radial-gradient(ellipse_70%_50%_at_100%_30%,rgba(20,184,166,0.12),transparent_50%),radial-gradient(ellipse_60%_40%_at_0%_80%,rgba(71,85,105,0.14),transparent_45%)]"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[length:48px_48px] opacity-80 [mask-image:radial-gradient(ellipse_80%_60%_at_50%_40%,black,transparent)]"
-        aria-hidden
-      />
+    <div className="relative flex min-h-dvh flex-1 flex-col overflow-hidden bg-[#05070d] text-zinc-100">
+      <LandingAmbientBackground />
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 pb-10 pt-8 sm:px-8 sm:pb-14 sm:pt-12">
         <div className="mx-auto flex w-full max-w-lg flex-col items-center text-center">
           <BrandLogo size="compact" asStatic />
-          <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-500/90">
+          <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
             Desktop
           </p>
         </div>
 
         <main className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col justify-center py-10 sm:py-14">
-          <div className="mb-8 space-y-3 text-center sm:mb-10">
-            <h1 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              {headline}
-            </h1>
-            <p className="mx-auto max-w-md text-pretty text-sm leading-relaxed text-zinc-400 sm:text-base">
-              Sign in with Google to use AIGenius on this computer. Your session stays in secure
-              storage and app cookies—just like the browser.
-            </p>
-          </div>
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={reduce ? undefined : container}
+          >
+            <motion.div
+              variants={reduce ? undefined : fadeUp}
+              transition={{ duration: 0.5, ease: EASE }}
+              className="mb-8 space-y-3 text-center sm:mb-10"
+            >
+              <h1 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                {headline}
+              </h1>
+              <p className="mx-auto max-w-md text-pretty text-sm leading-relaxed text-zinc-400 sm:text-base">
+                Sign in with Google to use AIGenius on this computer. Your session stays in secure
+                storage and app cookies—just like the browser.
+              </p>
+            </motion.div>
 
-          <section className={CARD_SURFACE}>
-            <div className="mt-2 space-y-4">
-              <GoogleSignIn
-                variant="login"
-                className="!h-14 !w-full !rounded-xl !border-zinc-600 !bg-white !text-base !font-medium !text-zinc-900 hover:!border-emerald-400/70 hover:!bg-zinc-50 focus-visible:!ring-2 focus-visible:!ring-emerald-500 focus-visible:!ring-offset-2 focus-visible:!ring-offset-zinc-950"
+            <div className="relative">
+              <div
+                aria-hidden
+                className="absolute -inset-6 rounded-[2rem] bg-gradient-to-r from-cyan-500/[0.12] via-transparent to-emerald-500/[0.12] blur-2xl"
               />
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-white/5" />
-                </div>
-                <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
-                  <span className="bg-zinc-900 px-3 text-zinc-500 font-medium">Alternative</span>
-                </div>
-              </div>
+              <section className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-950 p-8 shadow-2xl shadow-black/50 sm:p-10">
+                <div
+                  aria-hidden
+                  className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent"
+                />
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.04] to-transparent"
+                />
 
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!window.aigeniusDesktop?.startWebSignIn) {
-                    return;
-                  }
-                  const res = await window.aigeniusDesktop.startWebSignIn();
-                  if (res?.token) {
-                    const ok = await completeDesktopOAuthSession(res.token);
-                    if (!ok) {
-                      return;
-                    }
-                    syncAuthSessionCookiesFromStorage();
-                    const target = resolveAuthenticatedDesktopShellRedirect(
-                      pathname,
-                      window.location.search,
-                    );
-                    window.location.replace(target);
-                  }
-                }}
-                className={cn(
-                  "flex h-14 w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-zinc-800/50 text-base font-medium text-white transition-all hover:bg-zinc-800 hover:border-zinc-600 active:scale-[0.98]",
-                  FOCUS_RING
-                )}
-              >
-                <svg className="h-5 w-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                </svg>
-                Sign in with Browser
-              </button>
+                <div className="relative space-y-4">
+                  <motion.div variants={reduce ? undefined : fadeUp} transition={{ duration: 0.5, ease: EASE }}>
+                    <GoogleSignIn
+                      variant="login"
+                      className="!h-14 !w-full !rounded-xl !border-zinc-500 !bg-white !text-base !font-semibold !text-zinc-900 !shadow-lg !shadow-cyan-950/30 hover:!bg-zinc-100 focus-visible:!ring-2 focus-visible:!ring-cyan-500 focus-visible:!ring-offset-2 focus-visible:!ring-offset-zinc-950"
+                    />
+                  </motion.div>
+
+                  <motion.div variants={reduce ? undefined : fadeUp} transition={{ duration: 0.5, ease: EASE }} className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-white/[0.08]" />
+                    </div>
+                    <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
+                      <span className="bg-zinc-950 px-3 font-medium text-zinc-500">Alternative</span>
+                    </div>
+                  </motion.div>
+
+                  <motion.button
+                    variants={reduce ? undefined : fadeUp}
+                    transition={{ duration: 0.5, ease: EASE }}
+                    type="button"
+                    onClick={async () => {
+                      if (!window.aigeniusDesktop?.startWebSignIn) {
+                        return;
+                      }
+                      const res = await window.aigeniusDesktop.startWebSignIn();
+                      if (res?.token) {
+                        const ok = await completeDesktopOAuthSession(res.token);
+                        if (!ok) {
+                          return;
+                        }
+                        syncAuthSessionCookiesFromStorage();
+                        const target = resolveAuthenticatedDesktopShellRedirect(
+                          pathname,
+                          window.location.search,
+                        );
+                        window.location.replace(target);
+                      }
+                    }}
+                    className={cn(
+                      "flex h-14 w-full items-center justify-center gap-3 rounded-xl border border-white/[0.12] bg-white/[0.03] text-base font-medium text-zinc-100 backdrop-blur transition hover:border-cyan-400/40 hover:bg-white/[0.06] active:scale-[0.99]",
+                      FOCUS_RING
+                    )}
+                  >
+                    <svg className="h-5 w-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                    </svg>
+                    Sign in with Browser
+                  </motion.button>
+                </div>
+
+                <motion.p
+                  variants={reduce ? undefined : fadeUp}
+                  transition={{ duration: 0.5, ease: EASE }}
+                  className="relative mt-8 text-center text-sm text-zinc-500"
+                >
+                  <Link
+                    prefetch
+                    href="/desktop-welcome"
+                    className={cn(
+                      "font-medium text-zinc-400 underline decoration-zinc-600 underline-offset-2 transition hover:text-zinc-200",
+                      FOCUS_RING,
+                    )}
+                  >
+                    Desktop welcome
+                  </Link>
+                  <span className="mx-2 text-zinc-600" aria-hidden>
+                    ·
+                  </span>
+                  <Link
+                    prefetch
+                    href="/login"
+                    className={cn(
+                      "font-medium text-cyan-300 underline decoration-cyan-500/40 underline-offset-4 transition hover:text-cyan-200",
+                      FOCUS_RING,
+                    )}
+                  >
+                    Web sign-in
+                  </Link>
+                </motion.p>
+
+                <motion.div
+                  variants={reduce ? undefined : fadeUp}
+                  transition={{ duration: 0.5, ease: EASE }}
+                  className="relative mt-8 border-t border-white/[0.08] pt-6 text-center text-[13px] text-zinc-500"
+                >
+                  <Link
+                    prefetch
+                    href="/signup"
+                    className={cn(
+                      "font-medium text-zinc-300 underline decoration-zinc-600 underline-offset-2 transition hover:text-white",
+                      FOCUS_RING,
+                    )}
+                  >
+                    Create an account
+                  </Link>
+                  <span className="mx-2 text-zinc-600" aria-hidden>
+                    ·
+                  </span>
+                  <Link
+                    prefetch
+                    href="/docs/privacy-policy"
+                    className={cn(
+                      "font-medium text-zinc-400 underline decoration-zinc-600 underline-offset-2 transition hover:text-zinc-200",
+                      FOCUS_RING,
+                    )}
+                  >
+                    Privacy
+                  </Link>
+                  <span className="mx-2 text-zinc-600" aria-hidden>
+                    ·
+                  </span>
+                  <Link
+                    prefetch
+                    href="/docs/terms-and-conditions"
+                    className={cn(
+                      "font-medium text-zinc-400 underline decoration-zinc-600 underline-offset-2 transition hover:text-zinc-200",
+                      FOCUS_RING,
+                    )}
+                  >
+                    Terms
+                  </Link>
+                </motion.div>
+              </section>
             </div>
 
-            <p className="mt-8 text-center text-sm text-zinc-500">
-              <Link
-                prefetch
-                href="/desktop-welcome"
-                className={cn(
-                  "font-medium text-zinc-400 underline decoration-zinc-600 underline-offset-2 hover:text-zinc-200",
-                  FOCUS_RING,
-                )}
-              >
-                Desktop welcome
-              </Link>
-              <span className="mx-2 text-zinc-600" aria-hidden>
-                ·
-              </span>
-              <Link
-                prefetch
-                href="/login"
-                className={cn(
-                  "font-medium text-emerald-400/90 underline decoration-emerald-500/35 underline-offset-4 hover:text-emerald-300",
-                  FOCUS_RING,
-                )}
-              >
-                Web sign-in
-              </Link>
-            </p>
-
-            <div className="mt-8 border-t border-white/10 pt-6 text-center text-[13px] text-zinc-500">
-              <Link
-                prefetch
-                href="/signup"
-                className={cn(
-                  "font-medium text-zinc-300 underline decoration-zinc-600 underline-offset-2 hover:text-white",
-                  FOCUS_RING,
-                )}
-              >
-                Create an account
-              </Link>
-              <span className="mx-2 text-zinc-600" aria-hidden>
-                ·
-              </span>
-              <Link
-                prefetch
-                href="/docs/privacy-policy"
-                className={cn(
-                  "font-medium text-zinc-400 underline decoration-zinc-600 underline-offset-2 hover:text-zinc-200",
-                  FOCUS_RING,
-                )}
-              >
-                Privacy
-              </Link>
-              <span className="mx-2 text-zinc-600" aria-hidden>
-                ·
-              </span>
-              <Link
-                prefetch
-                href="/docs/terms-and-conditions"
-                className={cn(
-                  "font-medium text-zinc-400 underline decoration-zinc-600 underline-offset-2 hover:text-zinc-200",
-                  FOCUS_RING,
-                )}
-              >
-                Terms
-              </Link>
-            </div>
-          </section>
+            <motion.ul
+              variants={reduce ? undefined : fadeUp}
+              transition={{ duration: 0.5, ease: EASE }}
+              className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-zinc-500"
+            >
+              {TRUST_ITEMS.map(({ icon: Icon, label }) => (
+                <li key={label} className="flex items-center gap-1.5">
+                  <Icon className="h-3.5 w-3.5 text-cyan-400/70" aria-hidden />
+                  <span>{label}</span>
+                </li>
+              ))}
+            </motion.ul>
+          </motion.div>
         </main>
       </div>
     </div>
