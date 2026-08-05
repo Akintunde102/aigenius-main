@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { IntegrationCallbackStatus } from '../../components/IntegrationCallbackStatus';
 
 const LINKEDIN_CONNECT_RESULT_KEY = 'linkedin_connect_result';
 
@@ -12,6 +13,7 @@ export default function LinkedInCallbackPage() {
   const [done, setDone] = useState(false);
   const [message, setMessage] = useState('Completing LinkedIn connection…');
   const [showCloseButton, setShowCloseButton] = useState(false);
+  const [succeeded, setSucceeded] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -27,6 +29,7 @@ export default function LinkedInCallbackPage() {
 
         setMessage(success ? 'Connection successful! Closing...' : 'Connection failed. Closing...');
         setDone(true);
+        setSucceeded(success);
 
         setTimeout(() => {
           try {
@@ -43,6 +46,7 @@ export default function LinkedInCallbackPage() {
         );
         setMessage('Redirecting you back…');
         setDone(true);
+        setSucceeded(success);
         setTimeout(() => {
           window.location.href = window.location.origin + '/';
         }, 1000);
@@ -71,20 +75,11 @@ export default function LinkedInCallbackPage() {
   }, []);
 
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center px-6 py-16 text-center">
-      <p className="text-lg text-zinc-200">{message}</p>
-      <p className="mt-3 text-sm text-zinc-500">
-        {done ? "You can close this tab if it doesn't close automatically." : 'This window will close automatically.'}
-      </p>
-      {showCloseButton && (
-        <button
-          type="button"
-          onClick={() => window.close()}
-          className="mt-6 rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-medium text-white shadow-md hover:bg-slate-600"
-        >
-          Close window
-        </button>
-      )}
-    </div>
+    <IntegrationCallbackStatus
+      done={done}
+      message={message}
+      showCloseButton={showCloseButton}
+      succeeded={succeeded}
+    />
   );
 }

@@ -40,29 +40,84 @@ function PublicAmbientBackground() {
   );
 }
 
-function PublicFooter() {
+function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <footer className="relative z-10 mt-auto border-t border-white/10 bg-zinc-950/80">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-xs text-zinc-500">
-          <span className="font-semibold text-zinc-300">AIGenius</span>
-          <span>by Nobox Labs Limited</span>
+    <Link
+      prefetch
+      href={href}
+      className={cn("text-sm text-zinc-500 transition hover:text-white", FOCUS_RING)}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function PublicFooter() {
+  const year = new Date().getFullYear();
+  return (
+    <footer className="relative z-10 mt-auto w-full border-t border-white/[0.08] bg-[#05070d]/90 backdrop-blur-sm">
+      {/* Gradient hairline */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent"
+      />
+
+      <div className="mx-auto w-full max-w-6xl px-4 pb-8 pt-12 sm:px-6 lg:px-8">
+        <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-[1.6fr_1fr_1fr]">
+          {/* Brand */}
+          <div className="space-y-3">
+            <BrandLogo size="default" />
+            <p className="max-w-xs text-sm leading-relaxed text-zinc-500">
+              Every top AI model, in one workspace. Chat, automate, and pay only
+              for what you use.
+            </p>
+            <p className="text-xs text-zinc-600">by Nobox Labs Limited</p>
+          </div>
+
+          {/* Product */}
+          <nav aria-label="Product">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+              Product
+            </p>
+            <ul className="mt-4 list-none space-y-2.5 p-0">
+              <li>
+                <FooterLink href="/published-conversations">Conversations</FooterLink>
+              </li>
+              <li>
+                <FooterLink href="/signup">Sign up</FooterLink>
+              </li>
+              <li>
+                <FooterLink href="/login">Sign in</FooterLink>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-sm text-zinc-600">Desktop app</span>
+                <span className="rounded-full border border-white/[0.08] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+                  Soon
+                </span>
+              </li>
+            </ul>
+          </nav>
+
+          {/* Legal */}
+          <nav aria-label="Legal">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+              Legal
+            </p>
+            <ul className="mt-4 list-none space-y-2.5 p-0">
+              <li>
+                <FooterLink href="/docs/privacy-policy">Privacy Policy</FooterLink>
+              </li>
+              <li>
+                <FooterLink href="/docs/terms-and-conditions">Terms of Service</FooterLink>
+              </li>
+            </ul>
+          </nav>
         </div>
-        <div className="flex items-center gap-4 text-xs text-zinc-400">
-          <Link
-            prefetch
-            href="/docs/privacy-policy"
-            className={cn("hover:text-zinc-200", FOCUS_RING)}
-          >
-            Privacy Policy
-          </Link>
-          <Link
-            prefetch
-            href="/docs/terms-and-conditions"
-            className={cn("hover:text-zinc-200", FOCUS_RING)}
-          >
-            Terms of Service
-          </Link>
+
+        {/* Bottom bar */}
+        <div className="mt-10 flex flex-col items-start justify-between gap-2 border-t border-white/[0.06] pt-6 text-xs text-zinc-600 sm:flex-row sm:items-center">
+          <span>© {year} Nobox Labs Limited. All rights reserved.</span>
+          <span>Pay-as-you-go AI chat & automations</span>
         </div>
       </div>
     </footer>
@@ -79,6 +134,8 @@ interface PublicPageShellProps {
 
 /**
  * Shared chrome for logged-out marketing, auth, docs, and public listings.
+ * Footer is always pinned to the bottom of the viewport (flex column + mt-auto),
+ * so it never "hangs" in the middle of the page.
  */
 export function PublicPageShell({
   children,
@@ -87,7 +144,7 @@ export function PublicPageShell({
 }: PublicPageShellProps) {
   return (
     <div
-      className="relative flex min-h-screen flex-col overflow-x-hidden text-zinc-100"
+      className="relative flex min-h-screen min-h-[100dvh] w-full shrink-0 flex-col overflow-x-hidden text-zinc-100"
       style={{ backgroundColor: PAGE_BG }}
     >
       <PublicAmbientBackground />
@@ -101,7 +158,7 @@ export function PublicPageShell({
       <div
         id="main-content"
         role="main"
-        className={cn("relative z-10 flex min-h-0 flex-1 flex-col", contentClassName)}
+        className={cn("relative z-10 flex w-full flex-1 flex-col", contentClassName)}
       >
         {children}
       </div>

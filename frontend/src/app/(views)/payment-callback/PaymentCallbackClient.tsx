@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { motion, useReducedMotion } from 'framer-motion';
 import { toast } from 'sonner';
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { clearUserDetailsCache } from '@/lib/calls/get-logged-user-details';
@@ -17,6 +18,7 @@ import {
     saveWalletTopUpResultState,
 } from '@/lib/wallet-payment-return';
 import { reconcilePaymentWithBackend, type WalletPaymentVerification } from '@/lib/wallet-pending-payment-poll';
+import { LandingAmbientBackground } from '@/app/components/ui';
 import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
 import { cn } from '@/lib/utils';
 
@@ -28,16 +30,63 @@ type ServerCallEnvelope<T> = {
 
 const VERIFY_TRIGGER_KEY_PREFIX = 'aigenius:payment-verify-triggered:';
 
-const STATUS_CARD =
-    'mx-auto w-full max-w-md rounded-2xl border border-zinc-700/45 bg-zinc-950 px-8 py-10 text-center shadow-2xl shadow-black/35';
+type StatusTone = 'loading' | 'success' | 'confirming' | 'failed';
+
+const TONE_GLOW: Record<StatusTone, string> = {
+    loading: 'from-cyan-500/[0.14] via-transparent to-emerald-500/[0.10]',
+    success: 'from-emerald-500/[0.14] via-transparent to-cyan-500/[0.10]',
+    confirming: 'from-amber-500/[0.14] via-transparent to-cyan-500/[0.10]',
+    failed: 'from-red-500/[0.14] via-transparent to-cyan-500/[0.10]',
+};
+
+const TONE_HAIRLINE: Record<StatusTone, string> = {
+    loading: 'via-cyan-400/60',
+    success: 'via-emerald-400/60',
+    confirming: 'via-amber-400/60',
+    failed: 'via-red-400/60',
+};
 
 const PRIMARY_BUTTON =
-    'inline-flex items-center justify-center rounded-lg bg-white px-6 py-2.5 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 active:scale-[0.99]';
+    'inline-flex items-center justify-center rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 active:scale-[0.99]';
+
+function StatusCard({ tone, children }: { tone: StatusTone; children: React.ReactNode }) {
+    return (
+        <div className="relative mx-auto w-full max-w-md">
+            <div
+                aria-hidden
+                className={cn('absolute -inset-6 rounded-[2rem] bg-gradient-to-r blur-2xl', TONE_GLOW[tone])}
+            />
+            <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-950 px-8 py-10 text-center shadow-2xl shadow-black/50">
+                <div
+                    aria-hidden
+                    className={cn(
+                        'absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent to-transparent',
+                        TONE_HAIRLINE[tone],
+                    )}
+                />
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.04] to-transparent"
+                />
+                <div className="relative">{children}</div>
+            </div>
+        </div>
+    );
+}
 
 function StatusShell({ children }: { children: React.ReactNode }) {
+    const reduce = useReducedMotion();
     return (
-        <div className="flex w-full flex-1 flex-col items-center justify-center px-5 py-16 sm:px-8">
-            {children}
+        <div className="relative flex w-full flex-1 flex-col items-center justify-center px-5 py-16 sm:px-8">
+            <LandingAmbientBackground />
+            <motion.div
+                initial={reduce ? undefined : { opacity: 0, y: 16 }}
+                animate={reduce ? undefined : { opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="relative z-10 w-full"
+            >
+                {children}
+            </motion.div>
         </div>
     );
 }
@@ -46,7 +95,7 @@ function StatusIcon({
     tone,
     children,
 }: {
-    tone: 'loading' | 'success' | 'confirming' | 'failed';
+    tone: StatusTone;
     children: React.ReactNode;
 }) {
     const toneClass =
@@ -78,7 +127,7 @@ function StatusIcon({
 export function PaymentCallbackLoadingView() {
     return (
         <StatusShell>
-            <div className={STATUS_CARD}>
+            <StatusCard tone="loading">
                 <StatusIcon tone="loading">
                     <Loader2 className="h-8 w-8 animate-spin" aria-hidden />
                 </StatusIcon>
@@ -88,7 +137,7 @@ export function PaymentCallbackLoadingView() {
                 <p className="mt-2 text-sm leading-relaxed text-zinc-400">
                     Verifying your transaction with Paystack…
                 </p>
-            </div>
+            </StatusCard>
         </StatusShell>
     );
 }
@@ -414,7 +463,7 @@ export default function PaymentCallbackClient() {
     if (status === 'success') {
         return (
             <StatusShell>
-                <div className={STATUS_CARD}>
+                <StatusCard tone="success">
                     <StatusIcon tone="success">
                         <CheckCircle2 className="h-8 w-8" aria-hidden />
                     </StatusIcon>
@@ -429,7 +478,7 @@ export default function PaymentCallbackClient() {
                     {searchParams.get('desktop') !== '1' ? (
                         <p className="mt-4 text-sm text-zinc-500">Returning you to your wallet…</p>
                     ) : null}
-                </div>
+                </StatusCard>
             </StatusShell>
         );
     }
@@ -443,7 +492,7 @@ export default function PaymentCallbackClient() {
 
         return (
             <StatusShell>
-                <div className={STATUS_CARD}>
+                <StatusCard tone="confirming">
                     <StatusIcon tone="confirming">
                         <AlertTriangle className="h-8 w-8" aria-hidden />
                     </StatusIcon>
@@ -468,14 +517,14 @@ export default function PaymentCallbackClient() {
                     >
                         {isDesktopHandoff ? 'Close this tab' : 'Return to wallet'}
                     </button>
-                </div>
+                </StatusCard>
             </StatusShell>
         );
     }
 
     return (
         <StatusShell>
-            <div className={STATUS_CARD}>
+            <StatusCard tone="failed">
                 <StatusIcon tone="failed">
                     <XCircle className="h-8 w-8" aria-hidden />
                 </StatusIcon>
@@ -494,7 +543,7 @@ export default function PaymentCallbackClient() {
                 >
                     Return to app
                 </button>
-            </div>
+            </StatusCard>
         </StatusShell>
     );
 }

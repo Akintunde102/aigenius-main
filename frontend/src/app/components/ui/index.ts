@@ -3,3 +3,5 @@ export { Input } from "./input";
 export { Label } from "./label";
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from "./card";
 export { AnimatedBackground } from "./animated-background";
+export { BentoGrid, BentoCard } from "./bento-grid";
+export { LandingAmbientBackground } from "./landing-ambient-background";
