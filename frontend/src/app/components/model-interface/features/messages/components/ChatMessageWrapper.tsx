@@ -113,6 +113,7 @@ function ChatMessageWrapperInner({
                 assistantDisplayName={msg.role === 'assistant' && !msg.personaName ? (selectedPersonalityName || undefined) : undefined}
                 assistantAvatarUrl={msg.role === 'assistant' ? selectedPersonalityIconUrl : undefined}
                 disableOrphanThreads={disableOrphanThreads}
+                isLastVisibleMessage={isLastVisibleMessage}
             />
         </div>
     );

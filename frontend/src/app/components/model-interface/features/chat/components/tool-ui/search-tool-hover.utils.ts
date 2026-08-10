@@ -13,8 +13,6 @@ export const SEARCH_TOOLS_WITH_FILE_HOVER = new Set([
   'local_find_callers',
   'local_go_to_definition',
   'local_symbol_outline',
-  'local_symbol_blast_radius',
-  'local_import_blast_radius',
   'local_list_directory',
   'local_read_file',
   'read_file',
@@ -80,6 +78,11 @@ function buildSearchScopeLabel(tool: string, args: Record<string, unknown> | und
     ?? pickString(args?.cwd)
     ?? pickString(args?.path)
     ?? pickString(args?.input);
+
+  const glob = pickString(args?.glob);
+  if (prefix && glob) {
+    return `${normalizePathSlashes(prefix)}/${glob.replace(/^\*\//, '')}`;
+  }
 
   const rawExtensions = args?.extensions;
   const extensions = Array.isArray(rawExtensions)
@@ -274,14 +277,24 @@ function extractFilesFromMarkdown(tool: string, result: string): SearchToolFileE
 
   if (tool === 'local_grep') {
     for (const line of result.split('\n')) {
-      const m = line.match(/^-\s+(.+?):(\d+)(?::(.*))?$/);
-      if (!m) continue;
-      const [, filePath, lineStr] = m;
-      entries.push({
-        name: fileNameFromPath(filePath),
-        path: filePath,
-        line: Number.parseInt(lineStr, 10),
-      });
+      const withLine = line.match(/^-\s+(.+?):(\d+)(?::(.*))?$/);
+      if (withLine) {
+        const [, filePath, lineStr] = withLine;
+        entries.push({
+          name: fileNameFromPath(filePath),
+          path: filePath,
+          line: Number.parseInt(lineStr, 10),
+        });
+        continue;
+      }
+      const fileOnly = line.match(/^-\s+(.+)$/);
+      if (fileOnly?.[1] && /[\\/]/.test(fileOnly[1])) {
+        const filePath = fileOnly[1].trim();
+        entries.push({
+          name: fileNameFromPath(filePath),
+          path: filePath,
+        });
+      }
     }
     return dedupeEntries(entries);
   }
@@ -330,10 +343,11 @@ function extractFilesFromMarkdown(tool: string, result: string): SearchToolFileE
     }
   }
 
-  const directoryBlocks = result.matchAll(
-    /^\d+\.\s+\*\*([^*]+)\*\*\s*\n\s*-\s+\*\*Path\*\*:\s*(?:\[[^\]]*\]\(([^)]+)\)|([^\n]+))/gim,
-  );
-  for (const match of Array.from(directoryBlocks)) {
+  for (const match of Array.from(
+    result.matchAll(
+      /^\d+\.\s+\*\*([^*]+)\*\*\s*\n\s*-\s+\*\*Path\*\*:\s*(?:\[[^\]]*\]\(([^)]+)\)|([^\n]+))/gim,
+    ),
+  )) {
     const name = match[1]?.trim();
     const filePath = (match[2] ?? match[3])?.trim();
     if (!filePath) continue;

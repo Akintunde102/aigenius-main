@@ -55,6 +55,7 @@ export function useChatOperationsRefined({
     clearPendingOrphanReply,
     onInsufficientFunds,
     getChatForSession,
+    isAudioModeRef,
 }: UseChatOperationsRefinedProps): UseChatOperationsReturn {
 
     const viewSessionId = resolveViewSessionId(routeConversationId, currentSessionId ?? null);
@@ -115,6 +116,7 @@ export function useChatOperationsRefined({
         currentSessionId,
         activeViewSessionId,
         updateSessionMessages,
+        isAudioModeRef,
         handleStreamResult: (result, streamingSessionId, draftEpoch, sendGeneration) => {
             // streamingSessionId is null for new chats, string for existing sessions.
             updateWalletFromResponse(result.wallet);
@@ -389,6 +391,8 @@ export function useChatOperationsRefined({
                 console.error('Failed to refresh wallet:', error);
                 return null;
             }
-        }, [setWallet])
+        }, [setWallet]),
+        canRetryLastSend: false,
+        retryLastFailedSend: useCallback(async () => {}, []),
     };
 }

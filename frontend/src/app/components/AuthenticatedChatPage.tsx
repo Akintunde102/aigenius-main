@@ -16,7 +16,6 @@ import { useCrossTabActiveConversationSync } from "@/app/components/model-interf
 import { prefetchPublicRoutes } from "@/lib/public-route-prefetch";
 import { ChatShellLoadingSkeleton } from "@/app/components/ChatShellLoadingSkeleton";
 import { importModelInterfaceWithRetry } from "@/app/components/model-interface/modelInterfaceDynamicImport";
-import { AllProviders } from "@/app/components/model-interface/contexts";
 import { ToolApprovalProvider } from "@/lib/tool-permissions/ToolApprovalProvider";
 
 const ModelInterface = dynamic(importModelInterfaceWithRetry, {
@@ -118,9 +117,7 @@ export default function AuthenticatedChatPage({
   if (token) {
     return (
       <ToolApprovalProvider>
-        <AllProviders>
-          <ModelInterface routeConversationId={routeConversationId} />
-        </AllProviders>
+        <ModelInterface routeConversationId={routeConversationId} />
       </ToolApprovalProvider>
     );
   }

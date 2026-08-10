@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FiInfo, FiX } from 'react-icons/fi';
 import { ChatMessage as ChatMessageType } from '@/app/components/model-interface/shared/types';
+import { getModelRoundCount } from './usageMetrics.utils';
 
 /** Matches backend `USD_TO_NAIRA_RATE` for display (see OpenAI chat completions service). */
 const USD_TO_NAIRA_RATE = 1400;
@@ -71,6 +72,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
     }, [showUsageDetails, setShowUsageDetails]);
 
     const toolUsdTotal = resolveToolUsdTotal(msg);
+    const modelRoundCount = getModelRoundCount(msg.usage);
     const modelUsd =
         msg.cost !== undefined && toolUsdTotal > 0
             ? Math.max(0, msg.cost - toolUsdTotal)
@@ -121,6 +123,19 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                         <div className="space-y-2">
                             {msg.usage && (
                                 <div className="overflow-hidden rounded-lg border border-slate-200/80 bg-slate-50/40 dark:border-zinc-700/80 dark:bg-zinc-900/40">
+                                    {modelRoundCount !== undefined && modelRoundCount > 1 && (
+                                        <div className="border-b border-slate-200/80 dark:border-zinc-700/80 px-2 py-1.5 bg-white dark:bg-zinc-800">
+                                            <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-zinc-400">
+                                                Agent run
+                                            </div>
+                                            <div className="mt-0.5 text-xs font-semibold tabular-nums text-slate-900 dark:text-zinc-100">
+                                                {modelRoundCount.toLocaleString()} model API calls
+                                            </div>
+                                            <p className="mt-0.5 text-[9px] leading-snug text-slate-500 dark:text-zinc-500">
+                                                One user message can trigger many model rounds when tools run.
+                                            </p>
+                                        </div>
+                                    )}
                                     <div className="grid min-w-0 grid-cols-2 divide-x divide-slate-200/80 dark:divide-zinc-700/80">
                                         <MetricPair
                                             label="Prompt"
@@ -133,7 +148,11 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                                     </div>
                                     <div className="border-t border-slate-200/80 dark:border-zinc-700/80">
                                         <MetricPair
-                                            label="Total tokens"
+                                            label={
+                                                modelRoundCount && modelRoundCount > 1
+                                                    ? 'Total tokens (session)'
+                                                    : 'Total tokens'
+                                            }
                                             value={msg.usage.total_tokens.toLocaleString()}
                                             emphasize
                                         />

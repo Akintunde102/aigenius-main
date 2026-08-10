@@ -3,19 +3,26 @@
 /**
  * Tilt entry for the Electron shell.
  *
- * - Runs heavy one-time setup (native rebuild + desktop-server build) once per Tilt session.
+ * - Runs heavy one-time setup (native rebuild + desktop-server build) once per dev session.
  * - Recompiles TypeScript, then launches Electron.
- * - On clean exit (user closed the window), blocks instead of exiting so Tilt does not
- *   immediately rerun the full pipeline. Use Tilt's Restart button to relaunch.
+ * - On clean exit (user closed the window), relaunches quickly without redoing native rebuild.
  * - On crash, retries a few times then blocks (avoids infinite compile loops).
  */
 
 const { spawn, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { waitForFrontendReady } = require('../../../scripts/ensure-frontend-ready.cjs');
 
 const desktopRoot = path.join(__dirname, '..');
 const MAX_CRASH_RETRIES = 3;
+const SETUP_STAMP = path.join(desktopRoot, '.tilt-setup-stamp.json');
+const SETUP_WATCH_FILES = [
+  path.join(desktopRoot, 'package.json'),
+  path.join(desktopRoot, 'package-lock.json'),
+  path.join(desktopRoot, '..', 'desktop-server', 'package.json'),
+  path.join(desktopRoot, '..', 'desktop-server', 'package-lock.json'),
+];
 
 function resolveLocalBin(name) {
   const ext = process.platform === 'win32' ? '.cmd' : '';
@@ -24,7 +31,7 @@ function resolveLocalBin(name) {
     path.join(desktopRoot, '..', 'node_modules', '.bin', name + ext),
   ];
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.existsSync(candidate)) return path.resolve(candidate);
   }
   return name;
 }
@@ -58,6 +65,26 @@ function runSync(label, args) {
   });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
+  }
+}
+
+/** Kill orphaned Electron processes from a prior Tilt/desktop session (Windows file-lock fix). */
+function stopStaleElectron() {
+  const electronMarker = path.resolve(desktopRoot, '..', 'node_modules', 'electron');
+  if (process.platform === 'win32') {
+    const marker = electronMarker.replace(/\\/g, '\\\\').replace(/'/g, "''");
+    const script = `
+      Get-CimInstance Win32_Process -Filter "Name = 'electron.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.ExecutablePath -and $_.ExecutablePath -like '*${marker}*' } |
+        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    `.trim();
+    spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], {
+      cwd: desktopRoot,
+      stdio: 'pipe',
+      shell: false,
+    });
+  } else {
+    spawnSync('pkill', ['-f', electronMarker], { cwd: desktopRoot, stdio: 'pipe' });
   }
 }
 
@@ -103,26 +130,85 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function getSetupFingerprint() {
+  const parts = [];
+  for (const file of SETUP_WATCH_FILES) {
+    if (fs.existsSync(file)) {
+      const st = fs.statSync(file);
+      parts.push(`${file}:${st.mtimeMs}`);
+    }
+  }
+  return parts.join('|');
+}
+
+function needsHeavySetup() {
+  if (process.env.TILT_DESKTOP_FORCE_SETUP === '1') return true;
+  if (!fs.existsSync(SETUP_STAMP)) return true;
+  try {
+    const stamp = JSON.parse(fs.readFileSync(SETUP_STAMP, 'utf8'));
+    return stamp.fingerprint !== getSetupFingerprint();
+  } catch {
+    return true;
+  }
+}
+
+function markSetupDone() {
+  fs.writeFileSync(
+    SETUP_STAMP,
+    JSON.stringify({ fingerprint: getSetupFingerprint(), at: new Date().toISOString() }),
+  );
+}
+
+function runHeavySetup() {
+  runSync('rebuild:better-sqlite3', ['run', 'rebuild:better-sqlite3']);
+  runSync('build:server', ['run', 'build:server']);
+  markSetupDone();
+}
+
 function blockUntilTiltRestart(reason) {
   console.log(`[dev-tilt] ${reason}`);
   console.log('[dev-tilt] Use Restart in the Tilt dashboard to try again.');
+  if (process.stdin.isTTY) {
+    process.stdin.resume();
+  }
   return new Promise(() => {});
 }
 
 async function main() {
-  runSync('rebuild:better-sqlite3', ['run', 'rebuild:better-sqlite3']);
-  runSync('build:server', ['run', 'build:server']);
+  stopStaleElectron();
+  await sleep(1500);
+
+  if (needsHeavySetup()) {
+    console.log('[dev-tilt] Running one-time native + server setup...');
+    runHeavySetup();
+  } else {
+    console.log(
+      '[dev-tilt] Skipping native rebuild (unchanged). Set TILT_DESKTOP_FORCE_SETUP=1 to redo.',
+    );
+  }
 
   let crashCount = 0;
 
   while (true) {
     runSync('compile', ['run', 'compile']);
+    try {
+      await waitForFrontendReady({
+        warmup: true,
+        logPrefix: '[dev-tilt]',
+        timeoutMs: 360_000,
+      });
+    } catch (err) {
+      console.error(err.message || err);
+      await blockUntilTiltRestart('Frontend is not ready — fix `web` first, then Restart `desktop`.');
+      return;
+    }
     const code = await runElectron();
 
     if (code === 0) {
       crashCount = 0;
-      await blockUntilTiltRestart('Electron closed.');
-      return;
+      console.log('[dev-tilt] Electron closed — relaunching in 2s (disable `desktop` in Tilt to stop).');
+      await sleep(2000);
+      continue;
     }
 
     crashCount += 1;

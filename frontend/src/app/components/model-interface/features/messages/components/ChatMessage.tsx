@@ -25,8 +25,8 @@ import {
     resolveStickyMarkerHighlightRects,
 } from '../../chat/hooks/orphanNoteAnchors';
 import { OrphanNoteLayer } from './OrphanNoteLayer';
-
-// Custom hooks
+import { AssistantTurnSegments } from './AssistantTurnSegments';
+import { shouldHideEmptyAssistantMessage } from '../utils/assistantMessageVisibility.utils';
 import { useMessageContent, useCostCalculation, useSaveState } from '../hooks';
 
 // Message display components - direct imports to avoid circular dependency
@@ -46,7 +46,6 @@ import {
 } from '../../message-types';
 
 // Chat feature components (thinking, tools) - direct imports to avoid circular dependency
-import { ReasoningGroup } from '../../chat/components/ReasoningGroup';
 import { ToolExecutionDisplay } from '../../chat/components/ToolExecutionDisplay';
 import { ToolStreamingCard } from '../../chat/components/ToolStreamingCard';
 import { ToolStreamingGroup } from '../../chat/components/ToolStreamingGroup';
@@ -55,7 +54,6 @@ import {
     type ChatMessageRenderBlock,
 } from '../../chat/components/cluster-tool-display-blocks';
 import { buildAssistantRenderSegments } from '../../chat/components/assistant-turn-summary.utils';
-import { AssistantWorkSummary } from '../../chat/components/AssistantWorkSummary';
 import type { ChatMessageDisplayBlock } from './chatMessageDisplay.utils';
 import { enrichEventsWithLegacyThinking } from '../../chat/utils/thinkingEvent.utils';
 
@@ -85,6 +83,7 @@ interface ChatMessageProps {
     assistantDisplayName?: string;
     assistantAvatarUrl?: string;
     disableOrphanThreads?: boolean;
+    isLastVisibleMessage?: boolean;
 }
 
 // Main ChatMessage Component
@@ -113,7 +112,8 @@ export function ChatMessage({
     savedChats = [],
     assistantDisplayName,
     assistantAvatarUrl,
-    disableOrphanThreads = false
+    disableOrphanThreads = false,
+    isLastVisibleMessage = false,
 }: ChatMessageProps) {
     const [showUsageDetails, setShowUsageDetails] = useState(false);
     const [messageActionsMenuOpen, setMessageActionsMenuOpen] = useState(false);
@@ -189,8 +189,10 @@ export function ChatMessage({
     const renderBlocks = useMemo(() => clusterToolDisplayBlocks(displayBlocks), [displayBlocks]);
 
     const renderSegments = useMemo(
-        () => buildAssistantRenderSegments(renderBlocks, streaming),
-        [renderBlocks, streaming],
+        () => buildAssistantRenderSegments(renderBlocks, streaming, {
+            collapseWorkBlocks: !isLastVisibleMessage,
+        }),
+        [renderBlocks, streaming, isLastVisibleMessage],
     );
 
     const legacyStreamingToolBlocks = useMemo((): ChatMessageRenderBlock[] => {
@@ -404,20 +406,8 @@ export function ChatMessage({
             : { maxWidth: isLongUserText ? '352px' : '320px' })
     }), [msg.role, isLongUserText]);
 
-    // Early return for empty assistant messages - after all hooks are called
-    // Don't hide if there's thinking, tool executions, active streaming tool, events, or live stream (status chip).
-    if (msg.role === 'assistant' && (!msg.content || (typeof msg.content === 'string' && msg.content.trim() === ''))) {
-        if (
-            !streaming
-            && !displayEvents.some((e) => e.type === 'thinking')
-            && !msg.reasoning
-            && !msg.reasoning_details?.length
-            && !msg.tool_executions?.length
-            && !msg.streaming_tools?.length
-            && !msg.events?.length
-        ) {
-            return null;
-        }
+    if (shouldHideEmptyAssistantMessage(msg, { streaming, displayEvents })) {
+        return null;
     }
 
     return (
@@ -493,70 +483,11 @@ export function ChatMessage({
                           * Legacy messages (no events) fall through to the old render path below.
                           */}
                             {renderSegments.length > 0 ? (
-                                <div className="flex flex-col gap-3 md:gap-4">
-                                    {renderSegments.map((segment, i: number) => {
-                                        if (segment.type === 'work_summary') {
-                                            return (
-                                                <div key={`work-summary-${i}`} className="w-full">
-                                                    <AssistantWorkSummary items={segment.items} />
-                                                </div>
-                                            );
-                                        }
-
-                                        const block = segment.block;
-                                        if (block.type === 'text') {
-                                            return (
-                                                <TextMessage
-                                                    key={i}
-                                                    content={block.content}
-                                                    streaming={streaming && block.endsWithLastTextEvent}
-                                                    role={msg.role}
-                                                />
-                                            );
-                                        }
-
-                                        if (block.type === 'thinking') {
-                                            return (
-                                                <div key={i} className="w-full">
-                                                    <ReasoningGroup
-                                                        event={block.event}
-                                                        messageStreaming={streaming}
-                                                    />
-                                                </div>
-                                            );
-                                        }
-
-                                        if (block.type === 'tool_cluster') {
-                                            return (
-                                                <div key={i} className="w-full">
-                                                    <ToolStreamingGroup events={block.events} messageStreaming={streaming} />
-                                                </div>
-                                            );
-                                        }
-
-                                        if (block.type !== 'tool') {
-                                            return null;
-                                        }
-
-                                        const toolEvt = block.event;
-                                        return (
-                                            <div key={i} className="w-full">
-                                                <ToolStreamingCard
-                                                    streaming_tool={{
-                                                        tool: toolEvt.tool,
-                                                        displayName: toolEvt.displayName,
-                                                        logs: toolEvt.logs,
-                                                        loading: toolEvt.loading,
-                                                        success: toolEvt.success,
-                                                        arguments: toolEvt.arguments,
-                                                    }}
-                                                    result={toolEvt.result}
-                                                    arguments={toolEvt.arguments}
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                <AssistantTurnSegments
+                                    segments={renderSegments}
+                                    messageRole={msg.role}
+                                    streaming={streaming}
+                                />
                             ) : (
                                 <>
                                     {/* Legacy render path — backward compat for messages without events */}

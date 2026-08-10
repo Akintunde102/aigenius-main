@@ -127,6 +127,11 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
       ipcRenderer.removeListener('main-window-focus', listener);
     };
   },
+  notifyChatCompletion: (payload: {
+    modelName?: string;
+    preview: string;
+  }): Promise<{ notified: boolean }> =>
+    ipcRenderer.invoke('chat-completion-notify', payload) as Promise<{ notified: boolean }>,
   openNewWindow: (relativePath?: string): Promise<void> =>
     ipcRenderer.invoke('shell-new-window', relativePath) as Promise<void>,
   pickProjectDirectory: (): Promise<{ path: string } | null> =>

@@ -1,6 +1,7 @@
 import {
   buildLocalFilePreviewPayload,
   inferLocalFilePreviewType,
+  toLocalFileMarkdownImage,
   toLocalFileMarkdownLink,
 } from '../local-file-link';
 
@@ -23,5 +24,9 @@ describe('local-file-link (frontend)', () => {
 
   it('formats markdown links', () => {
     expect(toLocalFileMarkdownLink('/a/b.ts')).toContain('[b.ts](local-file://');
+  });
+
+  it('formats inline markdown images', () => {
+    expect(toLocalFileMarkdownImage('/a/photo.png')).toContain('![photo.png](local-file://');
   });
 });

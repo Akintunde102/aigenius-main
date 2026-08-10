@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import {
   ChatMessage as ChatMessageType,
@@ -8,6 +8,7 @@ import {
 } from "@/app/components/model-interface/shared/types";
 import { EmptyState } from "./EmptyState";
 import { TypingIndicator } from "./TypingIndicator";
+import { JumpToLatestButton } from "./JumpToLatestButton";
 import type { ChatAreaVirtualizedListProps } from "./ChatAreaVirtualizedList";
 
 function ChatAreaMessagesChunkFallback() {
@@ -55,6 +56,7 @@ interface ChatAreaProps {
   streaming?: boolean;
   selectedPersonalityName?: string;
   selectedPersonalityIconUrl?: string;
+  showScrollToBottom?: boolean;
 }
 
 export function ChatArea({
@@ -81,14 +83,22 @@ export function ChatArea({
   streaming = false,
   selectedPersonalityName,
   selectedPersonalityIconUrl,
+  showScrollToBottom = false,
 }: ChatAreaProps) {
   const visibleNonSystemCount = useMemo(
     () => chat.filter((m) => m.role !== "system").length,
     [chat],
   );
 
+  const prevShowTypingRef = useRef(showTyping);
+
+  // Only scroll when the typing indicator appears (connecting), not when it
+  // disappears at stream end — that second scroll caused a visible flash.
   useEffect(() => {
-    if (!showTyping || !chatEndRef.current) return;
+    const didShowTyping = showTyping && !prevShowTypingRef.current;
+    prevShowTypingRef.current = showTyping;
+
+    if (!didShowTyping || !chatEndRef.current) return;
 
     const chatArea =
       chatAreaRef.current ||
@@ -103,10 +113,17 @@ export function ChatArea({
 
     if (!isNearBottom()) return;
 
-    setTimeout(() => {
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
+    chatEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
   }, [showTyping, chatEndRef, chatAreaRef]);
+
+  const handleJumpToLatest = useCallback(() => {
+    const chatArea = chatAreaRef.current;
+    if (chatArea) {
+      chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: 'smooth' });
+      return;
+    }
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatAreaRef, chatEndRef]);
 
   const listProps: ChatAreaVirtualizedListProps = {
     chat,
@@ -213,26 +230,9 @@ export function ChatArea({
         }
       `}</style>
 
-      <div ref={chatEndRef} />
+      <JumpToLatestButton visible={showScrollToBottom} onClick={handleJumpToLatest} />
 
-      <style>{`
-        .scroll-to-bottom-fade {
-          transition: opacity 0.3s;
-          opacity: 0;
-          background: linear-gradient(
-            135deg,
-            rgba(255, 255, 255, 0.95) 0%,
-            rgba(239, 246, 255, 0.98) 100%
-          );
-          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-        }
-        .group:hover .scroll-to-bottom-fade {
-          opacity: 0.8;
-        }
-        .scroll-to-bottom-fade svg {
-          color: #2563eb;
-        }
-      `}</style>
+      <div ref={chatEndRef} />
     </div>
   );
 }

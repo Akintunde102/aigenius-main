@@ -70,6 +70,6 @@ export function useCrossTabActiveConversationSync(
       type: "active-conversation",
       tabId: tabIdRef.current,
       conversationId: routeConversationId ?? null,
-    } satisfies SyncMessage);
+    } as SyncMessage);
   }, [enabled, routeConversationId]);
 }

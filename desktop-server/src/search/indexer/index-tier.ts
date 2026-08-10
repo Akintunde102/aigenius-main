@@ -8,7 +8,9 @@ export type IndexTier =
   | 'idle_project'
   | 'background';
 
-const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tiff', 'tif', 'gif']);
+const IMAGE_EXTENSIONS = new Set([
+  'jpg', 'jpeg', 'jfif', 'png', 'webp', 'bmp', 'tiff', 'tif', 'gif', 'heic', 'heif',
+]);
 const DOC_EXTENSIONS = new Set(['pdf', 'docx']);
 
 const TEXT_EXTENSIONS = new Set([

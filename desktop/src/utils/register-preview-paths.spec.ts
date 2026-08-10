@@ -2,6 +2,7 @@ import {
   registerAbsolutePathForPreview,
   registerRagHitsForPreview,
   registerReadFileBatchForPreview,
+  registerReadImageBatchForPreview,
 } from './register-preview-paths';
 import { registerPreviewPath } from '../preview-path-registry';
 
@@ -47,5 +48,18 @@ describe('register-preview-paths', () => {
   it('falls back to absolute path field when resolvedPath omitted', () => {
     registerReadFileBatchForPreview([{ path: '/abs/file.ts', status: 'ok' }]);
     expect(registerPreviewPath).toHaveBeenCalledWith('/abs/file.ts');
+  });
+
+  it('registers read_image batch from data.path', () => {
+    registerReadImageBatchForPreview([
+      {
+        path: 'photo.png',
+        status: 'ok',
+        data: { path: '/home/user/photo.png' },
+      },
+      { path: '/bad.png', status: 'error' },
+    ]);
+    expect(registerPreviewPath).toHaveBeenCalledWith('/home/user/photo.png');
+    expect(registerPreviewPath).toHaveBeenCalledWith('/home/user');
   });
 });

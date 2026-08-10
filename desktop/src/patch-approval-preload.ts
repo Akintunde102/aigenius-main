@@ -9,12 +9,6 @@ export type PatchApprovalPayload = {
     directory: string;
     fullPath: string;
   }>;
-  blastRadius?: {
-    certain: number;
-    heuristic: number;
-    inferred: number;
-    total: number;
-  };
 };
 
 contextBridge.exposeInMainWorld('aigeniusPatchApproval', {

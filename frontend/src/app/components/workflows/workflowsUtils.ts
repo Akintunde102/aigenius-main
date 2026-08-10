@@ -1367,7 +1367,7 @@ export function sanitizeWorkflowErrorMessage(rawError: string | null | undefined
 
   // Detect 401 Unauthorized / Invalid API Key
   if (
-    /OpenRouter.*401/i.test(text) ||
+    /(?:OpenRouter|Model API).*401/i.test(text) ||
     /Invalid API Key/i.test(text) ||
     /401\s*Unauthorized/i.test(text)
   ) {
@@ -1376,15 +1376,15 @@ export function sanitizeWorkflowErrorMessage(rawError: string | null | undefined
 
   // Detect 429 Rate Limit
   if (
-    /OpenRouter.*429/i.test(text) ||
+    /(?:OpenRouter|Model API).*429/i.test(text) ||
     /Rate limit/i.test(text) ||
     /429\s*Too Many Requests/i.test(text)
   ) {
     return "AI model rate limit reached. Please wait a moment and try again.";
   }
 
-  // If raw string starts with "OpenRouter API error:" or contains full JSON dumps with internal URLs:
-  if (/OpenRouter API error/i.test(text) || /https:\/\/openrouter\.ai/i.test(text)) {
+  // Upstream model API errors or internal provider URLs in raw dumps
+  if (/(?:OpenRouter|Model API) API error/i.test(text) || /https:\/\/openrouter\.ai/i.test(text)) {
     return "AI model service is temporarily unavailable. Please try again shortly.";
   }
 

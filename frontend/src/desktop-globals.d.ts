@@ -14,6 +14,11 @@ declare global {
       openExternal?: (url: string) => void;
       /** Fires when the Electron main window regains OS focus (e.g. after system-browser payment). */
       onMainWindowFocus?: (handler: () => void) => () => void;
+      /** Badge + OS notification when a chat response finishes while the app is unfocused. */
+      notifyChatCompletion?: (payload: {
+        modelName?: string;
+        preview: string;
+      }) => Promise<{ notified: boolean }>;
       startWebSignIn?: () => Promise<{ token?: string | null } | null>;
       startOAuthSignIn?: (options?: { provider?: 'google' }) => Promise<{ token?: string | null } | null>;
       getDesktopRefreshToken?: () => Promise<string | null>;
@@ -35,6 +40,10 @@ declare global {
         autoApproveAll: boolean;
         requireApprovalByTool: Record<string, boolean>;
       }>;
+      setCodeProjectIndex?: (
+        payload: { projectId: string; rootPath: string } | null,
+      ) => Promise<{ ok: boolean }>;
+      pickProjectDirectory?: () => Promise<{ path: string } | null>;
       runLocalDesktopTool?: (
         payload: { tool: string; arguments: Record<string, unknown> },
         options?: {

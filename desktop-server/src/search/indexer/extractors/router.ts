@@ -4,6 +4,8 @@ import { extractPdf } from './pdf-extractor.js';
 import { extractDocx } from './docx-extractor.js';
 import { extractOcr } from './ocr-extractor.js';
 import { tagImage } from './yolo-tagger.js';
+import { IMAGE_EXTENSIONS } from '../../image-extensions.js';
+import { prepareImageForAnalysis } from '../../image-normalize.js';
 
 const TEXT_EXTENSIONS = new Set([
   'txt', 'md', 'mdx', 'markdown', 'rst', 'csv', 'json', 'jsonl',
@@ -14,8 +16,6 @@ const TEXT_EXTENSIONS = new Set([
   'sh', 'bash', 'zsh', 'fish', 'bat', 'ps1',
   'sql', 'graphql', 'proto',
 ]);
-
-const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tiff', 'tif']);
 
 export interface ExtractionResult {
   content: string;
@@ -53,29 +53,35 @@ export async function routeExtraction(
       console.log('[search] skipImages:', skipImages);
 
       if (skipImages) return { content: '', tags: ['image'] };
-      const [ocrResult, yoloResult] = await Promise.allSettled([
-        extractOcr(filePath, modelsDir),
-        tagImage(filePath, modelsDir),
-      ]);
 
-      console.log('[search] ocrResult:', ocrResult);
-      console.log('[search] yoloResult:', yoloResult);
+      const prepared = await prepareImageForAnalysis(filePath);
+      try {
+        const [ocrResult, yoloResult] = await Promise.allSettled([
+          extractOcr(prepared.filePath, modelsDir),
+          tagImage(prepared.filePath, modelsDir),
+        ]);
 
-      const content = ocrResult.status === 'fulfilled' ? ocrResult.value.content : '';
-      const ocrTags = ocrResult.status === 'fulfilled' ? ocrResult.value.tags : [];
-      const yoloTags = yoloResult.status === 'fulfilled' ? yoloResult.value : [];
+        console.log('[search] ocrResult:', ocrResult);
+        console.log('[search] yoloResult:', yoloResult);
 
-      const errorStr = [];
-      if (ocrResult.status === 'rejected') errorStr.push(`OCR: ${ocrResult.reason instanceof Error ? ocrResult.reason.message : String(ocrResult.reason)}`);
-      if (yoloResult.status === 'rejected') errorStr.push(`YOLO: ${yoloResult.reason instanceof Error ? yoloResult.reason.message : String(yoloResult.reason)}`);
+        const content = ocrResult.status === 'fulfilled' ? ocrResult.value.content : '';
+        const ocrTags = ocrResult.status === 'fulfilled' ? ocrResult.value.tags : [];
+        const yoloTags = yoloResult.status === 'fulfilled' ? yoloResult.value : [];
 
-      console.log({ ocrContent: content, ocrTags, yoloTags });
+        const errorStr = [];
+        if (ocrResult.status === 'rejected') errorStr.push(`OCR: ${ocrResult.reason instanceof Error ? ocrResult.reason.message : String(ocrResult.reason)}`);
+        if (yoloResult.status === 'rejected') errorStr.push(`YOLO: ${yoloResult.reason instanceof Error ? yoloResult.reason.message : String(yoloResult.reason)}`);
 
-      return {
-        content,
-        tags: [...new Set(['image', ...ocrTags, ...yoloTags])],
-        ...(errorStr.length > 0 ? { error: errorStr.join(' | ') } : {})
-      };
+        console.log({ ocrContent: content, ocrTags, yoloTags });
+
+        return {
+          content,
+          tags: [...new Set(['image', ...ocrTags, ...yoloTags])],
+          ...(errorStr.length > 0 ? { error: errorStr.join(' | ') } : {}),
+        };
+      } finally {
+        await prepared.cleanup();
+      }
     }
 
     // Unknown / binary — skip

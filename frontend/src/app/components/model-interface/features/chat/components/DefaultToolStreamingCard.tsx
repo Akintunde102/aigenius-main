@@ -47,7 +47,7 @@ export function DefaultToolStreamingCard({
     if (typeof parsedResult !== 'object') {
       rawStr = valueToDisplayString(parsedResult);
     } else if (parsedResult.error) {
-      rawStr = ERROR_MESSAGES.TOOL_EXECUTION_FAILED;
+      rawStr = valueToDisplayString(parsedResult.error) || ERROR_MESSAGES.TOOL_EXECUTION_FAILED;
     } else if (parsedResult.message) {
       rawStr = valueToDisplayString(parsedResult.message);
     } else if (parsedResult.result) {

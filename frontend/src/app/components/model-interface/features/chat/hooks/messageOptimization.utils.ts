@@ -124,7 +124,7 @@ function processStructuredContent(
             const result = processTextBlock(block, contentSize);
             optimizedBlocks.push(result.block);
             contentSize = result.size;
-        } else if ((block.type as string) === 'file_url') {
+        } else if ((block as { type?: string }).type === 'file_url') {
             const fileUrlBlock = block as OpenRouterContentBlock & {
                 file_url?: { url?: string; name?: string };
             };

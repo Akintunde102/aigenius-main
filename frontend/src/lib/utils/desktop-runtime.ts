@@ -176,6 +176,9 @@ export type AigeniusDesktopBridgeSurface = {
     options?: { onShellStreamChunk?: (chunk: { stream: string; text: string }) => void },
   ) => Promise<{ ok: boolean; result?: string; rawData?: any; error?: string }>;
   getChatRuntimeContext?: () => Promise<unknown>;
+  setCodeProjectIndex?: (
+    payload: { projectId: string; rootPath: string } | null,
+  ) => Promise<{ ok: boolean }>;
   getLocalSearchIndexState?: () => Promise<{
     reportedAtIso: string;
     mode: 'active_project_warming' | 'active_project_ready' | 'no_active_project';
@@ -327,13 +330,9 @@ function sameOriginWindowCandidates(): Window[] {
       console.debug("[AIGenius Bridge] Access to window.top denied (cross-origin)", err);
     }
   }
-  try {
-    if (window.opener && !window.opener.closed) {
-      out.push(window.opener);
-    }
-  } catch {
-    /* cross-origin opener */
-  }
+  // Do not scan window.opener: a normal browser tab opened from the desktop shell
+  // (or any same-origin opener) would inherit `runLocalDesktopTool` and send
+  // `x-aigenius-desktop`, enabling local_* tools that cannot run in Chrome/Edge.
   return out;
 }
 
@@ -389,7 +388,7 @@ function ensureRunnableLocalDesktopToolBridge():
 
 /**
  * True when `runLocalDesktopTool` exists (authoritative for `local_*` / `client_delegate`).
- * Scans `window`, `window.top`, and `window.opener` (same-origin).
+ * Scans `window` and same-origin `window.top` only (not `window.opener`).
  */
 export function hasRunnableLocalDesktopToolBridge(): boolean {
   return ensureRunnableLocalDesktopToolBridge() !== null;
