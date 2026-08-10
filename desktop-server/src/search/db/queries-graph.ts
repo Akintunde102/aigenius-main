@@ -1,13 +1,11 @@
 import path from 'path';
 import type Database from 'better-sqlite3';
-import { computeBlastRadius } from './queries-import-graph.js';
 import {
   makeQualifiedName,
   meetsMinConfidence,
   normalizeConfidence,
   parseQualifiedName,
   type GraphConfidence,
-  type SymbolChangeType,
   type TypeFlowDirection,
 } from '../graph/graph-types.js';
 
@@ -28,14 +26,6 @@ export type CallersResult = {
   callers: GraphHit[];
   total: number;
   truncated: boolean;
-};
-
-export type BlastRadiusResult = {
-  qualifiedName: string;
-  changeType: SymbolChangeType;
-  hits: GraphHit[];
-  importDependents: string[];
-  summary: string;
 };
 
 export type TypeFlowResult = {
@@ -219,104 +209,6 @@ export function findCallers(
   };
 }
 
-const BLAST_EDGE_TYPES: Record<SymbolChangeType, string[]> = {
-  signature_change: ['calls', 'references', 'type_flows_into', 'depends_on', 'reads', 'writes'],
-  removal: ['calls', 'references', 'type_flows_into', 'depends_on', 'reads', 'writes', 'extends', 'implements'],
-  return_type_change: ['calls', 'type_flows_into', 'references', 'tested_by'],
-};
-
-export function symbolBlastRadius(
-  db: Database.Database,
-  qualifiedName: string,
-  changeType: SymbolChangeType,
-  opts: { pathPrefix?: string; maxDepth?: number } = {},
-): BlastRadiusResult {
-  const sym = resolveSymbol(db, qualifiedName, opts.pathPrefix);
-  if (!sym) {
-    return {
-      qualifiedName,
-      changeType,
-      hits: [],
-      importDependents: [],
-      summary: 'Symbol not found in index.',
-    };
-  }
-
-  const qn = makeQualifiedName(sym.path, sym.name);
-  const edgeTypes = BLAST_EDGE_TYPES[changeType];
-  const placeholders = edgeTypes.map(() => '?').join(',');
-  const maxDepth = opts.maxDepth ?? 2;
-
-  const directRows = db
-    .prepare(
-      `SELECT s.path, s.name, s.kind, s.line_start AS line, s.line_end,
-              e.kind AS edge_kind, e.confidence, e.line AS edge_line
-       FROM symbol_edges e
-       JOIN symbol_index s ON e.from_symbol_id = s.id
-       WHERE (e.to_symbol_id = ? OR (e.to_name = ? AND e.to_symbol_id IS NULL))
-         AND e.kind IN (${placeholders})
-         AND (e.stale IS NULL OR e.stale = 0)
-       ORDER BY e.confidence DESC, s.path`,
-    )
-    .all(sym.id, sym.name, ...edgeTypes) as Array<{
-    path: string;
-    name: string;
-    kind: string;
-    line: number;
-    line_end: number;
-    edge_kind: string;
-    confidence: string;
-    edge_line: number | null;
-  }>;
-
-  const hits: GraphHit[] = directRows.map((r) =>
-    rowToHit({
-      path: r.path,
-      name: r.name,
-      line: r.edge_line ?? r.line,
-      line_end: r.line_end,
-      kind: r.kind,
-      edge_kind: r.edge_kind,
-      confidence: r.confidence,
-      depth: 1,
-    }),
-  );
-
-  if (maxDepth > 1 && changeType !== 'removal') {
-    const callers = findCallers(db, qn, {
-      maxDepth: maxDepth - 1,
-      pathPrefix: opts.pathPrefix,
-      limit: 40,
-    });
-    for (const c of callers.callers) {
-      if (!hits.some((h) => h.qualifiedName === c.qualifiedName && h.edgeType === c.edgeType)) {
-        hits.push({ ...c, depth: c.depth + 1 });
-      }
-    }
-  }
-
-  const importBlast = computeBlastRadius(db, [sym.path], opts.pathPrefix ?? '', 3);
-  const importDependents = importBlast.impacted.map((r) => r.path);
-
-  const certain = hits.filter((h) => h.confidence === 'static-certain').length;
-  const heuristic = hits.filter((h) => h.confidence === 'static-heuristic').length;
-  const inferred = hits.filter((h) => h.confidence === 'inferred').length;
-
-  const summary = [
-    `Blast radius for \`${qn}\` (${changeType}):`,
-    `${hits.length} structural hits (${certain} static-certain, ${heuristic} static-heuristic, ${inferred} inferred)`,
-    `${importDependents.length} import-dependent files`,
-  ].join('\n');
-
-  return {
-    qualifiedName: qn,
-    changeType,
-    hits: hits.slice(0, MAX_HITS),
-    importDependents,
-    summary,
-  };
-}
-
 export function typeFlowTrace(
   db: Database.Database,
   typeName: string,
@@ -479,7 +371,7 @@ export function buildStructuralDigest(
     `- Indexed source files: ${fileCount}`,
     lastIndexed ? `- Last indexed: ${new Date(lastIndexed).toISOString()}` : '- Index: not yet populated',
     '',
-    'Use `local_find_callers`, `local_symbol_blast_radius`, and `local_type_flow_trace` for precise graph queries.',
+    'Use `local_find_callers` and `local_grep` for precise graph queries.',
     '',
   ];
 
@@ -536,24 +428,6 @@ export function formatCallersReport(result: CallersResult): string {
   );
   const suffix = result.truncated ? `\n\n_Showing subset; total ${result.total}._` : '';
   return `# Callers: ${result.qualifiedName}\n\n${lines.join('\n')}${suffix}`;
-}
-
-export function formatSymbolBlastRadiusReport(result: BlastRadiusResult): string {
-  const lines = [
-    result.summary,
-    '',
-    '## Structural hits',
-    ...(result.hits.length
-      ? result.hits.map(
-          (h) =>
-            `- [${h.confidence}] ${h.edgeType} ← ${h.qualifiedName}:${h.line ?? '?'}`,
-        )
-      : ['_None_']),
-  ];
-  if (result.importDependents.length) {
-    lines.push('', '## Import dependents', ...result.importDependents.map((f) => `- ${f}`));
-  }
-  return lines.join('\n');
 }
 
 export function formatTypeFlowReport(result: TypeFlowResult): string {

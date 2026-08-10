@@ -5,7 +5,7 @@ import { ChatArea } from './ChatArea';
 import { ChatAreaVirtualizedList } from './ChatAreaVirtualizedList';
 import { ChatBoxInput } from '@/app/components/ChatBoxInput';
 import { OrphanThreadModal } from './OrphanThreadModal';
-import { Model, ChatMessage, PendingOrphanReply } from '@/app/components/model-interface/shared/types';
+import { ChatMessage, ChatSession, Model, PendingOrphanReply } from '@/app/components/model-interface/shared/types';
 import { useBrowserDetection } from '@/app/components/model-interface/shared/hooks';
 import { useMobileKeyboard, useMobileLayout } from '@/app/components/model-interface/features/mobile/hooks';
 import { useAnchoredOrphanNotes } from '../hooks/useAnchoredOrphanNotes';
@@ -19,7 +19,7 @@ import { ImagePreviewLightbox } from '@/app/components/model-interface/features/
 
 interface ChatContainerProps {
     chat: ChatMessage[];
-    chatHistory?: any[];
+    chatHistory?: ChatSession[];
     selectedModel: Model | null;
     models: Model[];
     showCosts: boolean;
@@ -360,6 +360,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         streaming={streamVisibleInChat}
                         selectedPersonalityName={selectedPersonalityName}
                         selectedPersonalityIconUrl={selectedPersonalityIconUrl}
+                        showScrollToBottom={showScrollToBottom}
                     />
                 </div>
                 <div

@@ -18,8 +18,6 @@ const SEARCH_TOOL_NAMES = new Set([
   'local_find_callers',
   'local_go_to_definition',
   'local_symbol_outline',
-  'local_symbol_blast_radius',
-  'local_import_blast_radius',
   'local_get_context',
 ]);
 
@@ -186,7 +184,7 @@ function buildOtherToolsClusterSummary(events: ToolEvent[]): string | null {
   }
 
   const summaryParts: string[] = [];
-  for (const bucket of buckets.values()) {
+  for (const bucket of Array.from(buckets.values())) {
     summaryParts.push(formatNounCount(bucket.count, bucket.noun));
   }
 

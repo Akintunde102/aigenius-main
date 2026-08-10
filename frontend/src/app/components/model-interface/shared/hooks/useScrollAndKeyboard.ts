@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { ChatMessage } from '@/app/components/model-interface/shared/types';
+import { computeLastMessageScrollSignal } from './chatScrollSignal.utils';
 
 interface UseScrollAndKeyboardProps {
     chat: ChatMessage[];
@@ -23,6 +24,10 @@ export function useScrollAndKeyboard({
     const chatAreaRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement | null>(null);
     const previousChatLengthRef = useRef(0);
+    const lastMessageScrollSignal = useMemo(
+        () => computeLastMessageScrollSignal(chat),
+        [chat],
+    );
 
     // Auto-scroll effect
     useEffect(() => {
@@ -66,16 +71,15 @@ export function useScrollAndKeyboard({
             return;
         }
 
+        // Always use instant scroll while following the stream — switching to
+        // smooth when streaming ends causes a visible jump/flash.
         setTimeout(() => {
             const el = chatEndRef.current;
             if (!el) return;
-            el.scrollIntoView({ behavior: "smooth" });
-            if (el.parentElement) {
-                el.parentElement.scrollTop += 40;
-            }
-        }, 100);
+            el.scrollIntoView({ behavior: 'auto', block: 'end' });
+        }, 0);
         previousChatLengthRef.current = chat.length;
-    }, [chat, loading]);
+    }, [chat.length, lastMessageScrollSignal, streaming, loading]);
 
     const lastMessageRole = chat.length > 0 ? chat[chat.length - 1].role : null;
     useEffect(() => {

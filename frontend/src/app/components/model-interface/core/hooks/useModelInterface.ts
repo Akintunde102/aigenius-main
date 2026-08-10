@@ -232,6 +232,8 @@ export function useModelInterface(options?: {
     setChatHistory,
   });
 
+  const isAudioModeRef = useRef(false);
+
   const {
     input,
     setInput,
@@ -269,6 +271,7 @@ export function useModelInterface(options?: {
     onInsufficientFunds: options?.onInsufficientFunds,
     onPrefetchConversationRoute: options?.onPrefetchConversationRoute,
     getChatForSession,
+    isAudioModeRef,
   });
 
   const audioSession = useAudioSocket();
@@ -321,6 +324,10 @@ export function useModelInterface(options?: {
     onBargeIn: handleStop,
     peerMicSuppressRef: dictationMicLiveRef,
   });
+
+  useLayoutEffect(() => {
+    isAudioModeRef.current = isAudioMode;
+  }, [isAudioMode]);
 
   useLayoutEffect(() => {
     dictationMicLiveRef.current = isSTTActive && isDictationRecording;

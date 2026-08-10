@@ -11,8 +11,12 @@ import {
     UseStreamingResponseProps,
     ProcessedContent,
     ChatCompletionRequestOverrides,
+    AccessModelStreamFn,
+    StreamContentChunk,
+    ReasoningDetailChunk,
+    ContentBlock,
 } from './chatOperations.types';
-import { CHAT_CONFIG, DRAFT_SESSION_KEY } from './chatOperations.constants';
+import { DRAFT_SESSION_KEY } from './chatOperations.constants';
 import {
     contentToDisplayText,
     mergeContentBlocks,
@@ -24,6 +28,7 @@ import { addOrMergeSessionToLocalHistory } from '@/lib/utils/modelChatConversati
 import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interface/conversation/streamTranscriptGuard';
 import { getDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { resolveRequestConversationId } from './requestConversationId.utils';
+import { notifyDesktopChatCompletionIfBackground } from '@/lib/utils/desktop-chat-completion-notify';
 
 /**
  * SSE/streaming assistant path: merges chunks, updates the open transcript, aborts per session.
@@ -42,7 +47,8 @@ export function useStreamingResponse({
     handleStreamResult,
     handleSendError,
     selectedPersonalityName,
-    selectedPersonalityIconUrl
+    selectedPersonalityIconUrl,
+    isAudioModeRef,
 }: UseStreamingResponseProps) {
     const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
 
@@ -67,7 +73,7 @@ export function useStreamingResponse({
     }, []);
 
     const handleStreamingData = useCallback((
-        content: string | any[],
+        content: ProcessedContent,
         accumulatedContent: ProcessedContent,
         streamingSessionId: string | null,
         setAssistantResponse: React.Dispatch<React.SetStateAction<string>>,
@@ -81,16 +87,16 @@ export function useStreamingResponse({
             || draftEpoch === undefined
             || draftEpoch === getDraftConversationEpoch();
 
-        // setAssistantResponse is visual-only (live typing animation) — only update
-        // when the stream still owns the open view.
-        if (sameDraftGeneration
+        // setAssistantResponse drives TTS only — skip when audio mode is off.
+        if (isAudioModeRef?.current
+            && sameDraftGeneration
             && shouldApplyStreamToOpenTranscript(streamingSessionId, activeViewSessionIdRef.current)) {
             const responseText = contentToDisplayText(mergedContent);
             setAssistantResponse(responseText);
         }
 
         return mergedContent;
-    }, []);
+    }, [isAudioModeRef, setAssistantResponse]);
 
     const createInitialStreamingMessage = useCallback((
         processedContent: ProcessedContent,
@@ -141,21 +147,20 @@ export function useStreamingResponse({
         setChatForSession(chatMapKey, prev => updateLastAssistantMessage(prev, processedContent));
     }, [setChatForSession]);
 
-    const processStreamingContent = useCallback((content: any): ProcessedContent => {
+    const processStreamingContent = useCallback((content: StreamContentChunk): ProcessedContent => {
         if (Array.isArray(content)) {
-            return content.map((block: any) => ({
+            return content.map((block): ContentBlock => ({
                 type: block.type,
-                text: block.text,
-                image_url: block.image_url,
-                imageText: block.imageText,
-                input_audio: block.input_audio
+                text: 'text' in block ? block.text : undefined,
+                image_url: 'image_url' in block ? block.image_url : undefined,
+                input_audio: 'input_audio' in block ? block.input_audio : undefined,
             }));
         }
         return content;
     }, []);
 
     const handleStreamingResponse = useCallback(async (
-        accessModelStream: any,
+        accessModelStream: AccessModelStreamFn,
         messages: OpenRouterMessage[],
         /** When the send used an explicit transcript (replay), state may lag behind — keep UI in sync. */
         uiChatBase?: ChatMessage[],
@@ -182,7 +187,7 @@ export function useStreamingResponse({
 
         let accumulatedContent: ProcessedContent = '';
         let accumulatedReasoning = '';
-        let accumulatedReasoningDetails: any[] = [];
+        let accumulatedReasoningDetails: ReasoningDetailChunk[] = [];
         let isFirstChunk = true;
 
         // Ordered event log for the current assistant turn.
@@ -192,13 +197,13 @@ export function useStreamingResponse({
         // Local message tracker for IndexedDB persistence (independent of active view).
         let sessionMessages: ChatMessage[] = uiChatBase
             ? [...uiChatBase]
-            : messages.map(m => ({
-                role: m.role as any,
-                content: m.content as any,
+            : messages.map((m): ChatMessage => ({
+                role: m.role,
+                content: m.content,
                 messageId: m.messageId,
                 modelId: m.modelId,
                 modelName: m.modelName,
-                timestamp: m.timestamp ?? Date.now()
+                timestamp: m.timestamp ?? Date.now(),
             }));
 
         const draftEpochAtDispatch = requestOverrides?.draftEpoch;
@@ -208,6 +213,21 @@ export function useStreamingResponse({
             || draftEpochAtDispatch === getDraftConversationEpoch();
 
         let lastUiUpdateTime = 0;
+        let sidebarSynced = false;
+
+        const syncSidebarHistory = () => {
+            if (sidebarSynced || !streamStillOwnsDraftSlot()) {
+                return;
+            }
+            if (chatMapKey !== DRAFT_SESSION_KEY && updateSessionMessages) {
+                updateSessionMessages(chatMapKey, sessionMessages, {
+                    modelId: selectedModel.id,
+                    title: sessionMessages[0]?.content as string || 'New chat',
+                });
+                sidebarSynced = true;
+            }
+        };
+
         const flushUiUpdate = (force = false) => {
             const now = Date.now();
             if (force || now - lastUiUpdateTime > 80) {
@@ -218,12 +238,6 @@ export function useStreamingResponse({
                     return;
                 }
                 setChatForSession(chatMapKey, sessionMessages);
-                if (chatMapKey !== DRAFT_SESSION_KEY && updateSessionMessages) {
-                    updateSessionMessages(chatMapKey, sessionMessages, {
-                        modelId: selectedModel.id,
-                        title: sessionMessages[0]?.content as string || 'New chat'
-                    });
-                }
                 lastUiUpdateTime = now;
             }
         };
@@ -239,11 +253,6 @@ export function useStreamingResponse({
                 flushUiUpdate();
             }
         };
-
-        const timeoutId = setTimeout(() => {
-            console.warn('Streaming request timed out, aborting...');
-            abortController.abort();
-        }, CHAT_CONFIG.STREAMING_TIMEOUT);
 
         try {
             const streamResult = await accessModelStream({
@@ -350,7 +359,7 @@ export function useStreamingResponse({
 
                     patchEventsOnLastMessage();
                 },
-                onData: (content: string | any[], reasoning?: string, reasoningDetails?: any[]) => {
+                onData: (content: StreamContentChunk, reasoning?: string, reasoningDetails?: ReasoningDetailChunk[]) => {
                     const processedContent = processStreamingContent(content);
                     accumulatedContent = handleStreamingData(
                         processedContent,
@@ -369,7 +378,7 @@ export function useStreamingResponse({
                     // Track this text chunk in the ordered event log.
                     const textStr = typeof processedContent === 'string'
                         ? processedContent
-                        : contentToDisplayText(processedContent as any);
+                        : contentToDisplayText(processedContent);
                     if (textStr) {
                         finalizeOpenThinkingEvent(events);
                         const lastEvt = events.length > 0 ? events[events.length - 1] : null;
@@ -432,6 +441,7 @@ export function useStreamingResponse({
 
             // Force a final flush so nothing is missed.
             flushUiUpdate(true);
+            syncSidebarHistory();
 
             const result = streamResult ?? {};
 
@@ -458,9 +468,20 @@ export function useStreamingResponse({
                 });
             }
 
+            const lastAssistant = sessionMessages[sessionMessages.length - 1];
+            if (lastAssistant?.role === 'assistant') {
+                void notifyDesktopChatCompletionIfBackground({
+                    body: contentToDisplayText(lastAssistant.content as ProcessedContent),
+                    modelName: selectedModel.name || selectedModel.id,
+                });
+            }
+
             handleStreamResult(result, streamingSessionId, requestOverrides?.draftEpoch, requestOverrides?.sendGeneration);
+        } catch (err) {
+            flushUiUpdate(true);
+            syncSidebarHistory();
+            throw err;
         } finally {
-            clearTimeout(timeoutId);
             const currentController = abortControllersRef.current.get(chatMapKey);
             if (currentController === abortController) {
                 abortControllersRef.current.delete(chatMapKey);
@@ -479,6 +500,7 @@ export function useStreamingResponse({
         createInitialStreamingMessage,
         updateStreamingMessage,
         processStreamingContent,
+        isAudioModeRef,
     ]);
 
     return {

@@ -1,15 +1,16 @@
 ﻿import { useCallback, useRef } from 'react';
 import { ChatMessage } from '@/app/components/model-interface/shared/types';
 import { OpenRouterMessage } from '@/nobox-client/functions/access-model';
-import { ChatCompletionRequestOverrides, UseNonStreamingResponseProps } from './chatOperations.types';
+import { ChatCompletionRequestOverrides, UseNonStreamingResponseProps, AccessModelFn } from './chatOperations.types';
 import { DRAFT_SESSION_KEY } from './chatOperations.constants';
 import { createChatMessage, processBackendContent, generateMessageId } from './contentProcessing.utils';
 import { addOrMergeSessionToLocalHistory } from '@/lib/utils/modelChatConversationUtils';
 import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interface/conversation/streamTranscriptGuard';
 import { getDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
-import { clearUserDetailsCache } from '@/lib/calls/get-logged-user-details';
 import { resolveRequestConversationId } from './requestConversationId.utils';
 import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
+import { notifyDesktopChatCompletionIfBackground } from '@/lib/utils/desktop-chat-completion-notify';
+import { contentToDisplayText } from './contentProcessing.utils';
 
 /**
  * Full-response (non-streaming) assistant path: single payload handling and session updates.
@@ -51,7 +52,7 @@ export function useNonStreamingResponse({
     }, []);
 
     const handleNonStreamingResponse = useCallback(async (
-        accessModel: any,
+        accessModel: AccessModelFn,
         messages: OpenRouterMessage[],
         /** When the send used an explicit transcript (replay), React state may not have committed yet. */
         uiChatBase?: ChatMessage[],
@@ -89,6 +90,10 @@ export function useNonStreamingResponse({
                 signal: abortController.signal
             });
 
+            if (!result) {
+                return;
+            }
+
             // Draft sends also require the draft generation to be unchanged — a New
             // Chat reset since dispatch means this response belongs to an older draft.
             const sameDraftGeneration = requestSessionId !== null
@@ -117,13 +122,13 @@ export function useNonStreamingResponse({
 
             const fullMessages = uiChatBase
                 ? [...uiChatBase, assistantMsg]
-                : [...messages.map(m => ({
-                    role: m.role as any,
-                    content: m.content as any,
+                : [...messages.map((m): ChatMessage => ({
+                    role: m.role,
+                    content: m.content,
                     messageId: m.messageId,
                     modelId: m.modelId,
                     modelName: m.modelName,
-                    timestamp: m.timestamp ?? Date.now()
+                    timestamp: m.timestamp ?? Date.now(),
                 })), assistantMsg];
 
             if (requestSessionId === null && result.conversationId) {
@@ -172,10 +177,10 @@ export function useNonStreamingResponse({
                 }
             }
 
-            if (result.wallet !== undefined && wallet !== result.wallet) {
-                clearUserDetailsCache();
-                setWallet(result.wallet);
-            }
+            void notifyDesktopChatCompletionIfBackground({
+                body: contentToDisplayText(processedContent),
+                modelName: selectedModel.name || selectedModel.id,
+            });
 
             logMetrics(result.usage, result.cost);
         } finally {

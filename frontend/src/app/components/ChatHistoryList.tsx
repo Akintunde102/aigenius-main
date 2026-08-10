@@ -7,13 +7,14 @@ import { ChatLoadingIndicator } from "./model-interface/features/chat/components
 import { groupSidebarSessionsByProject, sortSidebarSessions } from "./ChatHistoryList/chatHistoryListGrouping";
 import type { CodeProject } from "@/lib/calls/code-projects";
 
-const RECENT_INITIAL_VISIBLE = 4;
+/** Max conversations shown per sidebar section before "Open more". */
+const SIDEBAR_SESSION_PREVIEW_LIMIT = 5;
 
 function SidebarSectionHeader({ label }: { label: string }) {
     return (
-        <div className="px-3 pb-0.5 pt-2.5 first:pt-1.5">
+        <div className="px-3 pb-0.5 pt-2 first:pt-1">
             <span
-                className="text-xs font-semibold uppercase tracking-widest"
+                className="sidebar-section-label font-medium uppercase"
                 style={{ color: "var(--sidebar-muted-fg)" }}
             >
                 {label}
@@ -46,43 +47,23 @@ function ProjectSectionHeader({
     onInfo?: () => void;
     onNewChat?: () => void;
 }) {
-    const selectTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    React.useEffect(() => () => {
-        if (selectTimerRef.current) clearTimeout(selectTimerRef.current);
-    }, []);
-
     const handleLabelClick = () => {
-        if (!onSelect) return;
-        if (selectTimerRef.current) clearTimeout(selectTimerRef.current);
-        selectTimerRef.current = setTimeout(() => {
-            onSelect();
-            selectTimerRef.current = null;
-        }, 220);
-    };
-
-    const handleLabelDoubleClick = (event: React.MouseEvent) => {
-        event.preventDefault();
-        if (selectTimerRef.current) {
-            clearTimeout(selectTimerRef.current);
-            selectTimerRef.current = null;
-        }
         onToggleCollapse?.();
+        onSelect?.();
     };
 
     const countLabel = conversationCount === 1 ? '1 chat' : `${conversationCount} chats`;
 
-    // Build tooltip — adapt for disabled collapse (active chat inline)
     const buildTitle = () => {
-        if (isCollapsed) return `${label} — double-click to expand`;
+        if (isCollapsed) return `${label} — click to expand`;
         if (hasActiveChat) return `${label} (active chat open)`;
-        if (isActive) return `${label} (active for new chats) — double-click to collapse`;
-        return `Set ${label} as active project — double-click to collapse`;
+        if (isActive) return `${label} (active for new chats) — click to collapse`;
+        return `Set ${label} as active project — click to collapse`;
     };
 
     return (
         <div
-            className="flex items-start gap-1 px-2 pb-0.5 pt-2.5 first:pt-1.5"
+            className="flex items-start gap-1 px-2 pb-0.5 pt-2 first:pt-1"
             style={{
                 ...(isActive ? { backgroundColor: "var(--sidebar-icon-btn-hover-bg)" } : {}),
                 ...(hasActiveChat
@@ -94,8 +75,7 @@ function ProjectSectionHeader({
                 <button
                     type="button"
                     onClick={handleLabelClick}
-                    onDoubleClick={handleLabelDoubleClick}
-                    className="w-full truncate rounded px-1 py-0.5 text-left text-xs font-semibold uppercase tracking-widest transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+                    className="w-full truncate rounded px-1 py-0.5 text-left sidebar-section-label font-medium uppercase transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
                     style={{ color: "var(--sidebar-muted-fg)" }}
                     title={buildTitle()}
                 >
@@ -408,7 +388,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
         if (!sessions.length) {
             return (
                 <p
-                    className="px-3 pb-2 text-[12px] leading-snug"
+                    className="px-3 pb-2 text-[11px] leading-snug"
                     style={{ color: "var(--sidebar-muted-fg)" }}
                 >
                     {emptyHint ?? "No chats yet — use + to start one."}
@@ -417,17 +397,17 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
         }
 
         const shouldTruncate = Boolean(
-            opts?.truncate && sessions.length > RECENT_INITIAL_VISIBLE,
+            opts?.truncate && sessions.length > SIDEBAR_SESSION_PREVIEW_LIMIT,
         );
         const isSessionsExpanded = sessionsExpandedByKey[sectionKey] ?? false;
         const visibleSessions = shouldTruncate && !isSessionsExpanded
-            ? sessions.slice(0, RECENT_INITIAL_VISIBLE)
+            ? sessions.slice(0, SIDEBAR_SESSION_PREVIEW_LIMIT)
             : sessions;
-        const hiddenCount = sessions.length - RECENT_INITIAL_VISIBLE;
+        const hiddenCount = sessions.length - SIDEBAR_SESSION_PREVIEW_LIMIT;
 
         return (
             <>
-                <ul className="m-0 list-none space-y-0.5 px-3 pb-1.5">
+                <ul className="m-0 list-none space-y-0 px-3 pb-1">
                     {visibleSessions.map((session) => renderRow(session, rowIsActive(session)))}
                 </ul>
                 {shouldTruncate && !isSessionsExpanded ? (
@@ -507,14 +487,14 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                                 ? renderFlatSessionList(
                                     bucket.sessions,
                                     sectionKey,
-                                    { truncate: hasInlineActive },
+                                    { truncate: true },
                                 )
                                 : null}
                         </div>
                         );
                     })
                 ) : (
-                    renderFlatSessionList(sortedSessions, 'default')
+                    renderFlatSessionList(sortedSessions, 'flat', { truncate: true })
                 )}
             </div>
 

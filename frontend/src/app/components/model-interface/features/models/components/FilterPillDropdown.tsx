@@ -97,6 +97,7 @@ export const FilterPillDropdown = React.memo(function FilterPillDropdown({
 
   useEffect(() => {
     if (!open) return;
+
     const onPointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
       if (
@@ -110,13 +111,20 @@ export const FilterPillDropdown = React.memo(function FilterPillDropdown({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
+    const onReposition = () => updateMenuPosition();
+
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
     };
-  }, [open, close]);
+  }, [open, close, updateMenuPosition]);
 
   useEffect(() => {
     if (!open) return;

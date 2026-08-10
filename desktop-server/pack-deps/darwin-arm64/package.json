@@ -26,6 +26,7 @@
     "mammoth": "^1.8.0",
     "onnxruntime-node": "^1.18.0",
     "pdf-parse": "^1.1.1",
+    "ppu-paddle-ocr": "^6.3.0",
     "sharp": "^0.33.4",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.3",
@@ -35,7 +36,6 @@
     "tree-sitter-python": "^0.23.6",
     "tree-sitter-rust": "^0.23.2",
     "tree-sitter-typescript": "^0.23.2",
-    "tree-sitter-wasms": "^0.1.11",
     "ts-morph": "^25.0.1",
     "web-tree-sitter": "^0.24.7"
   },

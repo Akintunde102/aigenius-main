@@ -13,7 +13,6 @@ export const CHAT_CONFIG = {
     MODEL_BALANCE_FACTOR: 2, // Users must have at least 2× the model's average cost
 
     // Timeouts
-    STREAMING_TIMEOUT: 300000, // 5 minutes timeout for streaming requests
     OPTIMIZATION_MESSAGE_TIMEOUT: 5000, // 5 seconds for optimization message display
 
     // Scroll behavior

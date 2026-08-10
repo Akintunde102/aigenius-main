@@ -82,6 +82,10 @@ describe('markdownSanitizeSchema', () => {
     it('allows local-file preview links through rehype-sanitize', () => {
         expect(markdownSanitizeSchema.protocols?.href).toContain('local-file');
     });
+
+    it('allows local-file image sources through rehype-sanitize', () => {
+        expect(markdownSanitizeSchema.protocols?.src).toContain('local-file');
+    });
 });
 
 describe('MarkdownRenderer', () => {

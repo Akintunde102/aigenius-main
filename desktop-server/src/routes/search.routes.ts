@@ -34,11 +34,6 @@ import {
 import { ragQueryHybrid } from '../search/embedding/hybrid-search.js';
 import { embedBackfill } from '../search/embedding/chunk-embeddings.js';
 import {
-  computeBlastRadius,
-  formatBlastRadiusReport,
-  listImportsForFile,
-} from '../search/db/queries-import-graph.js';
-import {
   getContext,
   getFileOverview,
   getSymbolDetail,
@@ -67,6 +62,7 @@ import {
 } from '../search/project-index-registry.js';
 import { stopVoiceSidecar } from '../sidecar/index.js';
 import { aigeniusSecretToken } from '../config/server-env.js';
+import { readImageAnalysis } from '../search/read-image.js';
 import { clientError, handleRoute } from '../utils/route-json.js';
 
 export function createSearchRoutes(): Hono {
@@ -245,32 +241,6 @@ export function createSearchRoutes(): Hono {
         userDataPath: userData,
       });
       return c.json({ ok: true, dbPath, watchPaths: [rootPath], indexing: 'queued' });
-    }),
-  );
-
-  r.post('/import-graph', (c) =>
-    handleRoute(c, '[search] POST /search/import-graph', async () => {
-      const body = await c.req.json().catch(() => ({}));
-      const pathPrefix = typeof body.pathPrefix === 'string' ? body.pathPrefix : '';
-      const filePath = typeof body.path === 'string' ? body.path.trim() : '';
-      const { db, dbPath } = resolveReadDb({ pathPrefix, filePath });
-      const maxDepth = typeof body.maxDepth === 'number' ? body.maxDepth : 4;
-      if (filePath) {
-        const imports = listImportsForFile(db, filePath);
-        return c.json({ path: filePath, imports, dbPath });
-      }
-      const seeds = Array.isArray(body.paths)
-        ? body.paths.filter((p: unknown): p is string => typeof p === 'string')
-        : [];
-      if (!seeds.length) {
-        return clientError(c, 'path or paths[] required', 400);
-      }
-      const result = computeBlastRadius(db, seeds, pathPrefix, maxDepth);
-      return c.json({
-        ...result,
-        outline: formatBlastRadiusReport(result),
-        dbPath,
-      });
     }),
   );
 
@@ -588,6 +558,44 @@ export function createSearchRoutes(): Hono {
       const directoryPath = typeof body.directoryPath === 'string' ? body.directoryPath : '';
       const { db } = resolveReadDb({ pathPrefix: directoryPath, filePath: directoryPath });
       return c.json(browseExplorerDirectory(db, body));
+    }),
+  );
+
+  r.post('/read-image', (c) =>
+    handleRoute(c, '[search] POST /search/read-image', async () => {
+      const body = await c.req.json().catch(() => ({}));
+      const filePath = typeof body.path === 'string' ? body.path.trim() : '';
+      const url = typeof body.url === 'string' ? body.url.trim() : '';
+      const preferIndex = body.prefer_index !== false;
+      const forceLive = body.force_live === true;
+      const pathPrefix = typeof body.pathPrefix === 'string' ? body.pathPrefix : undefined;
+
+      if (!filePath && !url) {
+        return clientError(c, 'path or url is required', 400);
+      }
+      if (filePath && url) {
+        return clientError(c, 'provide either path or url, not both', 400);
+      }
+
+      const modelsDir = process.env.AIGENIUS_MODELS_DIR ?? '';
+      const { db } = filePath
+        ? resolveReadDb({ filePath, pathPrefix })
+        : { db: undefined as ReturnType<typeof resolveReadDb>['db'] | undefined };
+
+      try {
+        const result = await readImageAnalysis({
+          filePath: filePath || undefined,
+          url: url || undefined,
+          modelsDir,
+          db,
+          preferIndex,
+          forceLive,
+        });
+        return c.json(result);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return clientError(c, msg, 400);
+      }
     }),
   );
 

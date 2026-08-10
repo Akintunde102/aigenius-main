@@ -169,6 +169,14 @@ describe('local desktop search routes (scenario + timing)', () => {
         db_path: '/tmp/aigenius-test.sqlite',
         core_ready: true,
         enrichment_ready: true,
+        health: {
+          db_integrity: 'unknown',
+          indexer_ipc_reachable: true,
+          last_error: null,
+          queue_structure_depth: 0,
+          queue_text_depth: 0,
+        },
+        projects: [],
       });
       expect(mockGetStatusSnapshot).toHaveBeenCalled();
       assertWithinBudget(res.ms, { label: 'GET /search/status (empty)', maxMs: STATUS_BUDGET_MS });

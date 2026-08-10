@@ -14,3 +14,10 @@ export function toLocalFileMarkdownLink(path: string, label?: string): string {
   const name = label ?? localFileLinkLabel(path);
   return `[${name}](local-file://${encodeURIComponent(path)})`;
 }
+
+/** `![alt](local-file://encoded-path)` — inline image in desktop chat markdown. */
+export function toLocalFileMarkdownImage(path: string, alt?: string): string {
+  if (!path) return '';
+  const name = alt ?? localFileLinkLabel(path);
+  return `![${name}](local-file://${encodeURIComponent(path)})`;
+}

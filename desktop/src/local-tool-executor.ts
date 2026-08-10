@@ -15,6 +15,8 @@ import {
   formatRagResults,
   formatReadFile,
   formatReadFileBatch,
+  formatReadImage,
+  formatReadImageBatch,
   formatShellResult,
 } from './utils/tool-formatter';
 import { isIgnored } from './utils/exemptions';
@@ -29,13 +31,16 @@ import { runFindReferences } from './local-find-references';
 import { runGrep } from './local-grep';
 import { runGoToDefinition } from './local-lsp';
 import { executeReadFile } from './utils/read-file';
+import { resolveReadFilePath, resolveLocalImagePath } from './utils/read-file/path-resolver';
+import { runReadImageAnalysis } from './local-read-image';
+import { runReadImageAnalysisBatch } from './local-read-image-batch';
 import {
   registerRagHitsForPreview,
   registerReadFileBatchForPreview,
+  registerReadImageBatchForPreview,
   registerAbsolutePathForPreview,
 } from './utils/register-preview-paths';
 import { formatEditSessionHint, getTouchedFilesSnapshot } from './edit-session';
-import { recordBlastRadiusCheck } from './patch-blast-radius-gate';
 import { applyEditorDefaultsToToolArgs } from './active-editor-main';
 import { sidecarFetch } from './sidecar-fetch';
 import { MINI_SERVER_PORT } from './mini-server-port';
@@ -131,6 +136,77 @@ export async function runLocalDesktopTool(
       return runShell(sender, win, rawArgs, shellStreamId);
     case 'local_read_file':
       return readBoundedFile(rawArgs);
+    case 'local_read_image': {
+      try {
+        const readsRaw = rawArgs.reads;
+        if (Array.isArray(readsRaw) && readsRaw.length > 0) {
+          const url = typeof rawArgs.url === 'string' ? rawArgs.url.trim() : '';
+          const singlePath = typeof rawArgs.path === 'string' ? rawArgs.path.trim() : '';
+          if (url || singlePath) {
+            return { ok: false, error: 'provide reads[] OR path/url, not both' };
+          }
+
+          const reads: { path: string }[] = [];
+          for (const item of readsRaw) {
+            if (!item || typeof item !== 'object') continue;
+            const p = (item as { path?: unknown }).path;
+            if (typeof p === 'string' && p.trim()) reads.push({ path: p.trim() });
+          }
+          if (reads.length === 0) {
+            return { ok: false, error: 'reads[] must include at least one path' };
+          }
+          if (reads.length > 20) {
+            return { ok: false, error: 'reads[] max 20 paths per call' };
+          }
+
+          const maxImages =
+            typeof rawArgs.max_images === 'number' ? rawArgs.max_images : undefined;
+          const batch = await runReadImageAnalysisBatch({
+            reads,
+            preferIndex: rawArgs.prefer_index !== false,
+            forceLive: rawArgs.force_live === true,
+            maxImages,
+          });
+          registerReadImageBatchForPreview(batch.results);
+          const formatted = formatReadImageBatch(batch);
+          return { ok: true, result: formatted.result, rawData: formatted.rawData };
+        }
+
+        const url = typeof rawArgs.url === 'string' ? rawArgs.url.trim() : '';
+        let filePath = typeof rawArgs.path === 'string' ? rawArgs.path.trim() : '';
+        if (!url && !filePath) {
+          return { ok: false, error: 'path or url required' };
+        }
+        if (url && filePath) {
+          return { ok: false, error: 'provide either path or url, not both' };
+        }
+        if (filePath) {
+          const pathResult = await resolveLocalImagePath(filePath);
+          if (!pathResult.ok) {
+            return { ok: false, error: pathResult.error };
+          }
+          filePath = pathResult.resolved;
+        }
+        const data = await runReadImageAnalysis({
+          filePath: filePath || undefined,
+          url: url || undefined,
+          preferIndex: rawArgs.prefer_index !== false,
+          forceLive: rawArgs.force_live === true,
+        });
+        const formatted = formatReadImage(data);
+        return { ok: true, result: formatted.result, rawData: formatted.rawData };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'read image failed';
+        if (/Cannot find module.*read-image|ENOENT.*read-image/i.test(msg)) {
+          return {
+            ok: false,
+            error:
+              'Image analysis runtime is missing. Rebuild the desktop app (`npm run build:server` in client/desktop, then restart).',
+          };
+        }
+        return { ok: false, error: msg };
+      }
+    }
     case 'local_rag_query': {
       try {
         const contentQuery =
@@ -300,52 +376,16 @@ export async function runLocalDesktopTool(
         applyEditorDefaultsToToolArgs(rawArgs, { path: true, line: true, character: true }),
       );
     }
-    case 'local_import_blast_radius': {
-      try {
-        const args = applyEditorDefaultsToToolArgs(rawArgs, { path: true });
-        const pathPrefix =
-          typeof args.path_prefix === 'string' && args.path_prefix.trim()
-            ? args.path_prefix.trim()
-            : getActiveCodeProjectRootPath() ?? '';
-        let paths: string[] = Array.isArray(args.paths)
-          ? args.paths.filter((p): p is string => typeof p === 'string')
-          : [];
-        if (!paths.length && typeof args.path === 'string' && args.path.trim()) {
-          paths = [args.path.trim()];
-        }
-        if (!paths.length) {
-          paths = getTouchedFilesSnapshot();
-        }
-        if (!paths.length) {
-          return { ok: false, error: 'paths, path, or edit-session files required' };
-        }
-        const res = await sidecarFetch(`${SERVER_URL}/search/import-graph`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...sidecarAuthHeaders() },
-          body: JSON.stringify({
-            paths,
-            pathPrefix,
-            maxDepth: typeof args.max_depth === 'number' ? args.max_depth : 4,
-          }),
-        });
-        if (!res.ok) {
-          return { ok: false, error: `Sidecar returned ${res.status}` };
-        }
-        const data = await res.json();
-        return { ok: true, result: data.outline ?? JSON.stringify(data, null, 2) };
-      } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : 'import blast radius failed' };
-      }
-    }
     case 'local_grep':
       return runGrep(rawArgs);
     case 'local_trace_call_chain':
     case 'local_symbol_blast_radius':
+    case 'local_import_blast_radius':
     case 'local_type_flow_trace':
       return {
         ok: false,
         error:
-          'This graph tool was removed (too slow). Use local_find_callers, local_import_blast_radius, and local_grep instead.',
+          'This graph tool was removed (too slow). Use local_find_callers and local_grep instead.',
       };
     case 'local_find_callers': {
       try {
@@ -897,24 +937,25 @@ async function runLocalOllamaChat(
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (value) {
+        buffer += decoder.write(Buffer.from(value));
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep the last partial line in the buffer
 
-      buffer += decoder.write(Buffer.from(value));
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // Keep the last partial line in the buffer
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          const parsed = JSON.parse(line);
-          if (parsed.message?.content) {
-            fullResponse += parsed.message.content;
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const parsed = JSON.parse(line);
+            if (parsed.message?.content) {
+              fullResponse += parsed.message.content;
+            }
+            sendChunk(line + '\n');
+          } catch (e) {
+            // invalid json chunk, ignore
           }
-          sendChunk(line + '\n');
-        } catch (e) {
-          // invalid json chunk, ignore
         }
       }
+      if (done) break;
     }
 
     if (buffer.trim()) {

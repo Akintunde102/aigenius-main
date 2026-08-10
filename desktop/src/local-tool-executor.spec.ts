@@ -15,6 +15,15 @@ jest.mock('./utils/read-file/path-resolver', () => ({
     const resolved = inputPath.startsWith('/') ? inputPath : `/home/user/${inputPath}`;
     return { ok: true, resolved, displayPath: inputPath };
   }),
+  resolveLocalImagePath: jest.fn(async (inputPath: string) => {
+    if (!inputPath?.trim()) {
+      return { ok: false, error: 'Error: file not found — path is required' };
+    }
+    const resolved = inputPath.startsWith('/') || /^[A-Za-z]:/.test(inputPath)
+      ? inputPath
+      : `/home/user/${inputPath}`;
+    return { ok: true, resolved, displayPath: inputPath };
+  }),
 }));
 
 jest.mock('./active-code-project', () => ({
@@ -529,55 +538,5 @@ describe('local_ollama_chat desktop integration', () => {
       ok: false,
       error: 'Ollama API error: {"error":"this model requires a subscription"}',
     });
-  });
-});
-
-describe('local_import_blast_radius (Phase 7)', () => {
-  const mockSender = {
-    isDestroyed: () => false,
-    send: jest.fn(),
-  } as any;
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    process.env.AIGENIUS_SECRET_TOKEN = 'test-token';
-    global.fetch = jest.fn();
-  });
-
-  it('posts seed paths to sidecar import-graph and returns markdown outline', async () => {
-    const outline = '# Import blast radius\n\n**Seeds:** `src/util.ts`';
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => ({ outline }),
-    });
-
-    const out = await runLocalDesktopTool(mockSender, 'local_import_blast_radius', {
-      paths: ['/home/dev/app/src/util.ts'],
-      path_prefix: '/home/dev/app',
-      max_depth: 3,
-    });
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      'http://localhost:8001/search/import-graph',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({
-          paths: ['/home/dev/app/src/util.ts'],
-          pathPrefix: '/home/dev/app',
-          maxDepth: 3,
-        }),
-      }),
-    );
-    expect(out).toEqual({ ok: true, result: outline });
-  });
-
-  it('returns error when sidecar responds non-OK', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 503 });
-
-    const out = await runLocalDesktopTool(mockSender, 'local_import_blast_radius', {
-      paths: ['/x.ts'],
-    });
-
-    expect(out).toEqual({ ok: false, error: 'Sidecar returned 503' });
   });
 });

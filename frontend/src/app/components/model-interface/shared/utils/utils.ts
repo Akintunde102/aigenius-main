@@ -210,7 +210,7 @@ export function getProviderLabel(providerId: string): string {
     mistralai: "Mistral",
     meta: "Meta",
     perplexity: "Perplexity",
-    openrouter: "OpenRouter",
+    openrouter: "Platform",
     cohere: "Cohere",
     amazon: "Amazon",
     microsoft: "Microsoft",

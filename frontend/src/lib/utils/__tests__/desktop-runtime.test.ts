@@ -23,6 +23,16 @@ describe("desktop-runtime", () => {
     resetDesktopRunnableBridgeCacheForTests();
     delete (window as WindowWithDesktop).aigeniusDesktop;
     document.documentElement.removeAttribute("data-aigenius-desktop-shell");
+    try {
+      // Undo opener stub from the no-opener-bridge test when present.
+      Object.defineProperty(window, "opener", {
+        configurable: true,
+        writable: true,
+        value: null,
+      });
+    } catch {
+      /* ignore */
+    }
     jest.restoreAllMocks();
     jest.useRealTimers();
   });
@@ -119,6 +129,21 @@ describe("desktop-runtime", () => {
       delete (window as WindowWithDesktop).aigeniusDesktop;
       expect(hasRunnableLocalDesktopToolBridge()).toBe(true);
       resetDesktopRunnableBridgeCacheForTests();
+      expect(hasRunnableLocalDesktopToolBridge()).toBe(false);
+    });
+
+    it("does not treat same-origin window.opener as a runnable desktop bridge", () => {
+      const opener = {
+        closed: false,
+        aigeniusDesktop: {
+          isDesktop: true,
+          runLocalDesktopTool: noopRunLocal,
+        },
+      };
+      Object.defineProperty(window, "opener", {
+        configurable: true,
+        get: () => opener,
+      });
       expect(hasRunnableLocalDesktopToolBridge()).toBe(false);
     });
   });

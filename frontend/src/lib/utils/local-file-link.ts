@@ -15,6 +15,13 @@ export function toLocalFileMarkdownLink(path: string, label?: string): string {
   return `[${name}](${toLocalFileHref(path)})`;
 }
 
+/** `![alt](local-file://encoded-path)` — renders inline in desktop chat markdown. */
+export function toLocalFileMarkdownImage(path: string, alt?: string): string {
+  if (!path) return '';
+  const name = alt ?? localFileLinkLabel(path);
+  return `![${name}](${toLocalFileHref(path)})`;
+}
+
 export function inferLocalFilePreviewType(path: string): FilePreviewPayload['type'] {
   const hasExtension =
     path.includes('.') && !path.endsWith('.') && !path.endsWith('/');

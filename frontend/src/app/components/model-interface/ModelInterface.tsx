@@ -59,6 +59,7 @@ import { useIsDesktopShell } from "@/lib/hooks/useIsDesktopShell";
 import { ModelInterfaceChatColumn } from "./components/ModelInterfaceChatColumn";
 import { ModelInterfaceSidebarPanel } from "./components/ModelInterfaceSidebarPanel";
 import { ModelInterfaceModalStack } from "./components/ModelInterfaceModalStack";
+import { ModelInterfaceChrome } from "./components/ModelInterfaceChrome";
 import type { PublishState } from "./ModelInterface.types";
 import { chatCanvasSurfaceStyle } from "./chatSurfaceStyle";
 import { workflowShellBgStyle } from "@/app/components/workflows/workflow-info";
@@ -66,7 +67,6 @@ import { ChatShellLoadingSkeleton } from "@/app/components/ChatShellLoadingSkele
 import { useModelInterfaceSidebarActions } from "./hooks/useModelInterfaceSidebarActions";
 import { useModelInterfaceLifecycle } from "./hooks/useModelInterfaceLifecycle";
 import { useModelInterfacePersonalitySelection } from "./hooks/useModelInterfacePersonalitySelection";
-import { ChatErrorMessage } from "./features/chat/components/ChatErrorMessage";
 
 interface ModelInterfaceProps {
   routeConversationId?: string | null;
@@ -593,63 +593,55 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     >
       {renderWalletModal()}
 
-      {error ? (
-        <ChatErrorMessage
-          message={error}
-          canRetry={
-            /wallet/i.test(error)
-              ? true
-              : isUploadErrorMessage(error)
-                ? failedUploads.some((entry) => entry.status !== 'retrying')
-                : true
+      <ModelInterfaceChrome
+        error={error || ""}
+        optimizationMessage={optimizationMessage}
+        input={input}
+        chat={chat}
+        canRetryError={
+          /wallet/i.test(error)
+            ? true
+            : isUploadErrorMessage(error)
+              ? failedUploads.some((entry) => entry.status !== 'retrying')
+              : true
+        }
+        onDismissError={() => setError("")}
+        onRetryError={async () => {
+          const isWalletError = /wallet/i.test(error);
+          if (isWalletError && refreshWalletFromBackend) {
+            const balance = await refreshWalletFromBackend();
+            if (balance !== null) {
+              setError("");
+            } else {
+              setError("Failed to load wallet balance");
+            }
+            return;
           }
-          onRetry={async () => {
-            const isWalletError = /wallet/i.test(error);
-            if (isWalletError && refreshWalletFromBackend) {
+
+          if (isUploadErrorMessage(error)) {
+            retryAllFailedUploads();
+            return;
+          }
+
+          setError("");
+          if (input.trim()) {
+            await handleSend(input.trim());
+          } else {
+            const lastUserMsgIdx = chat.map((m) => m.role).lastIndexOf("user");
+            if (lastUserMsgIdx !== -1) {
+              const lastUserMsg = chat[lastUserMsgIdx];
+              const nextChat = chat.slice(0, lastUserMsgIdx + 1);
+              setChat(nextChat);
+              await handleSend(undefined, undefined, lastUserMsg, nextChat);
+            } else if (refreshWalletFromBackend) {
               const balance = await refreshWalletFromBackend();
-              if (balance !== null) {
-                setError("");
-              } else {
+              if (balance === null) {
                 setError("Failed to load wallet balance");
               }
-              return;
             }
-
-            if (isUploadErrorMessage(error)) {
-              retryAllFailedUploads();
-              return;
-            }
-
-            setError("");
-            if (input.trim()) {
-              await handleSend(input.trim());
-            } else {
-              const lastUserMsgIdx = chat.map((m) => m.role).lastIndexOf("user");
-              if (lastUserMsgIdx !== -1) {
-                const lastUserMsg = chat[lastUserMsgIdx];
-                const nextChat = chat.slice(0, lastUserMsgIdx + 1);
-                setChat(nextChat);
-                await handleSend(undefined, undefined, lastUserMsg, nextChat);
-              } else if (refreshWalletFromBackend) {
-                const balance = await refreshWalletFromBackend();
-                if (balance === null) {
-                  setError("Failed to load wallet balance");
-                }
-              }
-            }
-          }}
-          onDismiss={() => setError("")}
-        />
-      ) : null}
-
-      {optimizationMessage && (
-        <div className={`${styles.optimizationMessage} ${styles.fadeIn}`}>
-          <div className={styles.optimizationContent}>
-            <span className={styles.optimizationIcon}>⚡</span>
-            <span>{optimizationMessage}</span>
-          </div>
-        </div>
-      )}
+          }
+        }}
+      />
 
       <div
         className={

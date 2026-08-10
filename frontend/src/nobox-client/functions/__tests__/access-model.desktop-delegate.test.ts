@@ -29,7 +29,7 @@ jest.mock('@/lib/api/auth-client', () => {
 
 import * as desktopRuntime from '@/lib/utils/desktop-runtime';
 import { authorizedFetch } from '@/lib/api/auth-client';
-import { accessModelStream } from '../access-model';
+import { accessModelStream, resetDelegatePostDedupeStateForTests } from '../access-model';
 
 const mockConfig = {
   endpoint: 'https://api.test',
@@ -49,6 +49,7 @@ describe('access-model desktop delegate', () => {
   const runLocalDesktopTool = jest.fn();
 
   beforeEach(() => {
+    resetDelegatePostDedupeStateForTests();
     desktopRuntime.resetDesktopRunnableBridgeCacheForTests();
     runLocalDesktopTool.mockReset();
     (authorizedFetch as jest.Mock).mockReset();

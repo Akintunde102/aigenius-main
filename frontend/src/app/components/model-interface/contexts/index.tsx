@@ -56,15 +56,8 @@ export { SavedChatProvider, useSavedChatContext } from './SavedChatContext';
 export type { SavedChatContextValue } from './SavedChatContext';
 
 /**
- * Combined provider for all contexts
- * Use this to wrap your app with all contexts at once
- * 
- * @example
- * ```tsx
- * <AllProviders>
- *   <YourApp />
- * </AllProviders>
- * ```
+ * @deprecated Production chat state lives in {@link useModelInterface} — do not wrap ModelInterface.
+ * Kept for isolated context unit tests and Storybook experiments.
  */
 export function AllProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -73,12 +66,6 @@ export function AllProviders({ children }: { children: React.ReactNode }) {
         <ModelProvider>
           <ChatProvider>
             <PersonalityProvider>
-              {/*
-                Chat send/stream and voice (STT/TTS) are orchestrated in useModelInterface, not
-                via ChatOperationsProvider/AudioProvider — mounting those here duplicated the full
-                useChatOperationsRefined tree against an empty ChatContext map. Re-introduce only
-                when a consumer actually uses useChatOperationsContext / useAudioContext.
-              */}
               <SavedChatProvider>{children}</SavedChatProvider>
             </PersonalityProvider>
           </ChatProvider>
