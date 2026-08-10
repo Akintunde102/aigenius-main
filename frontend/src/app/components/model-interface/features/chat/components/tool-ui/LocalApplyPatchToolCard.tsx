@@ -35,12 +35,6 @@ function opBadgeLabel(kind: ParsedPatchOperation['kind']): string | undefined {
   }
 }
 
-function confidenceBadgeClass(tier: string): string {
-  if (tier === 'static-certain') return 'bg-emerald-50 text-emerald-800 border-emerald-100';
-  if (tier === 'static-heuristic') return 'bg-amber-50 text-amber-900 border-amber-100';
-  return 'bg-slate-100 text-slate-600 border-slate-200';
-}
-
 export function LocalApplyPatchToolCard({
   streaming_tool,
   result,
@@ -71,18 +65,6 @@ export function LocalApplyPatchToolCard({
       return { raw: result };
     }
   }, [result]);
-
-  const blastRadius = useMemo(() => {
-    const br = parsedResult?.blastRadius;
-    if (!br || typeof br !== 'object') return null;
-    const o = br as Record<string, unknown>;
-    const certain = typeof o.certain === 'number' ? o.certain : 0;
-    const heuristic = typeof o.heuristic === 'number' ? o.heuristic : 0;
-    const inferred = typeof o.inferred === 'number' ? o.inferred : 0;
-    const total = typeof o.total === 'number' ? o.total : certain + heuristic + inferred;
-    if (total <= 0) return null;
-    return { certain, heuristic, inferred, total };
-  }, [parsedResult]);
 
   const contentToRender = useMemo(() => {
     if (!parsedResult) return null;
@@ -196,31 +178,6 @@ export function LocalApplyPatchToolCard({
 
       {!containerCollapsed && (
         <div className="mt-1.5 space-y-3 border-l border-slate-200/90 pl-2.5 text-[11px] leading-relaxed text-slate-600">
-          {blastRadius && (
-            <div className="rounded border border-sky-100 bg-sky-50/40 p-2">
-              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800">
-                Structural impact
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {blastRadius.certain > 0 && (
-                  <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${confidenceBadgeClass('static-certain')}`}>
-                    {blastRadius.certain} confirmed
-                  </span>
-                )}
-                {blastRadius.heuristic > 0 && (
-                  <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${confidenceBadgeClass('static-heuristic')}`}>
-                    {blastRadius.heuristic} heuristic
-                  </span>
-                )}
-                {blastRadius.inferred > 0 && (
-                  <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${confidenceBadgeClass('inferred')}`}>
-                    {blastRadius.inferred} inferred
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
           {patchFileCards}
 
           {!parsed.ok && parsed.detail ? (

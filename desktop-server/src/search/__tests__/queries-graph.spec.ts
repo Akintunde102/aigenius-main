@@ -7,7 +7,6 @@ import { upsertFile } from '../db/queries.js';
 import { upsertFileStructure } from '../db/queries-chunks.js';
 import {
   findCallers,
-  symbolBlastRadius,
   buildStructuralDigest,
   typeFlowTrace,
 } from '../db/queries-graph.js';
@@ -73,15 +72,6 @@ describe('structural graph queries', () => {
     const digest = buildStructuralDigest(db, projectRoot, 'TestProject');
     expect(digest).toContain('TestProject');
     expect(digest).toContain('local_find_callers');
-  });
-
-  it('symbolBlastRadius returns summary for known symbol', async () => {
-    const util = await indexFile('src/util.ts', `export function helper() { return 1; }\n`, 'ts');
-    const blast = symbolBlastRadius(db, `${util}#helper`, 'signature_change', {
-      pathPrefix: projectRoot,
-    });
-    expect(blast.summary).toContain('Blast radius');
-    expect(blast.changeType).toBe('signature_change');
   });
 
   it('typeFlowTrace accepts type name', async () => {

@@ -2,14 +2,8 @@
 
 import { useCallback, useRef, useState, type CSSProperties } from 'react';
 import type { PanelPosition } from './useDraggablePanel';
+import { readTitlebarOffset } from './panel-layout.utils';
 import type { PanelSize } from './useResizablePanel';
-
-function readTitlebarOffset(): number {
-    if (typeof window === 'undefined') return 0;
-    const raw = getComputedStyle(document.documentElement).getPropertyValue('--aigenius-desktop-titlebar-top');
-    const parsed = Number.parseFloat(raw);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
 
 function getFullscreenLayout(variant: 'modal' | 'side') {
     const vw = window.innerWidth;

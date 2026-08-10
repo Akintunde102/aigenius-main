@@ -10,7 +10,8 @@ import { defineMonacoAppThemes, getMonacoThemeId } from './monaco-app-theme';
 import { FilePreviewHeader } from './FilePreviewHeader';
 import { FilePreviewExplorer } from './FilePreviewExplorer';
 import { useDraggablePanel } from './useDraggablePanel';
-import { useResizablePanel, getDefaultPanelSize } from './useResizablePanel';
+import { useResizablePanel } from './useResizablePanel';
+import { getCenteredModalLayout } from './panel-layout.utils';
 import { useExplorerTree } from './useExplorerTree';
 import { PanelResizeHandles } from './PanelResizeHandles';
 import { FilePreviewUnavailable } from './FilePreviewUnavailable';
@@ -340,13 +341,16 @@ export const FilePreviewModal: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        if (!isOpen || isSidePanel || !payload?.localPath) return;
+        const layout = getCenteredModalLayout();
+        setSize(layout.size);
+        setPanelPosition(layout.position);
+    }, [isOpen, isSidePanel, payload?.localPath, setPanelPosition, setSize]);
+
+    useEffect(() => {
         const handleOpen = (p: FilePreviewPayload) => {
             resetTree();
             resetDisplayMode();
-            if (p.placement !== 'side') {
-                setPanelPosition(null);
-                setSize(getDefaultPanelSize('modal'));
-            }
             setPayload(p);
             setOriginalPayload(p);
             setFolderItems([]);
@@ -379,7 +383,7 @@ export const FilePreviewModal: React.FC = () => {
             filePreviewEmitter.off('open', handleOpen);
             filePreviewEmitter.off('close', handleClose);
         };
-    }, [cleanupBlob, resetDisplayMode, resetTree, setPanelPosition, setSize, syncEditorContext]);
+    }, [cleanupBlob, resetDisplayMode, resetTree, syncEditorContext]);
 
     useEffect(() => {
         if (!isOpen || !payload) return;
@@ -647,7 +651,7 @@ export const FilePreviewModal: React.FC = () => {
         >
             <div
                 ref={panelRef}
-                className={`app-modal-panel relative flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 ${
+                className={`app-modal-panel relative flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 max-h-none ${
                     isFullscreen ? '' : 'rounded-2xl'
                 }`}
                 onClick={(e) => e.stopPropagation()}

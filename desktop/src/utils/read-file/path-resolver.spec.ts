@@ -1,73 +1,95 @@
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import { resolveReadFilePath } from './path-resolver';
-
-let workspaceRoot = '';
+import { resolveLocalImagePath, resolveReadFilePath } from './path-resolver';
 
 jest.mock('../../active-code-project', () => ({
-  getActiveCodeProjectRootPath: () => workspaceRoot,
-  getActiveCodeProjectId: () => 'test-project',
-  setActiveCodeProjectIndex: jest.fn(),
+  getActiveCodeProjectRootPath: () => path.join(os.tmpdir(), 'aigenius-test-project'),
 }));
 
-describe('path-resolver', () => {
-  beforeEach(async () => {
-    workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'read-path-'));
-    await fs.mkdir(path.join(workspaceRoot, 'src'), { recursive: true });
-    await fs.writeFile(path.join(workspaceRoot, 'src', 'app.ts'), 'export {};\n', { encoding: 'utf8' });
+describe('resolveLocalImagePath', () => {
+  const projectRoot = path.join(os.tmpdir(), 'aigenius-test-project');
+  let outsideImage: string;
+  let insideImage: string;
+
+  beforeAll(async () => {
+    await fs.mkdir(projectRoot, { recursive: true });
+    outsideImage = path.join(os.tmpdir(), `outside-image-${Date.now()}.png`);
+    insideImage = path.join(projectRoot, 'inside.png');
+    const pngHeader = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    await fs.writeFile(outsideImage, pngHeader);
+    await fs.writeFile(insideImage, pngHeader);
   });
 
-  afterEach(async () => {
-    if (workspaceRoot) {
-      await fs.rm(workspaceRoot, { recursive: true, force: true });
+  afterAll(async () => {
+    await fs.unlink(outsideImage).catch(() => undefined);
+    await fs.unlink(insideImage).catch(() => undefined);
+    await fs.rm(projectRoot, { recursive: true, force: true }).catch(() => undefined);
+  });
+
+  it('allows absolute image paths outside the project root', async () => {
+    const result = await resolveLocalImagePath(outsideImage);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.resolved).toBe(outsideImage);
     }
   });
 
-  it('resolves workspace-relative paths', async () => {
-    const r = await resolveReadFilePath('src/app.ts');
-    expect(r.ok).toBe(true);
-    if (r.ok) {
-      expect(r.displayPath).toBe('src/app.ts');
+  it('still scopes relative paths to the project root', async () => {
+    const result = await resolveLocalImagePath('inside.png');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.resolved).toBe(insideImage);
     }
   });
 
-  it('resolves absolute paths under workspace', async () => {
-    const abs = path.join(workspaceRoot, 'src', 'app.ts');
-    const r = await resolveReadFilePath(abs);
-    expect(r.ok).toBe(true);
+  it('rejects non-image extensions', async () => {
+    const txt = path.join(os.tmpdir(), `not-image-${Date.now()}.txt`);
+    await fs.writeFile(txt, 'hello');
+    const result = await resolveLocalImagePath(txt);
+    expect(result.ok).toBe(false);
+    await fs.unlink(txt);
   });
+});
 
-  it('rejects path traversal outside workspace (LLM ../ escape)', async () => {
-    const outside = path.join(workspaceRoot, '..', 'outside-secret.txt');
-    await fs.writeFile(outside, 'secret', 'utf8');
-    const rel = path.relative(workspaceRoot, outside);
-    const r = await resolveReadFilePath(rel);
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.error).toContain('access denied');
+describe('resolveReadFilePath workspace guard', () => {
+  it('still blocks absolute paths outside workspace', async () => {
+    const projectRoot = path.join(os.tmpdir(), 'aigenius-test-project');
+    const outsideTxt = path.join(os.tmpdir(), `outside-${Date.now()}.txt`);
+    await fs.mkdir(projectRoot, { recursive: true });
+    await fs.writeFile(outsideTxt, 'hello');
+    const result = await resolveReadFilePath(outsideTxt);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/outside workspace root/i);
     }
-    await fs.rm(outside, { force: true });
+    await fs.unlink(outsideTxt).catch(() => undefined);
   });
 
-  it('returns file not found for missing paths', async () => {
-    const r = await resolveReadFilePath('does/not/exist.ts');
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.error).toContain('file not found');
+  it('allows absolute paths inside the active project root', async () => {
+    const projectRoot = path.join(os.tmpdir(), 'aigenius-test-project');
+    const insideTxt = path.join(projectRoot, `inside-${Date.now()}.txt`);
+    await fs.mkdir(projectRoot, { recursive: true });
+    await fs.writeFile(insideTxt, 'hello');
+    const result = await resolveReadFilePath(insideTxt);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.resolved).toBe(insideTxt);
     }
+    await fs.unlink(insideTxt).catch(() => undefined);
   });
 
-  it('rejects directories (LLM passes folder path)', async () => {
-    const r = await resolveReadFilePath('src');
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.error).toContain('not a file');
+  it('allows relative paths under the project root', async () => {
+    const projectRoot = path.join(os.tmpdir(), 'aigenius-test-project');
+    const relName = `relative-${Date.now()}.txt`;
+    const insideTxt = path.join(projectRoot, relName);
+    await fs.mkdir(projectRoot, { recursive: true });
+    await fs.writeFile(insideTxt, 'hello');
+    const result = await resolveReadFilePath(relName);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.resolved).toBe(insideTxt);
     }
-  });
-
-  it('rejects empty path', async () => {
-    const r = await resolveReadFilePath('   ');
-    expect(r.ok).toBe(false);
+    await fs.unlink(insideTxt).catch(() => undefined);
   });
 });

@@ -72,8 +72,8 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
   };
 
   return (
-    <div className="min-w-0 flex-1 overflow-x-auto overflow-y-visible">
-      <div className="flex items-center gap-1.5 flex-nowrap pb-0.5">
+    <div className="min-w-0 flex-1">
+      <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto pb-0.5">
         <FilterPillIconButton
           active={showFilterSortRow}
           onClick={() => {

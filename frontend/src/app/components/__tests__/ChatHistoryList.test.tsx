@@ -122,16 +122,17 @@ describe('ChatHistoryList', () => {
             messages: [{ role: 'user' as const, content: 'hi', timestamp: ts }],
         });
 
-        const { findByRole, findByText } = render(
+        const { findByRole, findByText, queryByRole } = render(
             <ChatHistoryList
                 chatHistory={[
+                    makeChat('chat-6', 6),
                     makeChat('chat-5', 5),
                     makeChat('chat-4', 4),
                     makeChat('chat-3', 3),
                     makeChat('chat-2', 2),
                     makeChat('chat-1', 1),
                 ]}
-                currentSessionId="chat-5"
+                currentSessionId="chat-6"
                 models={[]}
                 isMobile={false}
                 removeChatHistorySession={jest.fn().mockResolvedValue(true)}
@@ -140,13 +141,127 @@ describe('ChatHistoryList', () => {
                 setSelectedModel={jest.fn()}
                 onStarToggle={jest.fn().mockResolvedValue(undefined)}
                 handleSessionSwitch={jest.fn()}
-                isSessionActive={(id) => id === 'chat-5'}
+                isSessionActive={(id) => id === 'chat-6'}
                 codeProjects={[baseProject]}
                 activeProjectId="proj-a"
             />,
         );
 
-        expect(await findByRole('button', { name: 'Chat chat-5' })).toBeTruthy();
+        expect(await findByRole('button', { name: 'Chat chat-6' })).toBeTruthy();
         expect(await findByText('Open more (1)')).toBeTruthy();
+        expect(queryByRole('button', { name: 'Chat chat-1' })).toBeNull();
+    });
+
+    it('shows open more when the General section is expanded with many chats', async () => {
+        const makeChat = (id: string, ts: number) => ({
+            id,
+            title: `Chat ${id}`,
+            modelId: 'session-model',
+            messages: [{ role: 'user' as const, content: 'hi', timestamp: ts }],
+        });
+
+        const { findByRole, findByText, queryByRole } = render(
+            <ChatHistoryList
+                chatHistory={[
+                    makeChat('chat-6', 6),
+                    makeChat('chat-5', 5),
+                    makeChat('chat-4', 4),
+                    makeChat('chat-3', 3),
+                    makeChat('chat-2', 2),
+                    makeChat('chat-1', 1),
+                ]}
+                currentSessionId={null}
+                models={[]}
+                isMobile={false}
+                removeChatHistorySession={jest.fn().mockResolvedValue(true)}
+                setChatHistory={jest.fn()}
+                getChatHistory={jest.fn().mockResolvedValue([])}
+                setSelectedModel={jest.fn()}
+                onStarToggle={jest.fn().mockResolvedValue(undefined)}
+                codeProjects={[baseProject]}
+                onSelectProject={jest.fn()}
+            />,
+        );
+
+        expect(queryByRole('button', { name: 'Chat chat-6' })).toBeNull();
+
+        fireEvent.click(await findByRole('button', { name: 'General' }));
+
+        expect(await findByRole('button', { name: 'Chat chat-6' })).toBeTruthy();
+        expect(await findByText('Open more (1)')).toBeTruthy();
+        expect(queryByRole('button', { name: 'Chat chat-1' })).toBeNull();
+    });
+
+    it('shows open more when a collapsed project section is expanded manually', async () => {
+        const makeChat = (id: string, ts: number) => ({
+            id,
+            title: `Chat ${id}`,
+            modelId: 'session-model',
+            codeProjectId: 'proj-a',
+            messages: [{ role: 'user' as const, content: 'hi', timestamp: ts }],
+        });
+
+        const { findByRole, findByText, queryByRole } = render(
+            <ChatHistoryList
+                chatHistory={[
+                    makeChat('chat-6', 6),
+                    makeChat('chat-5', 5),
+                    makeChat('chat-4', 4),
+                    makeChat('chat-3', 3),
+                    makeChat('chat-2', 2),
+                    makeChat('chat-1', 1),
+                ]}
+                currentSessionId={null}
+                models={[]}
+                isMobile={false}
+                removeChatHistorySession={jest.fn().mockResolvedValue(true)}
+                setChatHistory={jest.fn()}
+                getChatHistory={jest.fn().mockResolvedValue([])}
+                setSelectedModel={jest.fn()}
+                onStarToggle={jest.fn().mockResolvedValue(undefined)}
+                codeProjects={[baseProject]}
+                onSelectProject={jest.fn()}
+            />,
+        );
+
+        expect(queryByRole('button', { name: 'Chat chat-6' })).toBeNull();
+
+        fireEvent.click(await findByRole('button', { name: 'Project A' }));
+
+        expect(await findByRole('button', { name: 'Chat chat-6' })).toBeTruthy();
+        expect(await findByText('Open more (1)')).toBeTruthy();
+        expect(queryByRole('button', { name: 'Chat chat-1' })).toBeNull();
+    });
+
+    it('expands a collapsed project section on single click', async () => {
+        const { findByRole, queryByRole } = render(
+            <ChatHistoryList
+                chatHistory={[
+                    {
+                        id: 'chat-1',
+                        title: 'Hidden Chat',
+                        modelId: 'session-model',
+                        codeProjectId: 'proj-a',
+                        messages: [{ role: 'user', content: 'hi', timestamp: 1 }],
+                    },
+                ]}
+                currentSessionId={null}
+                models={[]}
+                isMobile={false}
+                removeChatHistorySession={jest.fn().mockResolvedValue(true)}
+                setChatHistory={jest.fn()}
+                getChatHistory={jest.fn().mockResolvedValue([])}
+                setSelectedModel={jest.fn()}
+                onStarToggle={jest.fn().mockResolvedValue(undefined)}
+                codeProjects={[baseProject]}
+                onSelectProject={jest.fn()}
+            />,
+        );
+
+        expect(queryByRole('button', { name: 'Hidden Chat' })).toBeNull();
+
+        fireEvent.click(await findByRole('button', { name: 'Project A' }));
+
+        expect(await findByRole('button', { name: 'Hidden Chat' })).toBeTruthy();
     });
 });

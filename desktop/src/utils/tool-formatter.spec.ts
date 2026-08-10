@@ -1,4 +1,4 @@
-import { formatRagResults, formatReadFile, formatReadFileBatch, formatShellResult, formatGetContext } from './tool-formatter';
+import { formatRagResults, formatReadFile, formatReadFileBatch, formatReadImage, formatReadImageBatch, formatShellResult, formatGetContext } from './tool-formatter';
 
 describe('tool-formatter', () => {
   describe('escapeBackticks (via formatters)', () => {
@@ -102,7 +102,8 @@ describe('tool-formatter', () => {
         ],
       };
       const { result } = formatReadFileBatch(batch);
-      expect(result).toContain('### Read files (2)');
+      expect(result).toContain('### Batch read (2 paths)');
+      expect(result).toContain('Read files (2)');
       expect(result).toContain('#### 1. a.ts');
       expect(result).toContain('#### 2. b.ts');
     });
@@ -168,6 +169,65 @@ describe('tool-formatter', () => {
       expect(result).toContain('Assistant action');
       expect(result).toContain('local_grep');
       expect(result).toContain('Indexed files**: 2');
+    });
+  });
+
+  describe('formatReadImage', () => {
+    it('embeds an inline local-file image markdown preview', () => {
+      const { result } = formatReadImage({
+        path: 'C:\\Users\\me\\shot.png',
+        name: 'shot.png',
+        extension: 'png',
+        ocr_text: 'hello',
+        objects: ['person'],
+      });
+
+      expect(result).toContain('![shot.png](local-file://');
+      expect(result).toContain(encodeURIComponent('C:\\Users\\me\\shot.png'));
+      expect(result).toContain('**Objects detected**: person');
+      expect(result).toContain('hello');
+    });
+  });
+
+  describe('formatReadImageBatch', () => {
+    it('formats multiple images with status table', () => {
+      const { result } = formatReadImageBatch({
+        results: [
+          {
+            path: 'C:\\Users\\me\\a.png',
+            status: 'ok',
+            data: {
+              path: 'C:\\Users\\me\\a.png',
+              name: 'a.png',
+              ocr_text: 'alpha',
+              objects: ['person'],
+            },
+          },
+          {
+            path: 'C:\\Users\\me\\b.png',
+            status: 'error',
+            error: 'not found',
+          },
+        ],
+        batchMeta: { isBatch: true, requested: 2, analyzed: 2, max_images: 10, truncated: false },
+      });
+
+      expect(result).toContain('Batch image read');
+      expect(result).toContain('| 1 | a.png | OK |');
+      expect(result).toContain('| 2 | b.png | ERROR |');
+      expect(result).toContain('alpha');
+      expect(result).toContain('not found');
+    });
+
+    it('truncates long OCR snippets per image', () => {
+      const longOcr = 'x'.repeat(2500);
+      const { result } = formatReadImage({
+        path: 'C:\\shot.png',
+        name: 'shot.png',
+        ocr_text: longOcr,
+      });
+      expect(result).toContain('OCR snippet capped');
+      expect(result).not.toContain('x'.repeat(2500));
     });
   });
 });

@@ -7,6 +7,7 @@ import path from 'path';
 import { sanitizeUtilityProcessEnv } from './desktop-child-process';
 
 import { loadLastCodeProject } from './last-code-project';
+import { safeStdioWrite } from './stdio-safe';
 
 
 
@@ -134,7 +135,7 @@ function forkIndexer(opts: {
 
     child.stdout.on('data', (chunk: Buffer) => {
 
-      process.stdout.write(chunk);
+      safeStdioWrite(process.stdout, chunk);
 
       if (logStream?.writable) logStream.write(chunk);
 
@@ -142,7 +143,7 @@ function forkIndexer(opts: {
 
     child.stderr.on('data', (chunk: Buffer) => {
 
-      process.stderr.write(chunk);
+      safeStdioWrite(process.stderr, chunk);
 
       if (logStream?.writable) logStream.write(chunk);
 

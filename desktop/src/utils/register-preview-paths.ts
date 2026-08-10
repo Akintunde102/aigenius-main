@@ -36,3 +36,18 @@ export function registerReadFileBatchForPreview(
     if (abs) registerAbsolutePathForPreview(abs);
   }
 }
+
+export function registerReadImageBatchForPreview(
+  results: Array<{ path?: string; status?: string; data?: { path?: string } }>,
+): void {
+  for (const r of results) {
+    if (r.status === 'error') continue;
+    const abs =
+      typeof r.data?.path === 'string' && path.isAbsolute(r.data.path)
+        ? r.data.path
+        : typeof r.path === 'string' && path.isAbsolute(r.path)
+          ? r.path
+          : '';
+    if (abs) registerAbsolutePathForPreview(abs);
+  }
+}

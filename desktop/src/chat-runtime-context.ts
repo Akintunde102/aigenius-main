@@ -1,10 +1,5 @@
 import os from 'os';
-import path from 'path';
 import { getRetrievalMemoryService } from './local-retrieval-memory';
-import { getActiveCodeProjectId, getActiveCodeProjectRootPath } from './active-code-project';
-import { loopbackHttpUrl } from './loopback-host';
-import { MINI_SERVER_PORT } from './mini-server-port';
-
 /** Resolved once when the main process loads this module (Electron app startup). */
 export const USER_HOME_DIR_AT_STARTUP = os.homedir();
 
@@ -23,7 +18,6 @@ export async function getChatRuntimeContextForIpc(): Promise<{
     userHomeDir: string;
   };
   retrievalMemoryCatalog: { generatedAtIso: string; entries: RetrievalMemoryCatalogEntryIpc[] };
-  structuralDigest?: string;
 }> {
   const desktopHost = {
     platform: process.platform,
@@ -41,37 +35,11 @@ export async function getChatRuntimeContextForIpc(): Promise<{
     entries = [];
   }
 
-  let structuralDigest: string | undefined;
-  const projectRoot = getActiveCodeProjectRootPath();
-  if (projectRoot) {
-    try {
-      const port = MINI_SERVER_PORT;
-      const token = process.env.AIGENIUS_SECRET_TOKEN;
-      if (token) {
-        const projectName = path.basename(projectRoot) || getActiveCodeProjectId() || 'Project';
-        const url = loopbackHttpUrl(
-          port,
-          `/search/structural-digest?root=${encodeURIComponent(projectRoot)}&projectName=${encodeURIComponent(projectName)}`,
-        );
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = (await res.json()) as { digest?: string };
-          if (data.digest?.trim()) structuralDigest = data.digest.trim();
-        }
-      }
-    } catch {
-      /* best-effort */
-    }
-  }
-
   return {
     desktopHost,
     retrievalMemoryCatalog: {
       generatedAtIso: new Date().toISOString(),
       entries,
     },
-    ...(structuralDigest ? { structuralDigest } : {}),
   };
 }

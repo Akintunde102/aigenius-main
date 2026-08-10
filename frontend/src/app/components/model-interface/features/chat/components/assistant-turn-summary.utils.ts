@@ -61,8 +61,11 @@ function extractWorkTimelineItemsFromBlock(block: ChatMessageRenderBlock): WorkT
 export function buildAssistantRenderSegments(
   blocks: ChatMessageRenderBlock[],
   streaming: boolean,
+  options?: { collapseWorkBlocks?: boolean },
 ): AssistantRenderSegment[] {
-  if (streaming) {
+  const collapseWorkBlocks = options?.collapseWorkBlocks ?? true;
+
+  if (streaming || !collapseWorkBlocks) {
     return blocks.map((block) => ({ type: 'block', block }));
   }
 

@@ -2,43 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import type { DraggablePanelVariant, PanelPosition } from './useDraggablePanel';
+import {
+    getDefaultPanelSize,
+    getViewportLimits,
+    type PanelSize,
+} from './panel-layout.utils';
 
-export type PanelSize = { width: number; height: number };
+export type { PanelSize } from './panel-layout.utils';
 export type ResizeEdge = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 function clamp(value: number, min: number, max: number) {
     return Math.min(Math.max(value, min), max);
-}
-
-function getViewportLimits() {
-    const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
-    const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-    return {
-        maxWidth: Math.max(320, vw - 24),
-        maxHeight: Math.max(240, vh - 24),
-    };
-}
-
-export function getDefaultPanelSize(variant: DraggablePanelVariant): PanelSize {
-    const { maxWidth, maxHeight } = getViewportLimits();
-    if (variant === 'side') {
-        return {
-            width: Math.min(maxWidth, Math.max(360, Math.min(vwFallback() * 0.5, 704))),
-            height: Math.min(maxHeight, Math.round(vhFallback() * 0.75)),
-        };
-    }
-    return {
-        width: Math.min(maxWidth, Math.max(480, Math.min(vwFallback() * 0.9, 1152))),
-        height: Math.min(maxHeight, Math.round(vhFallback() * 0.75)),
-    };
-}
-
-function vwFallback() {
-    return typeof window !== 'undefined' ? window.innerWidth : 1280;
-}
-
-function vhFallback() {
-    return typeof window !== 'undefined' ? window.innerHeight : 800;
 }
 
 function loadStoredSize(storageKey: string, fallback: PanelSize): PanelSize {
@@ -70,9 +44,9 @@ export function useResizablePanel(
     position: PanelPosition | null,
     onPositionChange: (next: PanelPosition) => void,
 ) {
-    const storageKey = `aigenius-file-preview-size:${variant}`;
+    const storageKey = variant === 'side' ? 'aigenius-file-preview-size:side' : null;
     const [size, setSize] = useState<PanelSize>(() =>
-        loadStoredSize(storageKey, getDefaultPanelSize(variant)),
+        storageKey ? loadStoredSize(storageKey, getDefaultPanelSize(variant)) : getDefaultPanelSize(variant),
     );
     const [isResizing, setIsResizing] = useState(false);
     const cleanupResizeRef = useRef<(() => void) | null>(null);
@@ -86,7 +60,7 @@ export function useResizablePanel(
     useEffect(() => () => cleanupResizeRef.current?.(), []);
 
     useEffect(() => {
-        if (!enabled) return;
+        if (!enabled || !storageKey) return;
         try {
             window.localStorage.setItem(storageKey, JSON.stringify(size));
         } catch {

@@ -3,7 +3,7 @@ import {
   MessageHandlers,
   ChatContainer,
 } from "../features";
-import type { ChatMessage, Model, PendingOrphanReply } from "../shared/types";
+import type { ChatMessage, ChatSession, Model, PendingOrphanReply } from "../shared/types";
 import type { ChatContainerHandle } from "../features/chat/components/ChatContainer";
 import type { FailedUploadEntry } from "../features/file-upload/hooks/useFileUpload";
 import type { AudioStatus } from "../features/chat/hooks/audioMode.utils";
@@ -21,7 +21,7 @@ type MessageHandlerProps = {
 
 type Props = {
   chat: ChatMessage[];
-  chatHistory?: any[];
+  chatHistory?: ChatSession[];
   setChat: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   handleSend: (
     input?: string,

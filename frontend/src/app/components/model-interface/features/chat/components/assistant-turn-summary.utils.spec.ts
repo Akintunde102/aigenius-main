@@ -76,6 +76,20 @@ describe('buildAssistantRenderSegments', () => {
     expect(segments[0]).toMatchObject({ type: 'block' });
   });
 
+  it('keeps live blocks for the active turn when collapseWorkBlocks is false', () => {
+    const blocks: ChatMessageRenderBlock[] = [
+      { type: 'thinking', event: makeThinking('a') },
+      { type: 'tool', event: makeTool({ tool: 'local_read_file' }) },
+      { type: 'text', content: 'answer', endsWithLastTextEvent: true },
+    ];
+
+    const segments = buildAssistantRenderSegments(blocks, false, { collapseWorkBlocks: false });
+    expect(segments).toHaveLength(3);
+    expect(segments[0]).toMatchObject({ type: 'block' });
+    expect(segments[1]).toMatchObject({ type: 'block' });
+    expect(segments[2]).toMatchObject({ type: 'block' });
+  });
+
   it('replaces contiguous work blocks with one summary before the following text', () => {
     const blocks: ChatMessageRenderBlock[] = [
       { type: 'thinking', event: makeThinking('a') },
