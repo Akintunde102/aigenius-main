@@ -1,9 +1,44 @@
 import { ChatMessage, Model, ChatSession, OrphanReplyRequest, ToolUsageCharge, UsageInfo } from '@/app/components/model-interface/shared/types';
-import { OpenRouterMessage } from '@/nobox-client/functions/access-model';
+import type {
+    AccessModelArgs,
+    AccessModelResponse,
+    OpenRouterMessage,
+    StreamingResult,
+    ToolStreamEvent,
+} from '@/nobox-client/functions/access-model';
 
 export type ChatUpdater = ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[]);
 export type SetChatForSession = (sessionId: string, updater: ChatUpdater) => void;
 export type SetBooleanForSession = (sessionId: string, value: boolean) => void;
+
+/** Chunk payload from streaming chat completions (wire format from accessModelStream). */
+export type StreamContentChunk =
+    | string
+    | Array<{
+          type: string;
+          text?: string;
+          image_url?: { url: string };
+          input_audio?: { data: string; format: string };
+      }>;
+
+export type ReasoningDetailChunk = { text?: string; type?: string };
+
+export type AccessModelStreamFn = (
+    args: Omit<AccessModelArgs<unknown>, 'config'> & {
+        onData: (
+            content: StreamContentChunk,
+            reasoning?: string,
+            reasoningDetails?: ReasoningDetailChunk[],
+        ) => void;
+        onToolStreamEvent?: (event: ToolStreamEvent) => void;
+        onComplete?: (result: StreamingResult) => void;
+        signal?: AbortSignal;
+    },
+) => Promise<StreamingResult>;
+
+export type AccessModelFn = (
+    args: Omit<AccessModelArgs<unknown>, 'config'> & { signal?: AbortSignal },
+) => Promise<AccessModelResponse<unknown> | null>;
 
 // Content block types for structured content
 export interface ContentBlock {
@@ -62,6 +97,8 @@ export interface UseChatOperationsRefinedProps {
     /** When the API returns a new conversation id, prefetch its route early (Claude-style). */
     onPrefetchConversationRoute?: (conversationId: string) => void;
     getChatForSession: (sessionKey: string) => ChatMessage[];
+    /** Ref read during streaming — avoids reordering hooks for audio mode. */
+    isAudioModeRef?: React.MutableRefObject<boolean>;
 }
 
 export type LastFailedSendPayload = {
@@ -115,6 +152,7 @@ export interface UseStreamingResponseProps {
     onPrefetchConversationRoute?: (conversationId: string) => void;
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;
+    isAudioModeRef?: React.MutableRefObject<boolean>;
 }
 
 export interface ChatCompletionRequestOverrides {

@@ -3,6 +3,19 @@ if (!__filename.includes('app.asar')) {
   require('dotenv/config');
 }
 
+import { attachStdioEpipeHandlers, safeStdioWrite } from './stdio-safe';
+import {
+  installDesktopPerfInstrumentation,
+  isDesktopPerfBenchmarkEnabled,
+  isDesktopPerfEnabled,
+  maybeRunPerfBenchmark,
+  startupMark,
+  startupMarkSummary,
+} from './perf';
+
+attachStdioEpipeHandlers();
+installDesktopPerfInstrumentation();
+
 if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = 'production';
 }
@@ -57,9 +70,16 @@ import {
   readDesktopRefreshToken,
   storeDesktopRefreshToken,
 } from './desktop-auth-store';
-import { saveLastCodeProject } from './last-code-project';
+import { saveLastCodeProject, loadLastCodeProject } from './last-code-project';
 import { MINI_SERVER_PORT } from './mini-server-port';
 import net from 'net';
+import {
+  attachChatCompletionWindowFocusHandlers,
+  configureDesktopNotificationBranding,
+  notifyChatCompletionIfBackground,
+  setChatCompletionNotificationIcon,
+  type ChatCompletionNotifyPayload,
+} from './chat-completion-notifications';
 
 function normalizeRendererFilesystemPath(filePath: string): string {
   let normalizedPath = filePath;
@@ -874,6 +894,7 @@ function createWindow(relativePath?: string): BrowserWindow {
   win.on('focus', () => {
     lastFocusedMainShellWindow = win;
   });
+  attachChatCompletionWindowFocusHandlers(win);
 
   if (!app.isPackaged) {
     win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
@@ -906,7 +927,19 @@ function createWindow(relativePath?: string): BrowserWindow {
     ? loopbackHttpUrl(FRONTEND_PORT, relativePath.startsWith('/') ? relativePath : '/' + relativePath)
     : FRONTEND_URL;
 
+  win.webContents.once('did-finish-load', () => {
+    startupMark('window_did_finish_load');
+    if (isDesktopPerfBenchmarkEnabled()) {
+      void maybeRunPerfBenchmark(win).finally(() => {
+        app.quit();
+      });
+    } else if (isDesktopPerfEnabled()) {
+      startupMarkSummary();
+    }
+  });
+
   void win.loadURL(url);
+  startupMark('window_created');
   return win;
 }
 
@@ -919,8 +952,7 @@ if (!gotLock) {
   }
   app.quit();
 } else {
-  // Set identity for Linux window managers / taskbars
-  app.setName('AIGenius');
+  configureDesktopNotificationBranding();
 
   if (DESKTOP_BRIDGE_DEBUG) {
     console.info('[aigenius-desktop][bridge-debug] main: got single-instance lock');
@@ -1303,6 +1335,20 @@ if (!gotLock) {
     w.focus();
   });
 
+  ipcMain.handle('chat-completion-notify', (event, payload: unknown) => {
+    if (!payload || typeof payload !== 'object') {
+      return { notified: false };
+    }
+    const { modelName, preview } = payload as ChatCompletionNotifyPayload;
+    if (typeof preview !== 'string') {
+      return { notified: false };
+    }
+    return notifyChatCompletionIfBackground(event.sender, {
+      modelName: typeof modelName === 'string' ? modelName : undefined,
+      preview,
+    });
+  });
+
   ipcMain.handle('capture-window-png-for-chat', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win || win.isDestroyed()) {
@@ -1321,6 +1367,7 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
+    startupMark('app_when_ready');
     createMenu();
 
     // Check system limits (Linux only)
@@ -1342,6 +1389,8 @@ if (!gotLock) {
     }
 
     const iconPathForDock = resolveWindowIconPath();
+    const appIcon = getWindowIcon();
+    setChatCompletionNotificationIcon(appIcon ?? iconPathForDock);
     if (iconPathForDock && process.platform === 'darwin') {
       try {
         app.dock.setIcon(iconPathForDock);
@@ -1373,14 +1422,23 @@ if (!gotLock) {
       app.quit();
       return;
     }
+    startupMark('backend_processes_ready');
 
     // Setup crash handlers
     setupCrashHandlers();
 
     initLocalRetrievalMemory(app.getPath('userData'));
+    const lastProject = loadLastCodeProject(app.getPath('userData'));
+    if (lastProject?.projectId && lastProject?.rootPath) {
+      setActiveCodeProjectIndex({
+        projectId: lastProject.projectId,
+        rootPath: lastProject.rootPath,
+      });
+    }
     await loadToolPermissionPreferences();
     registerIpcHandlers();
     registerAudioRecorderHandlers();
+    startupMark('ipc_handlers_registered');
 
     const registeredGlobalShot = globalShortcut.register(CHAT_SCREENSHOT_GLOBAL_ACCELERATOR, () => {
       void attachFullDesktopToChatShell(null);

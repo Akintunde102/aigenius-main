@@ -11,7 +11,7 @@ export const SessionInfo: React.FC<SessionInfoProps> = ({
 }) => {
     return (
         <span
-            className={`block min-w-0 flex-1 truncate text-[14px] leading-relaxed ${isActive ? "font-medium" : "font-normal"}`}
+            className={`sidebar-nav-label block min-w-0 flex-1 truncate ${isActive ? "font-medium" : "font-normal"}`}
             style={{ color: "var(--sidebar-fg)" }}
             title={title}
         >

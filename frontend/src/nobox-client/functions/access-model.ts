@@ -47,6 +47,36 @@ const AIGENIUS_DESKTOP_CLIENT_HEADER_VALUE = '1';
 /** Wait for preload IPC before handling `client_delegate` (aligns with long-running desktop tool approval). */
 const LOCAL_DESKTOP_BRIDGE_WAIT_MS = 30_000;
 
+/** Prevent duplicate POSTs for the same delegate_id (retries, overlapping SSE handlers). */
+const desktopToolDelegatePosted = new Set<string>();
+const toolApprovalDelegatePosted = new Set<string>();
+const desktopToolDelegatePostInFlight = new Map<string, Promise<void>>();
+const toolApprovalPostInFlight = new Map<string, Promise<void>>();
+
+async function runDelegatePostOnce(
+  inFlight: Map<string, Promise<void>>,
+  delegateId: string,
+  run: () => Promise<void>,
+): Promise<void> {
+  const existing = inFlight.get(delegateId);
+  if (existing) {
+    return existing;
+  }
+  const promise = run().finally(() => {
+    inFlight.delete(delegateId);
+  });
+  inFlight.set(delegateId, promise);
+  return promise;
+}
+
+/** Clears delegate POST dedupe state (Jest only). */
+export function resetDelegatePostDedupeStateForTests(): void {
+  desktopToolDelegatePosted.clear();
+  toolApprovalDelegatePosted.clear();
+  desktopToolDelegatePostInFlight.clear();
+  toolApprovalPostInFlight.clear();
+}
+
 /** Avoid `get-chat-runtime-context` IPC on every chat message; catalog rarely changes intra-minute. */
 const CHAT_RUNTIME_CONTEXT_CACHE_TTL_MS = 45_000;
 
@@ -487,31 +517,38 @@ async function postDesktopToolDelegateResult(
   payload: { result?: string; error?: string },
   signal?: AbortSignal,
 ): Promise<void> {
-  const endpoint = `${config.endpoint}${OPENAI_DESKTOP_TOOL_RESULT_PATH}`;
-  const jwtToken = getAccessToken();
-  if (!jwtToken) {
-    throw new Error(ERROR_MESSAGES.MISSING_JWT_TOKEN);
+  if (desktopToolDelegatePosted.has(delegateId)) {
+    return;
   }
-  const headers: Record<string, string> = {
-    'Content-Type': CONTENT_TYPE_JSON,
-    'Authorization': `${AUTHORIZATION_BEARER_PREFIX}${jwtToken}`,
-    ...getE2eWalletBypassHeaders(),
-    [AIGENIUS_DESKTOP_CLIENT_HEADER]: AIGENIUS_DESKTOP_CLIENT_HEADER_VALUE,
-  };
-  const res = await authorizedFetch(endpoint, {
-    method: HTTP_METHOD_POST,
-    headers,
-    body: JSON.stringify({
-      delegate_id: delegateId,
-      ...(payload.result !== undefined ? { result: payload.result } : {}),
-      ...(payload.error !== undefined ? { error: payload.error } : {}),
-    }),
-    signal,
+
+  return runDelegatePostOnce(desktopToolDelegatePostInFlight, delegateId, async () => {
+    const endpoint = `${config.endpoint}${OPENAI_DESKTOP_TOOL_RESULT_PATH}`;
+    const jwtToken = getAccessToken();
+    if (!jwtToken) {
+      throw new Error(ERROR_MESSAGES.MISSING_JWT_TOKEN);
+    }
+    const headers: Record<string, string> = {
+      'Content-Type': CONTENT_TYPE_JSON,
+      'Authorization': `${AUTHORIZATION_BEARER_PREFIX}${jwtToken}`,
+      ...getE2eWalletBypassHeaders(),
+      [AIGENIUS_DESKTOP_CLIENT_HEADER]: AIGENIUS_DESKTOP_CLIENT_HEADER_VALUE,
+    };
+    const res = await authorizedFetch(endpoint, {
+      method: HTTP_METHOD_POST,
+      headers,
+      body: JSON.stringify({
+        delegate_id: delegateId,
+        ...(payload.result !== undefined ? { result: payload.result } : {}),
+        ...(payload.error !== undefined ? { error: payload.error } : {}),
+      }),
+      signal,
+    });
+    if (!res.ok) {
+      const parsed = await parseGatewayFailedResponse(res);
+      throw new Error(parsed.message);
+    }
+    desktopToolDelegatePosted.add(delegateId);
   });
-  if (!res.ok) {
-    const parsed = await parseGatewayFailedResponse(res);
-    throw new Error(parsed.message);
-  }
 }
 
 async function postToolApprovalResult(
@@ -520,30 +557,37 @@ async function postToolApprovalResult(
   payload: { result?: string; error?: string },
   signal?: AbortSignal,
 ): Promise<void> {
-  const endpoint = `${config.endpoint}${OPENAI_TOOL_APPROVAL_RESULT_PATH}`;
-  const jwtToken = getAccessToken();
-  if (!jwtToken) {
-    throw new Error(ERROR_MESSAGES.MISSING_JWT_TOKEN);
+  if (toolApprovalDelegatePosted.has(delegateId)) {
+    return;
   }
-  const headers: Record<string, string> = {
-    'Content-Type': CONTENT_TYPE_JSON,
-    'Authorization': `${AUTHORIZATION_BEARER_PREFIX}${jwtToken}`,
-    ...getE2eWalletBypassHeaders(),
-  };
-  const res = await authorizedFetch(endpoint, {
-    method: HTTP_METHOD_POST,
-    headers,
-    body: JSON.stringify({
-      delegate_id: delegateId,
-      ...(payload.result !== undefined ? { result: payload.result } : {}),
-      ...(payload.error !== undefined ? { error: payload.error } : {}),
-    }),
-    signal,
+
+  return runDelegatePostOnce(toolApprovalPostInFlight, delegateId, async () => {
+    const endpoint = `${config.endpoint}${OPENAI_TOOL_APPROVAL_RESULT_PATH}`;
+    const jwtToken = getAccessToken();
+    if (!jwtToken) {
+      throw new Error(ERROR_MESSAGES.MISSING_JWT_TOKEN);
+    }
+    const headers: Record<string, string> = {
+      'Content-Type': CONTENT_TYPE_JSON,
+      'Authorization': `${AUTHORIZATION_BEARER_PREFIX}${jwtToken}`,
+      ...getE2eWalletBypassHeaders(),
+    };
+    const res = await authorizedFetch(endpoint, {
+      method: HTTP_METHOD_POST,
+      headers,
+      body: JSON.stringify({
+        delegate_id: delegateId,
+        ...(payload.result !== undefined ? { result: payload.result } : {}),
+        ...(payload.error !== undefined ? { error: payload.error } : {}),
+      }),
+      signal,
+    });
+    if (!res.ok) {
+      const parsed = await parseGatewayFailedResponse(res);
+      throw new Error(parsed.message);
+    }
+    toolApprovalDelegatePosted.add(delegateId);
   });
-  if (!res.ok) {
-    const parsed = await parseGatewayFailedResponse(res);
-    throw new Error(parsed.message);
-  }
 }
 
 async function fulfillToolApprovalRequest(
@@ -943,6 +987,10 @@ export interface UsageInfo {
   total_tokens: number;
   /** USD charged for tool invocations in this completion (aggregated). */
   tool_cost_usd?: number;
+  session_prompt_tokens?: number;
+  session_completion_tokens?: number;
+  session_total_tokens?: number;
+  model_rounds?: number;
 }
 
 /**
@@ -999,6 +1047,9 @@ export type Body = {
     messageExcerpt?: string;
     createdFromRole?: 'user' | 'assistant' | 'system';
   };
+  /** Stable id assigned client-side before the request (persisted with the assistant turn). */
+  assistantMessageId?: string;
+  assistantTimestamp?: number;
 };
 
 /**

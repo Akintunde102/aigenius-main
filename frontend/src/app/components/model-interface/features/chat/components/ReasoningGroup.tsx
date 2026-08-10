@@ -19,7 +19,6 @@ export function ReasoningGroup({
   variant = 'live',
 }: ReasoningGroupProps) {
   const [open, setOpen] = useState(false);
-  const wasThinkingRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const isTimeline = variant === 'timeline';
@@ -30,13 +29,6 @@ export function ReasoningGroup({
     if (isTimeline) return;
     if (thinkingInProgress) {
       setOpen(true);
-      wasThinkingRef.current = true;
-      return;
-    }
-
-    if (wasThinkingRef.current) {
-      setOpen(false);
-      wasThinkingRef.current = false;
     }
   }, [isTimeline, thinkingInProgress]);
 

@@ -46,6 +46,13 @@ export const TOOL_PERMISSION_CATALOG: ToolPermissionCatalogEntry[] = [
     aliases: ['read_file', 'read_local_file'],
   },
   {
+    id: 'local_read_image',
+    label: 'Read local images',
+    description: 'OCR and object detection on images on your machine',
+    defaultRequiresApproval: false,
+    aliases: ['read_image'],
+  },
+  {
     id: 'local_list_directory',
     label: 'List directories',
     description: 'Browse folders and files on your machine',

@@ -3,10 +3,10 @@ import { FiStar, FiTrash2, FiMoreVertical, FiLoader, FiGlobe, FiDownload, FiChev
 import type { TranscriptFormat } from '@/lib/utils/conversationTranscriptExport';
 
 const DROPDOWN_MENU_ROW =
-    'sidebar-menu-row flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors';
+    'sidebar-menu-row flex w-full items-center gap-2 px-3 py-1.5 text-left transition-colors';
 
 const DROPDOWN_SUBMENU_ROW =
-    'sidebar-menu-row flex w-full items-center px-3 py-1.5 pl-8 text-left text-xs transition-colors';
+    'sidebar-menu-row flex w-full items-center px-3 py-1.5 pl-8 text-left transition-colors';
 
 interface ActionDropdownProps {
     isStarred: boolean;

@@ -29,6 +29,14 @@ export interface UsageInfo {
     total_tokens: number;
     /** USD charged for tool invocations in this completion (aggregated). */
     tool_cost_usd?: number;
+    /** Cumulative prompt tokens across all model API rounds in this agent run. */
+    session_prompt_tokens?: number;
+    /** Cumulative completion tokens across all model API rounds in this agent run. */
+    session_completion_tokens?: number;
+    /** Cumulative total tokens across all model API rounds in this agent run. */
+    session_total_tokens?: number;
+    /** Number of model API rounds for this user message (agent tool loop). */
+    model_rounds?: number;
 }
 
 export interface CostCalculation {

@@ -285,7 +285,13 @@ export function useModelInterfaceSessionRouting({
       if (shouldRestore) {
         chatArea.scrollTop = Math.min(storedScrollState.scrollTop, maxScrollTop);
       } else if (hasVisibleMessages) {
-        chatArea.scrollTop = chatArea.scrollHeight;
+        const distanceFromBottom =
+          chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
+        // Avoid forcing scroll when already near the bottom — prevents a flash
+        // when a draft chat is promoted to a real conversation id.
+        if (distanceFromBottom > 60) {
+          chatArea.scrollTop = chatArea.scrollHeight;
+        }
       } else {
         chatArea.scrollTop = 0;
       }

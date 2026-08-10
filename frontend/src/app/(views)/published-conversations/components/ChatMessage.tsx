@@ -5,15 +5,13 @@ import {
     MessageEvent,
     Model,
 } from '@/app/components/model-interface/shared/types';
-import { ToolStreamingCard } from '@/app/components/model-interface/features/chat/components/ToolStreamingCard';
-import { ToolStreamingGroup } from '@/app/components/model-interface/features/chat/components/ToolStreamingGroup';
-import { ReasoningGroup } from '@/app/components/model-interface/features/chat/components/ReasoningGroup';
 import { clusterToolDisplayBlocks } from '@/app/components/model-interface/features/chat/components/cluster-tool-display-blocks';
 import { buildAssistantRenderSegments } from '@/app/components/model-interface/features/chat/components/assistant-turn-summary.utils';
-import { AssistantWorkSummary } from '@/app/components/model-interface/features/chat/components/AssistantWorkSummary';
 import { buildChatMessageDisplayBlocks } from '@/app/components/model-interface/features/messages/components/chatMessageDisplay.utils';
 import { enrichEventsWithLegacyThinking } from '@/app/components/model-interface/features/chat/utils/thinkingEvent.utils';
 import { buildCopyTextFromEvents } from '@/lib/utils/messageCopyText';
+import { AssistantTurnSegments } from '@/app/components/model-interface/features/messages/components/AssistantTurnSegments';
+import { shouldHideEmptyAssistantMessage } from '@/app/components/model-interface/features/messages/utils/assistantMessageVisibility.utils';
 
 // Custom hooks
 import { useMessageContent, useCostCalculation, useSaveState } from '@/app/(views)/published-conversations/hooks';
@@ -161,19 +159,8 @@ export function ChatMessage({
         ...(msg.role === 'user' ? { maxWidth: '320px' } : {}),
     }), [msg.role]);
 
-    // Early return for empty assistant messages - after all hooks are called
-    if (msg.role === 'assistant' && (!msg.content || (typeof msg.content === 'string' && msg.content.trim() === ''))) {
-        if (
-            !streaming
-            && !displayEvents.some((e) => e.type === 'thinking')
-            && !msg.reasoning
-            && !msg.reasoning_details?.length
-            && !msg.tool_executions?.length
-            && !msg.streaming_tools?.length
-            && !msg.events?.length
-        ) {
-            return null;
-        }
+    if (shouldHideEmptyAssistantMessage(msg, { streaming, displayEvents })) {
+        return null;
     }
 
     return (
@@ -191,67 +178,12 @@ export function ChatMessage({
 
                     {/* Chat content — event-based assistant turns match main chat */}
                     {msg.role === 'assistant' && renderSegments.length > 0 ? (
-                        <div className="flex flex-col gap-3">
-                            {renderSegments.map((segment, i) => {
-                                if (segment.type === 'work_summary') {
-                                    return (
-                                        <div key={`work-summary-${i}`} className="w-full">
-                                            <AssistantWorkSummary items={segment.items} />
-                                        </div>
-                                    );
-                                }
-
-                                const block = segment.block;
-                                if (block.type === 'text') {
-                                    return (
-                                        <TextMessage
-                                            key={i}
-                                            content={block.content}
-                                            streaming={streaming && block.endsWithLastTextEvent}
-                                            role={msg.role}
-                                        />
-                                    );
-                                }
-                                if (block.type === 'thinking') {
-                                    return (
-                                        <div key={i} className="w-full">
-                                            <ReasoningGroup
-                                                event={block.event}
-                                                messageStreaming={streaming}
-                                            />
-                                        </div>
-                                    );
-                                }
-                                if (block.type === 'tool_cluster') {
-                                    return (
-                                        <div key={i} className="w-full">
-                                            <ToolStreamingGroup events={block.events} messageStreaming={streaming} />
-                                        </div>
-                                    );
-                                }
-                                if (block.type !== 'tool') {
-                                    return null;
-                                }
-
-                                const toolEvt = block.event;
-                                return (
-                                    <div key={i} className="w-full">
-                                        <ToolStreamingCard
-                                            streaming_tool={{
-                                                tool: toolEvt.tool,
-                                                displayName: toolEvt.displayName,
-                                                logs: toolEvt.logs,
-                                                loading: toolEvt.loading,
-                                                success: toolEvt.success,
-                                                arguments: toolEvt.arguments,
-                                            }}
-                                            result={toolEvt.result}
-                                            arguments={toolEvt.arguments}
-                                        />
-                                    </div>
-                                );
-                            })}
-                        </div>
+                        <AssistantTurnSegments
+                            segments={renderSegments}
+                            messageRole={msg.role}
+                            streaming={streaming}
+                            gapClassName="flex flex-col gap-3"
+                        />
                     ) : messageContent.isImageMsg ? (
                         messageContent.imageText ? (
                             <ImageWithTextMessage

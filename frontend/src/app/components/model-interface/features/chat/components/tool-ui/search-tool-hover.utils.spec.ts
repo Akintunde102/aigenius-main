@@ -17,7 +17,7 @@ describe('search-tool-hover.utils', () => {
         path_prefix: 'C:/proj/client/desktop/src/utils/read-file',
         extensions: ['ts'],
       },
-      '# Grep: helper\n\n- C:/proj/client/desktop/src/utils/read-file/types.ts:12:export type X\n- C:/proj/client/desktop/src/utils/read-file/index.ts:3:export',
+      '# Grep (file contents): helper\n\n- C:/proj/client/desktop/src/utils/read-file/types.ts:12:export type X\n- C:/proj/client/desktop/src/utils/read-file/index.ts:3:export',
     );
 
     expect(preview?.scopeLabel).toBe('C:/proj/client/desktop/src/utils/read-file/**/*.{ts}');

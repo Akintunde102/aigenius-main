@@ -2,7 +2,7 @@
  * Utilities to format raw tool results into human-readable Markdown.
  */
 
-import { toLocalFileMarkdownLink } from './local-file-link';
+import { toLocalFileMarkdownImage, toLocalFileMarkdownLink } from './local-file-link';
 
 export interface FormattedToolResult {
   result: string;
@@ -341,6 +341,148 @@ export function formatReadFile(data: any): FormattedToolResult {
 
   return { result: md, rawData: data };
 }
+
+const READ_IMAGE_OCR_SNIPPET_CHARS = 2000;
+const DEFAULT_BATCH_MAX_IMAGES = 10;
+const HARD_BATCH_MAX_IMAGES = 20;
+
+function truncateOcrSnippet(text: string, maxChars = READ_IMAGE_OCR_SNIPPET_CHARS): {
+  text: string;
+  truncated: boolean;
+} {
+  if (text.length <= maxChars) return { text, truncated: false };
+  return {
+    text: text.slice(0, maxChars) + '\n… (OCR truncated)',
+    truncated: true,
+  };
+}
+
+/** Format local_read_image OCR + object detection results. */
+export function formatReadImage(data: any): FormattedToolResult {
+  if (!data || typeof data !== 'object') return { result: String(data), rawData: data };
+
+  const {
+    path,
+    name,
+    extension,
+    url,
+    source,
+    indexed,
+    ocr_text,
+    tags,
+    objects,
+    errors,
+    content_truncated,
+  } = data;
+
+  let md = `### Read image\n\n`;
+  if (path) {
+    md += `${toLocalFileMarkdownImage(path, name)}\n\n`;
+    md += `- **Path**: ${toLocalFileMarkdownLink(path)}\n`;
+  }
+  if (name) md += `- **Name**: ${name}\n`;
+  if (extension) md += `- **Extension**: ${extension}\n`;
+  if (url) md += `- **URL**: ${url}\n`;
+  if (source) md += `- **Source**: ${source}${indexed ? ' (indexed cache)' : ''}\n`;
+  if (content_truncated) {
+    md += `- **Note**: Indexed OCR text was truncated — use \`force_live: true\` for a fresh full extraction if needed.\n`;
+  }
+
+  const objList = Array.isArray(objects) ? objects : [];
+  if (objList.length > 0) {
+    md += `- **Objects detected**: ${objList.join(', ')}\n`;
+  } else if (Array.isArray(tags) && tags.length > 0) {
+    const filtered = tags.filter((t: string) => !['image', 'ocr'].includes(String(t).toLowerCase()));
+    if (filtered.length > 0) {
+      md += `- **Tags**: ${filtered.join(', ')}\n`;
+    }
+  }
+
+  const errList = Array.isArray(errors) ? errors.filter(Boolean) : [];
+  if (errList.length > 0) {
+    md += `- **Warnings**: ${errList.join(' | ')}\n`;
+  }
+
+  const rawText = typeof ocr_text === 'string' ? ocr_text.trim() : '';
+  const { text, truncated: ocrTruncated } = truncateOcrSnippet(rawText);
+  md += `\n#### OCR text\n\n`;
+  if (text) {
+    if (ocrTruncated) {
+      md += `- **Note**: OCR snippet capped at ${READ_IMAGE_OCR_SNIPPET_CHARS} chars — use \`force_live: true\` on a single path if you need more.\n\n`;
+    }
+    md += `\`\`\`\n${escapeBackticks(text)}\n\`\`\`\n`;
+  } else {
+    md += `_(no text detected)_\n`;
+  }
+
+  return { result: md, rawData: data };
+}
+
+/** Format multi-image local_read_image batch results for the model. */
+export function formatReadImageBatch(batch: {
+  results: Array<{
+    path?: string;
+    status?: string;
+    error?: string;
+    data?: any;
+  }>;
+  batchMeta?: {
+    isBatch?: boolean;
+    requested?: number;
+    analyzed?: number;
+    max_images?: number;
+    truncated?: boolean;
+  };
+}): FormattedToolResult {
+  const results = Array.isArray(batch?.results) ? batch.results : [];
+  if (results.length === 0) {
+    return { result: 'No images analyzed.', rawData: batch };
+  }
+  if (results.length === 1 && !batch.batchMeta?.isBatch) {
+    const item = results[0];
+    if (item.status === 'error') {
+      return { result: `### Read image\n\n**Error**: ${item.error ?? 'failed'}\n`, rawData: batch };
+    }
+    return formatReadImage(item.data);
+  }
+
+  const meta = batch.batchMeta;
+  let md = `### Batch image read (${results.length} paths)\n\n`;
+
+  if (meta) {
+    if (typeof meta.max_images === 'number') {
+      md += `- **Max images**: ${meta.max_images} (default ${DEFAULT_BATCH_MAX_IMAGES}, hard max ${HARD_BATCH_MAX_IMAGES})\n`;
+    }
+    if (typeof meta.requested === 'number' && meta.requested !== results.length) {
+      md += `- **Requested**: ${meta.requested}\n`;
+    }
+    if (meta.truncated) {
+      md += `- **Truncated**: Yes — only the first ${meta.analyzed ?? results.length} paths were analyzed\n`;
+    }
+    md += `- **Per-image errors do not fail the batch** — check ERROR rows below.\n\n`;
+    md += `| # | File | Status |\n|---|------|--------|\n`;
+    results.forEach((item, i) => {
+      const status = item.status === 'error' ? 'ERROR' : 'OK';
+      const name = pathBase(item.path);
+      md += `| ${i + 1} | ${name} | ${status} |\n`;
+    });
+    md += '\n';
+  }
+
+  results.forEach((item, i) => {
+    md += `#### ${i + 1}. ${item.path ?? 'image'}\n\n`;
+    if (item.status === 'error') {
+      md += `**Error**: ${item.error ?? 'failed'}\n\n`;
+      return;
+    }
+    const { result } = formatReadImage(item.data);
+    md += result.replace(/^### Read image\n\n/, '');
+    md += '\n';
+  });
+
+  return { result: md.trimEnd() + '\n', rawData: batch };
+}
+
 
 /** Format multi-file read_file batch results for the model. */
 export function formatReadFileBatch(batch: {

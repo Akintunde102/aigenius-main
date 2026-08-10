@@ -5,10 +5,11 @@ import {
   countFileLines,
   formatNumberedLines,
   MAX_MAX_LINES,
-  readFileLines,
 } from '../read-file-lines';
 import { batchReadDenyReason } from './batch-read-denylist';
 import { isBinaryFile } from './binary-detect';
+import { isImageExtension } from '../image-extensions';
+import path from 'path';
 import {
   resolveBatchReadBudget,
   resolveSingleFileLineBudget,
@@ -21,8 +22,18 @@ import {
   shouldAutoDocIndex,
 } from './doc-index';
 import { truncateLongLine } from './long-line';
+import {
+  countLinesFromSource,
+  readLinesFromSource,
+  type LineSource,
+} from './line-source';
 import { resolveReadFilePath } from './path-resolver';
 import { resolveSymbolAnchor } from './symbol-anchor';
+import {
+  documentExtractKind,
+  getDocumentTextLines,
+  type DocumentExtractKind,
+} from './document-text-extract';
 import type {
   ReadFileBatchMeta,
   ReadFileBatchResult,
@@ -127,6 +138,50 @@ function buildBatchBudgetTruncationNotice(
   return `Batch budget exhausted at lines ${lineStart}–${lineEnd} of ${filePath}. Do not summarize this file as complete.`;
 }
 
+type LineSourceResolution =
+  | { ok: true; source: LineSource; extractKind?: DocumentExtractKind }
+  | { ok: false; error: string };
+
+async function resolveLineSource(
+  resolvedPath: string,
+  displayPath: string,
+): Promise<LineSourceResolution> {
+  const kind = documentExtractKind(resolvedPath);
+  if (kind) {
+    const extracted = await getDocumentTextLines(resolvedPath, kind);
+    if (!extracted.ok) {
+      return { ok: false, error: extracted.error };
+    }
+    return {
+      ok: true,
+      source: { type: 'memory', path: resolvedPath, lines: extracted.lines },
+      extractKind: kind,
+    };
+  }
+
+  if (await isBinaryFile(resolvedPath)) {
+    return {
+      ok: false,
+      error: `Error: unsupported file type — ${displayPath} (binary)`,
+    };
+  }
+
+  return { ok: true, source: { type: 'file', path: resolvedPath } };
+}
+
+function documentExtractNote(kind: DocumentExtractKind): string {
+  switch (kind) {
+    case 'doc':
+      return 'Text extracted from legacy Word document (.doc).';
+    case 'docx':
+      return 'Text extracted from Word document (.docx).';
+    case 'pdf':
+      return 'Text extracted from PDF document (.pdf).';
+    default:
+      return 'Text extracted from document.';
+  }
+}
+
 function skippedItem(
   path: string,
   reason: 'budget_exhausted' | 'denylist' | 'max_paths',
@@ -142,14 +197,15 @@ function skippedItem(
 }
 
 async function readLineWindow(
-  resolvedPath: string,
+  source: LineSource,
   displayPath: string,
   startLine: number,
   maxLines: number,
   resolvedVia: ReadFileResolvedVia,
   fallbackNote?: string,
+  extractKind?: DocumentExtractKind,
 ): Promise<ReadFileItemResult> {
-  const slice = await readFileLines(resolvedPath, startLine, maxLines);
+  const slice = await readLinesFromSource(source, startLine, maxLines);
   const processedLines = slice.lines.map((l) => truncateLongLine(l).text);
   const content = formatNumberedLines(processedLines, slice.lineStart);
   const totalLines = slice.lineCountOmitted ? undefined : slice.totalLines;
@@ -162,8 +218,11 @@ async function readLineWindow(
     : undefined;
 
   let body = content;
+  if (extractKind) {
+    body = `> Note: ${documentExtractNote(extractKind)}\n\n${body}`;
+  }
   if (fallbackNote) {
-    body = `> Note: ${fallbackNote}\n\n${content}`;
+    body = `> Note: ${fallbackNote}\n\n${body}`;
   }
   if (truncationNotice) {
     body = `> ⚠ ${truncationNotice}\n\n${body}`;
@@ -171,7 +230,7 @@ async function readLineWindow(
 
   return {
     path: displayPath,
-    resolvedPath,
+    resolvedPath: source.path,
     status: truncated ? 'truncated' : 'ok',
     linesReturned: slice.lineEnd > 0 ? [slice.lineStart, slice.lineEnd] : undefined,
     totalLines,
@@ -184,37 +243,51 @@ async function readLineWindow(
 }
 
 async function readFullFileWithinCharBudget(
-  resolvedPath: string,
+  source: LineSource,
   displayPath: string,
   charBudget: { value: number },
+  extractKind?: DocumentExtractKind,
 ): Promise<ReadFileItemResult> {
-  const lineCount = await countFileLines(resolvedPath);
+  const lineCount = await countLinesFromSource(source);
   const totalLines = lineCount.lineCountOmitted ? undefined : lineCount.totalLines;
   const rawLines: string[] = [];
   let stoppedEarly = false;
 
-  await new Promise<void>((resolve, reject) => {
-    const rl = readline.createInterface({
-      input: fs.createReadStream(resolvedPath, { encoding: 'utf8' }),
-      crlfDelay: Infinity,
-    });
-
-    rl.on('line', (line) => {
+  if (source.type === 'memory') {
+    for (const line of source.lines) {
       const candidate = [...rawLines, line];
       const processed = candidate.map((l) => truncateLongLine(l).text);
       const formatted = formatNumberedLines(processed, 1);
       if (formatted.length > charBudget.value) {
         stoppedEarly = true;
-        rl.close();
-        resolve();
-        return;
+        break;
       }
       rawLines.push(line);
-    });
+    }
+  } else {
+    await new Promise<void>((resolve, reject) => {
+      const rl = readline.createInterface({
+        input: fs.createReadStream(source.path, { encoding: 'utf8' }),
+        crlfDelay: Infinity,
+      });
 
-    rl.on('close', () => resolve());
-    rl.on('error', reject);
-  });
+      rl.on('line', (line) => {
+        const candidate = [...rawLines, line];
+        const processed = candidate.map((l) => truncateLongLine(l).text);
+        const formatted = formatNumberedLines(processed, 1);
+        if (formatted.length > charBudget.value) {
+          stoppedEarly = true;
+          rl.close();
+          resolve();
+          return;
+        }
+        rawLines.push(line);
+      });
+
+      rl.on('close', () => resolve());
+      rl.on('error', reject);
+    });
+  }
 
   const processedLines = rawLines.map((l) => truncateLongLine(l).text);
   const content = formatNumberedLines(processedLines, 1);
@@ -228,13 +301,16 @@ async function readFullFileWithinCharBudget(
     : undefined;
 
   let body = content;
+  if (extractKind) {
+    body = `> Note: ${documentExtractNote(extractKind)}\n\n${body}`;
+  }
   if (truncationNotice) {
     body = `> ⚠ PARTIAL — ${truncationNotice}\n\n${body}`;
   }
 
   return {
     path: displayPath,
-    resolvedPath,
+    resolvedPath: source.path,
     status: truncated ? 'truncated' : 'ok',
     linesReturned: lineEnd > 0 ? [1, lineEnd] : undefined,
     totalLines,
@@ -258,11 +334,24 @@ async function readSingle(
 
   const { resolved, displayPath } = pathResult;
 
-  if (await isBinaryFile(resolved)) {
-    const err = `Error: unsupported file type — ${displayPath} (binary)`;
+  const ext = path.extname(resolved).slice(1).toLowerCase();
+  if (isImageExtension(ext)) {
+    const err =
+      `Error: ${displayPath} is an image — use \`local_read_image\` (or \`read_image\`) for OCR and object detection, not \`local_read_file\`.`;
     return { path: displayPath, status: 'error', content: err, error: err };
   }
 
+  const lineSourceResult = await resolveLineSource(resolved, displayPath);
+  if (!lineSourceResult.ok) {
+    return {
+      path: displayPath,
+      status: 'error',
+      content: lineSourceResult.error,
+      error: lineSourceResult.error,
+    };
+  }
+
+  const { source, extractKind } = lineSourceResult;
   const mode = req.mode ?? 'auto';
 
   if (req.anchorSymbol?.match(/^section:\d+$/i) || (mode === 'index' && isDocIndexCandidate(resolved))) {
@@ -274,11 +363,13 @@ async function readSingle(
         return { path: displayPath, status: 'error', content: err, error: err };
       }
       const result = await readLineWindow(
-        resolved,
+        source,
         displayPath,
         section.line_start,
         section.line_end - section.line_start + 1,
         'docIndex',
+        undefined,
+        extractKind,
       );
       result.resolvedVia = 'docIndex';
       if (charBudgetRemaining) {
@@ -306,11 +397,13 @@ async function readSingle(
     if (anchor.ok) {
       const span = anchor.range.line_end - anchor.range.line_start + 1;
       const result = await readLineWindow(
-        resolved,
+        source,
         displayPath,
         anchor.range.line_start,
         Math.min(span, budgetMaxLines),
         'symbolAnchor',
+        undefined,
+        extractKind,
       );
       if (charBudgetRemaining) {
         charBudgetRemaining.value = Math.max(0, charBudgetRemaining.value - result.content.length);
@@ -320,12 +413,13 @@ async function readSingle(
     const fallbackLine = anchor.fallbackLine ?? 1;
     const fallbackNote = `anchorSymbol "${req.anchorSymbol}" did not resolve (${anchor.reason}); showing line-range fallback.`;
     const result = await readLineWindow(
-      resolved,
+      source,
       displayPath,
       fallbackLine,
       Math.min(80, budgetMaxLines),
       'lineRangeFallback',
       fallbackNote,
+      extractKind,
     );
     if (charBudgetRemaining) {
       charBudgetRemaining.value = Math.max(0, charBudgetRemaining.value - result.content.length);
@@ -333,7 +427,7 @@ async function readSingle(
     return result;
   }
 
-  const lineCount = await countFileLines(resolved);
+  const lineCount = await countLinesFromSource(source);
   const totalLines = lineCount.lineCountOmitted ? undefined : lineCount.totalLines;
 
   if (
@@ -373,7 +467,7 @@ async function readSingle(
   if (wantsLineMode) {
     const startLine = resolveStartLine(req);
     const maxLines = resolveMaxLines(req, budgetMaxLines);
-    const result = await readLineWindow(resolved, displayPath, startLine, maxLines, 'lineRange');
+    const result = await readLineWindow(source, displayPath, startLine, maxLines, 'lineRange', undefined, extractKind);
     if (charBudgetRemaining) {
       if (result.content.length > charBudgetRemaining.value) {
         const allowed = result.content.slice(0, charBudgetRemaining.value);
@@ -390,7 +484,7 @@ async function readSingle(
     return result;
   }
 
-  const result = await readLineWindow(resolved, displayPath, 1, budgetMaxLines, 'lineRange');
+  const result = await readLineWindow(source, displayPath, 1, budgetMaxLines, 'lineRange', undefined, extractKind);
   if (charBudgetRemaining) {
     charBudgetRemaining.value = Math.max(0, charBudgetRemaining.value - result.content.length);
   }
@@ -476,9 +570,14 @@ async function executeBatchRead(
       continue;
     }
 
-    if (await isBinaryFile(pathResult.resolved)) {
-      const err = `Error: unsupported file type — ${pathResult.displayPath} (binary)`;
-      results.push({ path: pathResult.displayPath, status: 'error', content: err, error: err });
+    const lineSourceResult = await resolveLineSource(pathResult.resolved, pathResult.displayPath);
+    if (!lineSourceResult.ok) {
+      results.push({
+        path: pathResult.displayPath,
+        status: 'error',
+        content: lineSourceResult.error,
+        error: lineSourceResult.error,
+      });
       continue;
     }
 
@@ -487,9 +586,10 @@ async function executeBatchRead(
       item = await readSingle(req, MAX_MAX_LINES, charBudget);
     } else {
       item = await readFullFileWithinCharBudget(
-        pathResult.resolved,
+        lineSourceResult.source,
         pathResult.displayPath,
         charBudget,
+        lineSourceResult.extractKind,
       );
     }
 

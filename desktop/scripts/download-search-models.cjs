@@ -3,8 +3,7 @@
 'use strict';
 
 /**
- * Downloads YOLOv8 nano ONNX model and Tesseract English traineddata
- * into desktop/src/models/ if not already present.
+ * Downloads search/indexer ML assets into desktop/src/models/ if not already present.
  *
  * Usage:
  *   node scripts/download-search-models.cjs
@@ -20,6 +19,9 @@ const path = require('path');
 
 const MODELS_DIR = path.join(__dirname, '..', 'src', 'models');
 
+const PADDLE_BASE = 'https://media.githubusercontent.com/media/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models/main';
+const PADDLE_DICT_BASE = 'https://raw.githubusercontent.com/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models/main';
+
 const MODELS = [
   {
     name: 'yolox_nano.onnx',
@@ -27,9 +29,19 @@ const MODELS = [
     sizeMb: 4,
   },
   {
-    name: 'eng.traineddata',
-    url: 'https://github.com/tesseract-ocr/tessdata/raw/main/eng.traineddata',
-    sizeMb: 25,
+    name: 'PP-OCRv6_small_det.ort',
+    url: `${PADDLE_BASE}/detection/ort/PP-OCRv6_small_det.ort`,
+    sizeMb: 5,
+  },
+  {
+    name: 'PP-OCRv6_small_rec.ort',
+    url: `${PADDLE_BASE}/recognition/ort/PP-OCRv6_small_rec.ort`,
+    sizeMb: 22,
+  },
+  {
+    name: 'ppocrv6_dict.txt',
+    url: `${PADDLE_DICT_BASE}/recognition/ppocrv6_dict.txt`,
+    sizeMb: 1,
   },
 ];
 

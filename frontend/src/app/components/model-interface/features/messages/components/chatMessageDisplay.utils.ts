@@ -37,7 +37,7 @@ export function getLastTextEventIndex(events: MessageEvent[]): number {
 
 export function buildChatMessageDisplayBlocks(
     events: MessageEvent[],
-    options: { streaming: boolean },
+    _options: { streaming: boolean },
 ): ChatMessageDisplayBlock[] {
     if (events.length === 0) {
         return [];
@@ -58,12 +58,13 @@ export function buildChatMessageDisplayBlocks(
         }
 
         const endsWithLastTextEvent = lastBufferedTextEventIndex === lastTextEventIndex;
+        const needsFenceStabilization =
+            endsWithLastTextEvent && countFencedCodeBlocks(rawContent) % 2 === 1;
         blocks.push({
             type: 'text',
-            content:
-                options.streaming && endsWithLastTextEvent
-                    ? stabilizeStreamingMarkdown(rawContent)
-                    : rawContent,
+            content: needsFenceStabilization
+                ? stabilizeStreamingMarkdown(rawContent)
+                : rawContent,
             endsWithLastTextEvent,
         });
         lastBufferedTextEventIndex = -1;

@@ -1,4 +1,5 @@
 import type { ActiveCodeProjectSnapshot } from './active-code-project';
+import { syncCodeProjectToDesktop } from './sync-code-project-to-desktop';
 
 /**
  * Active chat's code-project scope (null = General — no project).
@@ -14,11 +15,13 @@ export function setChatProjectScopeId(
   chatProjectScopeId = projectId;
   if (!projectId) {
     chatProjectScopeSnapshot = null;
+    void syncCodeProjectToDesktop(null);
     return;
   }
   if (snapshot?.id === projectId) {
     chatProjectScopeSnapshot = snapshot;
   }
+  void syncCodeProjectToDesktop();
 }
 
 export function getChatProjectScopeId(): string | null {

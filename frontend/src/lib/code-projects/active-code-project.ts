@@ -1,3 +1,5 @@
+import { syncCodeProjectToDesktop } from './sync-code-project-to-desktop';
+
 const STORAGE_KEY = 'aigenius-active-code-project-v1';
 
 export type ActiveCodeProjectSnapshot = {
@@ -25,10 +27,12 @@ export function setActiveCodeProject(project: ActiveCodeProjectSnapshot | null):
   if (!project) {
     localStorage.removeItem(STORAGE_KEY);
     window.dispatchEvent(new CustomEvent('aigenius-active-code-project-changed'));
+    void syncCodeProjectToDesktop(null);
     return;
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
   window.dispatchEvent(new CustomEvent('aigenius-active-code-project-changed'));
+  void syncCodeProjectToDesktop(project);
 }
 
 export function subscribeActiveCodeProject(cb: () => void): () => void {

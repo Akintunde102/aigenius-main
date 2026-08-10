@@ -33,7 +33,7 @@ jest.mock('@/lib/api/auth-client', () => {
 
 import { authorizedFetch } from '@/lib/api/auth-client';
 import * as desktopRuntime from '@/lib/utils/desktop-runtime';
-import { accessModelStream } from '../access-model';
+import { accessModelStream, resetDelegatePostDedupeStateForTests } from '../access-model';
 
 const DELEGATE_ID = 'a1b2c3d4-e5f6-4789-a012-3456789abcde';
 const mockConfig = {
@@ -91,6 +91,7 @@ describe('accessModelStream desktop tool delegate', () => {
   const runLocalDesktopTool = jest.fn();
 
   beforeEach(() => {
+    resetDelegatePostDedupeStateForTests();
     desktopRuntime.resetDesktopRunnableBridgeCacheForTests();
     (desktopRuntime.resolveDesktopChatRequestContext as jest.Mock).mockResolvedValue(true);
     jest.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
@@ -197,6 +198,37 @@ describe('accessModelStream desktop tool delegate', () => {
         return { ok: true, status: 200, json: async () => ({ ok: true }) } as Response;
       }
       return sseResponse([`data: ${clientDelegateChunk()}`, 'data: [DONE]']);
+    });
+
+    await accessModelStream({
+      body: { messages: [{ role: 'user', content: 'test' }] },
+      options: { model: 'gpt-4' },
+      config: mockConfig as any,
+      onData: () => undefined,
+    });
+
+    expect(delegateAttempt).toBe(1);
+  });
+
+  it('dedupes concurrent delegate POSTs for the same delegate_id', async () => {
+    runLocalDesktopTool.mockResolvedValue({ ok: true, result: 'ok' });
+    (window as Window & { aigeniusDesktop?: object }).aigeniusDesktop = {
+      isDesktop: true,
+      runLocalDesktopTool,
+    };
+
+    let delegateAttempt = 0;
+    (authorizedFetch as jest.Mock).mockImplementation(async (url: string) => {
+      if (url.includes('/openai/v1/chat/desktop-tool-result')) {
+        delegateAttempt += 1;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        return { ok: true, status: 200, json: async () => ({ ok: true }) } as Response;
+      }
+      return sseResponse([
+        `data: ${clientDelegateChunk()}`,
+        `data: ${clientDelegateChunk()}`,
+        'data: [DONE]',
+      ]);
     });
 
     await accessModelStream({

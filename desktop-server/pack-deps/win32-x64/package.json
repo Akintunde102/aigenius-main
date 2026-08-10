@@ -23,10 +23,10 @@
     "mammoth": "^1.8.0",
     "onnxruntime-node": "^1.18.0",
     "pdf-parse": "^1.1.1",
+    "ppu-paddle-ocr": "^6.3.0",
     "sharp": "^0.33.4",
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.3",
-    "tesseract.js": "^5.1.0"
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
