@@ -2,6 +2,8 @@ import React from 'react';
 import { FiX, FiUser } from 'react-icons/fi';
 import { ActionButtons } from './ActionButtons';
 import { ChatControlsProps } from './types';
+import { ModelQuickPickDropdown } from './ModelQuickPickDropdown';
+import type { Model } from '@/app/components/model-interface/shared/types';
 
 // Left Controls Section Component
 const LeftControlsSection: React.FC<{
@@ -11,8 +13,12 @@ const LeftControlsSection: React.FC<{
     onAttachmentClick: () => void;
     streaming?: boolean;
     onStreamingToggle?: (enabled: boolean) => void;
-    selectedModel: any;
+    selectedModel: Model | null;
     onModelNameClick?: () => void;
+    onSelectModel?: (model: Model) => void;
+    quickPickModels?: Model[];
+    favoritesLoaded?: boolean;
+    onOpenFullModelPicker?: () => void;
     sidebarStyle: boolean;
     glisten: boolean;
     selectedPersonalityName?: string;
@@ -39,6 +45,10 @@ const LeftControlsSection: React.FC<{
     onStreamingToggle,
     selectedModel,
     onModelNameClick,
+    onSelectModel,
+    quickPickModels,
+    favoritesLoaded,
+    onOpenFullModelPicker,
     sidebarStyle,
     glisten,
     selectedPersonalityName,
@@ -61,30 +71,27 @@ const LeftControlsSection: React.FC<{
             <div className="flex items-center gap-2">
                 {/* Model Selection Button - hidden when a personality is active or explicitly hidden */}
                 {!selectedPersonalityName && !hideModelSelector && (
-                    selectedModel?.name ? (
-                        // Active model display - gray pill, subtle border, compact padding
+                    quickPickModels && onSelectModel && onOpenFullModelPicker ? (
+                        <ModelQuickPickDropdown
+                            disabled={disabled}
+                            mini={mini}
+                            selectedModel={selectedModel}
+                            quickPickModels={quickPickModels}
+                            favoritesLoaded={favoritesLoaded ?? true}
+                            onSelectModel={onSelectModel}
+                            onOpenFullPicker={onOpenFullModelPicker}
+                        />
+                    ) : (
                         <button
                             type="button"
                             onClick={onModelNameClick}
                             disabled={disabled || !onModelNameClick}
-                            className={`inline-flex items-center gap-2 rounded-full border text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 [border-color:var(--chat-composer-border)] [background-color:color-mix(in_srgb,var(--chat-composer-bg)_88%,transparent)] [color:var(--sidebar-muted-fg)] hover:[color:var(--sidebar-fg)] hover:[background-color:var(--chat-composer-bg)] ${mini ? 'px-1.5 py-0.5' : 'px-2 py-0.5'
-                                }`}
-                            title={`Model: ${selectedModel.name}`}
+                            className={`inline-flex items-center gap-2 rounded-full border text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 [border-color:var(--chat-composer-border)] [background-color:color-mix(in_srgb,var(--chat-composer-bg)_88%,transparent)] [color:var(--sidebar-muted-fg)] hover:[color:var(--sidebar-fg)] hover:[background-color:var(--chat-composer-bg)] ${mini ? 'px-1.5 py-0.5' : 'px-2 py-0.5'}`}
+                            title={selectedModel?.name ? `Model: ${selectedModel.name}` : 'Select model'}
                         >
                             <span className={`${mini ? 'text-[10px]' : 'text-xs'} font-medium truncate max-w-32`}>
-                                {selectedModel.name}
+                                {selectedModel?.name ?? 'Select model'}
                             </span>
-                        </button>
-                    ) : (
-                        // Inactive model button - gray pill
-                        <button
-                            type="button"
-                            onClick={onModelNameClick}
-                            disabled={disabled || !onModelNameClick}
-                            className="inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 [border-color:var(--chat-composer-border)] [background-color:color-mix(in_srgb,var(--chat-composer-bg)_88%,transparent)] [color:var(--chat-muted-fg)] hover:[color:var(--sidebar-fg)] hover:[background-color:var(--chat-composer-bg)]"
-                            title="Select model"
-                        >
-                            <span className="text-xs">Select model</span>
                         </button>
                     )
                 )}
@@ -236,6 +243,10 @@ export const ChatControls: React.FC<ChatControlsProps> = React.memo(({
     supportsFileUpload,
     selectedModel,
     onModelNameClick,
+    onSelectModel,
+    quickPickModels,
+    favoritesLoaded,
+    onOpenFullModelPicker,
     onAttachmentClick,
     sidebarStyle = false,
     streaming,
@@ -269,6 +280,10 @@ export const ChatControls: React.FC<ChatControlsProps> = React.memo(({
                     onStreamingToggle={onStreamingToggle}
                     selectedModel={selectedModel}
                     onModelNameClick={onModelNameClick}
+                    onSelectModel={onSelectModel}
+                    quickPickModels={quickPickModels}
+                    favoritesLoaded={favoritesLoaded}
+                    onOpenFullModelPicker={onOpenFullModelPicker}
                     sidebarStyle={sidebarStyle}
                     glisten={glisten}
                     selectedPersonalityName={selectedPersonalityName}

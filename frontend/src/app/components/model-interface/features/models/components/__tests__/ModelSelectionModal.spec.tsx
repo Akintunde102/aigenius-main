@@ -86,7 +86,7 @@ describe('ModelSelectionModal', () => {
     it('renders and switches between tabs', () => {
         render(<ModelSelectionModal {...defaultProps} />);
         
-        const favTab = screen.getByRole('button', { name: /Favorites/i });
+        const favTab = screen.getByRole('button', { name: /Quick picks/i });
         const allTab = screen.getByRole('button', { name: /All Models/i });
         
         expect(favTab).toBeInTheDocument();

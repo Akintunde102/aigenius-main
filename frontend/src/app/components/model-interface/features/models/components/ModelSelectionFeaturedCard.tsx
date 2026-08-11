@@ -1,7 +1,8 @@
 import React, { memo, useMemo } from 'react';
-import { FiBookmark, FiInfo, FiLayers } from 'react-icons/fi';
+import { FiInfo, FiLayers } from 'react-icons/fi';
 import { Model } from '@/app/components/model-interface/shared/types';
 import { formatNGN, hasExtraToolingCapability, getModelDisplayName } from '@/app/components/model-interface/shared/utils';
+import { ModelToggleSwitch } from '@/app/components/ChatBoxInput/ModelToggleSwitch';
 
 const ToolsCapabilityIcon = ({ size = 12, className = '' }: { size?: number; className?: string }) => (
     <FiLayers size={size} className={className} />
@@ -40,6 +41,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
 }: ModelSelectionFeaturedCardProps) {
     const supportsTools = hasExtraToolingCapability(model);
     const description = useMemo(() => getListDescription(model), [model]);
+    const displayName = getModelDisplayName(model);
 
     const nameClass = `truncate font-medium leading-tight text-gray-900 dark:text-zinc-100 ${isMobile ? 'text-[9px]' : 'text-[13px]'
         }`;
@@ -77,22 +79,9 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                 }
             }}
         >
-            <button
-                type="button"
-                className={`mt-0.5 flex shrink-0 items-center justify-center rounded-md border transition-colors ${isMobile ? 'p-0.5' : 'p-1'
-                    } ${isPinned ? 'border-yellow-300 bg-yellow-50 dark:border-yellow-600/60 dark:bg-yellow-950/35' : 'border-gray-200 bg-white dark:border-zinc-600 dark:bg-zinc-900'}`}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onTogglePin();
-                }}
-                title={isPinned ? 'Unpin model' : 'Pin model'}
-            >
-                <FiBookmark size={isMobile ? 12 : 14} fill={isPinned ? '#facc15' : 'none'} />
-            </button>
-
             <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-1.5">
-                    <span className={nameClass}>{getModelDisplayName(model)}</span>
+                    <span className={nameClass}>{displayName}</span>
                     {isSelected && (
                         <span
                             className={`shrink-0 font-medium ${isMobile ? 'text-[8px]' : 'text-[11px]'}`}
@@ -127,20 +116,27 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                 )}
             </div>
 
-            {onShowDetails && (
-                <button
-                    type="button"
-                    className={`mt-0.5 flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white transition-colors hover:border-gray-300 hover:bg-gray-50 dark:border-zinc-600 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:bg-zinc-800 ${isMobile ? 'p-0.5' : 'p-1'
-                        }`}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onShowDetails();
-                    }}
-                    title="More info"
-                >
-                    <FiInfo size={isMobile ? 12 : 14} />
-                </button>
-            )}
+            <div className="flex shrink-0 items-center gap-1.5">
+                {onShowDetails && (
+                    <button
+                        type="button"
+                        className={`flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white transition-colors hover:border-gray-300 hover:bg-gray-50 dark:border-zinc-600 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:bg-zinc-800 ${isMobile ? 'p-0.5' : 'p-1'
+                            }`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onShowDetails();
+                        }}
+                        title="More info"
+                    >
+                        <FiInfo size={isMobile ? 12 : 14} />
+                    </button>
+                )}
+                <ModelToggleSwitch
+                    checked={isPinned}
+                    onChange={onTogglePin}
+                    label={isPinned ? `Remove ${displayName} from quick picks` : `Add ${displayName} to quick picks`}
+                />
+            </div>
         </div>
     );
 });

@@ -1,4 +1,4 @@
-import React, { useCallback, type RefObject } from "react";
+import React, { useCallback, type RefObject, useMemo } from "react";
 import {
   MessageHandlers,
   ChatContainer,
@@ -7,6 +7,7 @@ import type { ChatMessage, Model, PendingOrphanReply } from "../shared/types";
 import type { ChatContainerHandle } from "../features/chat/components/ChatContainer";
 import type { FailedUploadEntry } from "../features/file-upload/hooks/useFileUpload";
 import type { AudioStatus } from "../features/chat/hooks/audioMode.utils";
+import { resolveQuickPickModelsForDisplay } from "../shared/constants/quickPickModels";
 import type {
   AttachmentIndexItem,
   UploadedFileEntry,
@@ -62,6 +63,9 @@ type Props = {
     React.SetStateAction<AttachmentIndexItem[]>
   >;
   setShowModelSelectionModal: (v: boolean) => void;
+  pinnedModelIds: string[];
+  favoritesLoaded: boolean;
+  onSelectModel: (model: Model) => void;
   setShowPersonalityModal: (v: boolean) => void;
   selectedPersonalityIconUrl: string | undefined;
   selectedPersonalityName: string | undefined;
@@ -136,6 +140,9 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   setUploadedFiles,
   setAttachmentIndex,
   setShowModelSelectionModal,
+  pinnedModelIds,
+  favoritesLoaded,
+  onSelectModel,
   setShowPersonalityModal,
   selectedPersonalityIconUrl,
   selectedPersonalityName,
@@ -188,6 +195,15 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
     [setUploadedFiles, setAttachmentIndex],
   );
 
+  const quickPickModels = useMemo(
+    () => resolveQuickPickModelsForDisplay(models, pinnedModelIds, favoritesLoaded),
+    [models, pinnedModelIds, favoritesLoaded],
+  );
+
+  const handleOpenFullModelPicker = useCallback(() => {
+    setShowModelSelectionModal(true);
+  }, [setShowModelSelectionModal]);
+
   return (
     <MessageHandlers
       chat={chat}
@@ -236,6 +252,10 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           onRemoveFailedUpload={onRemoveFailedUpload}
           onRemoveUploadedFile={handleRemoveUploadedFile}
           onModelNameClick={() => setShowModelSelectionModal(true)}
+          onSelectModel={onSelectModel}
+          quickPickModels={quickPickModels}
+          favoritesLoaded={favoritesLoaded}
+          onOpenFullModelPicker={handleOpenFullModelPicker}
           requestModelPick={requestModelPick}
           onPersonalityClick={() => setShowPersonalityModal(true)}
           selectedPersonalityIconUrl={selectedPersonalityIconUrl}

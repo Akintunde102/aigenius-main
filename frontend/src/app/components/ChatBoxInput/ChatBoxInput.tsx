@@ -32,6 +32,10 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     selectedModel,
     onModelChange,
     onModelNameClick,
+    onSelectModel,
+    quickPickModels,
+    favoritesLoaded,
+    onOpenFullModelPicker,
     placeholder = "How can I help you today?",
     responseInProgress = false,
     onStopGeneration,
@@ -524,6 +528,10 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                         supportsFileUpload={supportsFileUpload && !hideUpload}
                         selectedModel={selectedModel}
                         onModelNameClick={onModelNameClick}
+                        onSelectModel={onSelectModel}
+                        quickPickModels={quickPickModels}
+                        favoritesLoaded={favoritesLoaded}
+                        onOpenFullModelPicker={onOpenFullModelPicker}
                         onAttachmentClick={handleAttachmentClick}
                         sidebarStyle={sidebarStyle}
                         streaming={streaming}
