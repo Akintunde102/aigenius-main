@@ -3,10 +3,18 @@ import { Model } from "@/app/components/model-interface/shared/types";
 import { extractModalities } from "@/app/components/model-interface/shared/utils";
 import {
   fetchFavorites,
-  addFavorite,
-  removeFavorite,
   setFavorites,
 } from "@/app/components/model-interface/api/favoritesApi";
+import {
+  resolveDefaultQuickPickModelIds,
+  mergeDefaultsWithSavedQuickPicks,
+  mergeQuickPickIdsForDisplay,
+  shouldMigrateLegacyFavoritesToQuickPicks,
+  clearQuickPicksUserEmptied,
+  markQuickPicksUserEmptied,
+  readQuickPicksUserEmptied,
+  markQuickPicksDefaultsMerged,
+} from "@/app/components/model-interface/shared/constants/quickPickModels";
 
 export { SHOW_LEGACY_FILTERS } from "../constants";
 import type {
@@ -89,9 +97,24 @@ export function useUIState(models: Model[]) {
 
   // Ref to track current pinnedModelIds for stable callbacks
   const pinnedModelIdsRef = useRef<string[]>([]);
+  const modelsRef = useRef<Model[]>(models);
+  const favoritesLoadedRef = useRef(favoritesLoaded);
   useEffect(() => {
     pinnedModelIdsRef.current = pinnedModelIds;
   }, [pinnedModelIds]);
+  useEffect(() => {
+    modelsRef.current = models;
+  }, [models]);
+  useEffect(() => {
+    favoritesLoadedRef.current = favoritesLoaded;
+  }, [favoritesLoaded]);
+
+  const getEffectiveQuickPickIds = useCallback((): string[] => {
+    return mergeQuickPickIdsForDisplay(
+      modelsRef.current,
+      pinnedModelIdsRef.current,
+    );
+  }, []);
 
   // New filter/sort state (used when !SHOW_LEGACY_FILTERS)
   const [orderBy, setOrderBy] = useState<ModelOrderBy>("default");
@@ -132,23 +155,46 @@ export function useUIState(models: Model[]) {
       try {
         const { favorites, hasSeededFavorites } = await fetchFavorites();
 
-        // First-time user: never seeded favorites before → seed with featured models
+        // First-time user: seed quick-pick list with curated defaults (then featured fallbacks)
         if (!hasSeededFavorites) {
-          const featuredModelIds = models
-            .filter((m) => m.featured === true)
-            .map((m) => m.id);
+          const defaultQuickPickIds = resolveDefaultQuickPickModelIds(models);
 
-          if (featuredModelIds.length > 0) {
-            // Persist seeds to backend and apply locally
-            await setFavorites(featuredModelIds);
-            setPinnedModelIds(featuredModelIds);
+          if (defaultQuickPickIds.length > 0) {
+            await setFavorites(defaultQuickPickIds);
+            setPinnedModelIds(defaultQuickPickIds);
+            markQuickPicksDefaultsMerged();
           } else {
-            // No featured models either — explicitly set empty to mark backend as seeded
             await setFavorites([]);
             setPinnedModelIds([]);
           }
         } else {
-          setPinnedModelIds(favorites);
+          const userEmptied = readQuickPicksUserEmptied();
+
+          if (favorites.length === 0 && !userEmptied) {
+            const defaultQuickPickIds = resolveDefaultQuickPickModelIds(models);
+            if (defaultQuickPickIds.length > 0) {
+              await setFavorites(defaultQuickPickIds);
+              setPinnedModelIds(defaultQuickPickIds);
+              markQuickPicksDefaultsMerged();
+            } else {
+              setPinnedModelIds([]);
+            }
+          } else if (
+            favorites.length > 0 &&
+            !userEmptied &&
+            shouldMigrateLegacyFavoritesToQuickPicks(models, favorites)
+          ) {
+            const merged = mergeDefaultsWithSavedQuickPicks(models, favorites);
+            await setFavorites(merged);
+            setPinnedModelIds(merged);
+            markQuickPicksDefaultsMerged();
+          } else {
+            setPinnedModelIds(favorites);
+            if (favorites.length > 0) {
+              clearQuickPicksUserEmptied();
+              markQuickPicksDefaultsMerged();
+            }
+          }
         }
       } catch (error) {
         console.error("Failed to load favorites:", error);
@@ -190,33 +236,43 @@ export function useUIState(models: Model[]) {
     }
   }, [selectedOutputModalities]);
 
-  const isModelPinned = useCallback((id: string) => pinnedModelIds.includes(id), [pinnedModelIds]);
+  const isModelPinned = useCallback(
+    (id: string) =>
+      mergeQuickPickIdsForDisplay(models, pinnedModelIds).includes(id),
+    [pinnedModelIds, models],
+  );
 
   const togglePinModel = useCallback(
     async (id: string) => {
-      // Use ref to get current value without creating dependency
-      const isCurrentlyPinned = pinnedModelIdsRef.current.includes(id);
+      const effectivePinned = getEffectiveQuickPickIds();
+      const isCurrentlyPinned = effectivePinned.includes(id);
 
-      // Optimistic update
-      setPinnedModelIds((prev) =>
-        isCurrentlyPinned ? prev.filter((mid) => mid !== id) : [...prev, id],
-      );
+      const nextPinned = isCurrentlyPinned
+        ? effectivePinned.filter((mid) => mid !== id)
+        : [...effectivePinned, id];
+
+      setPinnedModelIds(nextPinned);
+
+      if (nextPinned.length === 0) {
+        markQuickPicksUserEmptied();
+      } else {
+        clearQuickPicksUserEmptied();
+      }
 
       try {
-        if (isCurrentlyPinned) {
-          await removeFavorite(id);
-        } else {
-          await addFavorite(id);
-        }
+        await setFavorites(nextPinned);
+        markQuickPicksDefaultsMerged();
       } catch (error) {
-        // Rollback on error
-        setPinnedModelIds((prev) =>
-          isCurrentlyPinned ? [...prev, id] : prev.filter((mid) => mid !== id),
-        );
+        setPinnedModelIds(pinnedModelIdsRef.current);
+        if (pinnedModelIdsRef.current.length === 0) {
+          markQuickPicksUserEmptied();
+        } else {
+          clearQuickPicksUserEmptied();
+        }
         console.error("Failed to sync favorite to backend:", error);
       }
     },
-    [], // No dependencies - uses ref for current value
+    [getEffectiveQuickPickIds],
   );
 
   return {

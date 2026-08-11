@@ -242,7 +242,7 @@ export const ModelSelectionModal = React.memo(({
     return sections;
   }, [filteredMainModels, filteredOtherModels, previewedRecentModel]);
 
-  // Reset tab when the modal opens so "All Models" is ready immediately (no empty first paint).
+  // Set initial tab once when the modal opens — not when quick picks change mid-session.
   useEffect(() => {
     if (!isOpen) {
       hasAutoSwitchedRef.current = false;
@@ -253,15 +253,19 @@ export const ModelSelectionModal = React.memo(({
       return;
     }
 
+    if (hasAutoSwitchedRef.current) {
+      return;
+    }
+
+    hasAutoSwitchedRef.current = true;
+
     if (pinnedModelIds.length > 0) {
       setActiveTab("favorites");
-      setShowFilterSortRow(false);
     } else {
       setActiveTab("all");
-      setShowFilterSortRow(true);
-      hasAutoSwitchedRef.current = true;
     }
-  }, [isOpen, favoritesLoaded, pinnedModelIds.length, setActiveTab]);
+    setShowFilterSortRow(true);
+  }, [isOpen, favoritesLoaded, setActiveTab]);
 
   // Fallback: auto-switch to "all" if favorites are empty while still on favorites tab
   useEffect(() => {
@@ -341,14 +345,14 @@ export const ModelSelectionModal = React.memo(({
             <div className="inline-flex flex-shrink-0 overflow-hidden rounded-lg border" style={{ borderColor: "var(--modal-border)" }}>
               <button
                 type="button"
-                onClick={() => { setActiveTab("favorites"); setShowFilterSortRow(false); }}
+                onClick={() => setActiveTab("favorites")}
                 className={`app-tab-pill ${activeTab === "favorites" ? "app-tab-pill--active" : ""}`}
               >
-                Favorites
+                Quick picks
               </button>
               <button
                 type="button"
-                onClick={() => { setActiveTab("all"); setShowFilterSortRow(true); }}
+                onClick={() => setActiveTab("all")}
                 className={`app-tab-pill border-l ${activeTab === "all" ? "app-tab-pill--active" : ""}`}
                 style={{ borderColor: "var(--modal-border)" }}
               >
@@ -357,7 +361,7 @@ export const ModelSelectionModal = React.memo(({
               {isAigeniusDesktopRuntime() && (
                 <button
                   type="button"
-                  onClick={() => { setActiveTab("ollama"); setShowFilterSortRow(true); }}
+                  onClick={() => setActiveTab("ollama")}
                   className={`app-tab-pill border-l ${activeTab === "ollama" ? "app-tab-pill--active" : ""}`}
                   style={{ borderColor: "var(--modal-border)" }}
                 >
