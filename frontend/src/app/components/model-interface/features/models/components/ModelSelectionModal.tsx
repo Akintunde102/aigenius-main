@@ -14,6 +14,10 @@ import { RecentModelChips } from "./RecentModelChips";
 import { ModelSelectionGrid } from "./ModelSelectionGrid";
 import { FavoritesEmptyState } from "./FavoritesEmptyState";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
+import {
+  isActiveModelOutsideQuickPicks,
+  isModelInCatalog,
+} from "@/app/components/model-interface/shared/constants/quickPickModels";
 
 interface ModelSelectionModalProps {
   isOpen: boolean;
@@ -242,6 +246,29 @@ export const ModelSelectionModal = React.memo(({
     return sections;
   }, [filteredMainModels, filteredOtherModels, previewedRecentModel]);
 
+  const favoritesGridSections = useMemo(() => {
+    if (activeTab !== "favorites") return undefined;
+
+    const sections: { title: string; models: Model[] }[] = [];
+    const showActiveOutside =
+      selectedModel != null &&
+      isModelInCatalog(models, selectedModel.id) &&
+      isActiveModelOutsideQuickPicks(selectedModel, pinnedModelIds);
+
+    if (showActiveOutside && selectedModel) {
+      sections.push({ title: "Currently in use", models: [selectedModel] });
+    }
+
+    if (favoritesSorted.length > 0) {
+      sections.push({
+        title: showActiveOutside ? "Quick picks" : "",
+        models: favoritesSorted,
+      });
+    }
+
+    return sections.length > 0 ? sections : undefined;
+  }, [activeTab, selectedModel, pinnedModelIds, models, favoritesSorted]);
+
   // Set initial tab once when the modal opens — not when quick picks change mid-session.
   useEffect(() => {
     if (!isOpen) {
@@ -415,18 +442,28 @@ export const ModelSelectionModal = React.memo(({
               parentRef={parentRef}
               listKey={activeTab}
               models={
-                activeTab === "favorites" ? favoritesSorted :
-                  activeTab === "ollama" ? ollamaModelsSorted :
-                    undefined
+                activeTab === "favorites"
+                  ? favoritesGridSections
+                    ? undefined
+                    : favoritesSorted
+                  : activeTab === "ollama"
+                    ? ollamaModelsSorted
+                    : undefined
               }
               sections={
                 activeTab === "all"
                   ? allModelSections
+                  : activeTab === "favorites"
+                    ? favoritesGridSections
+                    : undefined
+              }
+              emptyState={
+                activeTab === "favorites" && !favoritesGridSections
+                  ? (
+                    <FavoritesEmptyState onBrowse={() => setActiveTab("all")} />
+                  )
                   : undefined
               }
-              emptyState={activeTab === "favorites" ? (
-                <FavoritesEmptyState onBrowse={() => setActiveTab("all")} />
-              ) : undefined}
               {...sharedCardProps}
             />
             <div className={`${isMobile ? "h-3" : "h-6"}`} />

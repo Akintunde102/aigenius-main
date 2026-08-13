@@ -7,6 +7,8 @@ import {
   mergeDefaultsWithSavedQuickPicks,
   shouldMigrateLegacyFavoritesToQuickPicks,
   mapQuickPickModels,
+  reconcileActiveModelSelection,
+  isActiveModelOutsideQuickPicks,
 } from "../quickPickModels";
 
 describe("quickPickModels", () => {
@@ -80,5 +82,43 @@ describe("quickPickModels", () => {
 
   it("PREFERRED_QUICK_PICK_MODEL_IDS includes free tier first", () => {
     expect(PREFERRED_QUICK_PICK_MODEL_IDS[0]).toBe("openrouter/free");
+  });
+
+  it("reconcileActiveModelSelection keeps valid active model", () => {
+    const active = models[3];
+    const { model, replacedUnavailable } = reconcileActiveModelSelection(
+      models,
+      active,
+      ["openrouter/free"],
+      true,
+    );
+    expect(replacedUnavailable).toBe(false);
+    expect(model?.id).toBe("other/model");
+  });
+
+  it("reconcileActiveModelSelection falls back when active model missing from catalog", () => {
+    const stale = {
+      id: "openai/gpt-3.5-turbo",
+      name: "GPT-3.5",
+      description: "",
+      context_length: 0,
+    };
+    const { model, replacedUnavailable } = reconcileActiveModelSelection(
+      models,
+      stale,
+      ["openrouter/free", "other/model"],
+      true,
+    );
+    expect(replacedUnavailable).toBe(true);
+    expect(model?.id).toBe("openrouter/free");
+  });
+
+  it("isActiveModelOutsideQuickPicks detects models not in quick pick ids", () => {
+    expect(
+      isActiveModelOutsideQuickPicks(models[3], ["openrouter/free"]),
+    ).toBe(true);
+    expect(
+      isActiveModelOutsideQuickPicks(models[0], ["openrouter/free"]),
+    ).toBe(false);
   });
 });

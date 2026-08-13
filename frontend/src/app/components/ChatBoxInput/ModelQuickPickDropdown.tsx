@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FiCheck, FiChevronDown, FiPlus } from "react-icons/fi";
 import type { Model } from "@/app/components/model-interface/shared/types";
@@ -78,9 +78,19 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const displayName = selectedModel
-    ? getModelDisplayName(selectedModel)
+  const displayModel = useMemo(() => {
+    if (!selectedModel) return null;
+    return quickPickModels.find((m) => m.id === selectedModel.id) ?? selectedModel;
+  }, [selectedModel, quickPickModels]);
+
+  const displayName = displayModel
+    ? getModelDisplayName(displayModel)
     : "Select model";
+
+  /** Active model is not listed in the dropdown menu (e.g. toggled off quick picks). */
+  const activeOutsideQuickPicks =
+    selectedModel != null &&
+    !quickPickModels.some((m) => m.id === selectedModel.id);
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -113,7 +123,7 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
       requestAnimationFrame(run);
     });
     return () => cancelAnimationFrame(raf1);
-  }, [open, quickPickModels.length, favoritesLoaded]);
+  }, [open, quickPickModels.length, favoritesLoaded, activeOutsideQuickPicks, selectedModel?.id]);
 
   useEffect(() => {
     if (!open) return;
@@ -184,37 +194,75 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
             <div className="px-3 py-2 text-xs [color:var(--chat-muted-fg)]">
               Loading models…
             </div>
-          ) : quickPickModels.length === 0 ? (
+          ) : activeOutsideQuickPicks && selectedModel ? (
+            <>
+              <div className="px-2.5 pt-1 pb-0.5 text-[10px] font-medium uppercase tracking-wide [color:var(--chat-muted-fg)]">
+                Current model
+              </div>
+              <button
+                type="button"
+                role="option"
+                aria-selected
+                onClick={() => handleSelect(selectedModel)}
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs font-medium transition-colors hover:[background-color:color-mix(in_srgb,var(--chat-composer-border)_35%,transparent)]"
+              >
+                <span className="min-w-0 flex-1 truncate">
+                  {getModelDisplayName(selectedModel)}
+                </span>
+                <FiCheck
+                  size={14}
+                  className="shrink-0"
+                  style={{ color: "var(--chat-accent)" }}
+                  aria-hidden
+                />
+              </button>
+              {quickPickModels.length > 0 ? (
+                <div
+                  className="mx-2.5 my-1 border-t"
+                  style={{ borderColor: "var(--chat-composer-border)" }}
+                />
+              ) : null}
+            </>
+          ) : null}
+
+          {!favoritesLoaded ? null : quickPickModels.length === 0 && !activeOutsideQuickPicks ? (
             <div className="px-3 py-2 text-xs [color:var(--chat-muted-fg)]">
               No models in your quick picks yet.
             </div>
-          ) : (
-            quickPickModels.map((model) => {
-              const isActive = selectedModel?.id === model.id;
-              return (
-                <button
-                  key={model.id}
-                  type="button"
-                  role="option"
-                  aria-selected={isActive}
-                  onClick={() => handleSelect(model)}
+          ) : quickPickModels.length > 0 ? (
+            <>
+              {activeOutsideQuickPicks ? (
+                <div className="px-2.5 pt-0.5 pb-0.5 text-[10px] font-medium uppercase tracking-wide [color:var(--chat-muted-fg)]">
+                  Quick picks
+                </div>
+              ) : null}
+              {quickPickModels.map((model) => {
+                const isActive = selectedModel?.id === model.id;
+                return (
+                  <button
+                    key={model.id}
+                    type="button"
+                    role="option"
+                    aria-selected={isActive}
+                    onClick={() => handleSelect(model)}
                     className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:[background-color:color-mix(in_srgb,var(--chat-composer-border)_35%,transparent)] ${isActive ? "font-medium" : ""}`}
-                >
-                  <span className="min-w-0 flex-1 truncate">
-                    {getModelDisplayName(model)}
-                  </span>
-                  {isActive && (
-                    <FiCheck
-                      size={14}
-                      className="shrink-0"
-                      style={{ color: "var(--chat-accent)" }}
-                      aria-hidden
-                    />
-                  )}
-                </button>
-              );
-            })
-          )}
+                  >
+                    <span className="min-w-0 flex-1 truncate">
+                      {getModelDisplayName(model)}
+                    </span>
+                    {isActive && (
+                      <FiCheck
+                        size={14}
+                        className="shrink-0"
+                        style={{ color: "var(--chat-accent)" }}
+                        aria-hidden
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </>
+          ) : null}
         </div>
 
         <div

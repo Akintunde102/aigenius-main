@@ -48,6 +48,7 @@ export default function DesktopLoginPage() {
   const didSessionRedirectRef = useRef(false);
   const [storedFirstName, setStoredFirstName] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -179,19 +180,27 @@ export default function DesktopLoginPage() {
                       if (!window.aigeniusDesktop?.startWebSignIn) {
                         return;
                       }
+                      setAuthError(null);
                       const res = await window.aigeniusDesktop.startWebSignIn();
-                      if (res?.token) {
-                        const ok = await completeDesktopOAuthSession(res.token);
-                        if (!ok) {
-                          return;
-                        }
-                        syncAuthSessionCookiesFromStorage();
-                        const target = resolveAuthenticatedDesktopShellRedirect(
-                          pathname,
-                          window.location.search,
+                      if (!res?.token) {
+                        setAuthError(
+                          "Browser sign-in did not complete. Finish Google sign-in in your browser, then try again.",
                         );
-                        window.location.replace(target);
+                        return;
                       }
+                      const ok = await completeDesktopOAuthSession(res.token);
+                      if (!ok) {
+                        setAuthError(
+                          "Sign-in succeeded in the browser but the desktop app could not start your session. Check that the API is running and try again.",
+                        );
+                        return;
+                      }
+                      syncAuthSessionCookiesFromStorage();
+                      const target = resolveAuthenticatedDesktopShellRedirect(
+                        pathname,
+                        window.location.search,
+                      );
+                      window.location.replace(target);
                     }}
                     className={cn(
                       "flex h-14 w-full items-center justify-center gap-3 rounded-xl border border-white/[0.12] bg-white/[0.03] text-base font-medium text-zinc-100 backdrop-blur transition hover:border-cyan-400/40 hover:bg-white/[0.06] active:scale-[0.99]",
@@ -204,6 +213,12 @@ export default function DesktopLoginPage() {
                     Sign in with Browser
                   </motion.button>
                 </div>
+
+                {authError ? (
+                  <p className="relative mt-4 text-center text-sm text-rose-300" role="alert">
+                    {authError}
+                  </p>
+                ) : null}
 
                 <motion.p
                   variants={reduce ? undefined : fadeUp}
