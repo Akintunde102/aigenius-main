@@ -157,3 +157,67 @@ export function resolveQuickPickModelsForDisplay(
     resolveQuickPickModelIdsForDisplay(models, savedIds, favoritesLoaded),
   );
 }
+
+export function isModelInCatalog(models: Model[], modelId: string): boolean {
+  return models.some((m) => m.id === modelId);
+}
+
+/**
+ * First sensible active model when the current choice is missing from the catalog.
+ */
+export function resolveFallbackActiveModel(
+  models: Model[],
+  savedIds: string[],
+  favoritesLoaded: boolean,
+): Model | null {
+  if (models.length === 0) return null;
+
+  const displayIds = resolveQuickPickModelIdsForDisplay(
+    models,
+    savedIds,
+    favoritesLoaded,
+  );
+  for (const id of displayIds) {
+    const match = models.find((m) => m.id === id);
+    if (match) return match;
+  }
+
+  for (const id of resolveDefaultQuickPickModelIds(models)) {
+    const match = models.find((m) => m.id === id);
+    if (match) return match;
+  }
+
+  return models[0] ?? null;
+}
+
+/**
+ * Keeps a valid catalog model as active; replaces only when the id is unavailable.
+ */
+export function reconcileActiveModelSelection(
+  models: Model[],
+  active: Model | null,
+  savedIds: string[],
+  favoritesLoaded: boolean,
+): { model: Model | null; replacedUnavailable: boolean } {
+  if (!active) {
+    return { model: null, replacedUnavailable: false };
+  }
+
+  if (isModelInCatalog(models, active.id)) {
+    return { model: active, replacedUnavailable: false };
+  }
+
+  const fallback = resolveFallbackActiveModel(models, savedIds, favoritesLoaded);
+  return {
+    model: fallback,
+    replacedUnavailable: fallback != null,
+  };
+}
+
+export function isActiveModelOutsideQuickPicks(
+  active: Model | null,
+  quickPickIds: string[],
+): boolean {
+  if (!active) return false;
+  return !quickPickIds.includes(active.id);
+}

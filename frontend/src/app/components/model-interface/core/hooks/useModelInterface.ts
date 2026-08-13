@@ -41,6 +41,10 @@ import {
 } from "@/lib/calls/model-chat-conversation";
 import { resolveViewSessionId } from "../../conversation/conversationViewSession";
 import { applyChatProjectScopeFromSession } from "@/lib/code-projects/apply-chat-project-scope";
+import {
+  reconcileActiveModelSelection,
+} from "@/app/components/model-interface/shared/constants/quickPickModels";
+import { getModelDisplayName } from "@/app/components/model-interface/shared/utils";
 
 export function useModelInterface(options?: {
   onInsufficientFunds?: () => void;
@@ -348,6 +352,45 @@ export function useModelInterface(options?: {
     }
     toggleSTT();
   }, [isAudioMode, toggleAudioMode, toggleSTT]);
+
+  const unavailableActiveModelNotifiedRef = useRef(false);
+
+  // Replace active model only when it left the catalog (deprecated / removed).
+  useEffect(() => {
+    if (modelsLoading || models.length === 0 || !selectedModel) return;
+
+    const { model, replacedUnavailable } = reconcileActiveModelSelection(
+      models,
+      selectedModel,
+      pinnedModelIds,
+      favoritesLoaded,
+    );
+
+    if (!replacedUnavailable || !model || model.id === selectedModel.id) {
+      return;
+    }
+
+    setSelectedModel(model);
+
+    if (!unavailableActiveModelNotifiedRef.current) {
+      unavailableActiveModelNotifiedRef.current = true;
+      const previousName = getModelDisplayName(selectedModel);
+      const nextName = getModelDisplayName(model);
+      import("react-hot-toast").then(({ toast }) => {
+        toast(
+          `${previousName} is no longer available. Switched to ${nextName}.`,
+          { duration: 5000 },
+        );
+      }).catch(() => {});
+    }
+  }, [
+    models,
+    modelsLoading,
+    selectedModel,
+    pinnedModelIds,
+    favoritesLoaded,
+    setSelectedModel,
+  ]);
 
   // Session switching
   const { switchToSession, createAndSwitchToNewSession, isSessionActive } =

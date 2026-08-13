@@ -19,8 +19,33 @@ const MAX_CRASH_RETRIES = 3;
 
 function resolveLocalBin(name) {
   const ext = process.platform === 'win32' ? '.cmd' : '';
-  const candidate = path.join(desktopRoot, 'node_modules', '.bin', name + ext);
-  return fs.existsSync(candidate) ? candidate : name;
+  const candidates = [
+    path.join(desktopRoot, 'node_modules', '.bin', name + ext),
+    path.join(desktopRoot, '..', 'node_modules', '.bin', name + ext),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return name;
+}
+
+function resolveElectronLaunch() {
+  const bin = resolveLocalBin('electron');
+  if (bin !== 'electron') {
+    return { command: bin, args: ['.'] };
+  }
+
+  const cliCandidates = [
+    path.join(desktopRoot, 'node_modules', 'electron', 'cli.js'),
+    path.join(desktopRoot, '..', 'node_modules', 'electron', 'cli.js'),
+  ];
+  for (const cli of cliCandidates) {
+    if (fs.existsSync(cli)) {
+      return { command: process.execPath, args: [cli, '.'] };
+    }
+  }
+
+  return null;
 }
 
 function runSync(label, args) {
@@ -37,14 +62,24 @@ function runSync(label, args) {
 }
 
 function runElectron() {
-  const electronBin = resolveLocalBin('electron');
+  const launch = resolveElectronLaunch();
+  if (!launch) {
+    console.error(
+      '[dev-tilt] Electron not found. From client/: yarn install && cd desktop && npm install',
+    );
+    console.error(
+      '[dev-tilt] Then: node scripts/ensure-electron-dist.cjs',
+    );
+    return Promise.resolve(1);
+  }
+
   const env = {
     ...process.env,
     ELECTRON_DISABLE_SANDBOX: '1',
   };
 
   return new Promise((resolve) => {
-    const child = spawn(electronBin, ['.'], {
+    const child = spawn(launch.command, launch.args, {
       cwd: desktopRoot,
       stdio: 'inherit',
       env,

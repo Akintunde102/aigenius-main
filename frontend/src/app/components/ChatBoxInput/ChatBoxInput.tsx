@@ -4,6 +4,7 @@ import { UploadProgressBar } from './UploadProgressBar';
 import { ChatTextarea } from './ChatTextarea';
 import { ChatControls } from './ChatControls';
 import { ChatBoxInputProps } from './types';
+import type { Model } from '@/app/components/model-interface/shared/types';
 import ChatBoxStyles from './components/ChatBoxStyles';
 import { useFileUpload, PendingFile } from './hooks/useFileUpload';
 import { useInputState } from './hooks/useInputState';
@@ -80,6 +81,14 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
 
     // Custom hooks
     const isPc = useIsPc();
+
+    const handleQuickPickSelect = useCallback(
+        (model: Model) => {
+            onSelectModel?.(model);
+            onModelChange?.(model);
+        },
+        [onSelectModel, onModelChange],
+    );
     const glisten = useGlistenEffect();
     const { inputValue, handleInputChange, clearInput, flushInputToParent } = useInputState({
         externalInputValue,
@@ -528,7 +537,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                         supportsFileUpload={supportsFileUpload && !hideUpload}
                         selectedModel={selectedModel}
                         onModelNameClick={onModelNameClick}
-                        onSelectModel={onSelectModel}
+                        onSelectModel={handleQuickPickSelect}
                         quickPickModels={quickPickModels}
                         favoritesLoaded={favoritesLoaded}
                         onOpenFullModelPicker={onOpenFullModelPicker}
@@ -587,9 +596,14 @@ export default React.memo(ChatBoxInput, (prevProps, nextProps) => {
         prevProps.audioStatus === nextProps.audioStatus &&
         prevProps.audioTranscription === nextProps.audioTranscription &&
         prevProps.audioNotice === nextProps.audioNotice &&
-        prevProps.selectedModel === nextProps.selectedModel &&
+        prevProps.selectedModel?.id === nextProps.selectedModel?.id &&
         prevProps.selectedPersonalityName === nextProps.selectedPersonalityName &&
         prevProps.streaming === nextProps.streaming &&
+        prevProps.onSelectModel === nextProps.onSelectModel &&
+        prevProps.onModelNameClick === nextProps.onModelNameClick &&
+        prevProps.onOpenFullModelPicker === nextProps.onOpenFullModelPicker &&
+        prevProps.favoritesLoaded === nextProps.favoritesLoaded &&
+        prevProps.quickPickModels === nextProps.quickPickModels &&
         prevProps.sidebarStyle === nextProps.sidebarStyle &&
         prevProps.compact === nextProps.compact &&
         prevProps.mini === nextProps.mini &&

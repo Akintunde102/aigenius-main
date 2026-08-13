@@ -399,7 +399,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         onAttachmentMenuRequest={onAttachmentMenuRequest}
                         models={models}
                         selectedModel={selectedModel!}
-                        onModelChange={() => { }}
+                        onModelChange={(model) => onSelectModel?.(model)}
                         placeholder="Type..."
                         responseInProgress={responseInProgress}
                         onStopGeneration={onStopGeneration}

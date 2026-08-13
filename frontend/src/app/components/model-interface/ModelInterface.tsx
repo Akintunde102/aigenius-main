@@ -153,7 +153,22 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
   const { chatEndRef, chatAreaRef } = refs;
   const { currentChatCostUSD, currentChatCostNaira } = computed;
   const { switchToSession, isSessionActive, project } = sessionState;
-  const { isAudioMode, isSTTActive, isDictationTranscribing, audioTranscription, audioStatus, audioNotice, audioVolume, handleAudioModeToggle, isMiniMode, handleMiniModeToggle, handleStartSTT, analyzer } = audioState;
+  const {
+    isAudioMode,
+    isSTTActive,
+    isDictationTranscribing,
+    audioTranscription,
+    audioStatus,
+    audioNotice,
+    audioVolume,
+    handleAudioModeToggle,
+    isMiniMode,
+    handleMiniModeToggle,
+    handleStartSTT,
+    handleCancelSTT,
+    handleConfirmSTT,
+    analyzer,
+  } = audioState;
   const { handleSend, handleStop, handleSave, handleInsertSaved, handleRemoveSaved } = actions;
 
   const chatContainerRef = useRef<ChatContainerHandle | null>(null);
@@ -530,7 +545,22 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
       setShowModelSelectionModal(false);
       return;
     }
-    setSelectedModel(model);
+
+    const resolved = model
+      ? models.find((m) => m.id === model.id) ?? model
+      : null;
+
+    setSelectedModel(resolved);
+
+    if (resolved && currentSessionId) {
+      setChatHistory((prev) =>
+        prev.map((session) =>
+          session.id === currentSessionId
+            ? { ...session, modelId: resolved.id }
+            : session,
+        ),
+      );
+    }
   };
 
   const isWorkspaceBootstrapping =
@@ -751,6 +781,8 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     onAudioModeToggle={handleAudioModeToggle}
                     isAudioMode={isAudioMode}
                     onStartSTT={handleStartSTT}
+                    onCancelSTT={handleCancelSTT}
+                    onConfirmSTT={handleConfirmSTT}
                     isSTTActive={isSTTActive}
                     isDictationTranscribing={isDictationTranscribing}
                     audioTranscription={audioTranscription}

@@ -41,6 +41,7 @@ import os from 'os';
 import crypto from 'crypto';
 import { resolveFrontendPort } from './frontend-port';
 import { DEV_LOOPBACK_HOST, loopbackHttpUrl } from './loopback-host';
+import { resolveUpstreamApiUrl as resolveDesktopUpstreamApiUrl } from './resolve-upstream-api-url';
 import { setActiveCodeProjectIndex } from './active-code-project';
 import { refreshProjectArchitectureMemory } from './project-architecture-memory';
 import { setMainActiveEditor } from './active-editor-main';
@@ -306,32 +307,11 @@ function desktopServerEntry(): string {
   return path.join(desktopServerDir(), 'dist', 'index.js');
 }
 
-function readPackagedRuntimeConfig(): { upstreamApiUrl?: string } {
-  if (!app.isPackaged) {
-    return {};
-  }
-  try {
-    const configPath = path.join(process.resourcesPath, 'package-runtime.json');
-    if (!fs.existsSync(configPath)) {
-      return {};
-    }
-    const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8')) as { upstreamApiUrl?: string };
-    return typeof parsed === 'object' && parsed !== null ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
 function resolveUpstreamApiUrl(): string {
-  const fromEnv = process.env.AIGENIUS_UPSTREAM_API_URL?.trim();
-  if (fromEnv) {
-    return fromEnv;
-  }
-  const fromPackage = readPackagedRuntimeConfig().upstreamApiUrl?.trim();
-  if (fromPackage) {
-    return fromPackage;
-  }
-  return 'http://localhost:8000';
+  return resolveDesktopUpstreamApiUrl({
+    desktopRoot: path.join(__dirname, '..'),
+    packagedResourcesPath: app.isPackaged ? process.resourcesPath : undefined,
+  });
 }
 
 function nextStandaloneDir(): string {

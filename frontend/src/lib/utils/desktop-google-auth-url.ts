@@ -1,6 +1,18 @@
 const DESKTOP_API_ROOT_SESSION_KEY = 'desktop_api_root';
 
+/** Ignore legacy desktop default API roots that break Tilt dev OAuth. */
+export function shouldPersistDesktopApiRoot(apiRoot: string): boolean {
+  const trimmed = apiRoot.trim().replace(/\/+$/, '');
+  if (!trimmed) {
+    return false;
+  }
+  return trimmed !== 'http://localhost:8000' && trimmed !== 'http://127.0.0.1:8000';
+}
+
 export function storeDesktopApiRoot(apiRoot: string): void {
+  if (!shouldPersistDesktopApiRoot(apiRoot)) {
+    return;
+  }
   const trimmed = apiRoot.trim().replace(/\/+$/, '');
   if (trimmed) {
     sessionStorage.setItem(DESKTOP_API_ROOT_SESSION_KEY, trimmed);
