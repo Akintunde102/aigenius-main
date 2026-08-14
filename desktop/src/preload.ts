@@ -282,6 +282,12 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     ipcRenderer.invoke('web-signin') as Promise<{ token: string } | null>,
   startOAuthSignIn: (options?: { provider?: 'google' }): Promise<{ token: string } | null> =>
     ipcRenderer.invoke('start-oauth-signin', options) as Promise<{ token: string } | null>,
+  getDesktopRefreshToken: (): Promise<string | null> =>
+    ipcRenderer.invoke('get-desktop-refresh-token') as Promise<string | null>,
+  setDesktopRefreshToken: (token: string): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke('set-desktop-refresh-token', token) as Promise<{ ok: boolean }>,
+  clearDesktopAuthSecrets: (): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke('clear-desktop-auth-secrets') as Promise<{ ok: boolean }>,
   openFile: (path: string): Promise<{ ok: boolean; error: string }> =>
     ipcRenderer.invoke('open-file-path', path) as Promise<{ ok: boolean; error: string }>,
   revealFileInFolder: (path: string): Promise<{ ok: boolean; error?: string }> =>

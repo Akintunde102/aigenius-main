@@ -7,6 +7,7 @@ import {
 import { LINKS } from '@/lib/links';
 import { getLoggedUserToken } from '@/lib/calls/get-token';
 import { canUseHttpOnlyRefreshCookie } from '@/lib/utils/auth-session';
+import { canUseDesktopStoredRefreshToken } from '@/lib/utils/desktop-auth-refresh';
 import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
 import { createServerCall } from 'servercall';
 import { isSuccessfulServerResponseBody, normalizeServerResponseBody } from '@/servercall/response-body';
@@ -117,7 +118,7 @@ async function executeAuthorizedServerCall(
         }
 
         if (allowRetry && isAuthorizationFailure(error)) {
-            if (canUseHttpOnlyRefreshCookie()) {
+            if (canUseHttpOnlyRefreshCookie() || canUseDesktopStoredRefreshToken()) {
                 try {
                     await refreshAccessToken();
                 } catch (refreshError) {

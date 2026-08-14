@@ -16,6 +16,9 @@ declare global {
       onMainWindowFocus?: (handler: () => void) => () => void;
       startWebSignIn?: () => Promise<{ token?: string | null } | null>;
       startOAuthSignIn?: (options?: { provider?: 'google' }) => Promise<{ token?: string | null } | null>;
+      getDesktopRefreshToken?: () => Promise<string | null>;
+      setDesktopRefreshToken?: (token: string) => Promise<{ ok: boolean }>;
+      clearDesktopAuthSecrets?: () => Promise<{ ok: boolean }>;
       getUpstreamApiUrl?: () => Promise<string>;
       getChatRuntimeContext?: () => Promise<{
         desktopHost: { platform: string; arch: string; release: string; userHomeDir: string };
