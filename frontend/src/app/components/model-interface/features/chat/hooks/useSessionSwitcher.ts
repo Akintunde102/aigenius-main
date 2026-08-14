@@ -130,6 +130,7 @@ function conversationToSession(
 ): ChatSession {
     return {
         id: conversation.id,
+        codeProjectId: conversation.codeProjectId ?? null,
         title: conversation.session.title,
         modelId: conversation.session.modelId,
         messages: conversation.session.messages,

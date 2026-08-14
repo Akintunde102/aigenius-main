@@ -1,11 +1,14 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { readPdfDocumentText } from '../../local-read-pdf';
 
 export type DocumentExtractKind = 'doc' | 'docx' | 'pdf';
+export type DocumentExtractVia = 'text' | 'ocr';
 
 type CacheEntry = {
   mtimeMs: number;
   lines: string[];
+  via?: DocumentExtractVia;
 };
 
 const extractCache = new Map<string, CacheEntry>();
@@ -46,28 +49,29 @@ async function extractLegacyDocText(filePath: string): Promise<string> {
   return doc.getBody().trim();
 }
 
-async function extractPdfText(filePath: string): Promise<string> {
-  const pdfParse = (await import('pdf-parse')).default;
-  const buf = await fs.readFile(filePath);
-  const { text } = await pdfParse(buf);
-  return text.trim();
+async function extractPdfText(filePath: string): Promise<{ text: string; via: DocumentExtractVia }> {
+  const { text, method } = await readPdfDocumentText(filePath);
+  return { text: text.trim(), via: method };
 }
 
-async function extractRawText(filePath: string, kind: DocumentExtractKind): Promise<string> {
+async function extractRawText(
+  filePath: string,
+  kind: DocumentExtractKind,
+): Promise<{ text: string; via?: DocumentExtractVia }> {
   switch (kind) {
     case 'docx':
-      return extractDocxText(filePath);
+      return { text: await extractDocxText(filePath) };
     case 'doc':
-      return extractLegacyDocText(filePath);
+      return { text: await extractLegacyDocText(filePath) };
     case 'pdf':
       return extractPdfText(filePath);
     default:
-      return '';
+      return { text: '' };
   }
 }
 
 export type DocumentTextLinesResult =
-  | { ok: true; lines: string[]; kind: DocumentExtractKind }
+  | { ok: true; lines: string[]; kind: DocumentExtractKind; via?: DocumentExtractVia }
   | { ok: false; error: string };
 
 /** @deprecated Use getDocumentTextLines */
@@ -108,13 +112,13 @@ export async function getDocumentTextLines(
     const stat = await fs.stat(filePath);
     const cached = extractCache.get(filePath);
     if (cached && cached.mtimeMs === stat.mtimeMs) {
-      return { ok: true, lines: cached.lines, kind };
+      return { ok: true, lines: cached.lines, kind, via: cached.via };
     }
 
-    const text = await extractRawText(filePath, kind);
-    const lines = splitDocumentLines(text);
-    extractCache.set(filePath, { mtimeMs: stat.mtimeMs, lines });
-    return { ok: true, lines, kind };
+    const extracted = await extractRawText(filePath, kind);
+    const lines = splitDocumentLines(extracted.text);
+    extractCache.set(filePath, { mtimeMs: stat.mtimeMs, lines, via: extracted.via });
+    return { ok: true, lines, kind, via: extracted.via };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return {

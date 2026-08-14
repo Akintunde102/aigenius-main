@@ -49,7 +49,6 @@ function ProjectSectionHeader({
 }) {
     const handleLabelClick = () => {
         onToggleCollapse?.();
-        onSelect?.();
     };
 
     const countLabel = conversationCount === 1 ? '1 chat' : `${conversationCount} chats`;
@@ -57,8 +56,8 @@ function ProjectSectionHeader({
     const buildTitle = () => {
         if (isCollapsed) return `${label} — click to expand`;
         if (hasActiveChat) return `${label} (active chat open)`;
-        if (isActive) return `${label} (active for new chats) — click to collapse`;
-        return `Set ${label} as active project — click to collapse`;
+        if (isActive) return `${label} (draft in this project) — click to collapse`;
+        return `${label} — click to collapse`;
     };
 
     return (
@@ -457,15 +456,12 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                                 hasActiveChat={hasInlineActive}
                                 isActive={
                                     bucket.projectId
-                                        ? activeProjectId === bucket.projectId
-                                        : activeProjectId == null
+                                        ? hasInlineActive
+                                            || (!activeSessionId && activeProjectId === bucket.projectId)
+                                        : hasInlineActive
+                                            || (!activeSessionId && activeProjectId == null)
                                 }
                                 showInfo={bucket.projectId != null}
-                                onSelect={
-                                    onSelectProject
-                                        ? () => onSelectProject(bucket.projectId)
-                                        : undefined
-                                }
                                 onToggleCollapse={
                                     // Prevent collapsing when the active chat is inline
                                     hasInlineActive

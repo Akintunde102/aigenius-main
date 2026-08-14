@@ -1,5 +1,36 @@
-import type { ActiveCodeProjectSnapshot } from './active-code-project';
+import {
+  getActiveCodeProject,
+  type ActiveCodeProjectSnapshot,
+} from './active-code-project';
 import { syncCodeProjectToDesktop } from './sync-code-project-to-desktop';
+
+export type ResolvedChatProjectScope = {
+  projectScopeId: string | null;
+  snapshot: ActiveCodeProjectSnapshot | null;
+};
+
+/**
+ * Resolve code-project scope for an outgoing chat request.
+ * Uses only the explicit in-memory chat scope — never desktop index or localStorage fallbacks.
+ */
+export function resolveProjectScopeForChatRequest(): ResolvedChatProjectScope {
+  const scopeId = getChatProjectScopeId();
+  if (!scopeId) {
+    return { projectScopeId: null, snapshot: null };
+  }
+
+  const scopeSnapshot = getChatProjectScopeSnapshot();
+  if (scopeSnapshot?.id === scopeId) {
+    return { projectScopeId: scopeId, snapshot: scopeSnapshot };
+  }
+
+  const active = getActiveCodeProject();
+  if (active?.id === scopeId) {
+    return { projectScopeId: scopeId, snapshot: active };
+  }
+
+  return { projectScopeId: scopeId, snapshot: null };
+}
 
 /**
  * Active chat's code-project scope (null = General — no project).

@@ -17,9 +17,8 @@ import {
   promptToolApproval,
   shouldRequireToolApproval,
 } from '@/lib/tool-permissions';
-import { getActiveCodeProject } from '@/lib/code-projects/active-code-project';
 import { activeEditorForRuntime } from '@/lib/code-projects/active-editor-context';
-import { getChatProjectScopeId, getChatProjectScopeSnapshot } from '@/lib/code-projects/chat-project-scope';
+import { resolveProjectScopeForChatRequest } from '@/lib/code-projects/chat-project-scope';
 
 // Constants
 const OPENAI_CHAT_COMPLETIONS_PATH = '/gateway/*/openai/v1/chat/completions';
@@ -323,26 +322,6 @@ async function mergeRuntimeContextIntoRequestBody(
     clientTimezone = 'UTC';
   }
   const base = { clientNowIso, clientTimezone };
-  const projectScopeId = getChatProjectScopeId();
-  const scopeSnapshot = getChatProjectScopeSnapshot();
-  const activeFromStorage =
-    projectScopeId && getActiveCodeProject()?.id === projectScopeId
-      ? getActiveCodeProject()
-      : null;
-  const activeCodeProject =
-    scopeSnapshot?.id === projectScopeId
-      ? scopeSnapshot
-      : activeFromStorage;
-  const activeEditor = projectScopeId ? activeEditorForRuntime() : null;
-  const activeProjectPayload = activeCodeProject
-    ? {
-        id: activeCodeProject.id,
-        name: activeCodeProject.name,
-        rootPath: activeCodeProject.rootPath,
-        ...(activeCodeProject.rules ? { rules: activeCodeProject.rules } : {}),
-      }
-    : undefined;
-  const includeProjectRetrievalCatalog = Boolean(projectScopeId);
 
   const desktop = getAigeniusDesktopBridgeFromBrowsingContext() as
     | AigeniusDesktopBridge
@@ -350,7 +329,6 @@ async function mergeRuntimeContextIntoRequestBody(
 
   async function attachLocalSearchIndex(
     ctx: Record<string, unknown>,
-    digest?: string,
   ): Promise<Record<string, unknown>> {
     let localSearchIndex: unknown;
     const d = desktop as any;
@@ -361,18 +339,53 @@ async function mergeRuntimeContextIntoRequestBody(
         localSearchIndex = undefined;
       }
     }
+    return {
+      ...ctx,
+      ...(localSearchIndex ? { localSearchIndex } : {}),
+    };
+  }
+
+  function applyProjectScopeToRequest(
+    runtimeContext: Record<string, unknown>,
+    digest?: string,
+  ): void {
+    const resolved = resolveProjectScopeForChatRequest();
+    if (!resolved.projectScopeId) {
+      const { retrievalMemoryCatalog: _rm, activeCodeProject: _acp, activeEditor: _ae, ...rest } =
+        runtimeContext;
+      requestBody.runtimeContext = rest;
+      return;
+    }
+
+    requestBody.codeProjectId = resolved.projectScopeId;
+
+    const snapshot = resolved.snapshot;
+    let activeProjectPayload = snapshot
+      ? {
+          id: snapshot.id,
+          name: snapshot.name,
+          rootPath: snapshot.rootPath,
+          ...(snapshot.rules ? { rules: snapshot.rules } : {}),
+        }
+      : undefined;
+    const localSearchIndex = runtimeContext.localSearchIndex;
     const mode =
       localSearchIndex
       && typeof localSearchIndex === 'object'
       && (localSearchIndex as { mode?: string }).mode;
-    const includeDigest = mode === 'active_project_ready' && digest;
-    const active = ctx.activeCodeProject;
-    if (active && typeof active === 'object' && includeDigest) {
-      ctx.activeCodeProject = { ...active as Record<string, unknown>, structuralDigest: digest };
+    if (
+      activeProjectPayload
+      && mode === 'active_project_ready'
+      && digest
+    ) {
+      activeProjectPayload = { ...activeProjectPayload, structuralDigest: digest };
     }
-    return {
-      ...ctx,
-      ...(localSearchIndex ? { localSearchIndex } : {}),
+    const activeEditor = activeEditorForRuntime();
+
+    requestBody.runtimeContext = {
+      ...runtimeContext,
+      ...(activeProjectPayload ? { activeCodeProject: activeProjectPayload } : {}),
+      ...(activeEditor ? { activeEditor } : {}),
     };
   }
 
@@ -390,23 +403,18 @@ async function mergeRuntimeContextIntoRequestBody(
       && cachedDesktopIpcRuntime.retrievalMemoryCatalog
       && typeof cachedDesktopIpcRuntime.retrievalMemoryCatalog === 'object'
     ) {
-      requestBody.runtimeContext = await attachLocalSearchIndex(
-        {
-          ...base,
-          desktopHost: cachedDesktopIpcRuntime.desktopHost,
-          ...(includeProjectRetrievalCatalog
-            ? { retrievalMemoryCatalog: cachedDesktopIpcRuntime.retrievalMemoryCatalog }
-            : {}),
-          ...(activeProjectPayload
-            ? { activeCodeProject: { ...activeProjectPayload } }
-            : {}),
-          ...(activeEditor ? { activeEditor } : {}),
-        },
-        includeProjectRetrievalCatalog ? cachedDesktopIpcRuntime.structuralDigest : undefined,
+      const resolved = resolveProjectScopeForChatRequest();
+      const ctx = await attachLocalSearchIndex({
+        ...base,
+        desktopHost: cachedDesktopIpcRuntime.desktopHost,
+        ...(cachedDesktopIpcRuntime.retrievalMemoryCatalog
+          ? { retrievalMemoryCatalog: cachedDesktopIpcRuntime.retrievalMemoryCatalog }
+          : {}),
+      });
+      applyProjectScopeToRequest(
+        ctx,
+        resolved.projectScopeId ? cachedDesktopIpcRuntime.structuralDigest : undefined,
       );
-      if (projectScopeId) {
-        requestBody.codeProjectId = projectScopeId;
-      }
       return;
     }
     try {
@@ -430,33 +438,24 @@ async function mergeRuntimeContextIntoRequestBody(
           expiresAt: now + CHAT_RUNTIME_CONTEXT_CACHE_TTL_MS,
         };
       }
-      requestBody.runtimeContext = await attachLocalSearchIndex(
-        {
-          ...base,
-          ...(dh ? { desktopHost: dh } : {}),
-          ...(includeProjectRetrievalCatalog && cat ? { retrievalMemoryCatalog: cat } : {}),
-          ...(activeProjectPayload ? { activeCodeProject: { ...activeProjectPayload } } : {}),
-          ...(activeEditor ? { activeEditor } : {}),
-        },
-        includeProjectRetrievalCatalog ? digest : undefined,
+      const resolved = resolveProjectScopeForChatRequest();
+      const ctx = await attachLocalSearchIndex({
+        ...base,
+        ...(dh ? { desktopHost: dh } : {}),
+        ...(cat ? { retrievalMemoryCatalog: cat } : {}),
+      });
+      applyProjectScopeToRequest(
+        ctx,
+        resolved.projectScopeId ? digest : undefined,
       );
-      if (projectScopeId) {
-        requestBody.codeProjectId = projectScopeId;
-      }
       return;
     } catch {
       /* fall through: still desktop shell, but no host snapshot */
     }
   }
 
-  requestBody.runtimeContext = await attachLocalSearchIndex({
-    ...base,
-    ...(activeProjectPayload ? { activeCodeProject: activeProjectPayload } : {}),
-    ...(activeEditor ? { activeEditor } : {}),
-  });
-  if (projectScopeId) {
-    requestBody.codeProjectId = projectScopeId;
-  }
+  const ctx = await attachLocalSearchIndex({ ...base });
+  applyProjectScopeToRequest(ctx);
 }
 
 /**

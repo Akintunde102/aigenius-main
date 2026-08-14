@@ -10,6 +10,14 @@ import {
     getProvider,
     getProviderLabel,
 } from '@/app/components/model-interface/shared/utils';
+import {
+    formatPricingAmount,
+    formatPricingTierLabel,
+    getPricingOverrides,
+    getScalarPricingEntries,
+    getTierPricingEntries,
+    pricingLabel,
+} from '../utils/modelPricingDisplay.utils';
 
 interface ModelDetailsModalProps {
     isOpen: boolean;
@@ -23,18 +31,6 @@ function formatContextLength(n: number): string {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
     if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
     return String(n);
-}
-
-function pricingLabel(key: string): string {
-    const k = key.toLowerCase();
-    if (k === 'prompt') return 'Input';
-    if (k === 'completion') return 'Output';
-    if (k === 'input_cache_read') return 'Cache Read';
-    if (k === 'input_cache_write') return 'Cache Write';
-    if (k === 'image') return 'Images';
-    if (k === 'request') return 'Per Request';
-
-    return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
 export function ModelDetailsModal({ isOpen, onClose, model, onPickModel }: ModelDetailsModalProps) {
@@ -64,7 +60,9 @@ export function ModelDetailsModal({ isOpen, onClose, model, onPickModel }: Model
     const inputMods = model.architecture?.input_modalities ?? [];
     const outputMods = model.architecture?.output_modalities ?? [];
     const hasModalities = inputMods.length > 0 || outputMods.length > 0;
-    const hasPricing = model.pricing && Object.keys(model.pricing).length > 0;
+    const scalarPricingEntries = getScalarPricingEntries(model.pricing as Record<string, unknown> | undefined);
+    const pricingOverrides = getPricingOverrides(model.pricing as Record<string, unknown> | undefined);
+    const hasPricing = scalarPricingEntries.length > 0 || pricingOverrides.length > 0;
     const releaseDate = model?.created
         ? new Date(model.created * 1000).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
         : null;
@@ -176,30 +174,34 @@ export function ModelDetailsModal({ isOpen, onClose, model, onPickModel }: Model
                                     Pricing
                                 </h3>
                                 <div className="rounded-xl bg-slate-50/80 border border-slate-100 dark:bg-zinc-800/80 dark:border-zinc-700 p-3 space-y-2">
-                                    {model.pricing && Object.entries(model.pricing).map(([key, value]) => {
-                                        const numValue = parseFloat(String(value));
-                                        const k = key.toLowerCase();
-                                        const isTokenBased = k === 'prompt' || k === 'completion' || k.includes('cache');
-
-                                        const multiplier = isTokenBased ? 1000000 : 1;
-                                        let unit = isTokenBased ? '/ 1M tokens' : '';
-
-                                        if (k === 'image') unit = '/ image';
-                                        if (k === 'web_search') unit = '/ search';
-                                        if (k === 'request') unit = '/ request';
-                                        if (k === 'audio') unit = '/ second';
-
-                                        const displayValue = isNaN(numValue) ? value : `$${(numValue * multiplier).toFixed(k === 'web_search' || k === 'request' || k === 'image' ? 3 : 2)} ${unit}`;
-
-                                        return (
-                                            <div key={key} className="flex justify-between items-baseline text-sm">
-                                                <span className="text-slate-600 dark:text-zinc-400">{pricingLabel(key)}</span>
-                                                <span className="font-mono text-slate-900 dark:text-zinc-100 tabular-nums">
-                                                    {displayValue}
-                                                </span>
+                                    {scalarPricingEntries.map(([key, value]) => (
+                                        <div key={key} className="flex justify-between items-baseline text-sm">
+                                            <span className="text-slate-600 dark:text-zinc-400">{pricingLabel(key)}</span>
+                                            <span className="font-mono text-slate-900 dark:text-zinc-100 tabular-nums">
+                                                {formatPricingAmount(key, value)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                    {pricingOverrides.map((tier, index) => (
+                                        <div
+                                            key={`tier-${tier.min_prompt_tokens ?? index}`}
+                                            className="border-t border-slate-200/80 pt-2 mt-2 dark:border-zinc-700/80"
+                                        >
+                                            <p className="text-xs font-medium text-slate-500 dark:text-zinc-400 mb-1.5">
+                                                {formatPricingTierLabel(tier.min_prompt_tokens)}
+                                            </p>
+                                            <div className="space-y-1.5">
+                                                {getTierPricingEntries(tier).map(([key, value]) => (
+                                                    <div key={key} className="flex justify-between items-baseline text-sm">
+                                                        <span className="text-slate-600 dark:text-zinc-400">{pricingLabel(key)}</span>
+                                                        <span className="font-mono text-slate-900 dark:text-zinc-100 tabular-nums">
+                                                            {formatPricingAmount(key, value)}
+                                                        </span>
+                                                    </div>
+                                                ))}
                                             </div>
-                                        );
-                                    })}
+                                        </div>
+                                    ))}
                                 </div>
                             </section>
                         )}

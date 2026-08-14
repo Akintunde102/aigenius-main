@@ -85,6 +85,7 @@ export interface UseChatOperationsRefinedProps {
     routeConversationId?: string | null;
     setCurrentSessionId?: (id: string | null) => void;
     setChatHistory?: React.Dispatch<React.SetStateAction<ChatSession[]>>;
+    chatHistory?: ChatSession[];
     updateSessionMessages?: (sessionId: string, messages: ChatMessage[], sessionData?: Partial<ChatSession>) => void;
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;

@@ -73,7 +73,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({
             aria-busy="true"
         >
             <div className="flex w-full md:max-w-[720px] justify-start">
-                <div className="flex max-w-[85%] items-center gap-2 text-sm text-slate-500">
+                <div className="flex max-w-[85%] items-center gap-2 text-slate-500">
                     {renderAnimation()}
                     <span className="font-medium">
                         {typingState === "connecting" && "Connecting…"}

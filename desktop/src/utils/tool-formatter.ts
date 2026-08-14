@@ -67,8 +67,7 @@ export function formatRagResults(data: any): FormattedToolResult {
       md += `   - **Relevance**: ${(hit.score * 100).toFixed(1)}%\n`;
     }
     if (typeof hit.mtime === 'number' && hit.mtime > 0) {
-      const lastModified = new Date(hit.mtime).toLocaleString();
-      md += `   - **Last modified**: ${lastModified}\n`;
+      md += `   - **Last modified**: ${formatModifiedTimestamp(hit.mtime)}\n`;
     }
     if (typeof hit.line_start === 'number') {
       const range =
@@ -161,7 +160,7 @@ export function formatDirectoryListing(payload: {
       md += `   - **Size (bytes)**: ${r.size.toLocaleString()}\n`;
     }
     if (!r.isDir && typeof r.mtime === 'number' && r.mtime > 0) {
-      md += `   - **Last modified**: ${new Date(r.mtime).toLocaleString()}\n`;
+      md += `   - **Last modified**: ${formatModifiedTimestamp(r.mtime)}\n`;
     }
     md += '\n';
   });
@@ -605,4 +604,14 @@ function escapeBackticks(text: string): string {
 function pathBase(p: string | undefined): string {
   if (!p) return '';
   return p.split(/[\\/]/).pop() || p;
+}
+
+/** Seconds vs ms — values below ~Sep 2001 in ms are treated as Unix seconds. */
+function normalizeMtimeMs(mtime: number): number {
+  if (!Number.isFinite(mtime) || mtime <= 0) return mtime;
+  return mtime < 1e12 ? mtime * 1000 : mtime;
+}
+
+function formatModifiedTimestamp(mtime: number): string {
+  return new Date(normalizeMtimeMs(mtime)).toLocaleString();
 }
