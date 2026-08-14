@@ -42,6 +42,11 @@ export interface ChatBoxInputProps {
     selectedModel: Model;
     onModelChange: (model: Model) => void;
     onModelNameClick?: () => void;
+    onSelectModel?: (model: Model) => void;
+    /** Cursor-style quick picks shown in the composer dropdown. */
+    quickPickModels?: Model[];
+    favoritesLoaded?: boolean;
+    onOpenFullModelPicker?: () => void;
     placeholder?: string;
     /** While true, user can still type; send is blocked and the send control becomes Stop. */
     responseInProgress?: boolean;
@@ -137,6 +142,10 @@ export interface ModelSelectorProps {
     selectedModel: Model;
     onModelChange: (model: Model) => void;
     onModelNameClick?: () => void;
+    /** Cursor-style quick picks shown in the composer dropdown. */
+    quickPickModels?: Model[];
+    favoritesLoaded?: boolean;
+    onOpenFullModelPicker?: () => void;
     disabled: boolean;
     uploading: boolean;
     isDropdownOpen: boolean;
@@ -154,8 +163,13 @@ export interface ChatControlsProps {
     disabled: boolean;
     uploading: boolean;
     supportsFileUpload: boolean;
-    selectedModel: Model;
+    selectedModel: Model | null;
     onModelNameClick?: () => void;
+    onSelectModel?: (model: Model) => void;
+    /** Cursor-style quick picks shown in the composer dropdown. */
+    quickPickModels?: Model[];
+    favoritesLoaded?: boolean;
+    onOpenFullModelPicker?: () => void;
     onAttachmentClick: () => void;
     sidebarStyle?: boolean; // new prop for Sidebar-matching style
     streaming?: boolean;

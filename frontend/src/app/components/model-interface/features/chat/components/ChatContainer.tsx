@@ -51,6 +51,10 @@ interface ChatContainerProps {
     onRemoveFailedUpload?: (id: string) => void;
     onRemoveUploadedFile?: (index: number) => void;
     onModelNameClick: () => void;
+    onSelectModel?: (model: Model) => void;
+    quickPickModels?: Model[];
+    favoritesLoaded?: boolean;
+    onOpenFullModelPicker?: () => void;
     onCancelUpload?: (file?: File) => void;
     setIsTyping?: (typing: boolean) => void; // <-- new prop
     streaming?: boolean; // in-progress state
@@ -128,6 +132,10 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     onRemoveFailedUpload,
     onRemoveUploadedFile,
     onModelNameClick,
+    onSelectModel,
+    quickPickModels,
+    favoritesLoaded,
+    onOpenFullModelPicker,
     onCancelUpload,
     onShowSavedChats,
     sidebarStyle = false,
@@ -391,7 +399,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         onAttachmentMenuRequest={onAttachmentMenuRequest}
                         models={models}
                         selectedModel={selectedModel!}
-                        onModelChange={() => { }}
+                        onModelChange={(model) => onSelectModel?.(model)}
                         placeholder="Type..."
                         responseInProgress={responseInProgress}
                         onStopGeneration={onStopGeneration}
@@ -406,6 +414,10 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         onCancelUpload={onCancelUpload}
                         className="p-0"
                         onModelNameClick={onModelNameClick}
+                        onSelectModel={onSelectModel}
+                        quickPickModels={quickPickModels}
+                        favoritesLoaded={favoritesLoaded}
+                        onOpenFullModelPicker={onOpenFullModelPicker}
                         selectedPersonalityName={selectedPersonalityName}
                         onPersonalityClick={onPersonalityClick}
                         selectedPersonalityIconUrl={selectedPersonalityIconUrl}

@@ -1,6 +1,7 @@
 import {
   buildDesktopGoogleOAuthUrl,
   readStoredDesktopApiRoot,
+  shouldPersistDesktopApiRoot,
   storeDesktopApiRoot,
 } from './desktop-google-auth-url';
 
@@ -42,5 +43,11 @@ describe('desktop api root session storage', () => {
   it('stores and reads the upstream API root for desktop browser sign-in', () => {
     storeDesktopApiRoot('https://api.example.com/');
     expect(readStoredDesktopApiRoot()).toBe('https://api.example.com');
+  });
+
+  it('ignores legacy localhost:8000 defaults', () => {
+    expect(shouldPersistDesktopApiRoot('http://localhost:8000')).toBe(false);
+    storeDesktopApiRoot('http://localhost:8000');
+    expect(readStoredDesktopApiRoot()).toBeNull();
   });
 });
