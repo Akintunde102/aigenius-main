@@ -11,6 +11,7 @@ import { resolveRequestConversationId } from './requestConversationId.utils';
 import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
 import { notifyDesktopChatCompletionIfBackground } from '@/lib/utils/desktop-chat-completion-notify';
 import { contentToDisplayText } from './contentProcessing.utils';
+import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
 
 /**
  * Full-response (non-streaming) assistant path: single payload handling and session updates.
@@ -132,16 +133,19 @@ export function useNonStreamingResponse({
                 })), assistantMsg];
 
             if (requestSessionId === null && result.conversationId) {
+                const scopeId = getChatProjectScopeId();
                 // Always persist draft completions under the real id so they are visible
                 // in history even when the user has already moved to another chat.
                 setChatForSession(result.conversationId, fullMessages);
                 updateSessionMessages?.(result.conversationId, fullMessages, {
                     modelId: selectedModel.id,
                     title: deriveChatSessionTitle(fullMessages[0]?.content),
+                    codeProjectId: scopeId,
                 });
                 void addOrMergeSessionToLocalHistory({
                     id: result.conversationId,
-                    session: { messages: fullMessages }
+                    codeProjectId: scopeId,
+                    session: { messages: fullMessages },
                 });
 
                 // If the user is still on this draft view, perform UI migration/switch.
@@ -172,7 +176,8 @@ export function useNonStreamingResponse({
                 if (requestSessionId) {
                     void addOrMergeSessionToLocalHistory({
                         id: requestSessionId,
-                        session: { messages: undefined }
+                        codeProjectId: getChatProjectScopeId(),
+                        session: { messages: undefined },
                     });
                 }
             }

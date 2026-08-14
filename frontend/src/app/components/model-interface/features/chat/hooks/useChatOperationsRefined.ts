@@ -26,6 +26,8 @@ import {
     getDraftConversationEpoch,
     resolveViewSessionId,
 } from '@/app/components/model-interface/conversation/conversationViewSession';
+import { enforceOutgoingChatProjectScope } from '@/lib/code-projects/apply-chat-project-scope';
+import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
 
 /**
  * Send/stop orchestration: wallet validation, composer drafts, message shaping for the API,
@@ -48,6 +50,7 @@ export function useChatOperationsRefined({
     routeConversationId = null,
     setCurrentSessionId,
     setChatHistory,
+    chatHistory = [],
     updateSessionMessages,
     selectedPersonalityName,
     selectedPersonalityIconUrl,
@@ -288,6 +291,15 @@ export function useChatOperationsRefined({
 
             const rawMessages = orderMessagesForApi(updatedChat);
             const { messages, message: optimizationMsg } = optimizeMessagesForAPI(rawMessages);
+
+            const sendingSession = sendingViewId
+                ? chatHistory.find((s) => s.id === sendingViewId)
+                : null;
+            const sessionProjectId = sendingSession
+                ? (sendingSession.codeProjectId ?? null)
+                : getChatProjectScopeId();
+            enforceOutgoingChatProjectScope(sessionProjectId);
+
             const requestOverrides = {
                 conversationId: sendingViewId,
                 sendGeneration,

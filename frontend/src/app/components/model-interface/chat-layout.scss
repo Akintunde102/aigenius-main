@@ -30,6 +30,8 @@
     overflow-y: auto;
     overflow-x: hidden;
     padding: 1.5rem;
+    font-size: var(--chat-body-size);
+    line-height: var(--chat-body-leading);
 }
 
 .chat-input-container {

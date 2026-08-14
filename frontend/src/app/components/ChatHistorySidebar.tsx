@@ -8,7 +8,7 @@ import SidebarFooter from "./ChatHistorySidebar/SidebarFooter";
 import { CreateCodeProjectModal } from "./ChatHistorySidebar/CreateCodeProjectModal";
 import { CodeProjectInfoModal } from "./ChatHistorySidebar/CodeProjectInfoModal";
 import { useCodeProjects } from "@/lib/hooks/useCodeProjects";
-import { applyChatProjectScopeFromSession } from "@/lib/code-projects/apply-chat-project-scope";
+import { applyChatProjectScopeFromSession, resolveSidebarActiveProjectId } from "@/lib/code-projects/apply-chat-project-scope";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
 import WalletModal from "./ChatHistorySidebar/WalletModal";
 import IntegrationsModal from "./ChatHistorySidebar/IntegrationsModal";
@@ -122,26 +122,33 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     const [infoProjectId, setInfoProjectId] = React.useState<string | null>(null);
     const {
         projects: codeProjects,
-        activeProject,
         addProject,
         removeProject,
     } = useCodeProjects();
+
+    const sidebarActiveProjectId = resolveSidebarActiveProjectId(
+        currentSessionId,
+        chatHistory,
+    );
+    const desktopSyncProject = sidebarActiveProjectId
+        ? codeProjects.find((p) => p.id === sidebarActiveProjectId)
+        : null;
 
     React.useEffect(() => {
         if (!isAigeniusDesktopRuntime()) return;
         const bridge = window.aigeniusDesktop as any;
         if (!bridge || typeof bridge.setCodeProjectIndex !== "function") return;
 
-        if (activeProject?.rootPath) {
+        if (desktopSyncProject?.rootPath) {
             void bridge.setCodeProjectIndex({
-                projectId: activeProject.id,
-                rootPath: activeProject.rootPath,
+                projectId: desktopSyncProject.id,
+                rootPath: desktopSyncProject.rootPath,
             });
             return;
         }
 
         void bridge.setCodeProjectIndex(null);
-    }, [activeProject?.id, activeProject?.rootPath]);
+    }, [desktopSyncProject?.id, desktopSyncProject?.rootPath]);
 
     // Check if the logged-in user is the master admin — determines visibility of "Give Credits"
     React.useEffect(() => {
@@ -240,24 +247,6 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         startNewChatInScope(projectId);
     }, [startNewChatInScope]);
 
-    const handleSelectProject = React.useCallback((projectId: string | null) => {
-        if (projectId) {
-            const project = codeProjects.find((p) => p.id === projectId);
-            if (project) {
-                applyChatProjectScopeFromSession(project.id, {
-                    id: project.id,
-                    name: project.name,
-                    rootPath: project.rootPath,
-                    rules: project.rules,
-                });
-            } else {
-                applyChatProjectScopeFromSession(projectId);
-            }
-        } else {
-            applyChatProjectScopeFromSession(null);
-        }
-    }, [codeProjects]);
-
     const handleDeleteProject = React.useCallback(async (projectId: string) => {
         const activeSessionBelongsToProject = chatHistory.some(
             (session) => session.id === currentSessionId && session.codeProjectId === projectId
@@ -315,7 +304,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 <CodeProjectInfoModal
                     project={infoProject}
                     chatHistory={(chatHistory || []).filter((s) => s.conversationKind !== "orphan_question")}
-                    isActive={activeProject?.id === infoProject.id}
+                    isActive={sidebarActiveProjectId === infoProject.id}
                     onClose={() => setInfoProjectId(null)}
                     onDelete={handleDeleteProject}
                 />
@@ -367,9 +356,8 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 isSessionActive={isSessionActive}
                 isInitialLoading={isInitialLoading}
                 codeProjects={codeProjects}
-                activeProjectId={activeProject?.id ?? null}
+                activeProjectId={sidebarActiveProjectId}
                 onNewChatForProject={handleNewChatForProject}
-                onSelectProject={handleSelectProject}
                 onProjectInfo={setInfoProjectId}
             />
 

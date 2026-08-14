@@ -40,16 +40,27 @@ export async function initOcr(modelsDir: string): Promise<void> {
   await _service.initialize();
 }
 
+function toArrayBuffer(buf: Buffer): ArrayBuffer {
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+}
+
+/** Runs PP-OCRv6 on an in-memory image buffer. */
+export async function extractOcrFromBuffer(
+  imageBuffer: Buffer,
+  modelsDir: string,
+): Promise<{ content: string; tags: string[] }> {
+  await initOcr(modelsDir);
+  const result = await _service!.recognize(toArrayBuffer(imageBuffer));
+  return { content: result.text.trim(), tags: ['image', 'ocr'] };
+}
+
 /** Runs PP-OCRv6 on an image file; returns extracted text. */
 export async function extractOcr(
   filePath: string,
   modelsDir: string,
 ): Promise<{ content: string; tags: string[] }> {
-  await initOcr(modelsDir);
   const buf = fs.readFileSync(filePath);
-  const imageBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-  const result = await _service!.recognize(imageBuffer);
-  return { content: result.text.trim(), tags: ['image', 'ocr'] };
+  return extractOcrFromBuffer(buf, modelsDir);
 }
 
 /** Release ONNX sessions when the app quits. */

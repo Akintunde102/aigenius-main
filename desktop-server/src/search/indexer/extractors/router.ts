@@ -40,7 +40,7 @@ export async function routeExtraction(
     }
 
     if (ext === 'pdf') {
-      return await extractPdf(filePath);
+      return await extractPdf(filePath, modelsDir);
     }
 
     if (ext === 'docx') {

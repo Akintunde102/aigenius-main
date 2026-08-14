@@ -10,7 +10,7 @@
 
 .timeline {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--chat-body-size, 0.9375rem);
   line-height: 1.5;
 
   .header {

@@ -261,6 +261,7 @@ export function useModelInterface(options?: {
     routeConversationId,
     setCurrentSessionId,
     setChatHistory,
+    chatHistory,
     updateSessionMessages,
     selectedPersonalityName,
     selectedPersonalityIconUrl,
