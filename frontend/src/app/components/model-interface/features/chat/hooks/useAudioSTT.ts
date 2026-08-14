@@ -416,14 +416,31 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
   const cancelSTT = useCallback(() => {
     isCancelledRef.current = true;
     setInput(voiceDraftBaseRef.current);
+    const abandonedSid = desktopSessionIdRef.current;
+    desktopSessionIdRef.current = null;
+    desktopSessionStartRef.current = null;
+    partialFlushErrorCountRef.current = 0;
+    if (abandonedSid && isAigeniusDesktopRuntime()) {
+      void authorizedFetch(AUDIO_CONSTANTS.LOCAL_DESKTOP_STT_STREAM_END_URL, {
+        method: 'POST',
+        headers: { 'X-Session-ID': abandonedSid },
+      }).catch(() => { /* best-effort cleanup */ });
+    }
     stopRecording();
     setIsSTTActive(false);
+    setIsTranscribing(false);
   }, [setInput, stopRecording]);
 
   const confirmSTT = useCallback(() => {
     isCancelledRef.current = false;
-    stopRecording();
-  }, [stopRecording]);
+    if (isRecording) {
+      stopRecording();
+      return;
+    }
+    // Partial desktop/socket transcript may already be in the composer — just dismiss controls.
+    setIsSTTActive(false);
+    setIsTranscribing(false);
+  }, [isRecording, stopRecording]);
 
   return {
     isSTTActive,

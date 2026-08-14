@@ -51,7 +51,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                         type="button"
                         className="p-1.5 rounded-full [color:var(--chat-muted-fg)] hover:[color:var(--sidebar-fg)] hover:bg-black/[0.05] dark:hover:bg-white/[0.06] transition-colors"
                         title="Cancel recording"
-                        onClick={onCancelSTT}
+                        onClick={() => onCancelSTT?.()}
                     >
                         <X size={12} />
                     </button>
@@ -60,7 +60,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                         type="button"
                         className="p-1.5 rounded-full text-white bg-[var(--chat-accent)] hover:opacity-90 transition-colors animate-pulse"
                         title="Keep transcription"
-                        onClick={onConfirmSTT}
+                        onClick={() => onConfirmSTT?.()}
                     >
                         <Check size={12} />
                     </button>

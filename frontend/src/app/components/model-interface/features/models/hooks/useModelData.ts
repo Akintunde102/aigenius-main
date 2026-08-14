@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Model } from '@/app/components/model-interface/shared/types';
 import { authorizedRequest } from '@/lib/calls/request';
 import { getTestingModelName, isTestingModelEnforced } from '@/lib/testing-model';
@@ -97,6 +97,15 @@ export function useModelData() {
     const [modelsLoading, setModelsLoading] = useState(true);
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
     const [error, setError] = useState("");
+    const hasInitializedSelectionRef = useRef(false);
+    const selectedModelIdRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (selectedModel) {
+            selectedModelIdRef.current = selectedModel.id;
+            hasInitializedSelectionRef.current = true;
+        }
+    }, [selectedModel]);
 
     const [recentModelIds, setRecentModelIds] = useState<string[]>([]);
 
@@ -230,7 +239,22 @@ export function useModelData() {
                 if (!defaultModel && list && list.length > 0) {
                     defaultModel = list[0];
                 }
-                if (defaultModel) setSelectedModel(defaultModel);
+
+                if (!cancelled) {
+                    if (!hasInitializedSelectionRef.current) {
+                        if (defaultModel) {
+                            setSelectedModel(defaultModel);
+                            hasInitializedSelectionRef.current = true;
+                        }
+                    } else if (selectedModelIdRef.current) {
+                        const currentMatch = list.find(
+                            (m: Model) => m.id === selectedModelIdRef.current,
+                        );
+                        if (currentMatch) {
+                            setSelectedModel(currentMatch);
+                        }
+                    }
+                }
             } catch (error) {
                 setError('Failed to load models. Please try again later.');
             } finally {

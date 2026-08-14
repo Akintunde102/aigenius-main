@@ -41,6 +41,7 @@ import os from 'os';
 import crypto from 'crypto';
 import { resolveFrontendPort } from './frontend-port';
 import { DEV_LOOPBACK_HOST, loopbackHttpUrl } from './loopback-host';
+import { resolveUpstreamApiUrl as resolveDesktopUpstreamApiUrl } from './resolve-upstream-api-url';
 import { setActiveCodeProjectIndex } from './active-code-project';
 import { refreshProjectArchitectureMemory } from './project-architecture-memory';
 import { setMainActiveEditor } from './active-editor-main';
@@ -50,6 +51,12 @@ import {
   spawnDesktopChild,
   type ManagedDesktopChild,
 } from './desktop-child-process';
+import { exchangeDesktopOAuthCode } from './desktop-auth-exchange';
+import {
+  clearDesktopRefreshToken,
+  readDesktopRefreshToken,
+  storeDesktopRefreshToken,
+} from './desktop-auth-store';
 import { saveLastCodeProject } from './last-code-project';
 import { MINI_SERVER_PORT } from './mini-server-port';
 import net from 'net';
@@ -105,13 +112,15 @@ function runDesktopBrowserSignIn(
 ): Promise<{ token: string } | null> {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
-      const u = new URL(req.url || '', `http://${req.headers.host}`);
-      const token = u.searchParams.get('token');
+      void (async () => {
+        const u = new URL(req.url || '', `http://${req.headers.host}`);
+        const oauthCode = u.searchParams.get('code');
+        const legacyToken = u.searchParams.get('token');
 
-      if (token) {
-        const websiteBase = WEBSITE_LOGIN_URL.replace('/login', '');
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(`
+        const finishSuccess = (accessToken: string) => {
+          const websiteBase = WEBSITE_LOGIN_URL.replace('/login', '');
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(`
             <html>
               <head>
                 <title>Sign-in Successful</title>
@@ -171,20 +180,48 @@ function runDesktopBrowserSignIn(
               </body>
             </html>
           `);
-        server.close();
+          server.close();
 
-        const win = BrowserWindow.fromWebContents(event.sender);
-        if (win) {
-          if (win.isMinimized()) win.restore();
-          win.show();
-          win.focus();
+          const win = BrowserWindow.fromWebContents(event.sender);
+          if (win) {
+            if (win.isMinimized()) win.restore();
+            win.show();
+            win.focus();
+          }
+
+          resolve({ token: accessToken });
+        };
+
+        if (oauthCode) {
+          const exchanged = await exchangeDesktopOAuthCode(resolveUpstreamApiUrl(), oauthCode);
+          if (!exchanged) {
+            res.writeHead(400);
+            res.end('OAuth code exchange failed');
+            server.close();
+            resolve(null);
+            return;
+          }
+          storeDesktopRefreshToken(exchanged.refreshToken);
+          finishSuccess(exchanged.token);
+          return;
         }
 
-        resolve({ token });
-      } else {
+        if (legacyToken) {
+          finishSuccess(legacyToken);
+          return;
+        }
+
         res.writeHead(400);
-        res.end('Missing token');
-      }
+        res.end('Missing OAuth code');
+        server.close();
+        resolve(null);
+      })().catch((error) => {
+        console.error('[aigenius-desktop] OAuth loopback handler failed', error);
+        res.writeHead(500);
+        res.end('Sign-in failed');
+        server.close();
+        resolve(null);
+      });
     });
 
     server.listen(0, DEV_LOOPBACK_HOST, () => {
@@ -306,32 +343,11 @@ function desktopServerEntry(): string {
   return path.join(desktopServerDir(), 'dist', 'index.js');
 }
 
-function readPackagedRuntimeConfig(): { upstreamApiUrl?: string } {
-  if (!app.isPackaged) {
-    return {};
-  }
-  try {
-    const configPath = path.join(process.resourcesPath, 'package-runtime.json');
-    if (!fs.existsSync(configPath)) {
-      return {};
-    }
-    const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8')) as { upstreamApiUrl?: string };
-    return typeof parsed === 'object' && parsed !== null ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
 function resolveUpstreamApiUrl(): string {
-  const fromEnv = process.env.AIGENIUS_UPSTREAM_API_URL?.trim();
-  if (fromEnv) {
-    return fromEnv;
-  }
-  const fromPackage = readPackagedRuntimeConfig().upstreamApiUrl?.trim();
-  if (fromPackage) {
-    return fromPackage;
-  }
-  return 'http://localhost:8000';
+  return resolveDesktopUpstreamApiUrl({
+    desktopRoot: path.join(__dirname, '..'),
+    packagedResourcesPath: app.isPackaged ? process.resourcesPath : undefined,
+  });
 }
 
 function nextStandaloneDir(): string {
@@ -1262,6 +1278,20 @@ if (!gotLock) {
   );
 
   ipcMain.handle('get-upstream-api-url', async () => resolveUpstreamApiUrl());
+
+  ipcMain.handle('get-desktop-refresh-token', async () => readDesktopRefreshToken());
+  ipcMain.handle('set-desktop-refresh-token', async (_event, token: unknown) => {
+    if (typeof token !== 'string' || token.trim().length === 0) {
+      clearDesktopRefreshToken();
+      return { ok: false as const };
+    }
+    storeDesktopRefreshToken(token);
+    return { ok: true as const };
+  });
+  ipcMain.handle('clear-desktop-auth-secrets', async () => {
+    clearDesktopRefreshToken();
+    return { ok: true as const };
+  });
 
   ipcMain.handle('web-signin', async (event) => runDesktopBrowserSignIn(event));
   ipcMain.handle('start-oauth-signin', async (event, options?: { provider?: 'google' }) =>

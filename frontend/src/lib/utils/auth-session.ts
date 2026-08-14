@@ -8,10 +8,17 @@ import {
     isDesktopShellFromBuild,
     isLikelyElectronRenderer,
 } from '@/lib/utils/desktop-runtime';
+import {
+    canUseDesktopStoredRefreshToken,
+    clearDesktopStoredRefreshToken,
+    getDesktopNativeClientHeaders,
+    readDesktopStoredRefreshToken,
+} from '@/lib/utils/desktop-auth-refresh';
 
 /**
  * Desktop OAuth completes in the system browser; the HttpOnly refresh cookie is never
- * available to the Electron renderer. Skip refresh-and-logout flows that assume it exists.
+ * available to the Electron renderer. Web uses cookie-based refresh; desktop uses OS
+ * keychain storage via the Electron main process.
  */
 export function canUseHttpOnlyRefreshCookie(): boolean {
     if (typeof window === 'undefined') {
@@ -26,16 +33,25 @@ export function canUseHttpOnlyRefreshCookie(): boolean {
 
 export function clearAuthSession() {
     if (typeof window !== 'undefined') {
-        void axios.post(
-            `${LINKS.noboxAPIRootUrl}/auth/_/logout`,
-            {},
-            {
-                withCredentials: true,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
+        const refreshTokenPromise = canUseDesktopStoredRefreshToken()
+            ? readDesktopStoredRefreshToken()
+            : Promise.resolve<string | undefined>(undefined);
+
+        void refreshTokenPromise.then((refreshToken) => {
+            void axios.post(
+                `${LINKS.noboxAPIRootUrl}/auth/_/logout`,
+                refreshToken ? { refreshToken } : {},
+                {
+                    withCredentials: true,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(refreshToken ? getDesktopNativeClientHeaders() : {}),
+                    },
                 },
-            },
-        ).catch(() => undefined);
+            ).catch(() => undefined);
+        });
+
+        void clearDesktopStoredRefreshToken().catch(() => undefined);
 
         // Clear local IndexedDB cached chat logs and workspace state
         void clearChatStorage().catch(err => console.error("Failed to clear chat IndexedDB storage:", err));

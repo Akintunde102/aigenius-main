@@ -8,6 +8,12 @@ import {
     canUseHttpOnlyRefreshCookie,
 } from '@/lib/utils/auth-session';
 import {
+    canUseDesktopStoredRefreshToken,
+    getDesktopNativeClientHeaders,
+    readDesktopStoredRefreshToken,
+    writeDesktopStoredRefreshToken,
+} from '@/lib/utils/desktop-auth-refresh';
+import {
     isAigeniusDesktopRuntime,
     isDesktopShellFromBuild,
 } from '@/lib/utils/desktop-runtime';
@@ -37,7 +43,7 @@ export function isJwtExpired(token: string, leewaySec = JWT_EXPIRY_LEEWAY_SEC): 
     return exp * 1000 <= Date.now() + leewaySec * 1000;
 }
 
-/** JWT access token if present and not past `exp` (desktop has no HttpOnly refresh cookie). */
+/** JWT access token if present and not past `exp`. Desktop may refresh via stored refresh token. */
 export function getValidAccessToken(): string | undefined {
     const token = getAccessToken();
     if (!token || isJwtExpired(token)) {
@@ -72,6 +78,9 @@ export function clearStoredAuthSession() {
     storage(storageConstants.NOBOX_TOKEN).removeItem();
     storage(storageConstants.NOBOX_CLIENT_TOKEN).removeItem();
     storage(storageConstants.LOGGED_USER_DETAILS).removeItem();
+    void import('@/lib/utils/desktop-auth-refresh').then(({ clearDesktopStoredRefreshToken }) => {
+        void clearDesktopStoredRefreshToken().catch(() => undefined);
+    });
 
     if (typeof window !== 'undefined') {
         import('@/lib/utils/chatStorage').then(({ clearChatStorage }) => {
@@ -148,7 +157,7 @@ export function isRefreshableAuthError(error: AxiosError | { response?: { status
  * Network errors, timeouts, and 5xx should not force logout — the user can retry when online.
  */
 export function shouldLogoutOnRefreshFailure(error: unknown): boolean {
-    if (!canUseHttpOnlyRefreshCookie()) {
+    if (!canUseHttpOnlyRefreshCookie() && !canUseDesktopStoredRefreshToken()) {
         return false;
     }
     if (error instanceof Error && error.message === 'Refresh response did not include an access token') {
@@ -201,7 +210,11 @@ let proactiveRefreshTimer: ReturnType<typeof setInterval> | null = null;
  * expired JWT first (reduces race conditions and failed first requests after idle tabs).
  */
 export function initProactiveAccessTokenRefresh(): void {
-    if (typeof window === 'undefined' || proactiveRefreshTimer || !canUseHttpOnlyRefreshCookie()) {
+    if (
+        typeof window === 'undefined'
+        || proactiveRefreshTimer
+        || (!canUseHttpOnlyRefreshCookie() && !canUseDesktopStoredRefreshToken())
+    ) {
         return;
     }
 
@@ -245,7 +258,9 @@ function applyAuthHeaders<T extends AxiosRequestConfig>(config: T, token?: strin
 }
 
 export async function refreshAccessToken(): Promise<string> {
-    if (!canUseHttpOnlyRefreshCookie()) {
+    const usesDesktopRefresh = canUseDesktopStoredRefreshToken();
+
+    if (!canUseHttpOnlyRefreshCookie() && !usesDesktopRefresh) {
         const existing = getValidAccessToken();
         if (existing) {
             return existing;
@@ -258,23 +273,41 @@ export async function refreshAccessToken(): Promise<string> {
         return refreshPromise;
     }
 
-    refreshPromise = axios.post(
-        `${LINKS.noboxAPIRootUrl}/auth/_/refresh`,
-        {},
-        {
-            withCredentials: true,
-            headers: {
-                [REQUESTED_WITH_HEADER]: REQUESTED_WITH_VALUE,
+    refreshPromise = (async () => {
+        const refreshToken = usesDesktopRefresh
+            ? await readDesktopStoredRefreshToken()
+            : undefined;
+
+        if (usesDesktopRefresh && !refreshToken) {
+            handleSessionExpired();
+            throw new Error('Session expired — please sign in again');
+        }
+
+        const res = await axios.post(
+            `${LINKS.noboxAPIRootUrl}/auth/_/refresh`,
+            refreshToken ? { refreshToken } : {},
+            {
+                withCredentials: canUseHttpOnlyRefreshCookie(),
+                headers: {
+                    [REQUESTED_WITH_HEADER]: REQUESTED_WITH_VALUE,
+                    ...(usesDesktopRefresh ? getDesktopNativeClientHeaders() : {}),
+                },
             },
-        },
-    ).then((res) => {
+        );
+
         const token = res.data?.token;
         if (!token) {
             throw new Error('Refresh response did not include an access token');
         }
         setAccessToken(token);
+
+        const rotatedRefreshToken = res.data?.refreshToken;
+        if (typeof rotatedRefreshToken === 'string' && rotatedRefreshToken.trim().length > 0) {
+            await writeDesktopStoredRefreshToken(rotatedRefreshToken);
+        }
+
         return token;
-    }).catch((error) => {
+    })().catch((error) => {
         if (shouldLogoutOnRefreshFailure(error)) {
             handleSessionExpired();
         }
@@ -309,7 +342,7 @@ authHttp.interceptors.response.use(
             !originalRequest
             || originalRequest._authRetry
             || !isRefreshableAuthError(error)
-            || !canUseHttpOnlyRefreshCookie()
+            || (!canUseHttpOnlyRefreshCookie() && !canUseDesktopStoredRefreshToken())
         ) {
             return Promise.reject(error);
         }
@@ -345,8 +378,11 @@ export async function authorizedFetch(input: RequestInfo | URL, init: RequestIni
         credentials: 'include',
     });
 
-    if (firstResponse.status !== 401 || !canUseHttpOnlyRefreshCookie()) {
-        if (firstResponse.status === 401 && !canUseHttpOnlyRefreshCookie()) {
+    if (
+        firstResponse.status !== 401
+        || (!canUseHttpOnlyRefreshCookie() && !canUseDesktopStoredRefreshToken())
+    ) {
+        if (firstResponse.status === 401 && !canUseHttpOnlyRefreshCookie() && !canUseDesktopStoredRefreshToken()) {
             handleSessionExpired();
         }
         return firstResponse;

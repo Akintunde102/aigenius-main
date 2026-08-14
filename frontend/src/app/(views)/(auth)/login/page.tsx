@@ -7,6 +7,7 @@ import { storageConstants } from "@/lib/constants";
 import { LINKS } from "@/lib/links";
 import {
   resolveDesktopGoogleOAuthUrl,
+  shouldPersistDesktopApiRoot,
   storeDesktopApiRoot,
 } from "@/lib/utils/desktop-google-auth-url";
 
@@ -20,7 +21,7 @@ const Login = () => {
       if (callback) {
         sessionStorage.setItem("desktop_callback", callback);
         const apiRoot = params.get("api_root");
-        if (apiRoot) {
+        if (apiRoot && shouldPersistDesktopApiRoot(apiRoot)) {
           storeDesktopApiRoot(apiRoot);
         }
 
@@ -29,9 +30,8 @@ const Login = () => {
           return;
         }
 
-        // If already logged in, redirect immediately to the callback with the token
-        const token = storage(storageConstants.NOBOX_TOKEN).getString()
-          || storage(storageConstants.NOBOX_CLIENT_TOKEN).getString();
+        // If already logged in, hand off the short-lived auth JWT (not the API key).
+        const token = storage(storageConstants.NOBOX_TOKEN).getString();
         if (token) {
           sessionStorage.removeItem("desktop_callback");
           window.location.href = `${callback}${callback.includes('?') ? '&' : '?'}token=${token}`;
