@@ -1,0 +1,179 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--dir-list-divider, rgba(0, 0, 0, 0.06));
+}
+
+.path {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--dir-list-path, #64748b);
+  word-break: break-all;
+}
+
+.pathLink {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: var(--dir-list-path-hover, #2563eb);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--dir-list-badge-fg, #475569);
+  background: var(--dir-list-badge-bg, rgba(15, 23, 42, 0.05));
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background-color 0.12s ease;
+
+  &:hover {
+    background: var(--dir-list-row-hover, rgba(15, 23, 42, 0.04));
+  }
+}
+
+.rowDir {
+  .icon {
+    color: var(--dir-list-folder, #d97706);
+  }
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--dir-list-file, #94a3b8);
+}
+
+.main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.name {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--dir-list-name, #1e293b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nameLink {
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--dir-list-path-hover, #2563eb);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--dir-list-meta, #94a3b8);
+}
+
+.metaSep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+.side {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dir-list-side, #94a3b8);
+  text-align: right;
+}
+
+.empty {
+  padding: 16px 8px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--dir-list-meta, #94a3b8);
+  font-style: italic;
+}
+
+.terminal {
+  margin: 0;
+  padding: 8px;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--dir-list-terminal-fg, #334155);
+  background: var(--dir-list-terminal-bg, rgba(15, 23, 42, 0.04));
+  max-height: 10rem;
+  overflow-y: auto;
+}
+
+:global(.dark) .root {
+  --dir-list-divider: rgba(63, 63, 70, 0.7);
+  --dir-list-path: #a1a1aa;
+  --dir-list-path-hover: #60a5fa;
+  --dir-list-badge-fg: #d4d4d8;
+  --dir-list-badge-bg: rgba(255, 255, 255, 0.06);
+  --dir-list-row-hover: rgba(255, 255, 255, 0.04);
+  --dir-list-folder: #fbbf24;
+  --dir-list-file: #71717a;
+  --dir-list-name: #f4f4f5;
+  --dir-list-meta: #71717a;
+  --dir-list-side: #71717a;
+  --dir-list-terminal-fg: #e4e4e7;
+  --dir-list-terminal-bg: rgba(0, 0, 0, 0.25);
+}

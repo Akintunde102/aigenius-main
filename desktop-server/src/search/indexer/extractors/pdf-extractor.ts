@@ -1,11 +1,10 @@
-import pdfParse from 'pdf-parse';
+import { readPdfText } from '../../pdf-text-extract.js';
 
-/** Extracts plain text from a PDF buffer using pdf-parse. */
+/** Extracts plain text from a PDF (embedded text + OCR fallback when sparse). */
 export async function extractPdf(
   filePath: string,
+  modelsDir: string,
 ): Promise<{ content: string; tags: string[] }> {
-  const { promises: fs } = await import('fs');
-  const buf = await fs.readFile(filePath);
-  const { text } = await pdfParse(buf);
-  return { content: text.trim(), tags: ['pdf'] };
+  const result = await readPdfText({ filePath, modelsDir });
+  return { content: result.content, tags: result.tags };
 }

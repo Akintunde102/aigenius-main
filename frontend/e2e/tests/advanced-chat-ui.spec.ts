@@ -75,10 +75,10 @@ test.describe('Advanced chat UI scenarios', () => {
         await sendPrompt(page, 'Give me a costed answer');
 
         await page.getByRole('button', { name: /Tokens: 11 prompt \+ 22 completion = 33 total/ }).click();
-        await expect(page.getByText('Token Usage Details')).toBeVisible({ timeout: 5000 });
-        await expect(page.getByText('Prompt Tokens')).toBeVisible();
-        await expect(page.getByText('Completion Tokens')).toBeVisible();
-        await expect(page.getByText('Total Tokens')).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Token usage' })).toBeVisible({ timeout: 5000 });
+        await expect(page.getByText('Prompt', { exact: true })).toBeVisible();
+        await expect(page.getByText('Completion', { exact: true })).toBeVisible();
+        await expect(page.getByText('Total tokens', { exact: true })).toBeVisible();
         await expect(page.locator('span').filter({ hasText: '₦1.94' }).last()).toBeVisible();
         await page.screenshot({ path: testInfo.outputPath('usage-details-modal.png'), fullPage: true });
     });

@@ -92,7 +92,7 @@ function TranscriptMessage({ msg }: { msg: ChatMessage }) {
 
     const text = textPartToPlainString(msg.content);
     return (
-        <div className="rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm text-slate-800">
+        <div className="rounded-lg border border-slate-100 bg-white px-3 py-2 text-slate-800">
             <TextMessage content={text || '(no content)'} streaming={false} role={msg.role} />
         </div>
     );

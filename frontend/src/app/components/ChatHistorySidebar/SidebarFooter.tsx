@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from "react";
-import { FiBookmark, FiMoreVertical, FiLogOut, FiLink, FiGift, FiFolder, FiZap, FiBell, FiMoon, FiSun, FiPlus, FiMonitor, FiShield, FiChevronLeft, FiCheck } from 'react-icons/fi';
+import { FiBookmark, FiMoreVertical, FiLogOut, FiLink, FiGift, FiFolder, FiZap, FiBell, FiMoon, FiSun, FiPlus, FiMonitor, FiShield, FiChevronRight, FiCheck } from 'react-icons/fi';
 import { createPortal } from 'react-dom';
 import { useTheme } from "@/lib/providers/ThemeProvider";
 import type { ColorMode } from "@/lib/color-mode";
@@ -15,7 +15,7 @@ const MENU_ROW_BASE =
     "sidebar-menu-row flex w-full items-center gap-2 px-3 py-1.5 text-left transition-colors";
 
 const THEME_SUBMENU_ROW =
-    "sidebar-menu-row flex w-full items-center gap-2 px-3 py-1.5 text-left transition-colors";
+    "sidebar-menu-row flex w-full items-center gap-2 px-3 py-1.5 pl-8 text-left transition-colors";
 
 const MENU_ICON_SIZE = 12;
 
@@ -387,7 +387,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                     </button>
                                 )}
 
-                                <div className="relative">
+                                <div>
                                     <button
                                         type="button"
                                         className={`${MENU_ROW_BASE} justify-between`}
@@ -406,23 +406,15 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                             </span>
                                             <span>Appearance</span>
                                         </span>
-                                        <FiChevronLeft
+                                        <FiChevronRight
                                             size={MENU_ICON_SIZE}
-                                            className="shrink-0"
+                                            className={`shrink-0 transition-transform ${showThemeSubmenu ? 'rotate-90' : ''}`}
                                             aria-hidden
                                         />
                                     </button>
 
                                     {showThemeSubmenu && (
-                                        <div
-                                            role="menu"
-                                            aria-label="Appearance"
-                                            className="absolute bottom-0 right-full z-[1000] mb-0 mr-1 min-w-[10.5rem] overflow-hidden rounded-lg py-1 shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
-                                            style={{
-                                                backgroundColor: "var(--sidebar-menu-bg)",
-                                                border: "1px solid var(--sidebar-menu-border)",
-                                            }}
-                                        >
+                                        <div role="menu" aria-label="Appearance">
                                             {THEME_OPTIONS.map((option) => {
                                                 const isActive = theme === option.value;
                                                 return (

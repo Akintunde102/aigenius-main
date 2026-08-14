@@ -29,6 +29,7 @@ import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interf
 import { getDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { resolveRequestConversationId } from './requestConversationId.utils';
 import { notifyDesktopChatCompletionIfBackground } from '@/lib/utils/desktop-chat-completion-notify';
+import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
 
 /**
  * SSE/streaming assistant path: merges chunks, updates the open transcript, aborts per session.
@@ -448,23 +449,27 @@ export function useStreamingResponse({
             // If this started as a draft chat and the backend assigned a real id,
             // always materialize it under that id so background completions are visible.
             if (streamingSessionId === null && result.conversationId) {
+                const scopeId = getChatProjectScopeId();
                 setChatForSession(result.conversationId, sessionMessages);
                 if (updateSessionMessages) {
                     updateSessionMessages(result.conversationId, sessionMessages, {
                         modelId: selectedModel.id,
-                        title: sessionMessages[0]?.content as string || 'New chat'
+                        title: sessionMessages[0]?.content as string || 'New chat',
+                        codeProjectId: scopeId,
                     });
                 }
                 void addOrMergeSessionToLocalHistory({
                     id: result.conversationId,
-                    session: { messages: sessionMessages }
+                    codeProjectId: scopeId,
+                    session: { messages: sessionMessages },
                 });
             }
 
             if (streamingSessionId) {
                 void addOrMergeSessionToLocalHistory({
                     id: streamingSessionId,
-                    session: { messages: sessionMessages }
+                    codeProjectId: getChatProjectScopeId(),
+                    session: { messages: sessionMessages },
                 });
             }
 

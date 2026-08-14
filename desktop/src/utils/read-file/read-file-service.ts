@@ -33,6 +33,7 @@ import {
   documentExtractKind,
   getDocumentTextLines,
   type DocumentExtractKind,
+  type DocumentExtractVia,
 } from './document-text-extract';
 import type {
   ReadFileBatchMeta,
@@ -139,7 +140,7 @@ function buildBatchBudgetTruncationNotice(
 }
 
 type LineSourceResolution =
-  | { ok: true; source: LineSource; extractKind?: DocumentExtractKind }
+  | { ok: true; source: LineSource; extractKind?: DocumentExtractKind; extractVia?: DocumentExtractVia }
   | { ok: false; error: string };
 
 async function resolveLineSource(
@@ -156,6 +157,7 @@ async function resolveLineSource(
       ok: true,
       source: { type: 'memory', path: resolvedPath, lines: extracted.lines },
       extractKind: kind,
+      extractVia: extracted.via,
     };
   }
 
@@ -169,14 +171,16 @@ async function resolveLineSource(
   return { ok: true, source: { type: 'file', path: resolvedPath } };
 }
 
-function documentExtractNote(kind: DocumentExtractKind): string {
+function documentExtractNote(kind: DocumentExtractKind, via?: DocumentExtractVia): string {
   switch (kind) {
     case 'doc':
       return 'Text extracted from legacy Word document (.doc).';
     case 'docx':
       return 'Text extracted from Word document (.docx).';
     case 'pdf':
-      return 'Text extracted from PDF document (.pdf).';
+      return via === 'ocr'
+        ? 'Text extracted from PDF via OCR (scanned or image-only PDF).'
+        : 'Text extracted from PDF document (.pdf). Embedded text layer used when available.';
     default:
       return 'Text extracted from document.';
   }
@@ -204,6 +208,7 @@ async function readLineWindow(
   resolvedVia: ReadFileResolvedVia,
   fallbackNote?: string,
   extractKind?: DocumentExtractKind,
+  extractVia?: DocumentExtractVia,
 ): Promise<ReadFileItemResult> {
   const slice = await readLinesFromSource(source, startLine, maxLines);
   const processedLines = slice.lines.map((l) => truncateLongLine(l).text);
@@ -219,7 +224,7 @@ async function readLineWindow(
 
   let body = content;
   if (extractKind) {
-    body = `> Note: ${documentExtractNote(extractKind)}\n\n${body}`;
+    body = `> Note: ${documentExtractNote(extractKind, extractVia)}\n\n${body}`;
   }
   if (fallbackNote) {
     body = `> Note: ${fallbackNote}\n\n${body}`;
@@ -247,6 +252,7 @@ async function readFullFileWithinCharBudget(
   displayPath: string,
   charBudget: { value: number },
   extractKind?: DocumentExtractKind,
+  extractVia?: DocumentExtractVia,
 ): Promise<ReadFileItemResult> {
   const lineCount = await countLinesFromSource(source);
   const totalLines = lineCount.lineCountOmitted ? undefined : lineCount.totalLines;
@@ -302,7 +308,7 @@ async function readFullFileWithinCharBudget(
 
   let body = content;
   if (extractKind) {
-    body = `> Note: ${documentExtractNote(extractKind)}\n\n${body}`;
+    body = `> Note: ${documentExtractNote(extractKind, extractVia)}\n\n${body}`;
   }
   if (truncationNotice) {
     body = `> ⚠ PARTIAL — ${truncationNotice}\n\n${body}`;
@@ -351,7 +357,7 @@ async function readSingle(
     };
   }
 
-  const { source, extractKind } = lineSourceResult;
+  const { source, extractKind, extractVia } = lineSourceResult;
   const mode = req.mode ?? 'auto';
 
   if (req.anchorSymbol?.match(/^section:\d+$/i) || (mode === 'index' && isDocIndexCandidate(resolved))) {
@@ -370,6 +376,7 @@ async function readSingle(
         'docIndex',
         undefined,
         extractKind,
+        extractVia,
       );
       result.resolvedVia = 'docIndex';
       if (charBudgetRemaining) {
@@ -404,6 +411,7 @@ async function readSingle(
         'symbolAnchor',
         undefined,
         extractKind,
+        extractVia,
       );
       if (charBudgetRemaining) {
         charBudgetRemaining.value = Math.max(0, charBudgetRemaining.value - result.content.length);
@@ -420,6 +428,7 @@ async function readSingle(
       'lineRangeFallback',
       fallbackNote,
       extractKind,
+      extractVia,
     );
     if (charBudgetRemaining) {
       charBudgetRemaining.value = Math.max(0, charBudgetRemaining.value - result.content.length);
@@ -467,7 +476,7 @@ async function readSingle(
   if (wantsLineMode) {
     const startLine = resolveStartLine(req);
     const maxLines = resolveMaxLines(req, budgetMaxLines);
-    const result = await readLineWindow(source, displayPath, startLine, maxLines, 'lineRange', undefined, extractKind);
+    const result = await readLineWindow(source, displayPath, startLine, maxLines, 'lineRange', undefined, extractKind, extractVia);
     if (charBudgetRemaining) {
       if (result.content.length > charBudgetRemaining.value) {
         const allowed = result.content.slice(0, charBudgetRemaining.value);
@@ -484,7 +493,7 @@ async function readSingle(
     return result;
   }
 
-  const result = await readLineWindow(source, displayPath, 1, budgetMaxLines, 'lineRange', undefined, extractKind);
+  const result = await readLineWindow(source, displayPath, 1, budgetMaxLines, 'lineRange', undefined, extractKind, extractVia);
   if (charBudgetRemaining) {
     charBudgetRemaining.value = Math.max(0, charBudgetRemaining.value - result.content.length);
   }
@@ -590,6 +599,7 @@ async function executeBatchRead(
         pathResult.displayPath,
         charBudget,
         lineSourceResult.extractKind,
+        lineSourceResult.extractVia,
       );
     }
 

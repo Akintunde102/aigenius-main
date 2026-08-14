@@ -388,11 +388,11 @@ export function ChatMessage({
     const messageContainerClasses = useMemo(() => {
         if (msg.role === "user") {
             return [
-                "relative ml-auto max-w-sm min-w-0 rounded-[22px] border px-4 py-3 text-[15px] leading-relaxed",
+                "relative ml-auto max-w-sm min-w-0 rounded-[22px] border px-4 py-3 leading-relaxed",
                 "[background-color:var(--user-bubble-bg)] [border-color:var(--user-bubble-border)] [color:var(--user-bubble-fg)]",
             ].join(" ");
         }
-        return "relative min-w-0 w-full px-1 py-1 text-[15px] leading-relaxed [color:var(--app-ink-900)]";
+        return "relative min-w-0 w-full px-1 py-1 leading-relaxed [color:var(--app-ink-900)]";
     }, [msg.role]);
 
     const messageStyles = useMemo(() => ({
@@ -400,7 +400,6 @@ export function ChatMessage({
         position: 'relative' as const,
         display: 'flex',
         flexDirection: 'column' as const,
-        fontSize: '14px',
         ...(msg.role !== 'user'
             ? { maxWidth: '100%' }
             : { maxWidth: isLongUserText ? '352px' : '320px' })
