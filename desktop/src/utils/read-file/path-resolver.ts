@@ -4,6 +4,14 @@ import os from 'os';
 import { getActiveCodeProjectRootPath } from '../../active-code-project';
 import { isImageExtension, formatSupportedImageExtensions } from '../image-extensions';
 
+/** Document types readable via absolute paths outside the active project (Desktop, Downloads, etc.). */
+const DOCUMENT_ANYWHERE_EXTENSIONS = new Set(['pdf', 'doc', 'docx']);
+
+function isDocumentAnywhereExtension(filePath: string): boolean {
+  const ext = path.extname(filePath).slice(1).toLowerCase();
+  return DOCUMENT_ANYWHERE_EXTENSIONS.has(ext);
+}
+
 export type PathResolveResult =
   | { ok: true; resolved: string; displayPath: string }
   | { ok: false; error: string };
@@ -40,6 +48,8 @@ function outsideWorkspaceError(workspaceRootPath: string): string {
 
 /**
  * Resolve a workspace-relative or absolute path under the active project root.
+ * Absolute paths to documents (.pdf, .doc, .docx) may point anywhere on the machine
+ * (same policy as `local_read_image`). Other absolute paths must stay under the project.
  * Uses realpath to defeat symlink escapes.
  */
 export async function resolveReadFilePath(inputPath: string): Promise<PathResolveResult> {
@@ -69,7 +79,12 @@ export async function resolveReadFilePath(inputPath: string): Promise<PathResolv
   }
 
   if (!isDescendantOf(rootReal, real)) {
-    return { ok: false, error: outsideWorkspaceError(root) };
+    if (!path.isAbsolute(trimmed)) {
+      return { ok: false, error: outsideWorkspaceError(root) };
+    }
+    if (!isDocumentAnywhereExtension(real)) {
+      return { ok: false, error: outsideWorkspaceError(root) };
+    }
   }
 
   let stat;

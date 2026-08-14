@@ -2,6 +2,14 @@ import React, { memo } from 'react';
 import { FiX } from 'react-icons/fi';
 import { Model } from '@/app/components/model-interface/shared/types';
 import { formatUSD, formatNGN, getModelDisplayName } from '@/app/components/model-interface/shared/utils';
+import {
+    formatPricingAmount,
+    formatPricingTierLabel,
+    getPricingOverrides,
+    getScalarPricingEntries,
+    getTierPricingEntries,
+    pricingLabel,
+} from '../utils/modelPricingDisplay.utils';
 
 // Model Details Modal
 type ModelSelectionDetailsModalProps = {
@@ -18,6 +26,10 @@ const ModelSelectionDetailsModal = memo(function ModelDetailsModal({
     averageCost,
 }: ModelSelectionDetailsModalProps) {
     if (!isOpen) return null;
+
+    const scalarPricingEntries = getScalarPricingEntries(model.pricing as Record<string, unknown> | undefined);
+    const pricingOverrides = getPricingOverrides(model.pricing as Record<string, unknown> | undefined);
+    const hasPricing = scalarPricingEntries.length > 0 || pricingOverrides.length > 0;
 
     return (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -79,35 +91,37 @@ const ModelSelectionDetailsModal = memo(function ModelDetailsModal({
                     </div>
 
                     {/* Pricing */}
-                    {model.pricing && Object.keys(model.pricing).length > 0 && (
+                    {hasPricing && (
                         <div>
                             <h4 className="font-semibold mb-2 text-sm" style={{ color: "var(--modal-fg)" }}>Pricing</h4>
                             <div className="rounded-lg p-4 border" style={{ background: "var(--modal-bg-muted)", borderColor: "var(--modal-border)" }}>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {Object.entries(model.pricing).map(([key, value]) => {
-                                        const numValue = parseFloat(String(value));
-                                        const k = key.toLowerCase();
-                                        const isTokenBased = k === 'prompt' || k === 'completion' || k.includes('cache');
-
-                                        const multiplier = isTokenBased ? 1000000 : 1;
-                                        let unit = isTokenBased ? '/ 1M tokens' : '';
-
-                                        if (k === 'image') unit = '/ image';
-                                        if (k === 'web_search') unit = '/ search';
-                                        if (k === 'request') unit = '/ request';
-                                        if (k === 'audio') unit = '/ second';
-
-                                        const displayValue = isNaN(numValue) ? value : `$${(numValue * multiplier).toFixed(k === 'web_search' || k === 'request' || k === 'image' ? 3 : 2)} ${unit}`;
-                                        const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-
-                                        return (
-                                            <div key={key} className="flex justify-between text-xs">
-                                                <span className="font-medium" style={{ color: "var(--modal-muted-fg)" }}>{label}:</span>
-                                                <span className="font-mono" style={{ color: "var(--modal-fg)" }}>{displayValue}</span>
-                                            </div>
-                                        );
-                                    })}
+                                    {scalarPricingEntries.map(([key, value]) => (
+                                        <div key={key} className="flex justify-between text-xs">
+                                            <span className="font-medium" style={{ color: "var(--modal-muted-fg)" }}>{pricingLabel(key)}:</span>
+                                            <span className="font-mono" style={{ color: "var(--modal-fg)" }}>{formatPricingAmount(key, value)}</span>
+                                        </div>
+                                    ))}
                                 </div>
+                                {pricingOverrides.map((tier, index) => (
+                                    <div
+                                        key={`tier-${tier.min_prompt_tokens ?? index}`}
+                                        className="mt-4 border-t pt-3"
+                                        style={{ borderColor: "var(--modal-border)" }}
+                                    >
+                                        <p className="text-xs font-medium mb-2" style={{ color: "var(--modal-muted-fg)" }}>
+                                            {formatPricingTierLabel(tier.min_prompt_tokens)}
+                                        </p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {getTierPricingEntries(tier).map(([key, value]) => (
+                                                <div key={key} className="flex justify-between text-xs">
+                                                    <span className="font-medium" style={{ color: "var(--modal-muted-fg)" }}>{pricingLabel(key)}:</span>
+                                                    <span className="font-mono" style={{ color: "var(--modal-fg)" }}>{formatPricingAmount(key, value)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}

@@ -40,7 +40,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
                             decoding="async"
                         />
                     ) : null}
-                    <div className="text-[14px] text-gray-700 font-semibold">{displayName}</div>
+                    <div className="text-gray-700 font-semibold" style={{ fontSize: "var(--chat-body-size)" }}>{displayName}</div>
                 </div>
             )}
         </div>

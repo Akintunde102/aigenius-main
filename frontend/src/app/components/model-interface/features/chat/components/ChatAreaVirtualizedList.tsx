@@ -95,7 +95,7 @@ export const ChatAreaVirtualizedList = React.memo(function ChatAreaVirtualizedLi
     <div className="w-full flex flex-col">
       {isCapped && (
         <div className="flex justify-center p-4">
-          <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-lg text-sm border border-amber-200 shadow-sm">
+          <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-lg border border-amber-200 shadow-sm">
              Performance Note: Only the last {MAX_MESSAGES} messages are being displayed.
           </div>
         </div>

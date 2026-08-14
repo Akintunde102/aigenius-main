@@ -19,16 +19,18 @@ jest.mock('word-extractor', () => {
   }));
 });
 
-jest.mock('pdf-parse', () => jest.fn());
+jest.mock('../../local-read-pdf', () => ({
+  readPdfDocumentText: jest.fn(),
+}));
 
 import fs from 'fs/promises';
 import mammoth from 'mammoth';
 import WordExtractor from 'word-extractor';
-import pdfParse from 'pdf-parse';
+import { readPdfDocumentText } from '../../local-read-pdf';
 
 const mammothMock = mammoth as jest.Mocked<typeof mammoth>;
 const WordExtractorMock = WordExtractor as jest.MockedClass<typeof WordExtractor>;
-const pdfParseMock = pdfParse as jest.MockedFunction<typeof pdfParse>;
+const readPdfDocumentTextMock = readPdfDocumentText as jest.MockedFunction<typeof readPdfDocumentText>;
 
 describe('documentExtractKind', () => {
   it('detects .doc, .docx, and .pdf extensions', () => {
@@ -75,9 +77,8 @@ describe('getDocumentTextLines', () => {
     expect(mammothMock.extractRawText).not.toHaveBeenCalled();
   });
 
-  it('extracts .pdf text via pdf-parse', async () => {
-    (fs.readFile as jest.Mock).mockResolvedValue(Buffer.from('%PDF-1.4'));
-    pdfParseMock.mockResolvedValue({ text: 'Slide deck content' } as Awaited<ReturnType<typeof pdfParse>>);
+  it('extracts .pdf text via readPdfDocumentText', async () => {
+    readPdfDocumentTextMock.mockResolvedValue({ text: 'Slide deck content', method: 'text' });
 
     const result = await getDocumentTextLines('/tmp/slides.pdf', 'pdf');
 
@@ -85,9 +86,9 @@ describe('getDocumentTextLines', () => {
     if (result.ok) {
       expect(result.lines).toEqual(['Slide deck content']);
       expect(result.kind).toBe('pdf');
+      expect(result.via).toBe('text');
     }
-    expect(fs.readFile).toHaveBeenCalledWith('/tmp/slides.pdf');
-    expect(pdfParseMock).toHaveBeenCalled();
+    expect(readPdfDocumentTextMock).toHaveBeenCalledWith('/tmp/slides.pdf');
   });
 
   it('returns a helpful error when extraction fails', async () => {

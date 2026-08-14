@@ -61,7 +61,7 @@ export function ToolExecutionDisplay({ tool_executions }: ToolExecutionDisplayPr
                         >
                             <div className="flex items-center gap-2">
                                 {getToolIcon(execution.tool)}
-                                <span className="text-sm font-medium text-gray-700">
+                                <span className="font-medium text-gray-700">
                                     {getToolDisplayName(execution.tool)}
                                 </span>
 

@@ -53,7 +53,17 @@ describe('resolveLocalImagePath', () => {
 });
 
 describe('resolveReadFilePath workspace guard', () => {
-  it('still blocks absolute paths outside workspace', async () => {
+  it('allows absolute .docx outside project', async () => {
+    const projectRoot = path.join(os.tmpdir(), 'aigenius-test-project');
+    const outsideDocx = path.join(os.tmpdir(), `outside-${Date.now()}.docx`);
+    await fs.mkdir(projectRoot, { recursive: true });
+    await fs.writeFile(outsideDocx, 'docx');
+    const result = await resolveReadFilePath(outsideDocx);
+    expect(result.ok).toBe(true);
+    await fs.unlink(outsideDocx).catch(() => undefined);
+  });
+
+  it('still blocks absolute non-document paths outside workspace', async () => {
     const projectRoot = path.join(os.tmpdir(), 'aigenius-test-project');
     const outsideTxt = path.join(os.tmpdir(), `outside-${Date.now()}.txt`);
     await fs.mkdir(projectRoot, { recursive: true });
@@ -64,6 +74,17 @@ describe('resolveReadFilePath workspace guard', () => {
       expect(result.error).toMatch(/outside workspace root/i);
     }
     await fs.unlink(outsideTxt).catch(() => undefined);
+  });
+
+  it('allows absolute PDF paths outside the project root', async () => {
+    const outsidePdf = path.join(os.tmpdir(), `outside-${Date.now()}.pdf`);
+    await fs.writeFile(outsidePdf, '%PDF-1.4 sample');
+    const result = await resolveReadFilePath(outsidePdf);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.resolved).toBe(outsidePdf);
+    }
+    await fs.unlink(outsidePdf).catch(() => undefined);
   });
 
   it('allows absolute paths inside the active project root', async () => {

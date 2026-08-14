@@ -3,7 +3,7 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
-  testMatch: ['**/*.spec.ts'],
+  testMatch: ['**/*.spec.ts', '**/*.live.integration.spec.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
   /** Map TS `.js` import specifiers to source files (NodeNext / ESM-style imports). */
   moduleNameMapper: {

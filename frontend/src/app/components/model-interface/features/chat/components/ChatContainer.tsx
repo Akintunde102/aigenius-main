@@ -368,7 +368,10 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                     style={inputContainerStyle}
                 >
                     {pendingOrphanReply ? (
-                        <div className="mb-3 rounded-2xl border border-emerald-200/80 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 shadow-sm">
+                        <div
+                            className="mb-3 rounded-2xl border border-emerald-200/80 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm"
+                            style={{ fontSize: "var(--chat-body-size)" }}
+                        >
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
