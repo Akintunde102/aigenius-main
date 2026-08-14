@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { canUseHttpOnlyRefreshCookie } from '@/lib/utils/auth-session';
+import { canUseDesktopStoredRefreshToken } from '@/lib/utils/desktop-auth-refresh';
 import { getAccessToken, refreshAccessToken, subscribeToTokenRefresh } from '@/lib/api/auth-client';
 import { resolveDesktopUpstreamApiRootUrl, getLocalMiniServerApiRootUrl } from '@/lib/api/resolve-gateway-api-root';
 import { clearUserDetailsCache } from '@/lib/calls/get-logged-user-details';
@@ -82,7 +83,7 @@ export function useWalletSocket({ onWalletUpdated }: UseWalletSocketOptions) {
 
             socket.on('connect_error', (err) => {
                 console.warn('[WalletSocket] connect_error:', err.message);
-                if (!canUseHttpOnlyRefreshCookie()) {
+                if (!canUseHttpOnlyRefreshCookie() && !canUseDesktopStoredRefreshToken()) {
                     return;
                 }
                 if (retryingRefreshRef.current) {

@@ -1,9 +1,9 @@
 import { exchangeOAuthAccessTokenForSession } from '@/lib/utils/oauth-connection-token';
 
 /**
- * After Google OAuth, the backend redirects with a short-lived JWT (`?token=`).
- * The desktop shell must exchange it for a connection token (API key), same as
- * `AuthenticatedChatPage` does for browser `?token=` URLs.
+ * After Google OAuth, the desktop shell receives a one-time code on loopback and exchanges it
+ * in the Electron main process for access + refresh tokens (refresh stored in OS keychain).
+ * This helper persists the short-lived access JWT and connection token in the renderer.
  */
 export async function completeDesktopOAuthSession(oauthAccessToken: string): Promise<boolean> {
   return exchangeOAuthAccessTokenForSession(oauthAccessToken);
