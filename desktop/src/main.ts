@@ -1035,6 +1035,12 @@ function createWindow(relativePath?: string): BrowserWindow {
 
   win.webContents.once('did-finish-load', () => {
     startupMark('window_did_finish_load');
+    try {
+      // Keep page zoom fixed so trackpad pinch emits wheel events the chat UI can handle.
+      win.webContents.setVisualZoomLevelLimits(1, 1);
+    } catch (err) {
+      console.warn('[aigenius-desktop] setVisualZoomLevelLimits failed', err);
+    }
     scheduleIndexerStartAfterShellReady();
     if (isDesktopPerfBenchmarkEnabled()) {
       void maybeRunPerfBenchmark(win).finally(() => {

@@ -11,6 +11,7 @@ import { TypingIndicator } from "./TypingIndicator";
 import { JumpToLatestButton } from "./JumpToLatestButton";
 import type { ChatAreaVirtualizedListProps } from "./ChatAreaVirtualizedList";
 import { isVisibleChatMessage } from "@/lib/utils/messageContentUtils";
+import { useChatAreaPinchZoom } from "../hooks/useChatAreaPinchZoom";
 
 function ChatAreaMessagesChunkFallback() {
   return (
@@ -86,6 +87,16 @@ export function ChatArea({
   selectedPersonalityIconUrl,
   showScrollToBottom = false,
 }: ChatAreaProps) {
+  const bindPinchZoom = useChatAreaPinchZoom();
+
+  const handleChatAreaRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      chatAreaRef.current = node;
+      bindPinchZoom(node);
+    },
+    [bindPinchZoom, chatAreaRef],
+  );
+
   const visibleNonSystemCount = useMemo(
     () => chat.filter(isVisibleChatMessage).length,
     [chat],
@@ -152,7 +163,7 @@ export function ChatArea({
 
   return (
     <div
-      ref={chatAreaRef}
+      ref={handleChatAreaRef}
       className="chat-area relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-transparent px-3 py-4 md:px-6 md:py-6 chat-scrollbar"
       style={{
         position: "relative",
