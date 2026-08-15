@@ -49,13 +49,13 @@ export function upsertSessionMessagesInHistory(
   if (exists) {
     return prev.map((session) =>
       session.id === sessionId
-        ? { ...session, ...sessionData, title: resolvedTitle, messages }
+        ? { ...session, ...sessionData, title: resolvedTitle, messages: [] }
         : session,
     );
   }
   const newSession: ChatSession = {
     id: sessionId,
-    messages,
+    messages: [],
     modelId: sessionData?.modelId || "",
     ...sessionData,
     title: resolvedTitle,

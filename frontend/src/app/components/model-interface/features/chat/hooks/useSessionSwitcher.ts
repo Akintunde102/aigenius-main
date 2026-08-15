@@ -19,8 +19,7 @@ interface UseSessionSwitcherOptions {
  * Hook for managing session switching.
  *
  * Switching is now a synchronous key change — messages derive from chatMap
- * which is pre-populated from chatHistory on load. A background fetch runs
- * afterward to reconcile with the server, writing silently into the map.
+ * which is populated on demand (LRU) when the user opens a conversation.
  */
 export function useSessionSwitcher({ currentSessionId, chatMap, setChatForSession }: UseSessionSwitcherOptions) {
     const queryClient = useQueryClient();
@@ -64,10 +63,18 @@ export function useSessionSwitcher({ currentSessionId, chatMap, setChatForSessio
         // 1. Key change — chat derives from chatMap[session.id] automatically.
         setCurrentSessionId(session.id);
 
-        // 2. Cold path: fill the map from local session data if not yet present.
-        if (!chatMap[session.id] && session.messages?.length) {
-            const normalized = normalizeSessionMessages(ensureSystemPromptMessage(session));
-            setChatForSession(session.id, (normalized.messages || []) as ChatMessage[]);
+        // 2. Cold path: load transcript when not in chatMap (sidebar history is metadata-only).
+        if (!chatMap[session.id]) {
+            if (session.messages?.length) {
+                const normalized = normalizeSessionMessages(ensureSystemPromptMessage(session));
+                setChatForSession(session.id, (normalized.messages || []) as ChatMessage[]);
+            } else {
+                void loadSessionFromBackend(queryClient, session.id).then((loaded) => {
+                    if (!loaded?.messages?.length) return;
+                    const normalized = normalizeSessionMessages(ensureSystemPromptMessage(loaded));
+                    setChatForSession(session.id!, (normalized.messages || []) as ChatMessage[]);
+                });
+            }
         }
 
         // 3. Background reconciliation with the server — updates the map silently.
@@ -93,7 +100,7 @@ export function useSessionSwitcher({ currentSessionId, chatMap, setChatForSessio
 
                 if (setChatHistory) {
                     setChatHistory(prev =>
-                        prev.map(s => s.id === sid ? { ...s, ...normalized, messages } : s)
+                        prev.map(s => s.id === sid ? { ...s, ...normalized, messages: [] } : s)
                     );
                 }
             } catch {

@@ -26,6 +26,14 @@ export function isAigeniusDesktopRuntime(): boolean {
   return isDesktop;
 }
 
+/** True when the desktop shell exposes local Whisper/STT (see AIGENIUS_ENABLE_STT). */
+export function isDesktopSttEnabled(): boolean {
+  if (!isAigeniusDesktopRuntime()) {
+    return true;
+  }
+  return window.aigeniusDesktop?.isSttEnabled !== false;
+}
+
 /**
  * Paystack returned in the system browser after a desktop top-up (`?desktop=1`).
  * That browser has no app auth tokens — verification runs in the Electron app via polling.
@@ -168,6 +176,8 @@ export type DesktopChatScreenshotPayload = {
 
 export type AigeniusDesktopBridgeSurface = {
   isDesktop?: boolean;
+  /** Local Whisper STT; false when mini-server runs with AIGENIUS_ENABLE_STT=0. */
+  isSttEnabled?: boolean;
   openExternal?: (url: string) => void;
   /** Fires when the Electron main window regains OS focus (e.g. after system-browser payment). */
   onMainWindowFocus?: (handler: () => void) => () => void;

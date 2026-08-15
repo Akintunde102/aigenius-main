@@ -129,6 +129,21 @@ export function useModelInterface(options?: {
     );
   }, [streamingMap, loadingMap]);
 
+  const getRetainSessionIds = useCallback(() => {
+    const ids = new Set<string>();
+    if (currentSessionId) {
+      ids.add(currentSessionId);
+    }
+    ids.add(DRAFT_SESSION_KEY);
+    for (const [sessionId, active] of Object.entries(streamingMap)) {
+      if (active) ids.add(sessionId);
+    }
+    for (const [sessionId, active] of Object.entries(loadingMap)) {
+      if (active) ids.add(sessionId);
+    }
+    return ids;
+  }, [currentSessionId, streamingMap, loadingMap]);
+
   const {
     chatMap,
     setChatForSession,
@@ -138,7 +153,11 @@ export function useModelInterface(options?: {
     refreshChatHistory,
     populateFromBackend,
     updateSessionMessages,
-  } = useChatData({ isPassiveSyncBlocked });
+  } = useChatData({
+    isPassiveSyncBlocked,
+    activeSessionId: currentSessionId,
+    getRetainSessionIds,
+  });
 
   const viewSessionId = resolveViewSessionId(routeConversationId, currentSessionId);
   const activeKey = viewSessionId ?? DRAFT_SESSION_KEY;

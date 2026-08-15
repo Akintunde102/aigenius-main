@@ -57,6 +57,25 @@ describe("ChatAreaVirtualizedList", () => {
     expect(messages[0]).toHaveTextContent("Hello 1");
   });
 
+  it("filters out server-injected runtime_context user messages", () => {
+    const chat: ChatMessage[] = [
+      {
+        role: "user",
+        content: "<runtime_context reported_at=\"2026-08-15T14:17:19.324Z\">\nsurface: desktop\n</runtime_context>",
+        timestamp: 0,
+      },
+      { role: "user", content: "Hello", timestamp: 1 },
+      { role: "assistant", content: "Hi", timestamp: 2 },
+    ];
+
+    render(<ChatAreaVirtualizedList {...mockProps} chat={chat} />);
+
+    const messages = screen.getAllByTestId("chat-message-wrapper");
+    expect(messages).toHaveLength(2);
+    expect(messages[0]).toHaveTextContent("Hello");
+    expect(messages[1]).toHaveTextContent("Hi");
+  });
+
   it("caps the display to the last 150 non-system messages", () => {
     // Total 160 user messages
     const chat: ChatMessage[] = Array.from({ length: 160 }, (_, i) => ({

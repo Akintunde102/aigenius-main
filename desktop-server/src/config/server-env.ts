@@ -1,9 +1,11 @@
 /** Process env reads for the desktop HTTP server (read once at import). */
 
 /**
- * The Python voice sidecar inherits `process.env` from this process. STT-related examples:
+ * The Python voice sidecar inherits `process.env` from this process. Voice-related examples:
+ * - `AIGENIUS_ENABLE_STT`: `1` (default) loads local STT; `0` skips Whisper warm-up and STT routes
  * - `AIGENIUS_STT_BACKEND`: `auto` (default: whisper.cpp when CLI+weights exist, else faster_whisper), `whisper_cpp`, or `faster_whisper`
  * - `WHISPER_CPP_CLI`, `WHISPER_CPP_MODEL`, `WHISPER_CPP_MODEL_DIR`, `WHISPER_CPP_THREADS`
+ * - `AIGENIUS_HOMEDIR_INDEX`: `0` disables background home-directory indexing (active code project only)
  */
 
 export const serverPort = parseInt(process.env.PORT ?? '28001', 10);

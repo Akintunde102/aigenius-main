@@ -133,4 +133,17 @@ describe('buildToolClusterSummary', () => {
   it('returns null for an empty cluster', () => {
     expect(buildToolClusterSummary([])).toBeNull();
   });
+
+  it('shows display name for a single in-flight tool', () => {
+    const events: ToolEvent[] = [
+      makeTool({
+        tool: 'local_grep',
+        displayName: 'local_grep',
+        loading: true,
+        arguments: { pattern: 'foo' },
+      }),
+    ];
+
+    expect(buildToolClusterSummary(events)).toBe('Grep file contents (desktop)');
+  });
 });

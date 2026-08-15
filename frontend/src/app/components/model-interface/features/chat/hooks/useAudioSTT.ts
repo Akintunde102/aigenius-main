@@ -4,7 +4,7 @@ import { authorizedFetch } from '@/lib/api/auth-client';
 import { LINKS } from '@/lib/links';
 import { useAudioEngine } from './useAudioEngine';
 import { composeLiveVoiceDraft } from './audioMode.utils';
-import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
+import { isAigeniusDesktopRuntime, isDesktopSttEnabled } from '@/lib/utils/desktop-runtime';
 
 import { Socket } from 'socket.io-client';
 import { AUDIO_CONSTANTS } from './audio.constants';
@@ -373,6 +373,11 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
   }, [isSTTActive, isRecording, socket, setInput, peerMicSuppressRef]);
 
   const toggleSTT = useCallback(async () => {
+    if (isAigeniusDesktopRuntime() && !isDesktopSttEnabled()) {
+      const { toast } = await import('react-hot-toast');
+      toast.error('Voice dictation is disabled in this build. Set AIGENIUS_ENABLE_STT=1 to restore local Whisper.');
+      return;
+    }
     if (isRecording) {
       voiceObs('dictation', 'toggle_off', {});
       resetVoiceTraceSession();
