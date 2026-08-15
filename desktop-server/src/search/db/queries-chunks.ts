@@ -13,7 +13,7 @@ import { shouldSkipDeepGraphIndexing } from '../indexer/exemptions.js';
 import type { GraphStatus } from '../graph-status.js';
 import { detectBoundaries } from '../indexer/boundaries.js';
 import { isMakefile } from '../indexer/makefile-indexer.js';
-import type { IndexedEdge, IndexedSymbol } from '../indexer/language-indexer.js';
+import type { FileIntelligence, IndexedEdge, IndexedSymbol } from '../indexer/language-indexer.js';
 import { languageForExtension } from '../indexer/language-indexer.js';
 import { makeQualifiedName, signatureHash } from '../graph/graph-types.js';
 import { buildStructuralDigest } from './queries-graph.js';
@@ -491,7 +491,7 @@ async function upsertFileStructureAsync(
 ): Promise<{ symbolCount: number; chunkCount: number }> {
   deleteFileStructure(db, filePath);
 
-  let intelligence;
+  let intelligence: FileIntelligence;
   try {
     intelligence = await indexFileIntelligenceFast(filePath, content, extension);
   } catch (err) {

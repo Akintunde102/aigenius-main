@@ -1,7 +1,9 @@
 import type { ChatMessageDisplayBlock } from '@/app/components/model-interface/features/messages/components/chatMessageDisplay.utils';
 import type { ToolEvent } from '@/app/components/model-interface/shared/types';
+import { getToolActivityHint } from '@/shared/tool-display-names';
 import { getToolActivityNoun } from '@/shared/tool-activity-nouns';
 import { getToolDisplayName } from './toolDisplayNames';
+import { plainLanguageShellSummary } from './tool-ui/local-shell-display.utils';
 import { buildToolActivityLabel } from './tool-ui/tool-activity-label.utils';
 import { buildToolClusterSummary } from './work-activity-summary.utils';
 
@@ -24,12 +26,44 @@ export function resolveStreamingToolRowLabel(
   const direct = buildToolActivityLabel(event);
   if (direct) return direct;
 
+  if (event.loading) {
+    if (event.tool === 'local_shell' || event.tool === 'run_command') {
+      const command = typeof event.arguments?.command === 'string' ? event.arguments.command.trim() : '';
+      if (command) return plainLanguageShellSummary(command);
+    }
+
+    const hint = getToolActivityHint(event.tool, event.arguments);
+    if (hint) return hint;
+  }
+
   const rich = buildToolClusterSummary([event as ToolEvent]);
   if (rich) return rich;
 
   const dn = event.displayName?.trim();
   if (dn && dn !== event.tool) return dn;
   return getToolDisplayName(event.tool);
+}
+
+export function buildInProgressClusterHeader(
+  events: ToolEvent[],
+  _messageStreaming = false,
+): string | null {
+  const loadingEvents = events.filter((event) => event.loading);
+
+  if (loadingEvents.length === 1) {
+    return resolveStreamingToolRowLabel(loadingEvents[0]);
+  }
+
+  if (loadingEvents.length > 1) {
+    const labels = loadingEvents
+      .map((event) => resolveStreamingToolRowLabel(event))
+      .filter((label, index, all) => all.indexOf(label) === index);
+    if (labels.length > 0) {
+      return labels.slice(0, 3).join(', ');
+    }
+  }
+
+  return null;
 }
 
 /**

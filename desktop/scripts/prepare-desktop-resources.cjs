@@ -28,25 +28,78 @@ function resolvePythonVenvDir(desktopRoot) {
   return packed;
 }
 
+function resolveDesktopUiMode() {
+  const raw = process.env.AIGENIUS_DESKTOP_UI?.trim().toLowerCase();
+  if (raw === 'next') {
+    return 'next';
+  }
+  return 'vite';
+}
+
+function prepareNextStandalone({ frontend, outRoot }) {
+  const standaloneSrc = path.join(frontend, '.next', 'standalone');
+  const staticSrc = path.join(frontend, '.next', 'static');
+  const publicSrc = path.join(frontend, 'public');
+  const outNext = path.join(outRoot, 'next-standalone');
+
+  if (!fs.existsSync(standaloneSrc)) {
+    console.error(
+      'Missing frontend/.next/standalone. Run from repo root:\n' +
+        '  cd frontend && npm run build:desktop',
+    );
+    process.exit(1);
+  }
+
+  fs.mkdirSync(outNext, { recursive: true });
+  fs.cpSync(standaloneSrc, outNext, { recursive: true });
+  fs.cpSync(staticSrc, path.join(outNext, '.next', 'static'), { recursive: true });
+  const nestedStandaloneApp = path.join(outNext, 'frontend');
+  if (fs.existsSync(path.join(nestedStandaloneApp, 'server.js'))) {
+    fs.cpSync(staticSrc, path.join(nestedStandaloneApp, '.next', 'static'), { recursive: true });
+    if (fs.existsSync(publicSrc)) {
+      fs.cpSync(publicSrc, path.join(nestedStandaloneApp, 'public'), { recursive: true });
+    }
+  }
+  if (fs.existsSync(publicSrc)) {
+    fs.cpSync(publicSrc, path.join(outNext, 'public'), { recursive: true });
+  }
+
+  return 'next-standalone';
+}
+
+function prepareViteDesktopUi({ repoRoot, outRoot, desktopRoot }) {
+  const viteDist = path.join(repoRoot, 'desktop-renderer', 'dist');
+  const outUi = path.join(outRoot, 'desktop-ui');
+  const outUiServer = path.join(outRoot, 'desktop-ui-server');
+
+  if (!fs.existsSync(path.join(viteDist, 'index.html'))) {
+    console.error(
+      'Missing desktop-renderer/dist. Run from repo root:\n' +
+        '  cd desktop-renderer && npm run build',
+    );
+    process.exit(1);
+  }
+
+  fs.mkdirSync(outUi, { recursive: true });
+  fs.cpSync(viteDist, outUi, { recursive: true });
+
+  fs.mkdirSync(outUiServer, { recursive: true });
+  fs.copyFileSync(
+    path.join(desktopRoot, 'scripts', 'serve-desktop-ui.cjs'),
+    path.join(outUiServer, 'serve-desktop-ui.cjs'),
+  );
+
+  return 'desktop-ui';
+}
+
 const desktopRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(desktopRoot, '..');
 const frontend = path.join(repoRoot, 'frontend');
-const standaloneSrc = path.join(frontend, '.next', 'standalone');
-const staticSrc = path.join(frontend, '.next', 'static');
-const publicSrc = path.join(frontend, 'public');
 const serverSrc = path.join(repoRoot, 'desktop-server', 'dist');
 const outRoot = path.join(desktopRoot, 'dist-resources');
-const outNext = path.join(outRoot, 'next-standalone');
 const outServer = path.join(outRoot, 'desktop-server');
 const outPythonVenv = path.join(outRoot, 'python-venv');
-
-if (!fs.existsSync(standaloneSrc)) {
-  console.error(
-    'Missing frontend/.next/standalone. Run from repo root:\n' +
-    '  cd frontend && npm run build:desktop',
-  );
-  process.exit(1);
-}
+const desktopUiMode = resolveDesktopUiMode();
 
 if (!fs.existsSync(serverSrc)) {
   console.error('Missing desktop-server/dist. Run: cd desktop-server && npm run build');
@@ -54,21 +107,12 @@ if (!fs.existsSync(serverSrc)) {
 }
 
 fs.rmSync(outRoot, { recursive: true, force: true });
-fs.mkdirSync(outNext, { recursive: true });
 fs.mkdirSync(outServer, { recursive: true });
 
-fs.cpSync(standaloneSrc, outNext, { recursive: true });
-fs.cpSync(staticSrc, path.join(outNext, '.next', 'static'), { recursive: true });
-const nestedStandaloneApp = path.join(outNext, 'frontend');
-if (fs.existsSync(path.join(nestedStandaloneApp, 'server.js'))) {
-  fs.cpSync(staticSrc, path.join(nestedStandaloneApp, '.next', 'static'), { recursive: true });
-  if (fs.existsSync(publicSrc)) {
-    fs.cpSync(publicSrc, path.join(nestedStandaloneApp, 'public'), { recursive: true });
-  }
-}
-if (fs.existsSync(publicSrc)) {
-  fs.cpSync(publicSrc, path.join(outNext, 'public'), { recursive: true });
-}
+const uiBundleName = desktopUiMode === 'next'
+  ? prepareNextStandalone({ frontend, outRoot })
+  : prepareViteDesktopUi({ repoRoot, outRoot, desktopRoot });
+
 const pkgJson = path.join(repoRoot, 'desktop-server', 'package.json');
 let nodeMods;
 try {
@@ -115,10 +159,12 @@ if (upstreamApiUrl === 'http://localhost:8000') {
 }
 fs.writeFileSync(
   path.join(outRoot, 'package-runtime.json'),
-  `${JSON.stringify({ upstreamApiUrl }, null, 2)}\n`,
+  `${JSON.stringify({ upstreamApiUrl, desktopUiMode }, null, 2)}\n`,
 );
 
-console.info(`Prepared desktop/dist-resources (next-standalone + desktop-server, node_modules from ${nodeMods}, python-venv from ${pythonVenvSrc}, upstream ${upstreamApiUrl})`);
+console.info(
+  `Prepared desktop/dist-resources (${uiBundleName} + desktop-server, node_modules from ${nodeMods}, python-venv from ${pythonVenvSrc}, upstream ${upstreamApiUrl}, ui ${desktopUiMode})`,
+);
 
 function resolveUpstreamApiUrlForPackage(desktopRoot) {
   const fromEnv = process.env.AIGENIUS_UPSTREAM_API_URL?.trim();

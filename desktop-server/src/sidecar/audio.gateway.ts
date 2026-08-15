@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { defaultTtsVoice } from '../config/voice-env.js';
+import { defaultTtsVoice, isSttEnabled } from '../config/voice-env.js';
 import { getVoiceSidecar } from './index.js';
 
 const MIN_PARTIAL_BYTES = 2048;
@@ -136,6 +136,10 @@ export function registerAudioGateway(io: Server) {
 
     socket.on('audio:partialFlush', () => {
       enqueueTranscriptionWork(clientId, async () => {
+        if (!isSttEnabled()) {
+          socket.emit('audio:partialIdle');
+          return;
+        }
         const chunks = audioBuffers.get(clientId);
         if (!chunks?.length) {
           socket.emit('audio:partialIdle');
@@ -181,6 +185,10 @@ export function registerAudioGateway(io: Server) {
 
     socket.on('audio:finalize', (finalBuffer?: any) => {
       enqueueTranscriptionWork(clientId, async () => {
+        if (!isSttEnabled()) {
+          socket.emit('audio:transcription', { text: '', partial: false });
+          return;
+        }
         let completeBuffer: Buffer;
 
         if (finalBuffer) {

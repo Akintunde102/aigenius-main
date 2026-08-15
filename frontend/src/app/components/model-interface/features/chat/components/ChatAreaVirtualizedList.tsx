@@ -9,6 +9,7 @@ import {
 } from "@/app/components/model-interface/shared/types";
 import { ChatMessageWrapper } from "../../messages/components/ChatMessageWrapper";
 import copy from "copy-to-clipboard";
+import { isVisibleChatMessage } from "@/lib/utils/messageContentUtils";
 
 export interface ChatAreaVirtualizedListProps {
   chat: ChatMessageType[];
@@ -77,14 +78,14 @@ export const ChatAreaVirtualizedList = React.memo(function ChatAreaVirtualizedLi
   }, []);
 
   const MAX_MESSAGES = 150;
-  const totalVisible = chat.filter(({ role }) => role !== "system").length;
+  const totalVisible = chat.filter(isVisibleChatMessage).length;
   const isCapped = totalVisible > MAX_MESSAGES;
 
   const visibleMessages = useMemo(
     () => {
       const allVisible = chat
         .map((msg, actualIdx) => ({ msg, actualIdx }))
-        .filter(({ msg }) => msg.role !== "system");
+        .filter(({ msg }) => isVisibleChatMessage(msg));
       
       return isCapped ? allVisible.slice(-MAX_MESSAGES) : allVisible;
     },

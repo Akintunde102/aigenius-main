@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import { registerSearchModule } from './search/index.js';
 import { resolveSearchWorkerCountFromEnv } from './search/indexer/resolve-worker-count.js';
+import { isSttEnabled } from './config/voice-env.js';
 import { startVoiceSidecar } from './sidecar/index.js';
 import { Server } from 'socket.io';
 import { createApp } from './app.js';
@@ -96,7 +97,9 @@ async function bootstrapAfterListen(): Promise<void> {
     console.info('[aigenius-desktop-server] Initialising PocketTTS sidecar...');
     try {
       await startVoiceSidecar();
-      console.info('[aigenius-desktop-server] PocketTTS sidecar ready.');
+      console.info(
+        `[aigenius-desktop-server] PocketTTS sidecar ready (STT ${isSttEnabled() ? 'enabled' : 'disabled via AIGENIUS_ENABLE_STT=0'}).`,
+      );
     } catch (err) {
       console.error('[aigenius-desktop-server] PocketTTS sidecar init failed:', err);
       console.error('[aigenius-desktop-server] TTS will fall back to Groq.');

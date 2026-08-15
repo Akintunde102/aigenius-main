@@ -3,6 +3,7 @@ import os from 'os';
 import fs from 'fs';
 import { Hono } from 'hono';
 import { getVoiceSidecar } from '../sidecar/index.js';
+import { isSttEnabled } from '../config/voice-env.js';
 import { voiceObs } from '../utils/voice-obs.js';
 import { clientError, handleRoute } from '../utils/route-json.js';
 import {
@@ -23,11 +24,18 @@ function nextSttChunkSeq(sessionId: string): number {
   return next;
 }
 
+function sttDisabledResponse(c: Parameters<typeof clientError>[0]) {
+  return clientError(c, 'Local speech recognition is disabled (AIGENIUS_ENABLE_STT=0)', 503);
+}
+
 export function createSttRoutes(): Hono {
   const r = new Hono();
 
   r.post('/stream/start', (c) =>
     handleRoute(c, '[stt] POST /stt/stream/start', async () => {
+      if (!isSttEnabled()) {
+        return sttDisabledResponse(c);
+      }
       const sessionId = Math.random().toString(36).substring(2, 15);
       const tempDir = path.join(os.tmpdir(), 'aigenius-stt');
       if (!fs.existsSync(tempDir)) {
@@ -45,6 +53,9 @@ export function createSttRoutes(): Hono {
 
   r.post('/stream/chunk', (c) =>
     handleRoute(c, '[stt] POST /stt/stream/chunk', async () => {
+      if (!isSttEnabled()) {
+        return sttDisabledResponse(c);
+      }
       const sessionId = c.req.header('X-Session-ID');
       if (!sessionId || !activeSttSessions.has(sessionId)) {
         return clientError(c, 'Invalid or missing session ID', 400);
@@ -73,6 +84,9 @@ export function createSttRoutes(): Hono {
 
   r.post('/stream/transcribe', (c) =>
     handleRoute(c, '[stt] POST /stt/stream/transcribe', async () => {
+      if (!isSttEnabled()) {
+        return sttDisabledResponse(c);
+      }
       const sessionId = c.req.header('X-Session-ID');
       const { model_size: modelSize = 'base', beam_size: beamSize = 5 } = await c.req.json().catch(() => ({}));
 
@@ -150,13 +164,19 @@ export function createSttRoutes(): Hono {
 
   r.get('/status', (c) =>
     handleRoute(c, '[stt] GET /stt/status', async () => {
+      if (!isSttEnabled()) {
+        return c.json({ ready: false, enabled: false });
+      }
       const sidecar = getVoiceSidecar();
-      return c.json({ ready: sidecar.isReady() });
+      return c.json({ ready: sidecar.isReady(), enabled: true });
     }),
   );
 
   r.post('/transcribe', (c) =>
     handleRoute(c, '[stt] POST /stt/transcribe', async () => {
+      if (!isSttEnabled()) {
+        return sttDisabledResponse(c);
+      }
       const body = await c.req.parseBody();
       const file = body.file as File | Blob;
       const modelSize = (body.model_size as string) || 'base';

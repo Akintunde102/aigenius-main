@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" data-aigenius-desktop-shell="1">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <link rel="icon" href="/logo.png" />
+    <title>AIGenius</title>
+    <script>
+      (function () {
+        try {
+          var k = 'aigenius-color-mode';
+          var s = localStorage.getItem(k);
+          if (
+            s === 'dark' ||
+            ((!s || s === 'system') &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          ) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="modal-root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

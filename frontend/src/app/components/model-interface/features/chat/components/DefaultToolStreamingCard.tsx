@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { JsonSyntaxBlock } from '@/app/components/JsonSyntaxBlock';
-import { FiLoader, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiLoader } from 'react-icons/fi';
 import { valueToDisplayString } from '@/lib/utils/messageTextUtils';
 import { ERROR_MESSAGES } from '../hooks/chatOperations.constants';
 import { WorkflowIntentTranscriptExpand } from './WorkflowIntentTranscriptExpand';
@@ -22,8 +22,6 @@ export function DefaultToolStreamingCard({
   const { tool, displayName, logs, loading, success } = streaming_tool;
   const toolArgs = toolArgsProp ?? streaming_tool.arguments;
   const [activityOpen, setActivityOpen] = useState(false);
-  const [inputOpen, setInputOpen] = useState(false);
-  const [resultOpen, setResultOpen] = useState(false);
   const [containerCollapsed, setContainerCollapsed] = useState(groupItem && !detailsOnly);
   const wasLoadingRef = useRef(loading);
   const wasGroupLoadingRef = useRef(loading);
@@ -91,8 +89,6 @@ export function DefaultToolStreamingCard({
 
     if (wasGroupLoadingRef.current) {
       setContainerCollapsed(true);
-      setInputOpen(false);
-      setResultOpen(false);
       wasGroupLoadingRef.current = false;
     }
   }, [groupItem, detailsOnly, loading]);
@@ -112,11 +108,19 @@ export function DefaultToolStreamingCard({
       }
       if (success === false) {
         setActivityOpen(true);
-        setResultOpen(true);
       }
     }
     wasLoadingRef.current = loading;
   }, [groupItem, loading, success]);
+
+  const inputEntries = useMemo(() => {
+    if (!toolArgs) return [];
+    return Object.entries(toolArgs).filter(([k]) => k !== 'activityTitle');
+  }, [toolArgs]);
+
+  const hasInput = inputEntries.length > 0;
+  const showOutputSection = parsedResult !== null || loading;
+  const showUnifiedIo = hasInput || showOutputSection;
 
   const showActivityLogs = !groupItem && filteredLogs.length > 0;
 
@@ -200,109 +204,103 @@ export function DefaultToolStreamingCard({
             </div>
           )}
 
-          <div className={groupItem ? cardStyles.ioSections : 'space-y-2.5 pt-0.5'}>
-            {toolArgs && Object.keys(toolArgs).length > 0 && (
-              <div className={groupItem ? cardStyles.ioSection : undefined}>
-                <button
-                  type="button"
-                  onClick={() => setInputOpen(!inputOpen)}
-                  className={
-                    groupItem
-                      ? cardStyles.ioToggle
-                      : 'flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300'
-                  }
-                >
-                  <span>Input</span>
-                  {groupItem ? (
-                    <span className={cardStyles.ioChevron} aria-hidden>
-                      {inputOpen ? '▾' : '▸'}
-                    </span>
-                  ) : inputOpen ? (
-                    <FiChevronUp className="h-3 w-3" aria-hidden />
-                  ) : (
-                    <FiChevronDown className="h-3 w-3" aria-hidden />
-                  )}
-                </button>
-                {inputOpen && (
+          {showUnifiedIo && (
+            <div
+              className={
+                groupItem
+                  ? `${cardStyles.ioUnifiedPanel} ${success === false ? cardStyles.ioUnifiedPanelError : ''}`
+                  : `max-h-[280px] overflow-y-auto rounded-sm border custom-scrollbar border-slate-200/90 bg-slate-50/60 dark:border-zinc-700/80 dark:bg-zinc-900/35 ${success === false ? 'border-red-200/80 dark:border-red-900/50' : ''}`
+              }
+            >
+              {hasInput && (
+                <div className={groupItem ? cardStyles.ioBlock : undefined}>
                   <div
                     className={
                       groupItem
-                        ? cardStyles.ioPanel
-                        : 'mt-1 space-y-0.5 border-l border-slate-200/80 pl-2 text-slate-500 dark:border-zinc-700/80 dark:text-zinc-400'
+                        ? cardStyles.ioBlockLabel
+                        : 'px-2.5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-zinc-500'
                     }
                   >
-                    {Object.entries(toolArgs).map(([k, v]) => {
-                      if (k === 'activityTitle') return null;
-                      return (
-                        <div key={k} className={groupItem ? cardStyles.ioRow : 'flex gap-1.5'}>
-                          <span className={groupItem ? cardStyles.ioKey : 'shrink-0 font-semibold text-slate-400 dark:text-zinc-500'}>
-                            {k}
-                          </span>
-                          <span className={groupItem ? cardStyles.ioValue : 'break-all'}>
-                            {typeof v === 'string' ? v : JSON.stringify(v)}
-                          </span>
-                        </div>
-                      );
-                    })}
+                    Input
                   </div>
-                )}
-              </div>
-            )}
-
-            {(parsedResult !== null || loading) && (
-              <div className={groupItem ? cardStyles.ioSection : 'space-y-1'}>
-                <button
-                  type="button"
-                  onClick={() => parsedResult !== null && setResultOpen(!resultOpen)}
-                  className={
-                    groupItem
-                      ? `${cardStyles.ioToggle} ${loading && parsedResult === null ? cardStyles.ioToggleActive : ''}`
-                      : `flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide transition-colors ${loading
-                          ? 'text-slate-700 dark:text-zinc-300'
-                          : 'text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300'
-                        }`
-                  }
-                  disabled={loading && parsedResult === null}
-                >
-                  <span>Output</span>
-                  {loading && parsedResult === null ? (
-                    <FiLoader className="h-3 w-3 animate-spin shrink-0" aria-hidden />
-                  ) : groupItem ? (
-                    <span className={cardStyles.ioChevron} aria-hidden>
-                      {resultOpen ? '▾' : '▸'}
-                    </span>
-                  ) : resultOpen ? (
-                    <FiChevronUp className="h-3 w-3" aria-hidden />
-                  ) : (
-                    <FiChevronDown className="h-3 w-3" aria-hidden />
-                  )}
-                </button>
-
-                {resultOpen && parsedResult !== null && (
                   <div
                     className={
                       groupItem
-                        ? `${cardStyles.ioPanel} ${success === false ? cardStyles.ioPanelError : ''}`
-                        : `max-h-[220px] overflow-y-auto rounded-sm border px-2.5 py-2 text-[11px] leading-relaxed custom-scrollbar border-slate-200/90 dark:border-zinc-700/80 ${success === false ? 'text-red-900 dark:text-red-300' : 'text-slate-900 dark:text-zinc-100'
-                          }`
+                        ? cardStyles.ioBlockContent
+                        : 'space-y-0.5 px-2.5 pb-2 text-[11px] text-slate-500 dark:text-zinc-400'
                     }
                   >
-                    {contentToRender ? (
-                      <MarkdownRenderer content={contentToRender} className="markdown-tool-result" />
-                    ) : (
-                      <div className={groupItem ? cardStyles.ioJsonWrap : 'opacity-80'}>
-                        <JsonSyntaxBlock
-                          value={parsedResult}
-                          preClassName="max-h-60 border-none bg-transparent p-0"
-                          codeClassName="text-[10px] leading-snug"
-                        />
+                    {inputEntries.map(([k, v]) => (
+                      <div key={k} className={groupItem ? cardStyles.ioRow : 'flex gap-1.5'}>
+                        <span
+                          className={
+                            groupItem
+                              ? cardStyles.ioKey
+                              : 'shrink-0 font-semibold text-slate-400 dark:text-zinc-500'
+                          }
+                        >
+                          {k}
+                        </span>
+                        <span className={groupItem ? cardStyles.ioValue : 'break-all'}>
+                          {typeof v === 'string' ? v : JSON.stringify(v)}
+                        </span>
                       </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {showOutputSection && (
+                <div
+                  className={
+                    groupItem
+                      ? cardStyles.ioBlock
+                      : hasInput
+                        ? 'border-t border-slate-200/80 dark:border-zinc-700/80'
+                        : undefined
+                  }
+                >
+                  <div
+                    className={
+                      groupItem
+                        ? `${cardStyles.ioBlockLabel} ${loading && parsedResult === null ? cardStyles.ioBlockLabelActive : ''}`
+                        : `flex items-center gap-1 px-2.5 pt-2 text-[10px] font-semibold uppercase tracking-wide ${loading ? 'text-slate-700 dark:text-zinc-300' : 'text-slate-400 dark:text-zinc-500'}`
+                    }
+                  >
+                    <span>Output</span>
+                    {loading && parsedResult === null ? (
+                      <FiLoader className="h-3 w-3 shrink-0 animate-spin" aria-hidden />
+                    ) : null}
+                  </div>
+                  <div
+                    className={
+                      groupItem
+                        ? `${cardStyles.ioBlockContent} ${success === false ? cardStyles.ioBlockContentError : ''}`
+                        : `px-2.5 pb-2 text-[11px] leading-relaxed ${success === false ? 'text-red-900 dark:text-red-300' : 'text-slate-900 dark:text-zinc-100'}`
+                    }
+                  >
+                    {parsedResult !== null ? (
+                      contentToRender ? (
+                        <MarkdownRenderer content={contentToRender} className="markdown-tool-result" />
+                      ) : (
+                        <div className={groupItem ? cardStyles.ioJsonWrap : 'opacity-80'}>
+                          <JsonSyntaxBlock
+                            value={parsedResult}
+                            preClassName="max-h-60 border-none bg-transparent p-0"
+                            codeClassName="text-[10px] leading-snug"
+                          />
+                        </div>
+                      )
+                    ) : (
+                      <span className="text-[10px] italic text-slate-400 dark:text-zinc-500">
+                        Waiting for output…
+                      </span>
                     )}
                   </div>
-                )}
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {workflowAgentRunId && success !== false && (
             <div className="border-t border-slate-200/70 pt-2 dark:border-zinc-700/80">
