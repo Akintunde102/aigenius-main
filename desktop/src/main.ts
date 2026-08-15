@@ -20,6 +20,14 @@ if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = 'production';
 }
 
+/** Desktop shell defaults — override via env when packaging or in dev. */
+if (process.env.AIGENIUS_ENABLE_STT === undefined) {
+  process.env.AIGENIUS_ENABLE_STT = '0';
+}
+if (process.env.AIGENIUS_HOMEDIR_INDEX === undefined) {
+  process.env.AIGENIUS_HOMEDIR_INDEX = '0';
+}
+
 import {
   app,
   BrowserWindow,
@@ -370,11 +378,43 @@ function resolveUpstreamApiUrl(): string {
   });
 }
 
+type DesktopUiMode = 'vite' | 'next';
+
+function desktopUiMode(): DesktopUiMode {
+  const raw = process.env.AIGENIUS_DESKTOP_UI?.trim().toLowerCase();
+  if (raw === 'next') {
+    return 'next';
+  }
+  return 'vite';
+}
+
 function nextStandaloneDir(): string {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, 'next-standalone');
   }
   return path.join(repoRootFromDesktopDist(), 'frontend', '.next', 'standalone');
+}
+
+function desktopUiStaticDir(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'desktop-ui');
+  }
+  return path.join(repoRootFromDesktopDist(), 'desktop-renderer', 'dist');
+}
+
+function resolveDesktopUiServerLaunch(): { scriptPath: string; cwd: string } {
+  if (app.isPackaged) {
+    const cwd = path.join(process.resourcesPath, 'desktop-ui-server');
+    return {
+      scriptPath: path.join(cwd, 'serve-desktop-ui.cjs'),
+      cwd,
+    };
+  }
+  const cwd = path.join(__dirname, '..', 'scripts');
+  return {
+    scriptPath: path.join(cwd, 'serve-desktop-ui.cjs'),
+    cwd,
+  };
 }
 
 /** Monorepo Next standalone output nests `server.js` under `frontend/`. */
@@ -717,7 +757,7 @@ async function waitForIndexerIpc(port: string, timeoutMs = 60_000): Promise<void
   throw new Error(`Indexer IPC not ready on ${host}:${port} after ${timeoutMs}ms`);
 }
 
-async function startIndexerEarly(userDataPath: string, modelsDir: string, token: string, logsDir: string): Promise<void> {
+async function startIndexerProcess(userDataPath: string, modelsDir: string, token: string, logsDir: string): Promise<void> {
   if (process.env.AIGENIUS_EXTERNAL_INDEXER === '0') {
     return;
   }
@@ -735,6 +775,63 @@ async function startIndexerEarly(userDataPath: string, modelsDir: string, token:
     logsDir,
   });
   await waitForIndexerIpc(INDEXER_IPC_PORT, 90_000);
+}
+
+type DeferredIndexerContext = {
+  userDataPath: string;
+  modelsDir: string;
+  token: string;
+  logsDir: string;
+};
+
+let deferredIndexerContext: DeferredIndexerContext | null = null;
+let indexerStartScheduled = false;
+
+/** Start the indexer utility process after the shell window has finished loading (non-blocking). */
+function scheduleIndexerStartAfterShellReady(): void {
+  if (indexerStartScheduled) {
+    return;
+  }
+  indexerStartScheduled = true;
+  if (process.env.AIGENIUS_EXTERNAL_INDEXER === '0' || !deferredIndexerContext) {
+    return;
+  }
+  const ctx = deferredIndexerContext;
+  console.info('[aigenius-desktop] Shell ready — starting indexer utility process in background.');
+  void startIndexerProcess(ctx.userDataPath, ctx.modelsDir, ctx.token, ctx.logsDir).catch((err) => {
+    console.error('[aigenius-desktop] Deferred indexer start failed:', err);
+  });
+}
+
+function miniServerChildEnv(
+  base: NodeJS.ProcessEnv,
+  opts: {
+    miniPort: string;
+    userDataPath: string;
+    dbPath: string;
+    modelsDir: string;
+    token: string;
+  },
+): NodeJS.ProcessEnv {
+  return {
+    ...base,
+    PORT: opts.miniPort,
+    HOST: DEV_LOOPBACK_HOST,
+    AIGENIUS_FRONTEND_PORT: FRONTEND_PORT,
+    DEV_WEB_PORT: FRONTEND_PORT,
+    AIGENIUS_USER_DATA_PATH: opts.userDataPath,
+    ...(process.env.AIGENIUS_SKIP_SEARCH === '1' ? {} : { AIGENIUS_DB_PATH: opts.dbPath }),
+    AIGENIUS_MODELS_DIR: opts.modelsDir,
+    AIGENIUS_TREE_SITTER: '1',
+    AIGENIUS_EXTERNAL_INDEXER: process.env.AIGENIUS_EXTERNAL_INDEXER === '0' ? '0' : '1',
+    AIGENIUS_INDEXER_IPC_PORT: INDEXER_IPC_PORT,
+    AIGENIUS_SECRET_TOKEN: opts.token,
+    AIGENIUS_UPSTREAM_API_URL: resolveUpstreamApiUrl(),
+    /** Off by default in the desktop shell — set AIGENIUS_ENABLE_STT=1 to restore local Whisper. */
+    AIGENIUS_ENABLE_STT: process.env.AIGENIUS_ENABLE_STT ?? '0',
+    /** Active code project only unless explicitly re-enabled. */
+    AIGENIUS_HOMEDIR_INDEX: process.env.AIGENIUS_HOMEDIR_INDEX ?? '0',
+  };
 }
 
 async function startBackendProcesses(): Promise<void> {
@@ -757,21 +854,13 @@ async function startBackendProcesses(): Promise<void> {
       spawnDesktopChild(serverEntry, {
         cwd: desktopServerDir(),
         serviceName: 'aigenius-mini-server',
-        env: {
-          ...process.env,
-          PORT: miniPort,
-          HOST: DEV_LOOPBACK_HOST,
-          AIGENIUS_FRONTEND_PORT: FRONTEND_PORT,
-          DEV_WEB_PORT: FRONTEND_PORT,
-          AIGENIUS_USER_DATA_PATH: userDataPath,
-          ...(process.env.AIGENIUS_SKIP_SEARCH === '1' ? {} : { AIGENIUS_DB_PATH: dbPath }),
-          AIGENIUS_MODELS_DIR: modelsDir,
-          AIGENIUS_TREE_SITTER: '1',
-          AIGENIUS_EXTERNAL_INDEXER: process.env.AIGENIUS_EXTERNAL_INDEXER === '0' ? '0' : '1',
-          AIGENIUS_INDEXER_IPC_PORT: INDEXER_IPC_PORT,
-          AIGENIUS_SECRET_TOKEN: token,
-          AIGENIUS_UPSTREAM_API_URL: resolveUpstreamApiUrl(),
-        },
+        env: miniServerChildEnv(process.env, {
+          miniPort,
+          userDataPath,
+          dbPath,
+          modelsDir,
+          token,
+        }),
         logPath: path.join(logsDir, 'mini-server.log'),
       }),
     );
@@ -780,31 +869,48 @@ async function startBackendProcesses(): Promise<void> {
   }
 
   if (app.isPackaged) {
-    const { scriptPath: serverJs, cwd: nextCwd } = resolveNextStandaloneLaunch();
-    children.push(
-      spawnDesktopChild(serverJs, {
-        cwd: nextCwd,
-        serviceName: 'aigenius-next',
-        env: {
-          ...process.env,
-          PORT: FRONTEND_PORT,
-          HOSTNAME: DEV_LOOPBACK_HOST,
-          NODE_ENV: 'production',
-        },
-        logPath: path.join(logsDir, 'frontend.log'),
-      }),
-    );
+    if (desktopUiMode() === 'next') {
+      const { scriptPath: serverJs, cwd: nextCwd } = resolveNextStandaloneLaunch();
+      children.push(
+        spawnDesktopChild(serverJs, {
+          cwd: nextCwd,
+          serviceName: 'aigenius-next',
+          env: {
+            ...process.env,
+            PORT: FRONTEND_PORT,
+            HOSTNAME: DEV_LOOPBACK_HOST,
+            NODE_ENV: 'production',
+          },
+          logPath: path.join(logsDir, 'frontend.log'),
+        }),
+      );
+    } else {
+      const { scriptPath: uiServer, cwd: uiCwd } = resolveDesktopUiServerLaunch();
+      children.push(
+        spawnDesktopChild(uiServer, {
+          cwd: uiCwd,
+          serviceName: 'aigenius-desktop-ui',
+          env: {
+            ...process.env,
+            PORT: FRONTEND_PORT,
+            HOSTNAME: DEV_LOOPBACK_HOST,
+            AIGENIUS_DESKTOP_UI_ROOT: desktopUiStaticDir(),
+            NODE_ENV: 'production',
+          },
+          logPath: path.join(logsDir, 'frontend.log'),
+        }),
+      );
+    }
   }
 
-  // Dev: Next must already be running (Tilt `web` resource). Wait for UI before the indexer
-  // loads Whisper / tree-sitter and competes for CPU during first compile.
+  // Dev: Next must already be running (Tilt `web` resource). Indexer starts after the shell loads.
   const frontendWaitMs = app.isPackaged ? 120_000 : 180_000;
   await Promise.all([
     waitForHttpOk(loopbackHttpUrl(miniPort, '/health'), 60_000, 1000),
     waitForFrontendPageReady(FRONTEND_URL, frontendWaitMs, 400),
   ]);
 
-  await startIndexerEarly(userDataPath, modelsDir, token, logsDir);
+  deferredIndexerContext = { userDataPath, modelsDir, token, logsDir };
 }
 
 /**
@@ -929,6 +1035,7 @@ function createWindow(relativePath?: string): BrowserWindow {
 
   win.webContents.once('did-finish-load', () => {
     startupMark('window_did_finish_load');
+    scheduleIndexerStartAfterShellReady();
     if (isDesktopPerfBenchmarkEnabled()) {
       void maybeRunPerfBenchmark(win).finally(() => {
         app.quit();

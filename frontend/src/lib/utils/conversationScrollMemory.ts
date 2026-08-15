@@ -1,4 +1,5 @@
 import { ChatMessage } from "@/app/components/model-interface/shared/types";
+import { isVisibleChatMessage } from "@/lib/utils/messageContentUtils";
 
 const STORAGE_KEY = "conversation_scroll_memory_v1";
 
@@ -47,7 +48,7 @@ function writeConversationScrollMap(scrollMap: ConversationScrollMap): void {
 export function buildConversationMessageSignature(
   messages: ChatMessage[],
 ): string {
-  const visibleMessages = messages.filter((message) => message.role !== "system");
+  const visibleMessages = messages.filter(isVisibleChatMessage);
   const lastMessage = visibleMessages[visibleMessages.length - 1];
 
   return [
@@ -59,11 +60,11 @@ export function buildConversationMessageSignature(
 }
 
 function countVisibleMessages(messages: ChatMessage[]): number {
-  return messages.filter((message) => message.role !== "system").length;
+  return messages.filter(isVisibleChatMessage).length;
 }
 
 function getVisibleMessages(messages: ChatMessage[]): ChatMessage[] {
-  return messages.filter((message) => message.role !== "system");
+  return messages.filter(isVisibleChatMessage);
 }
 
 /** Stable identity for prefix comparisons across client/server snapshots. */

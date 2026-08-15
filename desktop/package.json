@@ -20,14 +20,16 @@
     "compile": "npm run sync-brand-icon && node scripts/compile-tsc.cjs",
     "ensure:server-deps": "node scripts/ensure-server-deps.cjs",
     "build:server": "npm run ensure:server-deps && cd ../desktop-server && npm run build",
+    "build:desktop:ui": "node scripts/build-desktop-ui.cjs",
     "sync-brand-icon": "node scripts/sync-brand-icon.cjs",
     "prepare:resources": "node scripts/prepare-desktop-resources.cjs",
+    "sync:package-resources": "node scripts/sync-package-extra-resources.cjs",
     "install:server-deps": "node scripts/install-server-deps-for-platform.cjs",
     "install:server-deps:win32": "node scripts/install-server-deps-for-platform.cjs win32 x64",
     "install:python-venv": "node scripts/prepare-python-venv.cjs",
-    "prepackage": "node scripts/ensure-electron-dist.cjs && npm run compile && npm run build:server && cd ../frontend && npm run build:desktop && cd ../desktop && npm run install:server-deps && npm run install:python-venv && npm run prepare:resources",
+    "prepackage": "node scripts/ensure-electron-dist.cjs && npm run compile && npm run build:server && npm run build:desktop:ui && npm run install:server-deps && npm run install:python-venv && npm run prepare:resources && npm run sync:package-resources",
     "prepackage:mac": "npm run prepackage",
-    "prepackage:win": "npm run compile && npm run install:server-deps:win32 && npm run build:server && cd ../frontend && npm run build:desktop && cd ../desktop && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 npm run install:python-venv && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 npm run prepare:resources",
+    "prepackage:win": "npm run compile && npm run install:server-deps:win32 && npm run build:server && npm run build:desktop:ui && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 npm run install:python-venv && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 npm run prepare:resources && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 npm run sync:package-resources",
     "package": "electron-builder --linux deb flatpak",
     "package:deb": "electron-builder --linux deb",
     "package:deb:full": "npm run prepackage && electron-builder --linux deb",
@@ -90,10 +92,6 @@
       {
         "from": "dist-resources/desktop-server",
         "to": "desktop-server"
-      },
-      {
-        "from": "dist-resources/next-standalone",
-        "to": "next-standalone"
       },
       {
         "from": "resources",
