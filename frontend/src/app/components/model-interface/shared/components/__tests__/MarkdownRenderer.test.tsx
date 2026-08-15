@@ -55,12 +55,13 @@ import {
 } from '../MarkdownRenderer';
 
 describe('shouldOpenWorkflowStudioLinkInNewTab', () => {
-    it('matches relative /workflow/:id links', () => {
+    it('matches relative workflow list and studio links', () => {
+        expect(shouldOpenWorkflowStudioLinkInNewTab('/workflows')).toBe(true);
+        expect(shouldOpenWorkflowStudioLinkInNewTab('/workflows/new')).toBe(true);
         expect(shouldOpenWorkflowStudioLinkInNewTab('/workflow/f284a24b-df4a-4596-a880-ba92ef255442')).toBe(true);
         expect(shouldOpenWorkflowStudioLinkInNewTab('/workflow/f284a24b-df4a-4596-a880-ba92ef255442/executions')).toBe(
             true,
         );
-        expect(shouldOpenWorkflowStudioLinkInNewTab('/workflows')).toBe(false);
         expect(shouldOpenWorkflowStudioLinkInNewTab('/workflow/')).toBe(false);
     });
 

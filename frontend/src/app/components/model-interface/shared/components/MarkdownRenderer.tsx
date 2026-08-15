@@ -14,12 +14,12 @@ import 'highlight.js/styles/github.css';
 import './markdown-renderer.scss';
 
 import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
+import { shouldOpenWorkflowStudioLinkInNewTab } from '@/lib/utils/open-workflow';
 import { linkifyMarkdownFilePaths } from '@/lib/utils/linkifyMarkdownFilePaths';
 import { repairLlmMarkdown } from '@/lib/utils/repairLlmMarkdown';
 import {
     markdownRendererComponents,
     markdownUrlTransform,
-    shouldOpenWorkflowStudioLinkInNewTab,
 } from './markdown-renderer-components';
 
 export { shouldOpenWorkflowStudioLinkInNewTab };

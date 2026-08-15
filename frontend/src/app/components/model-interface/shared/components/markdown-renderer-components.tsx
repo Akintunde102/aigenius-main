@@ -4,6 +4,7 @@ import React from 'react';
 import clsx from 'clsx';
 
 import { buildLocalFilePreviewPayload } from '@/lib/utils/local-file-link';
+import { isWorkflowShellPath, openWorkflow } from '@/lib/utils/open-workflow';
 import { openFilePreview } from '@/app/components/modals/FilePreviewManager';
 import {
     isMarkdownBlockCode,
@@ -16,34 +17,6 @@ type MarkdownCodeElementProps = React.HTMLAttributes<HTMLElement> & {
     node?: unknown;
     inline?: boolean;
 };
-
-/**
- * Workflow studio lives at `/workflow/:id`. Opening those links in a new tab keeps the chat conversation in place.
- */
-export function shouldOpenWorkflowStudioLinkInNewTab(href: string, pageOrigin?: string): boolean {
-    const t = href.trim();
-    if (!t) {
-        return false;
-    }
-    if (t.startsWith('/workflow/')) {
-        const rest = t.slice('/workflow/'.length);
-        const first = rest.split('/')[0] ?? '';
-        return first.length > 0;
-    }
-    if (!pageOrigin) {
-        return false;
-    }
-    try {
-        const u = new URL(t);
-        if (u.origin !== pageOrigin) {
-            return false;
-        }
-        const parts = u.pathname.split('/').filter(Boolean);
-        return parts[0] === 'workflow' && (parts[1]?.length ?? 0) > 0;
-    } catch {
-        return false;
-    }
-}
 
 function pageOrigin(): string | undefined {
     return typeof window !== 'undefined' ? window.location.origin : undefined;
@@ -79,11 +52,26 @@ export function MarkdownAnchor({
     const origin = pageOrigin();
     const isExternal = href && (href.startsWith('http://') || href.startsWith('https://')) &&
         (!origin || !href.startsWith(origin));
-    const newTab = isExternal || shouldOpenWorkflowStudioLinkInNewTab(href ?? '', origin);
+    const openBesideChat = href ? isWorkflowShellPath(href, origin) : false;
+    const newTab = isExternal || openBesideChat;
     return (
         <a
             {...props}
             {...(newTab ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+            onClick={
+                openBesideChat
+                    ? (e) => {
+                          if (e.defaultPrevented) {
+                              return;
+                          }
+                          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+                              return;
+                          }
+                          e.preventDefault();
+                          openWorkflow(href ?? '');
+                      }
+                    : props.onClick
+            }
         />
     );
 }
