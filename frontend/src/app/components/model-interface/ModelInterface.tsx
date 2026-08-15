@@ -14,7 +14,6 @@ import React, {
   useState,
   useMemo,
   useCallback,
-  startTransition,
 } from "react";
 import { useModelInterface } from "./core/hooks";
 import { useRouter } from "next/navigation";
@@ -63,6 +62,7 @@ import { ModelInterfaceChrome } from "./components/ModelInterfaceChrome";
 import type { PublishState } from "./ModelInterface.types";
 import { chatCanvasSurfaceStyle } from "./chatSurfaceStyle";
 import { workflowShellBgStyle } from "@/app/components/workflows/workflow-info";
+import { openWorkflow } from "@/lib/utils/open-workflow";
 import { ChatShellLoadingSkeleton } from "@/app/components/ChatShellLoadingSkeleton";
 import { useModelInterfaceSidebarActions } from "./hooks/useModelInterfaceSidebarActions";
 import { useModelInterfaceLifecycle } from "./hooks/useModelInterfaceLifecycle";
@@ -101,10 +101,8 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
   }, [router]);
 
   const handleOpenWorkflows = useCallback(() => {
-    startTransition(() => {
-      router.push("/workflows");
-    });
-  }, [router]);
+    openWorkflow("/workflows");
+  }, []);
 
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [walletModalFromServerAbort, setWalletModalFromServerAbort] =

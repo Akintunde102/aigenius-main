@@ -4,6 +4,11 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { JsonSyntaxBlock } from '@/app/components/JsonSyntaxBlock';
 import { FiLoader } from 'react-icons/fi';
 import { valueToDisplayString } from '@/lib/utils/messageTextUtils';
+import {
+  extractWorkflowIdsFromToolResult,
+  openWorkflow,
+  workflowStudioPath,
+} from '@/lib/utils/open-workflow';
 import { ERROR_MESSAGES } from '../hooks/chatOperations.constants';
 import { WorkflowIntentTranscriptExpand } from './WorkflowIntentTranscriptExpand';
 import { MarkdownRenderer } from '@/app/components/model-interface/shared/components/MarkdownRenderer';
@@ -69,6 +74,13 @@ export function DefaultToolStreamingCard({
       typeof (parsedResult as { agent_run_id?: unknown }).agent_run_id === 'string'
       ? (parsedResult as { agent_run_id: string }).agent_run_id
       : null;
+
+  const workflowIdsTouched = useMemo(() => {
+    if (tool !== 'workflow_agent' && tool !== 'workflow_intent') {
+      return [];
+    }
+    return extractWorkflowIdsFromToolResult(parsedResult);
+  }, [tool, parsedResult]);
 
   const resolvedDisplayName = resolveStreamingToolRowLabel({
     tool,
@@ -299,6 +311,21 @@ export function DefaultToolStreamingCard({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {workflowIdsTouched.length > 0 && success !== false && (
+            <div className="flex flex-wrap gap-2 border-t border-slate-200/70 pt-2 dark:border-zinc-700/80">
+              {workflowIdsTouched.map((workflowId) => (
+                <button
+                  key={workflowId}
+                  type="button"
+                  onClick={() => openWorkflow(workflowStudioPath(workflowId))}
+                  className="text-[10px] font-medium text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
+                >
+                  Open workflow in studio
+                </button>
+              ))}
             </div>
           )}
 
