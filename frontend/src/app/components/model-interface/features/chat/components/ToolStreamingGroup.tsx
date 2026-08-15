@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ToolEvent } from '@/app/components/model-interface/shared/types';
 import { ToolStreamingCard } from './ToolStreamingCard';
 import { LocalApplyPatchToolCard } from './tool-ui/LocalApplyPatchToolCard';
+import { buildInProgressClusterHeader } from './cluster-tool-display-blocks';
 import { buildToolClusterSummary } from './work-activity-summary.utils';
 import styles from './ToolStreamingGroup.module.scss';
 
@@ -41,7 +42,7 @@ export function ToolStreamingGroup({
   const requestInProgress = messageStreaming || toolsInFlight;
   const completedSummary = useMemo(() => buildToolClusterSummary(events), [events]);
   const headerLabel = requestInProgress
-    ? 'Working…'
+    ? buildInProgressClusterHeader(events, messageStreaming) ?? 'Working…'
     : completedSummary ?? 'Worked';
 
   const isSingleCompactTool = compactEvents.length === 1 && patchEvents.length === 0;

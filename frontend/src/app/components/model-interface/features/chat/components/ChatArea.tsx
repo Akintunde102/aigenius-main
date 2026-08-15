@@ -10,6 +10,7 @@ import { EmptyState } from "./EmptyState";
 import { TypingIndicator } from "./TypingIndicator";
 import { JumpToLatestButton } from "./JumpToLatestButton";
 import type { ChatAreaVirtualizedListProps } from "./ChatAreaVirtualizedList";
+import { isVisibleChatMessage } from "@/lib/utils/messageContentUtils";
 
 function ChatAreaMessagesChunkFallback() {
   return (
@@ -86,7 +87,7 @@ export function ChatArea({
   showScrollToBottom = false,
 }: ChatAreaProps) {
   const visibleNonSystemCount = useMemo(
-    () => chat.filter((m) => m.role !== "system").length,
+    () => chat.filter(isVisibleChatMessage).length,
     [chat],
   );
 

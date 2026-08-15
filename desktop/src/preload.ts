@@ -69,6 +69,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 contextBridge.exposeInMainWorld('aigeniusDesktop', {
   isDesktop: true,
+  isSttEnabled: (process.env.AIGENIUS_ENABLE_STT ?? '0') !== '0',
   exposedAtIso: new Date().toISOString(),
   shellChrome,
   getChatRuntimeContext: (): Promise<{

@@ -65,8 +65,6 @@ export function countReadFilesInEvent(
 export function buildToolActivityLabel(
   event: Pick<ToolEvent, 'tool' | 'arguments' | 'result' | 'loading'>,
 ): string | null {
-  if (event.loading) return 'Working…';
-
   if (event.tool === LIST_DIRECTORY_TOOL) {
     return buildListDirectoryLabel(event.arguments);
   }

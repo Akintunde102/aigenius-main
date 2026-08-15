@@ -9,6 +9,8 @@ STT **facade** — one place to swap engines.
 
 from __future__ import annotations
 
+import os
+
 from voice_sidecar_lib.log import LOGGER
 from voice_sidecar_lib.stt_config import get_stt_backend
 from voice_sidecar_lib.stt_faster_whisper import load_stt_model as load_faster_whisper_model
@@ -19,6 +21,9 @@ from voice_sidecar_lib.stt_whisper_cpp import transcribe_audio as transcribe_whi
 
 def warm_stt_at_sidecar_startup() -> None:
     """Eager-load or probe STT depending on ``AIGENIUS_STT_BACKEND``."""
+    if (os.environ.get("AIGENIUS_ENABLE_STT") or "1").strip() == "0":
+        LOGGER.info("STT disabled via AIGENIUS_ENABLE_STT=0 — skipping Whisper warm-up")
+        return
     if get_stt_backend() == "faster_whisper":
         try:
             load_faster_whisper_model()
@@ -35,6 +40,8 @@ def transcribe_audio(
     language: str = "en",
 ) -> str:
     """Transcribe using the configured backend (same signature for both engines)."""
+    if (os.environ.get("AIGENIUS_ENABLE_STT") or "1").strip() == "0":
+        raise RuntimeError("STT disabled (AIGENIUS_ENABLE_STT=0)")
     if get_stt_backend() == "faster_whisper":
         return transcribe_faster_whisper(
             audio_path,

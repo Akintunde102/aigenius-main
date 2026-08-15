@@ -109,11 +109,9 @@ export function buildToolClusterSummary(events: ToolEvent[]): string | null {
     if (richSingle) return richSingle;
 
     const evt = events[0];
-    if (!evt.loading) {
-      const displayName = evt.displayName?.trim();
-      if (displayName && displayName !== evt.tool) return displayName;
-      return getToolDisplayName(evt.tool);
-    }
+    const displayName = evt.displayName?.trim();
+    if (displayName && displayName !== evt.tool) return displayName;
+    return getToolDisplayName(evt.tool);
   }
 
   const counts = countToolClusterActivity(events);

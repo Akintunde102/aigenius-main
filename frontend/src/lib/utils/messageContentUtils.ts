@@ -4,6 +4,35 @@
  * and when displaying messages.
  */
 
+function messageTextContent(content: unknown): string {
+    if (typeof content === 'string') return content.trim();
+    if (Array.isArray(content)) {
+        return content
+            .map((block) => {
+                if (block && typeof block === 'object' && 'text' in block) {
+                    return String((block as { text?: string }).text ?? '');
+                }
+                return '';
+            })
+            .join('')
+            .trim();
+    }
+    return '';
+}
+
+/** Server-injected desktop/web facts sent to the model — not user-authored chat. */
+export function isRuntimeContextUserMessage(message: { role?: string; content?: unknown }): boolean {
+    if (message.role !== 'user') return false;
+    return messageTextContent(message.content).startsWith('<runtime_context');
+}
+
+/** Messages that should appear in the chat transcript UI. */
+export function isVisibleChatMessage(message: { role?: string; content?: unknown }): boolean {
+    if (message.role === 'system') return false;
+    if (isRuntimeContextUserMessage(message)) return false;
+    return true;
+}
+
 type MessageWithContentAndCost = {
     content?: unknown;
     cost?: unknown;
@@ -123,7 +152,9 @@ export function normalizeChatMessages<T extends { content?: unknown; cost?: unkn
     fallbackModelId?: string
 ): T[] {
     if (!Array.isArray(messages)) return messages;
-    return messages.map((msg, index) => {
+    return messages
+        .filter((msg) => !isRuntimeContextUserMessage(msg))
+        .map((msg, index) => {
         const withIdentity = normalizeMessageId(msg, index);
         const withContent = { ...withIdentity, content: normalizeMessageContent(withIdentity.content) };
         const withCost = normalizeMessageCost(withContent) as T;
