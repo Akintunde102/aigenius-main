@@ -1,12 +1,16 @@
 "use client";
 import { Button } from "@/app/components/ui/button";
-import { LINKS } from "@/lib/links";
 import Image from "next/image";
 import { AUTH_CONFIG } from "@/lib/config/auth";
 import { completeDesktopOAuthSession } from "@/lib/utils/complete-desktop-oauth-session";
 import { syncAuthSessionCookiesFromStorage } from "@/lib/utils/auth-session";
 import { resolveAuthenticatedDesktopShellRedirect } from "@/lib/utils/safe-internal-next-path";
 import { resolveDesktopGoogleOAuthUrl } from "@/lib/utils/desktop-google-auth-url";
+import {
+    buildDevLoginUrl,
+    buildGoogleAuthUrl,
+    resolveAuthApiRootUrlAsync,
+} from "@/lib/utils/resolve-auth-api-root";
 
 interface GoogleSignInProps {
     variant?: 'login' | 'signup';
@@ -24,9 +28,10 @@ export const GoogleSignIn = ({
     lightSurface = false,
 }: GoogleSignInProps) => {
     const handleGoogleSignIn = async () => {
-        const url = LINKS.googleLogin;
+        const apiRoot = await resolveAuthApiRootUrlAsync();
+        const url = buildGoogleAuthUrl(apiRoot);
         if (!url || url.includes('undefined')) {
-            console.error('[GoogleSignIn] Missing NEXT_PUBLIC_NOBOX_API_ROOT_URL');
+            console.error('[GoogleSignIn] Missing auth API root (expected Nest on Tilt port 28000)');
             return;
         }
         if (typeof window !== 'undefined' && window.aigeniusDesktop?.startOAuthSignIn) {
@@ -53,7 +58,7 @@ export const GoogleSignIn = ({
         try {
             const desktopCallback = sessionStorage.getItem('desktop_callback');
             if (desktopCallback) {
-                window.location.href = resolveDesktopGoogleOAuthUrl(desktopCallback, LINKS.noboxAPIRootUrl);
+                window.location.href = resolveDesktopGoogleOAuthUrl(desktopCallback, apiRoot);
                 return;
             }
         } catch {
@@ -62,7 +67,8 @@ export const GoogleSignIn = ({
         window.location.href = url;
     };
 
-    const handleDevLogin = () => {
+    const handleDevLogin = async () => {
+        const apiRoot = await resolveAuthApiRootUrlAsync();
         // Redirect to backend dev-login endpoint
         let email: string | null = null;
         try {
@@ -75,7 +81,7 @@ export const GoogleSignIn = ({
             email = "test@example.com";
         }
         if (email) {
-            window.location.href = `${LINKS.googleLogin.replace('google', 'dev-login')}?email=${encodeURIComponent(email)}`;
+            window.location.href = `${buildDevLoginUrl(apiRoot)}?email=${encodeURIComponent(email)}`;
         }
     };
 

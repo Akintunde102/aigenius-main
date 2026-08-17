@@ -45,7 +45,7 @@ interface ChatAreaProps {
   imagePreview: string | null;
   setImagePreview: (url: string | null) => void;
   chatEndRef: React.RefObject<HTMLDivElement>;
-  chatAreaRef: React.RefObject<HTMLDivElement>;
+  chatAreaRef: React.MutableRefObject<HTMLDivElement | null>;
   onDeleteMessage: (idx: number) => void;
   onDeleteMessageById?: (id: string) => void;
   onSaveMessage: (msg: ChatMessageType) => void;

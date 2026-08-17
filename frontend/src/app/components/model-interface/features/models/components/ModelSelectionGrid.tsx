@@ -13,7 +13,7 @@ type VirtualRow =
   | { type: "model"; model: Model };
 
 const CARD_GAP_PX = 12;
-const HEADER_ROW_HEIGHT_PX = 40;
+const HEADER_ROW_HEIGHT_PX = 38;
 
 interface ModelSelectionGridProps {
   parentRef: React.RefObject<HTMLDivElement | null>;
@@ -48,7 +48,7 @@ export const ModelSelectionGrid = React.memo(({
   handleShowModelDetails,
   isSortingByReleaseDate,
 }: ModelSelectionGridProps) => {
-  const modelRowEstimate = isMobile ? 96 : 108;
+  const modelRowEstimate = isMobile ? 100 : 118;
 
   const virtualRows = useMemo((): VirtualRow[] => {
     const appendModels = (rows: VirtualRow[], list: Model[]) => {
@@ -154,8 +154,8 @@ export const ModelSelectionGrid = React.memo(({
               className={slotPadding}
             >
               <h3
-                className={`max-w-xl font-semibold tracking-tight ${isMobile ? "text-[10px] pb-2 pt-1" : "text-xs pb-3 pt-2"}`}
-                style={{ color: "var(--modal-muted-fg)" }}
+                className={`max-w-xl font-medium uppercase tracking-wider ${isMobile ? "text-[9px] pb-1.5 pt-0.5" : "text-[11px] pb-2 pt-1"}`}
+                style={{ color: "var(--modal-muted-fg)", opacity: 0.8 }}
               >
                 {row.title}
               </h3>

@@ -1,12 +1,10 @@
+import { shouldPersistDesktopApiRoot as shouldPersistAuthApiRoot } from '@/lib/utils/legacy-api-roots';
+
 const DESKTOP_API_ROOT_SESSION_KEY = 'desktop_api_root';
 
 /** Ignore legacy desktop default API roots that break Tilt dev OAuth. */
 export function shouldPersistDesktopApiRoot(apiRoot: string): boolean {
-  const trimmed = apiRoot.trim().replace(/\/+$/, '');
-  if (!trimmed) {
-    return false;
-  }
-  return trimmed !== 'http://localhost:8000' && trimmed !== 'http://127.0.0.1:8000';
+  return shouldPersistAuthApiRoot(apiRoot);
 }
 
 export function storeDesktopApiRoot(apiRoot: string): void {
@@ -22,7 +20,14 @@ export function storeDesktopApiRoot(apiRoot: string): void {
 export function readStoredDesktopApiRoot(): string | null {
   try {
     const value = sessionStorage.getItem(DESKTOP_API_ROOT_SESSION_KEY);
-    return value?.trim() ? value.trim() : null;
+    const trimmed = value?.trim();
+    if (!trimmed || !shouldPersistDesktopApiRoot(trimmed)) {
+      if (trimmed) {
+        sessionStorage.removeItem(DESKTOP_API_ROOT_SESSION_KEY);
+      }
+      return null;
+    }
+    return trimmed;
   } catch {
     return null;
   }
@@ -42,6 +47,7 @@ export function resolveDesktopGoogleOAuthUrl(
   desktopCallback: string,
   fallbackApiRoot: string,
 ): string {
-  const apiRoot = readStoredDesktopApiRoot() || fallbackApiRoot;
+  const stored = readStoredDesktopApiRoot();
+  const apiRoot = stored || fallbackApiRoot;
   return buildDesktopGoogleOAuthUrl(apiRoot, desktopCallback);
 }

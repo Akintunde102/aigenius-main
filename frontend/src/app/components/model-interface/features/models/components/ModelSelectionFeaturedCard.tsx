@@ -4,8 +4,8 @@ import { Model } from '@/app/components/model-interface/shared/types';
 import { formatNGN, hasExtraToolingCapability, getModelDisplayName } from '@/app/components/model-interface/shared/utils';
 import { ModelToggleSwitch } from '@/app/components/ChatBoxInput/ModelToggleSwitch';
 
-const ToolsCapabilityIcon = ({ size = 12, className = '' }: { size?: number; className?: string }) => (
-    <FiLayers size={size} className={className} />
+const ToolsCapabilityIcon = ({ size = 10, className = '' }: { size?: number; className?: string }) => (
+    <FiLayers size={size} className={className} aria-hidden strokeWidth={1.5} />
 );
 
 function getListDescription(model: Model): string {
@@ -43,27 +43,29 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
     const description = useMemo(() => getListDescription(model), [model]);
     const displayName = getModelDisplayName(model);
 
-    const nameClass = `truncate font-medium leading-tight text-gray-900 dark:text-zinc-100 ${isMobile ? 'text-[9px]' : 'text-[13px]'
-        }`;
-    const descClass = `line-clamp-2 leading-snug text-gray-500 dark:text-zinc-400 ${isMobile ? 'text-[8px] mt-1' : 'text-[11px] mt-1'
-        }`;
-    const costClass = `whitespace-nowrap ${isMobile ? 'text-[8px]' : 'text-[11px]'}`;
-
     const costLabel = useMemo(() => {
         if (!isFinite(averageCost)) return null;
         if (averageCost > 0) return `~${formatNGN(averageCost, true)} credits/msg`;
         return 'Free';
     }, [averageCost]);
 
+    const releaseLabel =
+        isSortingByReleaseDate && model.created
+            ? new Date(model.created * 1000).toLocaleString(undefined, {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+            })
+            : null;
+
+    const hasFootnote = costLabel || releaseLabel;
+
     return (
         <div
             role="button"
             tabIndex={0}
-            className={`group flex w-full max-w-xl cursor-pointer items-start gap-2.5 rounded-lg border bg-white shadow-sm transition-all hover:shadow dark:bg-zinc-900/80 ${isMobile ? 'px-2.5 py-2' : 'px-3 py-2.5'
-                } ${isSelected
-                    ? 'border-[color:var(--chat-accent)] ring-1 ring-[color:var(--chat-accent)]/25'
-                    : 'border-gray-200 hover:border-gray-300 dark:border-zinc-700 dark:hover:border-zinc-600'
-                }`}
+            className={`group app-model-card w-full max-w-xl cursor-pointer ${isMobile ? 'px-3 py-2.5' : 'px-4 py-3.5'
+                } ${isSelected ? 'app-model-card--selected' : ''}`}
             onClick={() => {
                 onSelect();
                 try {
@@ -79,63 +81,81 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                 }
             }}
         >
-            <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-1.5">
-                    <span className={nameClass}>{displayName}</span>
-                    {isSelected && (
+            <div className="flex min-w-0 items-start gap-3">
+                <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-1.5">
                         <span
-                            className={`shrink-0 font-medium ${isMobile ? 'text-[8px]' : 'text-[11px]'}`}
-                            style={{ color: 'var(--chat-accent)' }}
+                            className={`truncate app-model-card__title ${isMobile ? '!text-[11px]' : ''}`}
                         >
-                            ✓
+                            {displayName}
                         </span>
-                    )}
-                    {supportsTools && (
-                        <span
-                            className="shrink-0 text-cyan-600 dark:text-cyan-400"
-                            title="Extra tooling (Gmail, Keep, etc.)"
-                        >
-                            <ToolsCapabilityIcon size={isMobile ? 10 : 12} />
-                        </span>
-                    )}
-                </div>
-                {description ? <p className={descClass}>{description}</p> : null}
-                {isSortingByReleaseDate && model.created && (
-                    <p className={`mt-0.5 text-gray-400 dark:text-zinc-500 ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}>
-                        {new Date(model.created * 1000).toLocaleString(undefined, {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                        })}
-                    </p>
-                )}
-                {costLabel && (
-                    <p className={`${costClass} mt-1.5 font-medium`} style={{ color: 'var(--credits-fg)' }}>
-                        {costLabel}
-                    </p>
-                )}
-            </div>
+                        {supportsTools && (
+                            <span
+                                className="shrink-0 text-[var(--modal-muted-fg)] opacity-35"
+                                title="Extra tooling (Gmail, Keep, etc.)"
+                            >
+                                <ToolsCapabilityIcon size={isMobile ? 9 : 10} />
+                            </span>
+                        )}
+                    </div>
 
-            <div className="flex shrink-0 items-center gap-1.5">
-                {onShowDetails && (
-                    <button
-                        type="button"
-                        className={`flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white transition-colors hover:border-gray-300 hover:bg-gray-50 dark:border-zinc-600 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:bg-zinc-800 ${isMobile ? 'p-0.5' : 'p-1'
-                            }`}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onShowDetails();
-                        }}
-                        title="More info"
-                    >
-                        <FiInfo size={isMobile ? 12 : 14} />
-                    </button>
-                )}
-                <ModelToggleSwitch
-                    checked={isPinned}
-                    onChange={onTogglePin}
-                    label={isPinned ? `Remove ${displayName} from quick picks` : `Add ${displayName} to quick picks`}
-                />
+                    {description ? (
+                        <p
+                            className={`app-model-card__desc line-clamp-2 ${isMobile ? '!text-[10px] mt-1' : 'mt-1.5'}`}
+                        >
+                            {description}
+                        </p>
+                    ) : null}
+
+                    {hasFootnote ? (
+                        <div
+                            className={`app-model-card__meta flex flex-wrap items-center gap-x-2 gap-y-0.5 tabular-nums ${description ? (isMobile ? 'mt-1' : 'mt-2') : (isMobile ? 'mt-1' : 'mt-1.5')
+                                } ${isMobile ? '!text-[9px]' : ''}`}
+                        >
+                            {costLabel ? (
+                                <span
+                                    className={averageCost > 0 ? 'opacity-90' : 'opacity-80'}
+                                    style={averageCost > 0 ? { color: 'var(--credits-fg)' } : undefined}
+                                >
+                                    {costLabel}
+                                </span>
+                            ) : null}
+                            {costLabel && releaseLabel ? (
+                                <span className="opacity-30" aria-hidden>·</span>
+                            ) : null}
+                            {releaseLabel ? <span className="opacity-70">{releaseLabel}</span> : null}
+                        </div>
+                    ) : null}
+                </div>
+
+                <div
+                    className={`flex shrink-0 items-center gap-0.5 pt-0.5 transition-opacity duration-150 ${isMobile || isPinned || isSelected
+                        ? 'opacity-100'
+                        : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
+                        }`}
+                >
+                    {onShowDetails && (
+                        <button
+                            type="button"
+                            className={`flex shrink-0 items-center justify-center rounded-sm text-[var(--modal-muted-fg)] opacity-40 transition-colors hover:opacity-80 hover:text-[var(--modal-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--chat-accent)] focus-visible:ring-offset-1 focus-visible:opacity-100 ${isMobile ? 'p-0.5' : 'p-1'
+                                }`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onShowDetails();
+                            }}
+                            title="More info"
+                        >
+                            <FiInfo size={isMobile ? 11 : 12} strokeWidth={1.5} />
+                        </button>
+                    )}
+                    <ModelToggleSwitch
+                        checked={isPinned}
+                        onChange={onTogglePin}
+                        label={isPinned ? `Remove ${displayName} from quick picks` : `Add ${displayName} to quick picks`}
+                        size="xs"
+                        variant="quiet"
+                    />
+                </div>
             </div>
         </div>
     );

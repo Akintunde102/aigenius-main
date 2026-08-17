@@ -207,3 +207,8 @@ def is_onnx_available() -> bool:
         return True
     except (FileNotFoundError, ImportError):
         return False
+
+
+def warm_onnx_tts_session() -> None:
+    """Eager-load the ONNX Runtime session so the first generate is not cold."""
+    _get_ort_session()
