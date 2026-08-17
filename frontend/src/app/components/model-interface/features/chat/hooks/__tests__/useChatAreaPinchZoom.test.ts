@@ -5,7 +5,7 @@ import { useChatAreaPinchZoom } from "../useChatAreaPinchZoom";
 import { CHAT_TEXT_SCALE_STORAGE_KEY } from "../chatTextScale.utils";
 
 function PinchZoomHarness() {
-  const chatAreaRef = useRef<HTMLDivElement>(null);
+  const chatAreaRef = useRef<HTMLDivElement | null>(null);
   const bindPinchZoom = useChatAreaPinchZoom();
   return React.createElement("div", {
     ref: (node: HTMLDivElement | null) => {
@@ -64,7 +64,7 @@ describe("useChatAreaPinchZoom", () => {
 
     const chatArea = container.querySelector('[data-testid="chat-area"]') as HTMLElement;
     expect(chatArea.style.getPropertyValue("--chat-body-size")).toBe("1.21875rem");
-    expect(chatArea.style.zoom).toBe("1.3");
+    expect((chatArea.style as CSSStyleDeclaration & { zoom: string }).zoom).toBe("1.3");
   });
 
   it("zooms in when ctrl+wheel is used over the chat area", () => {

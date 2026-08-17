@@ -2,25 +2,24 @@ import type { Model } from "@/app/components/model-interface/shared/types";
 
 /**
  * Curated default quick-pick models — one strong option per major lab plus free/fast tiers.
- * Order: free → daily drivers → premium reasoning (max 10 in dropdown).
+ * Order: free → daily drivers → one alternative (max 6 in dropdown).
  */
 export const PREFERRED_QUICK_PICK_MODEL_IDS: readonly string[] = [
   "openrouter/free",
   "openai/gpt-4o",
   "openai/gpt-5-mini",
-  "openai/gpt-5-nano",
   "anthropic/claude-sonnet-4.5",
-  "anthropic/claude-opus-4.6",
   "google/gemini-2.5-flash-lite",
-  "google/gemini-2.5-pro",
-  "x-ai/grok-4.20",
   "deepseek/deepseek-v3.1-terminus",
 ];
 
-export const MAX_QUICK_PICK_COUNT = 10;
+export const MAX_QUICK_PICK_COUNT = 6;
+
+/** Min width for the composer quick-pick dropdown (wider than narrow trigger for model names). */
+export const QUICK_PICK_DROPDOWN_MIN_WIDTH = 200;
 
 /** Max width for the composer quick-pick dropdown (trigger-aligned, not full modal width). */
-export const QUICK_PICK_DROPDOWN_MAX_WIDTH = 260;
+export const QUICK_PICK_DROPDOWN_MAX_WIDTH = 300;
 
 export const QUICK_PICKS_USER_EMPTIED_KEY = "nobox-quick-picks-user-emptied";
 export const QUICK_PICKS_DEFAULTS_MERGED_KEY = "nobox-quick-picks-defaults-merged-v2";

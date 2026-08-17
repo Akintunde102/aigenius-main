@@ -335,6 +335,63 @@
     color: var(--modal-fg);
   }
 
+  /* Model picker rows — compact width, square corners, readable type scale */
+  .app-model-card {
+    border: 1px solid color-mix(in srgb, var(--modal-border) 55%, transparent);
+    border-radius: 4px;
+    background: var(--surface-muted);
+    color: var(--modal-fg);
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      box-shadow 150ms ease;
+
+    &:hover {
+      background: var(--surface-elevated);
+      border-color: color-mix(in srgb, var(--modal-border) 90%, transparent);
+    }
+
+    &:focus-visible {
+      outline: none;
+      border-color: color-mix(in srgb, var(--chat-accent) 45%, var(--modal-border));
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--chat-accent) 18%, transparent);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+
+  .app-model-card__title {
+    font-size: 0.9375rem; /* 15px */
+    line-height: 1.35;
+    font-weight: 600;
+    color: var(--modal-fg);
+  }
+
+  .app-model-card__desc {
+    font-size: 0.8125rem; /* 13px */
+    line-height: 1.55;
+    color: color-mix(in srgb, var(--modal-fg) 76%, var(--modal-muted-fg));
+  }
+
+  .app-model-card__meta {
+    font-size: 0.75rem; /* 12px */
+    line-height: 1.4;
+    color: var(--modal-muted-fg);
+  }
+
+  .app-model-card--selected {
+    background: color-mix(in srgb, var(--chat-accent) 5%, var(--surface-muted));
+    border-color: color-mix(in srgb, var(--chat-accent) 24%, var(--modal-border));
+    box-shadow: inset 2px 0 0 color-mix(in srgb, var(--chat-accent) 70%, transparent);
+  }
+
+  .app-model-card--selected:hover {
+    background: color-mix(in srgb, var(--chat-accent) 7%, var(--surface-muted));
+    border-color: color-mix(in srgb, var(--chat-accent) 30%, var(--modal-border));
+  }
+
   .app-chip {
     display: inline-flex;
     align-items: center;
@@ -743,6 +800,24 @@ blockquote {
 .custom-scrollbar:hover::-webkit-scrollbar-thumb {
   background-color: #94A3B8;
   /* slate-400 */
+}
+
+/* Composer quick-pick dropdown — hidden scrollbar (portaled; styles also injected in-component for Electron) */
+.quick-pick-menu-scroll {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  scrollbar-color: transparent transparent !important;
+}
+
+.quick-pick-menu-scroll::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+.quick-pick-menu-scroll::-webkit-scrollbar-thumb,
+.quick-pick-menu-scroll::-webkit-scrollbar-track {
+  background: transparent !important;
 }
 
 

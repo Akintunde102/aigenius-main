@@ -391,8 +391,6 @@ export function useChatOperationsRefined({
         optimizationMessage,
         handleSend,
         handleStop,
-        canRetryLastSend: false,
-        retryLastFailedSend: async () => {},
         refreshWalletBalance: useCallback(async () => {
             try {
                 const userDetails = await getUserDetails();

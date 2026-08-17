@@ -29,7 +29,7 @@ interface ChatContainerProps {
     imagePreview: string | null;
     setImagePreview: (preview: string | null) => void;
     chatEndRef: React.RefObject<HTMLDivElement>;
-    chatAreaRef: React.RefObject<HTMLDivElement>;
+    chatAreaRef: React.MutableRefObject<HTMLDivElement | null>;
     showScrollToBottom: boolean;
     onDeleteMessage: (idx: number) => void;
     onDeleteMessageById?: (id: string) => void;

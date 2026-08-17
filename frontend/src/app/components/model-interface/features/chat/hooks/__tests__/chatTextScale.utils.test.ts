@@ -49,7 +49,7 @@ describe("chatTextScale.utils", () => {
 
     expect(applied).toBe(1.2);
     expect(element.style.getPropertyValue("--chat-body-size")).toBe("1.125rem");
-    expect(element.style.zoom).toBe("1.2");
+    expect((element.style as CSSStyleDeclaration & { zoom: string }).zoom).toBe("1.2");
     expect(element.dataset.chatTextScale).toBe("1.2");
   });
 

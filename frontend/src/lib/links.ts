@@ -1,9 +1,14 @@
+import { getApiRootUrl } from './api-root';
 
 export interface Links {
     githubLogin: string;
     googleLogin: string;
+    /** @deprecated Use aigeniusAPIRootUrl */
     noboxAPIRootUrl: string;
+    aigeniusAPIRootUrl: string;
+    /** @deprecated Use aigeniusGatewayRootUrl */
     noboxGatewayRootUrl: string;
+    aigeniusGatewayRootUrl: string;
     internalPages: {
         home: string;
         login: {
@@ -15,11 +20,15 @@ export interface Links {
     }
 }
 
+const apiRoot = getApiRootUrl();
+
 export const LINKS: Links = {
-    githubLogin: `${process.env.NEXT_PUBLIC_NOBOX_API_ROOT_URL}/auth/_/github`,
-    googleLogin: `${process.env.NEXT_PUBLIC_NOBOX_API_ROOT_URL}/auth/_/google`,
-    noboxAPIRootUrl: `${process.env.NEXT_PUBLIC_NOBOX_API_ROOT_URL}`,
-    noboxGatewayRootUrl: `${process.env.NEXT_PUBLIC_NOBOX_API_ROOT_URL}/gateway/*`,
+    githubLogin: `${apiRoot}/auth/_/github`,
+    googleLogin: `${apiRoot}/auth/_/google`,
+    noboxAPIRootUrl: apiRoot,
+    aigeniusAPIRootUrl: apiRoot,
+    noboxGatewayRootUrl: `${apiRoot}/gateway/*`,
+    aigeniusGatewayRootUrl: `${apiRoot}/gateway/*`,
     internalPages: {
         home: "/",
         login: {
@@ -30,4 +39,3 @@ export const LINKS: Links = {
         }
     }
 }
-

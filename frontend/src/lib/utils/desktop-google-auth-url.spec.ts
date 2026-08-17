@@ -50,4 +50,10 @@ describe('desktop api root session storage', () => {
     storeDesktopApiRoot('http://localhost:8000');
     expect(readStoredDesktopApiRoot()).toBeNull();
   });
+
+  it('ignores legacy desktop sidecar port 8001', () => {
+    expect(shouldPersistDesktopApiRoot('http://127.0.0.1:8001')).toBe(false);
+    storeDesktopApiRoot('http://127.0.0.1:8001');
+    expect(readStoredDesktopApiRoot()).toBeNull();
+  });
 });

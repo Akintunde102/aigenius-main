@@ -1,3 +1,4 @@
+import type { ActiveCodeProjectSnapshot } from '@/lib/code-projects/active-code-project';
 import {
   canonicalDirKey,
   getDirectoriesToReveal,
@@ -6,7 +7,7 @@ import {
   resolveExplorerRoot,
 } from '../file-preview-explorer.utils';
 
-const mockGetActiveCodeProject = jest.fn(() => null);
+const mockGetActiveCodeProject = jest.fn<ActiveCodeProjectSnapshot | null, []>(() => null);
 
 jest.mock('@/lib/code-projects/active-code-project', () => ({
   getActiveCodeProject: () => mockGetActiveCodeProject(),

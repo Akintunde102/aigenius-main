@@ -17,6 +17,7 @@ import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
 import {
   isActiveModelOutsideQuickPicks,
   isModelInCatalog,
+  mergeQuickPickIdsForDisplay,
 } from "@/app/components/model-interface/shared/constants/quickPickModels";
 
 interface ModelSelectionModalProps {
@@ -162,6 +163,11 @@ export const ModelSelectionModal = React.memo(({
     return () => clearTimeout(timer);
   }, [localSearch, setSearchProp, searchProp]);
 
+  const effectiveQuickPickIds = useMemo(
+    () => mergeQuickPickIdsForDisplay(models, pinnedModelIds),
+    [models, pinnedModelIds],
+  );
+
   const sharedCardProps = useMemo(() => ({
     isModelPinned,
     togglePinModel,
@@ -253,7 +259,7 @@ export const ModelSelectionModal = React.memo(({
     const showActiveOutside =
       selectedModel != null &&
       isModelInCatalog(models, selectedModel.id) &&
-      isActiveModelOutsideQuickPicks(selectedModel, pinnedModelIds);
+      isActiveModelOutsideQuickPicks(selectedModel, effectiveQuickPickIds);
 
     if (showActiveOutside && selectedModel) {
       sections.push({ title: "Currently in use", models: [selectedModel] });
@@ -267,7 +273,7 @@ export const ModelSelectionModal = React.memo(({
     }
 
     return sections.length > 0 ? sections : undefined;
-  }, [activeTab, selectedModel, pinnedModelIds, models, favoritesSorted]);
+  }, [activeTab, selectedModel, effectiveQuickPickIds, models, favoritesSorted]);
 
   // Set initial tab once when the modal opens — not when quick picks change mid-session.
   useEffect(() => {
@@ -286,22 +292,22 @@ export const ModelSelectionModal = React.memo(({
 
     hasAutoSwitchedRef.current = true;
 
-    if (pinnedModelIds.length > 0) {
+    if (effectiveQuickPickIds.length > 0) {
       setActiveTab("favorites");
     } else {
       setActiveTab("all");
     }
     setShowFilterSortRow(true);
-  }, [isOpen, favoritesLoaded, setActiveTab]);
+  }, [isOpen, favoritesLoaded, effectiveQuickPickIds.length, setActiveTab]);
 
   // Fallback: auto-switch to "all" if favorites are empty while still on favorites tab
   useEffect(() => {
-    if (!hasAutoSwitchedRef.current && favoritesLoaded && pinnedModelIds.length === 0 && activeTab === "favorites") {
+    if (!hasAutoSwitchedRef.current && favoritesLoaded && effectiveQuickPickIds.length === 0 && activeTab === "favorites") {
       hasAutoSwitchedRef.current = true;
       setActiveTab("all");
       setShowFilterSortRow(true);
     }
-  }, [favoritesLoaded, pinnedModelIds.length, activeTab, setActiveTab]);
+  }, [favoritesLoaded, effectiveQuickPickIds.length, activeTab, setActiveTab]);
 
   // Handle Esc and Cmd/Ctrl + K to close
   useEffect(() => {

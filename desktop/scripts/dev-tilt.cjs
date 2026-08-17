@@ -192,11 +192,17 @@ async function main() {
   while (true) {
     runSync('compile', ['run', 'compile']);
     try {
-      await waitForFrontendReady({
+      const { port } = await waitForFrontendReady({
         warmup: true,
         logPrefix: '[dev-tilt]',
         timeoutMs: 360_000,
       });
+      console.log(
+        `[dev-tilt] Electron will load live Next.js on port ${port} (Tilt \`web\` resource).`,
+      );
+      console.log(
+        '[dev-tilt] Packaged Vite UI (desktop-renderer) is not used in dev — run build:desktop:ui to refresh it for packages.',
+      );
     } catch (err) {
       console.error(err.message || err);
       await blockUntilTiltRestart('Frontend is not ready — fix `web` first, then Restart `desktop`.');

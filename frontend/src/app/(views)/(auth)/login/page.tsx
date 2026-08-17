@@ -4,12 +4,12 @@ import { AuthPage } from "@/app/components/auth/AuthPage";
 import { useRedirectDesktopFromWebAuthPage } from "@/lib/hooks/use-redirect-desktop-from-web-auth";
 import { storage } from "@/lib/utils/store";
 import { storageConstants } from "@/lib/constants";
-import { LINKS } from "@/lib/links";
 import {
   resolveDesktopGoogleOAuthUrl,
   shouldPersistDesktopApiRoot,
   storeDesktopApiRoot,
 } from "@/lib/utils/desktop-google-auth-url";
+import { resolveAuthApiRootUrl } from "@/lib/utils/resolve-auth-api-root";
 
 const Login = () => {
   useRedirectDesktopFromWebAuthPage();
@@ -26,7 +26,7 @@ const Login = () => {
         }
 
         if (params.get("auto") === "google") {
-          window.location.href = resolveDesktopGoogleOAuthUrl(callback, LINKS.noboxAPIRootUrl);
+          window.location.href = resolveDesktopGoogleOAuthUrl(callback, resolveAuthApiRootUrl());
           return;
         }
 
