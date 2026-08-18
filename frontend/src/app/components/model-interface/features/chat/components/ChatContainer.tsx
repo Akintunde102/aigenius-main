@@ -10,9 +10,11 @@ import { useBrowserDetection } from '@/app/components/model-interface/shared/hoo
 import { useMobileKeyboard, useMobileLayout } from '@/app/components/model-interface/features/mobile/hooks';
 import { useAnchoredOrphanNotes } from '../hooks/useAnchoredOrphanNotes';
 import type { AudioStatus } from '../hooks/audioMode.utils';
+import type { QueuedComposerMessage } from '../hooks/messageSendQueue.types';
 import styles from './ChatContainer.module.scss';
 
 import type { UploadedFileEntry } from '@/app/components/model-interface/ModelInterface.helpers';
+import type { MessageEditDraft } from '../../messages/utils/messageEdit.utils';
 import type { FailedUploadEntry } from '@/app/components/model-interface/features/file-upload/hooks/useFileUpload';
 import { FEATURE_FLAGS } from '@/lib/config/features';
 import { ImagePreviewLightbox } from '@/app/components/model-interface/features/message-types/components/ImagePreviewLightbox';
@@ -35,6 +37,13 @@ interface ChatContainerProps {
     onDeleteMessageById?: (id: string) => void;
     onSaveMessage: (msg: ChatMessage) => void;
     onReplayMessage: (message: ChatMessage, idx: number) => void;
+    editingIdx?: number | null;
+    editDraft?: MessageEditDraft | null;
+    onStartEditMessage?: (message: ChatMessage, idx: number) => void;
+    onCancelEditMessage?: () => void;
+    onUpdateEditDraft?: (draft: MessageEditDraft) => void;
+    onCommitEditMessage?: (idx: number) => void;
+    supportsFileUpload?: boolean;
     currentSessionId: string | null;
     onSendMessage: (
         message: string,
@@ -90,6 +99,9 @@ interface ChatContainerProps {
     /** Controlled textarea value — set by STT to inject transcribed text. */
     inputValue?: string;
     onInputChange?: (value: string) => void;
+    queuedMessages?: QueuedComposerMessage[];
+    onQueueMessage?: (message: string) => void;
+    onRemoveQueuedMessage?: (messageId: string) => void;
     onMiniModeToggle?: () => void;
     isMiniMode?: boolean;
     analyzer?: AnalyserNode | null;
@@ -119,6 +131,13 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     onDeleteMessageById,
     onSaveMessage,
     onReplayMessage,
+    editingIdx = null,
+    editDraft = null,
+    onStartEditMessage,
+    onCancelEditMessage,
+    onUpdateEditDraft,
+    onCommitEditMessage,
+    supportsFileUpload = true,
     currentSessionId,
     onSendMessage,
     onFileUpload,
@@ -168,6 +187,9 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     audioVolume = 0,
     inputValue,
     onInputChange,
+    queuedMessages,
+    onQueueMessage,
+    onRemoveQueuedMessage,
     onMiniModeToggle,
     isMiniMode,
     analyzer = null,
@@ -352,6 +374,14 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         onDeleteMessageById={onDeleteMessageById}
                         onSaveMessage={onSaveMessage}
                         onReplayMessage={onReplayMessage}
+                        editingIdx={editingIdx}
+                        editDraft={editDraft}
+                        onStartEditMessage={onStartEditMessage}
+                        onCancelEditMessage={onCancelEditMessage}
+                        onUpdateEditDraft={onUpdateEditDraft}
+                        onCommitEditMessage={onCommitEditMessage}
+                        conversationId={currentSessionId}
+                        supportsFileUpload={supportsFileUpload}
                         onStartOrphanReply={createOrphanNoteFromTrigger}
                         orphanMarkersByMessageId={markersByMessageId}
                         hiddenMarkerMessageIds={hiddenMessageIds}
@@ -441,6 +471,9 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         audioNotice={audioNotice}
                         inputValue={inputValue}
                         onInputChange={onInputChange}
+                        queuedMessages={queuedMessages}
+                        onQueueMessage={onQueueMessage}
+                        onRemoveQueuedMessage={onRemoveQueuedMessage}
                         onFocus={() => {
                             // On mobile, use smooth scrollIntoView for better UX
                             if (isMobile) {

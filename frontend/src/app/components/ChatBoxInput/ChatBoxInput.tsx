@@ -10,6 +10,7 @@ import { useFileUpload, PendingFile } from './hooks/useFileUpload';
 import { useInputState } from './hooks/useInputState';
 import { useGlistenEffect } from './hooks/useGlistenEffect';
 import { getContainerStyles } from './utils/styles';
+import { ComposerMessageQueue } from './ComposerMessageQueue';
 
 /** True when viewport is wide (PC); false for mobile viewport. Uses 768px breakpoint to match app layout. */
 function useIsPc() {
@@ -75,7 +76,13 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     isDictationTranscribing,
     audioStatus,
     audioTranscription,
-    audioNotice
+    audioNotice,
+    onComposerKeyDown,
+    composerTextareaId,
+    composerRootId = 'chat-input',
+    queuedMessages = [],
+    onQueueMessage,
+    onRemoveQueuedMessage,
 }, ref) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -90,12 +97,12 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
         [onSelectModel, onModelChange],
     );
     const glisten = useGlistenEffect();
-    const { inputValue, handleInputChange, clearInput, flushInputToParent } = useInputState({
+    const { inputValue, handleInputChange, flushInputToParent } = useInputState({
         externalInputValue,
         onInputChange
     });
 
-    const controlsDisabled = responseInProgress;
+    const attachmentsDisabled = responseInProgress;
 
     const {
         fileInputRef,
@@ -112,7 +119,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
         onCancelUpload,
         onAttachmentMenuRequest,
         uploading,
-        disabled: controlsDisabled,
+        disabled: attachmentsDisabled,
         supportsFileUpload
     });
 
@@ -141,6 +148,27 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     const isAnyFileUploading = uploading || activePendingFiles.length > 0;
     const hasFilesButModelUnsupported = uploadedFiles.length > 0 && !supportsFileUpload;
     const sendBlocked = responseInProgress || hasFilesButModelUnsupported || isAnyFileUploading;
+    const canQueueMessage = responseInProgress
+        && !hasFilesButModelUnsupported
+        && !isAnyFileUploading
+        && uploadedFiles.length === 0
+        && Boolean(onQueueMessage);
+
+    const onQueueMessageRef = useRef(onQueueMessage);
+    useEffect(() => {
+        onQueueMessageRef.current = onQueueMessage;
+    }, [onQueueMessage]);
+
+    const queueCurrentInput = useCallback(() => {
+        const trimmed = inputValue.trim();
+        if (!trimmed || !canQueueMessage) {
+            return false;
+        }
+        flushInputToParent();
+        onQueueMessageRef.current?.(trimmed);
+        handleInputChange('');
+        return true;
+    }, [canQueueMessage, flushInputToParent, handleInputChange, inputValue]);
 
     const onSendMessageRef = useRef(onSendMessage);
     useEffect(() => {
@@ -160,29 +188,36 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
             if ((inputValue.trim() || uploadedFiles.length > 0) && !sendBlocked) {
                 console.log('[ChatBoxInput] Calling onSendMessage');
                 flushInputToParent();
-                const shouldClearComposer = await Promise.resolve(
+                await Promise.resolve(
                     onSendMessageRef.current(inputValue.trim(), selectedModel),
                 );
-                console.log('[ChatBoxInput] onSendMessage finished', { shouldClearComposer });
-                if (shouldClearComposer !== false) {
-                    clearInput();
-                }
+                console.log('[ChatBoxInput] onSendMessage finished');
+            } else if (inputValue.trim() && canQueueMessage) {
+                queueCurrentInput();
             } else {
                 console.log('[ChatBoxInput] Submission blocked or empty input');
             }
         },
-        [inputValue, uploadedFiles.length, sendBlocked, selectedModel, clearInput, flushInputToParent],
+        [inputValue, uploadedFiles.length, sendBlocked, canQueueMessage, selectedModel, flushInputToParent, queueCurrentInput],
     );
 
     // PC: Enter = send, Shift+Enter = new line. Mobile: Enter and Shift+Enter = new line only (no keyboard submit).
-    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key !== 'Enter') return;
-        if (!isPc) return; // Mobile: never submit via keyboard; both Enter and Shift+Enter insert newline
-        if (e.shiftKey) return; // PC: Shift+Enter = new line
-        if (responseInProgress) return; // Let Enter insert a newline while a reply is in progress
-        e.preventDefault();
-        handleSubmit(e as any);
-    }, [handleSubmit, isPc, responseInProgress]);
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    onComposerKeyDown?.(e);
+    if (e.defaultPrevented) return;
+    if (e.key !== 'Enter') return;
+    if (!isPc) return; // Mobile: never submit via keyboard; both Enter and Shift+Enter insert newline
+    if (e.shiftKey) return; // PC: Shift+Enter = new line
+    if (responseInProgress) {
+        if (inputValue.trim() && canQueueMessage) {
+            e.preventDefault();
+            queueCurrentInput();
+        }
+        return;
+    }
+    e.preventDefault();
+    handleSubmit(e as any);
+  }, [canQueueMessage, handleSubmit, inputValue, isPc, onComposerKeyDown, queueCurrentInput, responseInProgress]);
 
 
 
@@ -407,7 +442,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
         ) : null;
 
     return (
-        <div id="chat-input" className={`w-full mx-auto ${className}`} style={{ position: 'relative', zIndex: 10 }}>
+        <div id={composerRootId} className={`w-full mx-auto ${className}`} style={{ position: 'relative', zIndex: 10 }}>
             {/* Per-file circular progress is shown on individual cards */}
 
             {/* Warning banner when files are attached but model doesn't support them */}
@@ -490,7 +525,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                             style={{ display: 'none' }}
                             onChange={handleFileInputChange}
                             tabIndex={-1}
-                            disabled={controlsDisabled}
+                            disabled={attachmentsDisabled}
                             multiple
                             accept="image/*,audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.webm,.mp4,.pdf,.txt,.csv,.json,.md,.xml"
                         />
@@ -528,11 +563,21 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                             }
                             hasUploadedFiles={uploadedFiles.length > 0}
                             mini={mini}
+                            textareaId={composerTextareaId}
+                            canQueueMessage={canQueueMessage}
+                            actionSlot={(
+                                <ComposerMessageQueue
+                                    queuedMessages={queuedMessages}
+                                    onRemoveQueuedMessage={onRemoveQueuedMessage ?? (() => undefined)}
+                                    mini={mini}
+                                />
+                            )}
                         />
                     </div>
 
                     <ChatControls
-                        disabled={controlsDisabled}
+                        disabled={attachmentsDisabled}
+                        modelSelectorDisabled={false}
                         uploading={isAnyFileUploading}
                         supportsFileUpload={supportsFileUpload && !hideUpload}
                         selectedModel={selectedModel}

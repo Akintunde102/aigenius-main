@@ -10,6 +10,7 @@ import {
 import { ChatMessageWrapper } from "../../messages/components/ChatMessageWrapper";
 import copy from "copy-to-clipboard";
 import { isVisibleChatMessage } from "@/lib/utils/messageContentUtils";
+import type { MessageEditDraft } from "../../messages/utils/messageEdit.utils";
 
 export interface ChatAreaVirtualizedListProps {
   chat: ChatMessageType[];
@@ -25,6 +26,14 @@ export interface ChatAreaVirtualizedListProps {
   onDeleteMessageById?: (id: string) => void;
   onSaveMessage: (msg: ChatMessageType) => void;
   onReplayMessage: (message: ChatMessageType, idx: number) => void;
+  editingIdx?: number | null;
+  editDraft?: MessageEditDraft | null;
+  onStartEditMessage?: (message: ChatMessageType, idx: number) => void;
+  onCancelEditMessage?: () => void;
+  onUpdateEditDraft?: (draft: MessageEditDraft) => void;
+  onCommitEditMessage?: (idx: number) => void;
+  conversationId?: string | null;
+  supportsFileUpload?: boolean;
   onStartOrphanReply?: (trigger: OrphanReplyTrigger) => void;
   orphanMarkersByMessageId?: Record<string, StickyThreadMarker[]>;
   hiddenMarkerMessageIds?: Record<string, boolean>;
@@ -63,6 +72,14 @@ export const ChatAreaVirtualizedList = React.memo(function ChatAreaVirtualizedLi
   onDeleteMessageById,
   onSaveMessage,
   onReplayMessage,
+  editingIdx = null,
+  editDraft = null,
+  onStartEditMessage,
+  onCancelEditMessage,
+  onUpdateEditDraft,
+  onCommitEditMessage,
+  conversationId = null,
+  supportsFileUpload = true,
   onStartOrphanReply,
   orphanMarkersByMessageId,
   hiddenMarkerMessageIds,
@@ -126,6 +143,14 @@ export const ChatAreaVirtualizedList = React.memo(function ChatAreaVirtualizedLi
               onDeleteMessageById={onDeleteMessageById}
               onSaveMessage={onSaveMessage}
               onReplayMessage={onReplayMessage}
+              editingIdx={editingIdx}
+              editDraft={editDraft}
+              onStartEditMessage={onStartEditMessage}
+              onCancelEditMessage={onCancelEditMessage}
+              onUpdateEditDraft={onUpdateEditDraft}
+              onCommitEditMessage={onCommitEditMessage}
+              conversationId={conversationId}
+              supportsFileUpload={supportsFileUpload}
               onStartOrphanReply={onStartOrphanReply}
               orphanMarkers={orphanMarkersByMessageId?.[msg.messageId ?? msg.id ?? `ts_${msg.timestamp}`] ?? []}
               orphanMarkersHidden={Boolean(hiddenMarkerMessageIds?.[msg.messageId ?? msg.id ?? `ts_${msg.timestamp}`])}

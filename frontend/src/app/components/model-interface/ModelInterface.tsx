@@ -57,6 +57,7 @@ import { ModelInterfaceChrome } from "./components/ModelInterfaceChrome";
 import type { PublishState } from "./ModelInterface.types";
 import { chatCanvasSurfaceStyle } from "./chatSurfaceStyle";
 import { workflowShellBgStyle } from "@/app/components/workflows/workflow-info";
+import { FEATURE_FLAGS } from "@/lib/config/features";
 import { openWorkflow } from "@/lib/utils/open-workflow";
 import { ChatShellLoadingSkeleton } from "@/app/components/ChatShellLoadingSkeleton";
 import { useModelInterfaceSidebarActions } from "./hooks/useModelInterfaceSidebarActions";
@@ -130,14 +131,14 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     selectedPersonalityIconUrl,
     setSelectedPersonalityIconUrl,
   } = personalityState;
-  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, showTyping, setShowTyping, showScrollToBottom } = chatState;
+  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, showTyping, setShowTyping, showScrollToBottom, queuedMessages, handleQueueMessage, removeQueuedMessage } = chatState;
   const { loading, setLoading, error, setError, streaming, setStreaming, streamingEnabled, setStreamingEnabled, imagePreview, setImagePreview, uploading, setUploading, uploadProgress, setUploadProgress, dragActive, setDragActive, showCosts, showNaira, showSaved, setShowSaved, setTotalSpent, optimizationMessage } = uiState;
   const { showModelDetailsModal, setShowModelDetailsModal, showModelSelectionModal, setShowModelSelectionModal } = modalState;
   const { search, setSearch, historySearch, setHistorySearch, orderByCost, setOrderByCost, allModalities, selectedModalities, allOutputModalities, selectedOutputModalities, showWebSearch, setShowWebSearch, showToolsOnly, setShowToolsOnly, pinnedModelIds, favoritesLoaded, orderBy, setOrderBy, orderDir, setOrderDir, selectedProviders, setSelectedProviders, imageFilterOnly, setImageFilterOnly, toggleModality, toggleOutputModality } = filterState;
   const { wallet, setWallet, refreshWalletFromBackend } = walletState;
   const { chatEndRef, chatAreaRef } = refs;
   const { currentChatCostUSD, currentChatCostNaira } = computed;
-  const { switchToSession, isSessionActive, project } = sessionState;
+  const { switchToSession, isSessionActive, project, onClearDraftQueueRef } = sessionState;
   const {
     isAudioMode,
     isSTTActive,
@@ -280,6 +281,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     setSelectedSystemPrompt,
     setSelectedPersonalityName,
     setSelectedPersonalityIconUrl,
+    onClearDraftQueue: () => onClearDraftQueueRef.current(),
   });
 
   const { handleGlobalKeyDown } = useKeyboardShortcuts({
@@ -531,7 +533,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     onWalletUpdate={handleWalletUpdateFromSidebar}
                     onStarToggle={handleStarToggle}
                     onPublish={handlePublishFromSidebar}
-                    onOpenWorkflows={handleOpenWorkflows}
+                    onOpenWorkflows={FEATURE_FLAGS.WORKFLOWS ? handleOpenWorkflows : undefined}
                     onOpenNotifications={() => router.push("/notifications")}
                     switchToSession={handleSessionSwitch}
                     createNewSessionAndSwitch={createNewSessionAndSwitchWrapper}
@@ -613,6 +615,9 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     audioVolume={audioVolume}
                     inputValue={input}
                     onInputChange={setInput}
+                    queuedMessages={queuedMessages}
+                    onQueueMessage={handleQueueMessage}
+                    onRemoveQueuedMessage={removeQueuedMessage}
                     onMiniModeToggle={handleMiniModeToggle}
                     isMiniMode={isMiniMode}
                     analyzer={analyzer}

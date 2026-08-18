@@ -8,6 +8,7 @@ import {
 import { ChatMessage } from './ChatMessage';
 import { TimeDivider } from '../../chat/components';
 import { formatCost } from '@/lib/utils/modelInterfaceUtils';
+import type { MessageEditDraft } from '../utils/messageEdit.utils';
 
 export interface ChatMessageWrapperProps {
     msg: ChatMessageType;
@@ -23,6 +24,14 @@ export interface ChatMessageWrapperProps {
     onDeleteMessageById?: (id: string) => void;
     onSaveMessage: (msg: ChatMessageType) => void;
     onReplayMessage: (message: ChatMessageType, idx: number) => void;
+    editingIdx?: number | null;
+    editDraft?: MessageEditDraft | null;
+    onStartEditMessage?: (message: ChatMessageType, idx: number) => void;
+    onCancelEditMessage?: () => void;
+    onUpdateEditDraft?: (draft: MessageEditDraft) => void;
+    onCommitEditMessage?: (idx: number) => void;
+    conversationId?: string | null;
+    supportsFileUpload?: boolean;
     onStartOrphanReply?: (trigger: OrphanReplyTrigger) => void;
     orphanMarkers?: StickyThreadMarker[];
     orphanMarkersHidden?: boolean;
@@ -52,6 +61,14 @@ function ChatMessageWrapperInner({
     onDeleteMessageById,
     onSaveMessage,
     onReplayMessage,
+    editingIdx = null,
+    editDraft = null,
+    onStartEditMessage,
+    onCancelEditMessage,
+    onUpdateEditDraft,
+    onCommitEditMessage,
+    conversationId = null,
+    supportsFileUpload = true,
     onStartOrphanReply,
     orphanMarkers,
     orphanMarkersHidden,
@@ -99,6 +116,14 @@ function ChatMessageWrapperInner({
                 onSave={onSaveMessage}
                 onCopy={onCopy}
                 onReplay={onReplayCb}
+                editingIdx={editingIdx}
+                editDraft={editDraft}
+                onStartEdit={onStartEditMessage}
+                onCancelEdit={onCancelEditMessage}
+                onUpdateEditDraft={onUpdateEditDraft}
+                onCommitEdit={onCommitEditMessage}
+                conversationId={conversationId}
+                supportsFileUpload={supportsFileUpload}
                 onStartOrphanReply={onStartOrphanReply}
                 orphanMarkers={orphanMarkers}
                 orphanMarkersHidden={orphanMarkersHidden}
@@ -138,6 +163,8 @@ function wrapperPropsEqual(
         && prev.imagePreview === next.imagePreview
         && prev.loading === next.loading
         && prev.streaming === next.streaming
+        && prev.editingIdx === next.editingIdx
+        && (prev.editingIdx !== prev.idx || prev.editDraft === next.editDraft)
         && prev.selectedPersonalityName === next.selectedPersonalityName
         && prev.selectedPersonalityIconUrl === next.selectedPersonalityIconUrl
         && prev.disableOrphanThreads === next.disableOrphanThreads

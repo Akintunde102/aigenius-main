@@ -2,6 +2,7 @@ import {
   app,
   BrowserWindow,
   nativeImage,
+  net,
   session,
 } from 'electron';
 import fs from 'fs';
@@ -62,6 +63,36 @@ function createNativeIcon(iconPath: string): Electron.NativeImage | undefined {
 }
 
 let cachedWindowIcon: Electron.NativeImage | undefined;
+let mainShellWindowsCreated = 0;
+let devSessionCacheCleared = false;
+
+function shellBootDataUrl(sessionRestoreHint: boolean): string {
+  const subtitle = sessionRestoreHint
+    ? '<p class="sub">Verifying your saved session…</p>'
+    : '';
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><style>
+html,body{margin:0;height:100%;background:#0c0d0f;color:#d4d4d8;font-family:system-ui,-apple-system,sans-serif}
+.wrap{display:flex;height:100%;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+.spin{width:28px;height:28px;border:2px solid rgba(34,211,238,0.2);border-top-color:#22d3ee;border-radius:50%;animation:r .8s linear infinite;margin-bottom:20px}
+@keyframes r{to{transform:rotate(360deg)}}
+p{font-size:14px;font-weight:500;color:#d4d4d8;margin:0}
+.sub{font-size:12px;line-height:1.5;color:#71717a;margin-top:8px;max-width:18rem}
+</style></head><body><div class="wrap"><div class="spin" role="status" aria-label="Loading"></div><p>Opening AIGenius…</p>${subtitle}</div></body></html>`;
+  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+}
+
+async function prefetchShellUrl(url: string): Promise<void> {
+  try {
+    const response = await net.fetch(url);
+    await response.text();
+  } catch (err) {
+    console.warn('[aigenius-desktop] shell prefetch failed', { url, err });
+  }
+}
+
+function isShellBootDataUrl(url: string): boolean {
+  return url.startsWith('data:text/html');
+}
 
 export function getWindowIcon(): Electron.NativeImage | undefined {
   if (cachedWindowIcon !== undefined && !cachedWindowIcon.isEmpty()) {
@@ -76,6 +107,9 @@ export function getWindowIcon(): Electron.NativeImage | undefined {
 }
 
 export function createWindow(relativePath?: string): BrowserWindow {
+  const isAdditionalWindow = mainShellWindowsCreated > 0;
+  mainShellWindowsCreated += 1;
+
   const icon = getWindowIcon();
   const preloadPath = path.join(__dirname, 'preload.js');
 
@@ -120,6 +154,10 @@ export function createWindow(relativePath?: string): BrowserWindow {
         if (win.isDestroyed()) {
           return;
         }
+        if (isShellBootDataUrl(win.webContents.getURL())) {
+          return;
+        }
+        win.webContents.removeListener('did-finish-load', openDevToolsOnce);
         try {
           if (!win.webContents.isDevToolsOpened()) {
             win.webContents.openDevTools();
@@ -128,7 +166,7 @@ export function createWindow(relativePath?: string): BrowserWindow {
           console.error('[aigenius-desktop] openDevTools failed', err);
         }
       };
-      win.webContents.once('did-finish-load', openDevToolsOnce);
+      win.webContents.on('did-finish-load', openDevToolsOnce);
       win.webContents.once('did-fail-load', openDevToolsOnce);
     }
   }
@@ -137,7 +175,14 @@ export function createWindow(relativePath?: string): BrowserWindow {
     ? loopbackHttpUrl(FRONTEND_PORT, relativePath.startsWith('/') ? relativePath : '/' + relativePath)
     : FRONTEND_URL;
 
-  win.webContents.once('did-finish-load', () => {
+  const onShellPageReady = (): void => {
+    if (win.isDestroyed()) {
+      return;
+    }
+    if (isShellBootDataUrl(win.webContents.getURL())) {
+      return;
+    }
+    win.webContents.removeListener('did-finish-load', onShellPageReady);
     startupMark('window_did_finish_load');
     try {
       // Keep page zoom fixed so trackpad pinch emits wheel events the chat UI can handle.
@@ -153,9 +198,21 @@ export function createWindow(relativePath?: string): BrowserWindow {
     } else if (isDesktopPerfEnabled()) {
       startupMarkSummary();
     }
-  });
+  };
+
+  win.webContents.on('did-finish-load', onShellPageReady);
 
   const loadShellUrl = (): void => {
+    if (isAdditionalWindow) {
+      const sessionRestoreHint = !relativePath;
+      void win.loadURL(shellBootDataUrl(sessionRestoreHint));
+      void prefetchShellUrl(url).then(() => {
+        if (!win.isDestroyed()) {
+          void win.loadURL(url);
+        }
+      });
+      return;
+    }
     void win.loadURL(url);
   };
 
@@ -163,7 +220,12 @@ export function createWindow(relativePath?: string): BrowserWindow {
     console.info(
       `[aigenius-desktop] dev shell loading live Next.js at ${url} (not packaged Vite desktop-renderer)`,
     );
-    void session.defaultSession.clearCache().then(loadShellUrl).catch(loadShellUrl);
+    if (!devSessionCacheCleared) {
+      devSessionCacheCleared = true;
+      void session.defaultSession.clearCache().then(loadShellUrl).catch(loadShellUrl);
+    } else {
+      loadShellUrl();
+    }
   } else {
     loadShellUrl();
   }

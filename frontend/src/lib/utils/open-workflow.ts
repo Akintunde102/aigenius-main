@@ -1,4 +1,8 @@
-import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
+import { syncAuthSessionCookiesFromStorage } from '@/lib/utils/auth-session';
+import {
+  isAigeniusDesktopRuntime,
+  isLikelyElectronRenderer,
+} from '@/lib/utils/desktop-runtime';
 
 /**
  * Workflow routes that should open beside chat (new tab / Electron window) instead of
@@ -88,8 +92,16 @@ export function openWorkflow(href: string): void {
     return;
   }
 
-  if (isAigeniusDesktopRuntime() && typeof window.aigeniusDesktop?.openNewWindow === 'function') {
-    void window.aigeniusDesktop.openNewWindow(path);
+  // Middleware is cookie-only; mirror localStorage tokens before a new shell window loads.
+  syncAuthSessionCookiesFromStorage();
+
+  const openNewWindow = window.aigeniusDesktop?.openNewWindow;
+  const useDesktopNewWindow =
+    typeof openNewWindow === 'function' &&
+    (isAigeniusDesktopRuntime() || isLikelyElectronRenderer());
+
+  if (useDesktopNewWindow) {
+    void openNewWindow(path);
     return;
   }
 

@@ -1,4 +1,5 @@
 import { ChatMessage, Model, ChatSession, OrphanReplyRequest, ToolUsageCharge, UsageInfo } from '@/app/components/model-interface/shared/types';
+import type { HandleSendQueueOptions } from './messageSendQueue.types';
 import type {
     AccessModelArgs,
     AccessModelResponse,
@@ -100,6 +101,8 @@ export interface UseChatOperationsRefinedProps {
     getChatForSession: (sessionKey: string) => ChatMessage[];
     /** Ref read during streaming — avoids reordering hooks for audio mode. */
     isAudioModeRef?: React.MutableRefObject<boolean>;
+    /** Called when a draft chat receives its first real conversation id. */
+    onDraftSessionMaterialized?: (realId: string) => void;
 }
 
 export type LastFailedSendPayload = {
@@ -124,6 +127,7 @@ export interface UseChatOperationsReturn {
         enableStreaming?: boolean,
         preCreatedMessage?: ChatMessage,
         chatSnapshot?: ChatMessage[],
+        sendOptions?: HandleSendQueueOptions,
     ) => Promise<boolean>;
     handleStop: () => void;
     refreshWalletBalance: () => Promise<number | null>;
@@ -167,6 +171,8 @@ export interface ChatCompletionRequestOverrides {
     draftEpoch?: number;
     /** Monotonic per-session send counter captured at dispatch. */
     sendGeneration?: number;
+    /** Model snapshot for queued/background sends. */
+    modelOverride?: Model;
 }
 
 // Props for non-streaming response handler

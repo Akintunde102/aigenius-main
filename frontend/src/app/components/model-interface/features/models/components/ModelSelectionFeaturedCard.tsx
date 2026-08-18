@@ -1,20 +1,13 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo } from 'react';
 import { FiInfo, FiLayers } from 'react-icons/fi';
 import { Model } from '@/app/components/model-interface/shared/types';
-import { formatNGN, hasExtraToolingCapability, getModelDisplayName } from '@/app/components/model-interface/shared/utils';
+import { hasExtraToolingCapability, getModelDisplayName } from '@/app/components/model-interface/shared/utils';
 import { ModelToggleSwitch } from '@/app/components/ChatBoxInput/ModelToggleSwitch';
+import { ModelMetaPills } from './ModelMetaPills';
 
 const ToolsCapabilityIcon = ({ size = 10, className = '' }: { size?: number; className?: string }) => (
     <FiLayers size={size} className={className} aria-hidden strokeWidth={1.5} />
 );
-
-function getListDescription(model: Model): string {
-    const text = (model.description || '').trim();
-    if (text) return text;
-    const subtitle = (model.subtitle || '').trim();
-    if (subtitle) return subtitle;
-    return '';
-}
 
 type ModelSelectionFeaturedCardProps = {
     model: Model;
@@ -40,32 +33,16 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
     isSortingByReleaseDate = false,
 }: ModelSelectionFeaturedCardProps) {
     const supportsTools = hasExtraToolingCapability(model);
-    const description = useMemo(() => getListDescription(model), [model]);
     const displayName = getModelDisplayName(model);
 
-    const costLabel = useMemo(() => {
-        if (!isFinite(averageCost)) return null;
-        if (averageCost > 0) return `~${formatNGN(averageCost, true)} credits/msg`;
-        return 'Free';
-    }, [averageCost]);
-
-    const releaseLabel =
-        isSortingByReleaseDate && model.created
-            ? new Date(model.created * 1000).toLocaleString(undefined, {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-            })
-            : null;
-
-    const hasFootnote = costLabel || releaseLabel;
+    const isHighlighted = isSelected || isPinned;
 
     return (
         <div
             role="button"
             tabIndex={0}
             className={`group app-model-card w-full max-w-xl cursor-pointer ${isMobile ? 'px-3 py-2.5' : 'px-4 py-3.5'
-                } ${isSelected ? 'app-model-card--selected' : ''}`}
+                } ${isHighlighted ? 'app-model-card--selected' : ''}`}
             onClick={() => {
                 onSelect();
                 try {
@@ -99,37 +76,16 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                         )}
                     </div>
 
-                    {description ? (
-                        <p
-                            className={`app-model-card__desc line-clamp-2 ${isMobile ? '!text-[10px] mt-1' : 'mt-1.5'}`}
-                        >
-                            {description}
-                        </p>
-                    ) : null}
-
-                    {hasFootnote ? (
-                        <div
-                            className={`app-model-card__meta flex flex-wrap items-center gap-x-2 gap-y-0.5 tabular-nums ${description ? (isMobile ? 'mt-1' : 'mt-2') : (isMobile ? 'mt-1' : 'mt-1.5')
-                                } ${isMobile ? '!text-[9px]' : ''}`}
-                        >
-                            {costLabel ? (
-                                <span
-                                    className={averageCost > 0 ? 'opacity-90' : 'opacity-80'}
-                                    style={averageCost > 0 ? { color: 'var(--credits-fg)' } : undefined}
-                                >
-                                    {costLabel}
-                                </span>
-                            ) : null}
-                            {costLabel && releaseLabel ? (
-                                <span className="opacity-30" aria-hidden>·</span>
-                            ) : null}
-                            {releaseLabel ? <span className="opacity-70">{releaseLabel}</span> : null}
-                        </div>
-                    ) : null}
+                    <ModelMetaPills
+                        model={model}
+                        averageCost={averageCost}
+                        isMobile={isMobile}
+                        highlightReleaseDate={isSortingByReleaseDate}
+                    />
                 </div>
 
                 <div
-                    className={`flex shrink-0 items-center gap-0.5 pt-0.5 transition-opacity duration-150 ${isMobile || isPinned || isSelected
+                    className={`flex shrink-0 items-center gap-0.5 pt-0.5 transition-opacity duration-150 ${isMobile || isHighlighted
                         ? 'opacity-100'
                         : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
                         }`}
@@ -153,7 +109,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                         onChange={onTogglePin}
                         label={isPinned ? `Remove ${displayName} from quick picks` : `Add ${displayName} to quick picks`}
                         size="xs"
-                        variant="quiet"
+                        variant={isPinned ? "default" : "quiet"}
                     />
                 </div>
             </div>

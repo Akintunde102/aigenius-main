@@ -5,6 +5,11 @@ import {
   openWorkflow,
   workflowStudioPath,
 } from '../open-workflow';
+import { syncAuthSessionCookiesFromStorage } from '@/lib/utils/auth-session';
+
+jest.mock('@/lib/utils/auth-session', () => ({
+  syncAuthSessionCookiesFromStorage: jest.fn(),
+}));
 
 describe('isWorkflowShellPath', () => {
   const origin = 'http://localhost:3001';
@@ -71,9 +76,13 @@ describe('extractWorkflowIdsFromToolResult', () => {
 
 describe('openWorkflow', () => {
   const originalOpen = window.open;
+  const syncCookies = syncAuthSessionCookiesFromStorage as jest.MockedFunction<
+    typeof syncAuthSessionCookiesFromStorage
+  >;
 
   beforeEach(() => {
     window.open = jest.fn();
+    syncCookies.mockClear();
     delete (window as { aigeniusDesktop?: unknown }).aigeniusDesktop;
   });
 
@@ -83,6 +92,7 @@ describe('openWorkflow', () => {
 
   it('opens a new browser tab on web', () => {
     openWorkflow('/workflows');
+    expect(syncCookies).toHaveBeenCalled();
     expect(window.open).toHaveBeenCalledWith(
       `${window.location.origin}/workflows`,
       '_blank',
@@ -98,7 +108,30 @@ describe('openWorkflow', () => {
     };
 
     openWorkflow('/workflow/wf-1');
+    expect(syncCookies).toHaveBeenCalled();
     expect(openNewWindow).toHaveBeenCalledWith('/workflow/wf-1');
     expect(window.open).not.toHaveBeenCalled();
+  });
+
+  it('uses desktop IPC when Electron UA is present before preload attaches', () => {
+    const openNewWindow = jest.fn().mockResolvedValue(undefined);
+    const originalUserAgent = navigator.userAgent;
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: `${originalUserAgent} Electron/33.0.0`,
+    });
+    (window as { aigeniusDesktop?: { openNewWindow: typeof openNewWindow } }).aigeniusDesktop = {
+      openNewWindow,
+    };
+
+    openWorkflow('/workflows');
+    expect(syncCookies).toHaveBeenCalled();
+    expect(openNewWindow).toHaveBeenCalledWith('/workflows');
+    expect(window.open).not.toHaveBeenCalled();
+
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: originalUserAgent,
+    });
   });
 });

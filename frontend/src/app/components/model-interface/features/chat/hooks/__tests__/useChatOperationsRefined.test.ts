@@ -362,6 +362,64 @@ describe('useChatOperationsRefined', () => {
         expect(setCurrentSessionId).toHaveBeenCalledWith('conv-real');
     });
 
+    it('migrates composer draft when a new chat materializes into a real session', () => {
+        const sessionProps = {
+            currentSessionId: null as string | null,
+            routeConversationId: null as string | null,
+        };
+
+        function Wrapper() {
+            const result = useChatOperationsRefined({
+                selectedModel: model,
+                chat: baseChat,
+                setChat,
+                setChatForSession,
+                streaming: false,
+                setStreamingForSession,
+                setLoadingForSession,
+                setError,
+                streamingEnabled: true,
+                chatEndRef,
+                refreshChatHistory: undefined,
+                currentSessionId: sessionProps.currentSessionId,
+                routeConversationId: sessionProps.routeConversationId,
+                setCurrentSessionId,
+                setChatHistory,
+                updateSessionMessages,
+                selectedPersonalityName: undefined,
+                selectedPersonalityIconUrl: undefined,
+                clearPendingOrphanReply,
+                getChatForSession: () => [],
+            });
+            resultRef.current = result;
+            return null;
+        }
+
+        root = createRoot(container);
+        act(() => {
+            root.render(React.createElement(Wrapper));
+        });
+
+        act(() => {
+            resultRef.current!.setInput('follow-up while streaming');
+        });
+
+        const streamingProps = (useStreamingResponse as jest.Mock).mock.calls.at(-1)![0];
+        const epochAtSend = getDraftConversationEpoch();
+
+        act(() => {
+            streamingProps.handleStreamResult({ conversationId: 'conv-real' }, null, epochAtSend);
+        });
+
+        sessionProps.currentSessionId = 'conv-real';
+        sessionProps.routeConversationId = 'conv-real';
+        act(() => {
+            root.render(React.createElement(Wrapper));
+        });
+
+        expect(resultRef.current!.input).toBe('follow-up while streaming');
+    });
+
     it('does not let an older draft stream hijack a freshly opened new chat', () => {
         renderHookWithProps({ currentSessionId: null, streamingEnabled: true });
 
