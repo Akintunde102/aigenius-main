@@ -10,6 +10,9 @@ export type PendingPaymentRecord = {
   reference: string;
   amountInNaira: string;
   createdAt: number;
+  provider?: 'paystack' | 'payaza';
+  /** Payaza: set after checkout popup opens so we do not verify before Payaza knows the reference. */
+  checkoutStarted?: boolean;
 };
 
 export const PAYMENT_POLL_TIMEOUT_MESSAGE =
@@ -112,13 +115,30 @@ export function hasPendingWalletPayment(): boolean {
   return readPendingPaymentFromStorage() !== null;
 }
 
+export function markPendingWalletCheckoutStarted(reference: string): void {
+  if (typeof window === 'undefined') return;
+
+  const pending = readPendingPaymentFromStorage();
+  if (!pending || pending.reference !== reference) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    WALLET_PENDING_PAYMENT_KEY,
+    JSON.stringify({
+      ...pending,
+      checkoutStarted: true,
+    }),
+  );
+}
+
 export async function fetchPendingPaymentStatus(
   reference: string,
 ): Promise<WalletPaymentVerification | null> {
   try {
     const response = (await serverCall({
       serverCallProps: {
-        call: serverCalls.getGatewayPaystackTransactionStatus,
+        call: serverCalls.getGatewayWalletTransactionStatus,
       },
       pathArgs: { reference },
       authorized: true,
@@ -137,7 +157,7 @@ async function triggerPaymentVerify(
   try {
     const response = (await serverCall({
       serverCallProps: {
-        call: serverCalls.postGatewayPaystackTransactionVerify,
+        call: serverCalls.postGatewayWalletTransactionVerify,
       },
       pathArgs: { reference },
       authorized: true,
@@ -153,8 +173,18 @@ async function triggerPaymentVerify(
 /** Status check with verify fallback — shared by app polling and the payment callback page. */
 export async function reconcilePaymentWithBackend(
   reference: string,
+  options: { allowProviderVerify?: boolean } = {},
 ): Promise<WalletPaymentVerification | null> {
+  const { allowProviderVerify = true } = options;
   let verification = await fetchPendingPaymentStatus(reference);
+
+  if (isSuccessfulTransactionStatus(verification?.status)) {
+    return verification;
+  }
+
+  if (!allowProviderVerify) {
+    return verification;
+  }
 
   if (!isSuccessfulTransactionStatus(verification?.status)) {
     const verifyResult = await triggerPaymentVerify(reference);
@@ -172,7 +202,9 @@ async function resolvePendingPayment(
   reference: string,
   amountInNaira: string,
 ): Promise<'success' | 'failed' | 'pending'> {
-  const verification = await reconcilePaymentWithBackend(reference);
+  const pending = readPendingPaymentFromStorage();
+  const allowProviderVerify = pending?.provider !== 'payaza' || pending?.checkoutStarted === true;
+  const verification = await reconcilePaymentWithBackend(reference, { allowProviderVerify });
 
   if (!verification?.status) {
     return 'pending';

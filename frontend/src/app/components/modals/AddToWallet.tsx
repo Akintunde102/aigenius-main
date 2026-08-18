@@ -20,9 +20,11 @@ import {
   subscribePendingWalletPaymentPoll,
 } from "@/lib/wallet-pending-payment-poll";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
+import { openPayazaWalletCheckout, type PayazaCheckoutConfig } from "@/lib/payaza-checkout";
+import { isPayazaWalletProvider } from "@/lib/wallet-payment-provider";
 import { serverCall } from "@/servercall/init";
 import { serverCalls } from "@/servercall/store";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import toast from "react-hot-toast";
 
@@ -60,15 +62,18 @@ function parseAmountNaira(raw: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-type PaystackInitResponse = {
+type WalletInitResponse = {
   success: boolean;
   dataReturned: {
-    status: boolean;
-    message: string;
-    data: {
-      authorization_url: string;
-      access_code: string;
-      reference: string;
+    status?: boolean;
+    message?: string;
+    provider?: "paystack" | "payaza";
+    data?: {
+      authorization_url?: string;
+      access_code?: string;
+      reference?: string;
+      provider?: "payaza";
+      checkout?: PayazaCheckoutConfig;
     };
     reference: string;
     transaction_id: string;
@@ -89,7 +94,12 @@ const AddToWallet = ({
   const [loadingCredits, setLoadingCredits] = useState(true);
   const [wallet, setWallet] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [email, setEmail] = useState<string>("");
+  const submitInFlightRef = useRef(false);
+  const paymentSettledRef = useRef(false);
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
 
   // Fetch wallet on mount and after update
   const fetchWallet = async () => {
@@ -98,6 +108,8 @@ const AddToWallet = ({
       const user = await getUserDetails();
       setWallet(user?.config?.wallet ?? null);
       setEmail(user?.email ?? "");
+      setFirstName(user?.firstName ?? "");
+      setLastName(user?.lastName ?? "");
     } catch {
       setWallet(null);
     } finally {
@@ -108,6 +120,16 @@ const AddToWallet = ({
     fetchWallet();
   }, []);
 
+  useEffect(() => {
+    if (!showSuccess) {
+      return;
+    }
+    paymentSettledRef.current = true;
+    submitInFlightRef.current = false;
+    setUpdating(false);
+    setConfirmingPayment(false);
+  }, [showSuccess]);
+
   const parsedAmount = parseAmountNaira(amount);
   const canSubmitAmount = parsedAmount >= MIN_TOP_UP_NAIRA;
 
@@ -117,6 +139,9 @@ const AddToWallet = ({
   ) => {
     clearUserDetailsCache();
     clearPendingPaymentStorage();
+    paymentSettledRef.current = true;
+    submitInFlightRef.current = false;
+    setConfirmingPayment(false);
     setUpdating(false);
     setAmount(amountInNaira);
     if (typeof newWalletBalance === "number") {
@@ -136,10 +161,14 @@ const AddToWallet = ({
       await applySuccessfulTopUp(amountInNaira, newWalletBalance);
     },
     onFailed: () => {
+      submitInFlightRef.current = false;
+      setConfirmingPayment(false);
       setUpdating(false);
       toast.error("Payment failed. Please try again.");
     },
     onTimedOut: () => {
+      submitInFlightRef.current = false;
+      setConfirmingPayment(false);
       setUpdating(false);
     },
   }), [applySuccessfulTopUp]);
@@ -327,40 +356,121 @@ const AddToWallet = ({
   }
 
   async function handleSubmit(amountInNaira: string, email: string) {
+    if (submitInFlightRef.current || updating || confirmingPayment) {
+      return;
+    }
+
+    submitInFlightRef.current = true;
+    paymentSettledRef.current = false;
     setUpdating(true);
+    setConfirmingPayment(false);
     try {
       const response = (await serverCall({
         serverCallProps: {
-          call: serverCalls.postGatewayPaystackTransactionInitiate,
+          call: serverCalls.postGatewayWalletTransactionInitiate,
           data: {
             amountInNaira,
             email,
+            firstName,
+            lastName,
             callbackUrl: buildPaymentCallbackUrl(amountInNaira, reopenTarget),
           },
         },
         authorized: true,
-      })) as PaystackInitResponse;
+      })) as WalletInitResponse;
 
-      if (!response.dataReturned.data) {
+      const payload = response.dataReturned;
+      const provider = payload.provider
+        ?? payload.data?.provider
+        ?? (isPayazaWalletProvider() ? "payaza" : "paystack");
+      const reference = payload.reference || payload.data?.reference;
+
+      if (provider === "payaza") {
+        const checkout = payload.data?.checkout
+          ?? (payload as { checkout?: PayazaCheckoutConfig }).checkout;
+        const publicKey = process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY?.trim();
+
+        if (!checkout || !publicKey) {
+          throw new Error("Payaza checkout configuration is incomplete");
+        }
+
+        if (reference) {
+          localStorage.setItem(
+            WALLET_PENDING_PAYMENT_KEY,
+            JSON.stringify({
+              reference,
+              amountInNaira,
+              createdAt: Date.now(),
+              provider: "payaza",
+              checkoutStarted: false,
+            }),
+          );
+        }
+
+        let payazaPaymentSubmitted = false;
+        await openPayazaWalletCheckout({
+          publicKey,
+          checkout,
+          onPopupOpen: () => {
+            if (reference) {
+              void startPolling(reference, amountInNaira);
+            }
+          },
+          onSuccess: () => {
+            payazaPaymentSubmitted = true;
+            if (paymentSettledRef.current) {
+              return;
+            }
+            setConfirmingPayment(true);
+            setUpdating(true);
+            toast.success("Payment submitted. Confirming your wallet top-up…");
+          },
+          onError: (errorResponse) => {
+            if (paymentSettledRef.current) {
+              return;
+            }
+            submitInFlightRef.current = false;
+            setConfirmingPayment(false);
+            setUpdating(false);
+            toast.error(
+              errorResponse.data?.message || "Payaza payment failed. Please try again.",
+            );
+          },
+          onClose: () => {
+            if (paymentSettledRef.current) {
+              return;
+            }
+            if (!payazaPaymentSubmitted) {
+              submitInFlightRef.current = false;
+              setConfirmingPayment(false);
+              setUpdating(false);
+            }
+          },
+        });
+        return;
+      }
+
+      if (!payload.data?.authorization_url) {
         throw new Error("Failed to initialize transaction");
       }
 
-      const { data } = response.dataReturned;
+      const { data } = payload;
 
       if (data.authorization_url) {
-        if (data.reference) {
+        if (reference) {
           console.log(
-            `AddToWallet: Storing pending payment reference ${data.reference} and starting polling loop.`,
+            `AddToWallet: Storing pending payment reference ${reference} and starting polling loop.`,
           );
           localStorage.setItem(
             WALLET_PENDING_PAYMENT_KEY,
             JSON.stringify({
-              reference: data.reference,
+              reference,
               amountInNaira,
               createdAt: Date.now(),
+              provider: "paystack",
             }),
           );
-          void startPolling(data.reference, amountInNaira);
+          void startPolling(reference, amountInNaira);
         }
         setUpdating(false);
         openWalletPaymentCheckout(data.authorization_url);
@@ -374,10 +484,15 @@ const AddToWallet = ({
       }
 
       setUpdating(false);
-      toast.error("Paystack did not return a payment URL. Please try again.");
+      toast.error("Payment provider did not return a checkout URL. Please try again.");
     } catch (error) {
+      submitInFlightRef.current = false;
+      setConfirmingPayment(false);
       setUpdating(false);
-      toast.error("Failed to initialize payment. Please try again.");
+      const message = error instanceof Error && error.message
+        ? error.message
+        : "Failed to initialize payment. Please try again.";
+      toast.error(message);
       console.error("Payment initialization error:", error);
     }
   }
@@ -570,7 +685,7 @@ const AddToWallet = ({
                 marginLeft: "-1px",
                 minWidth: "110px",
               }}
-              disabled={paymentModalLoading || updating || !canSubmitAmount}
+              disabled={paymentModalLoading || updating || confirmingPayment || !canSubmitAmount}
               aria-label="Add Money"
             >
               {updating || paymentModalLoading ? (
@@ -599,12 +714,14 @@ const AddToWallet = ({
           >
             Minimum top-up: ₦200
           </span>
-          {updating && (
+          {(updating || confirmingPayment) && (
             <div
               className="mt-2 text-xs"
               style={{ color: "var(--modal-muted-fg)" }}
             >
-              Please wait, updating your wallet...
+              {confirmingPayment
+                ? "Confirming your payment with Payaza…"
+                : "Please wait, preparing checkout…"}
             </div>
           )}
         </div>

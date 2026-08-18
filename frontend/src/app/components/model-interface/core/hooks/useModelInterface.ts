@@ -173,6 +173,8 @@ export function useModelInterface(options?: {
     isSyncBlocked: viewSessionId ? isPassiveSyncBlocked(viewSessionId) : true,
   });
 
+  useConversationEvents(setChatHistory);
+
   const setChat = useCallback((updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
     setChatForSession(activeKey, updater);
   }, [activeKey, setChatForSession]);

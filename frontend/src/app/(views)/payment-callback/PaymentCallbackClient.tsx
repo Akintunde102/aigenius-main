@@ -188,7 +188,7 @@ async function triggerVerifyOnce(reference: string): Promise<VerifyPaymentRespon
     try {
         const verifyResponse = await serverCall({
             serverCallProps: {
-                call: serverCalls.postGatewayPaystackTransactionVerify,
+                call: serverCalls.postGatewayWalletTransactionVerify,
             },
             pathArgs: { reference },
             authorized: true,

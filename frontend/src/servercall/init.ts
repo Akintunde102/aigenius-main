@@ -1,4 +1,4 @@
-import { getValidAccessToken, handleSessionExpired as expireAuthSession, isAuthorizationFailure, isJwtExpired, isRefreshableAuthError, isSessionTerminalError, refreshAccessToken, shouldLogoutOnRefreshFailure } from '@/lib/api/auth-client';
+import { getValidAccessToken, handleSessionExpired as expireAuthSession, isAuthorizationFailure, isJwtExpired, isRefreshableAuthError, isSessionTerminalError, refreshAccessToken, restoreAccessTokenFromStoredSession, shouldLogoutOnRefreshFailure } from '@/lib/api/auth-client';
 import {
     getLocalMiniServerApiRootUrl,
     isDesktopProxyFailure,
@@ -101,6 +101,10 @@ async function executeAuthorizedServerCall(
     baseIndex = 0,
     bases?: string[],
 ): Promise<any> {
+    if (!resolveAuthorizedRequestToken()) {
+        await restoreAccessTokenFromStoredSession();
+    }
+
     const candidates = bases ?? await resolveGatewayApiBaseCandidates();
     const baseUrl = candidates[baseIndex] ?? candidates[0] ?? defaultLocalBase;
     const call = getServerCallForBase(baseUrl);

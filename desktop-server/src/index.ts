@@ -1,3 +1,4 @@
+import './polyfills/pdfjs-node.js';
 import { serve } from '@hono/node-server';
 import path from 'path';
 import os from 'os';

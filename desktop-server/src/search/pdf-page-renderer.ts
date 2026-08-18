@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import '../polyfills/pdfjs-node.js';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 export type RenderPdfPagesOptions = {

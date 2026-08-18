@@ -1,9 +1,12 @@
 "use client";
 
 import { useLayoutEffect } from "react";
-import { primeDesktopGatewayApiRoot } from "@/lib/api/resolve-gateway-api-root";
-import { getValidAccessToken, handleSessionExpired } from "@/lib/api/auth-client";
-import { hasAuthSession, syncAuthSessionCookiesFromStorage } from "@/lib/utils/auth-session";
+import {
+  ensureGatewayAuthReady,
+  getValidAccessToken,
+} from "@/lib/api/auth-client";
+import { canUseDesktopStoredRefreshToken, readDesktopStoredRefreshToken } from "@/lib/utils/desktop-auth-refresh";
+import { hasAuthSession } from "@/lib/utils/auth-session";
 import { syncCodeProjectToDesktop } from "@/lib/code-projects/sync-code-project-to-desktop";
 import {
   isAigeniusDesktopRuntime,
@@ -18,27 +21,34 @@ import {
  */
 export default function EarlyDesktopAuthCookieSync(): null {
   useLayoutEffect(() => {
-    void primeDesktopGatewayApiRoot();
-
-    const syncDesktopSession = () => {
+    const syncDesktopSession = async () => {
       if (!hasAuthSession()) {
+        if (!canUseDesktopStoredRefreshToken()) {
+          return;
+        }
+        const refreshToken = await readDesktopStoredRefreshToken();
+        if (!refreshToken) {
+          return;
+        }
+      }
+
+      await ensureGatewayAuthReady();
+
+      if (!getValidAccessToken()) {
         return;
       }
-      syncAuthSessionCookiesFromStorage();
+
       void syncCodeProjectToDesktop();
-      if (!getValidAccessToken()) {
-        handleSessionExpired();
-      }
     };
 
     if (isDesktopShellFromBuild() || isAigeniusDesktopRuntime()) {
-      syncDesktopSession();
+      void syncDesktopSession();
       return;
     }
 
     return resolveAigeniusDesktopRuntime((isDesktop) => {
       if (isDesktop) {
-        syncDesktopSession();
+        void syncDesktopSession();
       }
     });
   }, []);

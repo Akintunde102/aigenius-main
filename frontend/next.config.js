@@ -74,6 +74,9 @@ const nextConfig = {
 
     // Security headers
     async headers() {
+        const payazaCheckoutOrigin = 'https://checkout-v2.payaza.africa';
+        const payazaApiOrigin = 'https://api.payaza.africa';
+
         const prodConnectSrc = [
             "connect-src 'self'",
             ...configuredApiOrigins,
@@ -95,6 +98,8 @@ const nextConfig = {
             'wss://localhost:3001',
             'https://api.nobox.cloud',
             'https://api.paystack.co',
+            payazaApiOrigin,
+            payazaCheckoutOrigin,
             'https://api.aigenius.chat',
             'https://aigenius-backend-production.up.railway.app',
             'https://cdn.jsdelivr.net',
@@ -122,6 +127,8 @@ const nextConfig = {
             'ws://127.0.0.1:23001',
             'https://api.nobox.cloud',
             'https://api.paystack.co',
+            payazaApiOrigin,
+            payazaCheckoutOrigin,
             'https://api.aigenius.chat',
             'https://aigenius-backend-production.up.railway.app',
             'ws://localhost:3001',
@@ -137,6 +144,7 @@ const nextConfig = {
             "'unsafe-inline'",
             "blob:",
             'https://js.paystack.co',
+            payazaCheckoutOrigin,
             'https://cdn.jsdelivr.net',
             vercelAnalyticsOrigin,
         ].join(' ');
@@ -176,7 +184,7 @@ const nextConfig = {
                             "img-src 'self' blob: data: https:",
                             "font-src 'self'",
                             "worker-src 'self' blob:",
-                            "frame-src 'self' blob: data: https://checkout.paystack.com",
+                            "frame-src 'self' blob: data: https://checkout.paystack.com https://checkout-v2.payaza.africa",
                             "media-src 'self' blob:",
                             process.env.NODE_ENV === 'development'
                                 ? // Include Next dev HMR websockets on loopback; Electron loads http://localhost:<port>.
@@ -218,6 +226,16 @@ const nextConfig = {
         NEXT_PUBLIC_GOOGLE_REDIRECT_URI: process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI || '',
         NEXT_PUBLIC_PAYSTACK_KEY:
             process.env.NEXT_PUBLIC_PAYSTACK_KEY || process.env.PAYSTACK_PUBLIC_KEY || '',
+        NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER:
+            process.env.NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER
+            || process.env.WALLET_PAYMENT_PROVIDER
+            || 'paystack',
+        NEXT_PUBLIC_PAYAZA_PUBLIC_KEY:
+            process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY || process.env.PAYAZA_PUBLIC_KEY || '',
+        NEXT_PUBLIC_PAYAZA_CHECKOUT_BUSINESS_NAME:
+            process.env.NEXT_PUBLIC_PAYAZA_CHECKOUT_BUSINESS_NAME
+            || process.env.PAYAZA_CHECKOUT_BUSINESS_NAME
+            || '',
     },
 
     // Output configuration for better production builds

@@ -10,8 +10,10 @@ import { GoogleSignIn } from "@/app/components/auth/GoogleSignIn";
 import { DesktopSessionRestoringView } from "@/app/components/DesktopSessionRestoringView";
 import { LandingAmbientBackground } from "@/app/components/ui";
 import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
+import { ensureGatewayAuthReady } from "@/lib/api/auth-client";
 import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-details";
 import { completeDesktopOAuthSession } from "@/lib/utils/complete-desktop-oauth-session";
+import { canUseDesktopStoredRefreshToken, readDesktopStoredRefreshToken } from "@/lib/utils/desktop-auth-refresh";
 import { cn } from "@/lib/utils";
 import {
   hasAuthSession,
@@ -78,21 +80,36 @@ export default function DesktopLoginPage() {
   }, []);
 
   useLayoutEffect(() => {
-    if (!hasAuthSession()) {
-      setShowLogin(true);
-      return;
-    }
     if (didSessionRedirectRef.current) {
       return;
     }
-    didSessionRedirectRef.current = true;
-    syncAuthSessionCookiesFromStorage();
-    const target = resolveAuthenticatedDesktopShellRedirect(
-      pathname,
-      window.location.search,
-    );
-    /** Full navigation so the next request includes synced cookies (middleware is cookie-only). */
-    window.location.assign(target);
+
+    void (async () => {
+      const hasSession = hasAuthSession();
+      const desktopRefreshToken = canUseDesktopStoredRefreshToken()
+        ? await readDesktopStoredRefreshToken()
+        : undefined;
+
+      if (!hasSession && !desktopRefreshToken) {
+        setShowLogin(true);
+        return;
+      }
+
+      const token = await ensureGatewayAuthReady();
+      if (!token) {
+        setShowLogin(true);
+        return;
+      }
+
+      didSessionRedirectRef.current = true;
+      syncAuthSessionCookiesFromStorage();
+      const target = resolveAuthenticatedDesktopShellRedirect(
+        pathname,
+        window.location.search,
+      );
+      /** Full navigation so the next request includes synced cookies (middleware is cookie-only). */
+      window.location.assign(target);
+    })();
   }, [pathname]);
 
   if (!showLogin) {

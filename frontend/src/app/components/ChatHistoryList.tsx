@@ -441,7 +441,6 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                 {useProjectLayout ? (
                     projectBuckets.map((bucket) => {
                         const sectionKey = bucket.projectId ?? 'general';
-                        // Auto-expand project sections that contain the active chat
                         const hasInlineActive = bucket.projectId !== null && bucket.hasActiveSession;
                         const isCollapsed = hasInlineActive
                             ? false

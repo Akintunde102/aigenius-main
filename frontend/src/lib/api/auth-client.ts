@@ -6,7 +6,10 @@ import { navigateTo } from '@/lib/utils/navigate';
 import { getE2eWalletBypassHeaders } from '@/lib/e2e-wallet-bypass';
 import {
     canUseHttpOnlyRefreshCookie,
+    hasAuthSession,
+    syncAuthSessionCookiesFromStorage,
 } from '@/lib/utils/auth-session';
+import { primeDesktopGatewayApiRoot } from '@/lib/api/resolve-gateway-api-root';
 import {
     canUseDesktopStoredRefreshToken,
     getDesktopNativeClientHeaders,
@@ -16,6 +19,8 @@ import {
 import {
     isAigeniusDesktopRuntime,
     isDesktopShellFromBuild,
+    isLikelyElectronRenderer,
+    waitForAigeniusDesktopBridge,
 } from '@/lib/utils/desktop-runtime';
 
 type RetryableAxiosRequestConfig = InternalAxiosRequestConfig & {
@@ -52,6 +57,134 @@ export function getValidAccessToken(): string | undefined {
     return token;
 }
 
+let restoreAccessTokenInflight: Promise<string | undefined> | null = null;
+
+/**
+ * Returns a valid access JWT from storage, or refreshes via HttpOnly cookie / desktop keychain
+ * when the stored access JWT is missing or expired. Waits for the Electron preload bridge when needed.
+ */
+export async function restoreAccessTokenFromStoredSession(): Promise<string | undefined> {
+    if (typeof window === 'undefined') {
+        return undefined;
+    }
+
+    const existing = getValidAccessToken();
+    if (existing) {
+        return existing;
+    }
+
+    if (restoreAccessTokenInflight) {
+        return restoreAccessTokenInflight;
+    }
+
+    restoreAccessTokenInflight = (async () => {
+        if (
+            (isDesktopShellFromBuild() || isLikelyElectronRenderer())
+            && !isAigeniusDesktopRuntime()
+        ) {
+            await waitForAigeniusDesktopBridge(8000);
+        }
+
+        const hasStoredSession = hasAuthSession();
+        const canRefreshDesktop = canUseDesktopStoredRefreshToken();
+        const desktopRefreshToken = canRefreshDesktop
+            ? await readDesktopStoredRefreshToken()
+            : undefined;
+
+        if (!hasStoredSession && !desktopRefreshToken) {
+            return undefined;
+        }
+
+        if (!canUseHttpOnlyRefreshCookie() && !canRefreshDesktop) {
+            // Electron preload may still be attaching — do not wipe the session yet.
+            if (
+                hasStoredSession
+                && (isDesktopShellFromBuild() || isLikelyElectronRenderer())
+            ) {
+                return undefined;
+            }
+            if (hasStoredSession) {
+                handleSessionExpired();
+            }
+            return undefined;
+        }
+
+        if (canRefreshDesktop && !desktopRefreshToken && !hasStoredSession) {
+            return undefined;
+        }
+
+        try {
+            return await refreshAccessToken();
+        } catch {
+            return undefined;
+        }
+    })().finally(() => {
+        restoreAccessTokenInflight = null;
+    });
+
+    return restoreAccessTokenInflight;
+}
+
+/**
+ * Prime desktop upstream routing, restore/refresh the access JWT, and mirror tokens into cookies.
+ * Call before gateway list loads (sidebar resources) on desktop cold start.
+ */
+export async function ensureGatewayAuthReady(): Promise<string | undefined> {
+    if (typeof window === 'undefined') {
+        return undefined;
+    }
+
+    await primeDesktopGatewayApiRoot();
+    const token = await restoreAccessTokenFromStoredSession();
+    if (token) {
+        syncAuthSessionCookiesFromStorage();
+        return token;
+    }
+
+    const existing = getValidAccessToken();
+    if (existing) {
+        syncAuthSessionCookiesFromStorage();
+    }
+    return existing;
+}
+
+function isLocalDevApiBase(url: string): boolean {
+    try {
+        const host = new URL(url).hostname;
+        return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1';
+    } catch {
+        return false;
+    }
+}
+
+async function resolveAuthRefreshApiBases(): Promise<string[]> {
+    const bases = new Set<string>();
+    const local = LINKS.noboxAPIRootUrl?.replace(/\/+$/, '');
+    if (local) {
+        bases.add(local);
+    }
+
+    if (typeof window !== 'undefined' && isAigeniusDesktopRuntime()) {
+        try {
+            const upstream = (await window.aigeniusDesktop?.getUpstreamApiUrl?.())?.trim();
+            if (upstream) {
+                bases.add(upstream.replace(/\/+$/, ''));
+            }
+        } catch {
+            /* ignore */
+        }
+    }
+
+    return Array.from(bases).sort((a, b) => {
+        const aLocal = isLocalDevApiBase(a);
+        const bLocal = isLocalDevApiBase(b);
+        if (aLocal === bLocal) {
+            return 0;
+        }
+        return aLocal ? 1 : -1;
+    });
+}
+
 export function isAuthorizationFailure(error: unknown): boolean {
     if (isRefreshableAuthError(error as AxiosError)) {
         return true;
@@ -70,6 +203,7 @@ export function isAuthorizationFailure(error: unknown): boolean {
 export function setAccessToken(token: string) {
     storage(storageConstants.NOBOX_TOKEN).setString(token);
     if (typeof window !== 'undefined') {
+        syncAuthSessionCookiesFromStorage();
         window.dispatchEvent(new CustomEvent(AUTH_TOKEN_REFRESHED_EVENT, { detail: { token } }));
     }
 }
@@ -283,25 +417,43 @@ export async function refreshAccessToken(): Promise<string> {
             throw new Error('Session expired — please sign in again');
         }
 
-        const res = await axios.post(
-            `${LINKS.noboxAPIRootUrl}/auth/_/refresh`,
-            refreshToken ? { refreshToken } : {},
-            {
-                withCredentials: canUseHttpOnlyRefreshCookie(),
-                headers: {
-                    [REQUESTED_WITH_HEADER]: REQUESTED_WITH_VALUE,
-                    ...(usesDesktopRefresh ? getDesktopNativeClientHeaders() : {}),
-                },
-            },
-        );
+        const apiBases = await resolveAuthRefreshApiBases();
+        let lastError: unknown;
+        let token: string | undefined;
+        let rotatedRefreshToken: string | undefined;
 
-        const token = res.data?.token;
-        if (!token) {
-            throw new Error('Refresh response did not include an access token');
+        for (const apiBase of apiBases) {
+            try {
+                const res = await axios.post(
+                    `${apiBase}/auth/_/refresh`,
+                    refreshToken ? { refreshToken } : {},
+                    {
+                        withCredentials: canUseHttpOnlyRefreshCookie(),
+                        headers: {
+                            [REQUESTED_WITH_HEADER]: REQUESTED_WITH_VALUE,
+                            ...(usesDesktopRefresh ? getDesktopNativeClientHeaders() : {}),
+                        },
+                    },
+                );
+
+                token = res.data?.token;
+                if (!token) {
+                    throw new Error('Refresh response did not include an access token');
+                }
+
+                rotatedRefreshToken = res.data?.refreshToken;
+                break;
+            } catch (error) {
+                lastError = error;
+            }
         }
+
+        if (!token) {
+            throw lastError ?? new Error('Refresh response did not include an access token');
+        }
+
         setAccessToken(token);
 
-        const rotatedRefreshToken = res.data?.refreshToken;
         if (typeof rotatedRefreshToken === 'string' && rotatedRefreshToken.trim().length > 0) {
             await writeDesktopStoredRefreshToken(rotatedRefreshToken);
         }
