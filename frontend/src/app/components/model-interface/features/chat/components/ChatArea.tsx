@@ -11,6 +11,7 @@ import { TypingIndicator } from "./TypingIndicator";
 import { JumpToLatestButton } from "./JumpToLatestButton";
 import type { ChatAreaVirtualizedListProps } from "./ChatAreaVirtualizedList";
 import { isVisibleChatMessage } from "@/lib/utils/messageContentUtils";
+import type { MessageEditDraft } from "../../messages/utils/messageEdit.utils";
 import { useChatAreaPinchZoom } from "../hooks/useChatAreaPinchZoom";
 
 function ChatAreaMessagesChunkFallback() {
@@ -50,6 +51,14 @@ interface ChatAreaProps {
   onDeleteMessageById?: (id: string) => void;
   onSaveMessage: (msg: ChatMessageType) => void;
   onReplayMessage: (message: ChatMessageType, idx: number) => void;
+  editingIdx?: number | null;
+  editDraft?: MessageEditDraft | null;
+  onStartEditMessage?: (message: ChatMessageType, idx: number) => void;
+  onCancelEditMessage?: () => void;
+  onUpdateEditDraft?: (draft: MessageEditDraft) => void;
+  onCommitEditMessage?: (idx: number) => void;
+  conversationId?: string | null;
+  supportsFileUpload?: boolean;
   onStartOrphanReply?: (trigger: OrphanReplyTrigger) => void;
   orphanMarkersByMessageId?: Record<string, StickyThreadMarker[]>;
   hiddenMarkerMessageIds?: Record<string, boolean>;
@@ -77,6 +86,14 @@ export function ChatArea({
   onDeleteMessageById,
   onSaveMessage,
   onReplayMessage,
+  editingIdx = null,
+  editDraft = null,
+  onStartEditMessage,
+  onCancelEditMessage,
+  onUpdateEditDraft,
+  onCommitEditMessage,
+  conversationId = null,
+  supportsFileUpload = true,
   onStartOrphanReply,
   orphanMarkersByMessageId,
   hiddenMarkerMessageIds,
@@ -151,6 +168,14 @@ export function ChatArea({
     onDeleteMessageById,
     onSaveMessage,
     onReplayMessage,
+    editingIdx,
+    editDraft,
+    onStartEditMessage,
+    onCancelEditMessage,
+    onUpdateEditDraft,
+    onCommitEditMessage,
+    conversationId,
+    supportsFileUpload,
     onStartOrphanReply,
     orphanMarkersByMessageId,
     hiddenMarkerMessageIds,

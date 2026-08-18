@@ -4,14 +4,6 @@ import os from 'os';
 import { getActiveCodeProjectRootPath } from '../../active-code-project';
 import { isImageExtension, formatSupportedImageExtensions } from '../image-extensions';
 
-/** Document types readable via absolute paths outside the active project (Desktop, Downloads, etc.). */
-const DOCUMENT_ANYWHERE_EXTENSIONS = new Set(['pdf', 'doc', 'docx']);
-
-function isDocumentAnywhereExtension(filePath: string): boolean {
-  const ext = path.extname(filePath).slice(1).toLowerCase();
-  return DOCUMENT_ANYWHERE_EXTENSIONS.has(ext);
-}
-
 export type PathResolveResult =
   | { ok: true; resolved: string; displayPath: string }
   | { ok: false; error: string };
@@ -47,9 +39,9 @@ function outsideWorkspaceError(workspaceRootPath: string): string {
 }
 
 /**
- * Resolve a workspace-relative or absolute path under the active project root.
- * Absolute paths to documents (.pdf, .doc, .docx) may point anywhere on the machine
- * (same policy as `local_read_image`). Other absolute paths must stay under the project.
+ * Resolve a workspace-relative or absolute file path.
+ * Absolute paths may point anywhere on the machine (same policy as `local_read_image`).
+ * Relative paths stay scoped to the active project root.
  * Uses realpath to defeat symlink escapes.
  */
 export async function resolveReadFilePath(inputPath: string): Promise<PathResolveResult> {
@@ -78,13 +70,8 @@ export async function resolveReadFilePath(inputPath: string): Promise<PathResolv
     return { ok: false, error: `Error: read failed — ${e instanceof Error ? e.message : String(e)}` };
   }
 
-  if (!isDescendantOf(rootReal, real)) {
-    if (!path.isAbsolute(trimmed)) {
-      return { ok: false, error: outsideWorkspaceError(root) };
-    }
-    if (!isDocumentAnywhereExtension(real)) {
-      return { ok: false, error: outsideWorkspaceError(root) };
-    }
+  if (!path.isAbsolute(trimmed) && !isDescendantOf(rootReal, real)) {
+    return { ok: false, error: outsideWorkspaceError(root) };
   }
 
   let stat;
@@ -96,6 +83,59 @@ export async function resolveReadFilePath(inputPath: string): Promise<PathResolv
 
   if (!stat.isFile()) {
     return { ok: false, error: `Error: file not found — ${trimmed} (not a file)` };
+  }
+
+  const displayPath = path.isAbsolute(trimmed)
+    ? trimmed
+    : path.relative(root, real).split(path.sep).join('/');
+
+  return { ok: true, resolved: real, displayPath };
+}
+
+/**
+ * Resolve a directory path for `local_list_directory`.
+ * Absolute paths may point anywhere on the user's machine (Desktop, Downloads, etc.).
+ * Relative paths stay scoped to the active project root.
+ */
+export async function resolveDirectoryPath(inputPath: string): Promise<PathResolveResult> {
+  if (!inputPath || typeof inputPath !== 'string' || !inputPath.trim()) {
+    return { ok: false, error: 'Error: directory not found — path is required' };
+  }
+
+  const root = workspaceRoot();
+  const rootReal = await resolveWorkspaceRootReal();
+  const trimmed = inputPath.trim();
+  const joined = path.isAbsolute(trimmed)
+    ? path.resolve(trimmed)
+    : path.resolve(root, trimmed);
+
+  let real: string;
+  try {
+    real = await fs.realpath(joined);
+  } catch (e: unknown) {
+    const code = (e as NodeJS.ErrnoException)?.code;
+    if (code === 'ENOENT') {
+      return { ok: false, error: `Error: directory not found — ${trimmed}` };
+    }
+    if (code === 'EACCES' || code === 'EPERM') {
+      return { ok: false, error: `Error: read failed — permission denied for ${trimmed}` };
+    }
+    return { ok: false, error: `Error: read failed — ${e instanceof Error ? e.message : String(e)}` };
+  }
+
+  if (!path.isAbsolute(trimmed) && !isDescendantOf(rootReal, real)) {
+    return { ok: false, error: outsideWorkspaceError(root) };
+  }
+
+  let stat;
+  try {
+    stat = await fs.stat(real);
+  } catch (e: unknown) {
+    return { ok: false, error: `Error: read failed — ${e instanceof Error ? e.message : String(e)}` };
+  }
+
+  if (!stat.isDirectory()) {
+    return { ok: false, error: `Error: directory not found — ${trimmed} (not a directory)` };
   }
 
   const displayPath = path.isAbsolute(trimmed)

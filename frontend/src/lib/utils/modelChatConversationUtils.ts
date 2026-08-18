@@ -79,8 +79,8 @@ async function refreshSavedSnippetsFromServer(): Promise<ChatMessage[]> {
 
 export async function saveChatItem(item: ChatMessage): Promise<void> {
     await dbSaveChatItem(item);
-    const currentSavedChats = await getSavedChats();
-    await storeSavedChats([...currentSavedChats, item]);
+    // Refresh from server so IndexedDB rows include the conversation `id` key path.
+    await refreshSavedSnippetsFromServer();
 }
 
 export async function getSavedChatItems(): Promise<ChatMessage[]> {

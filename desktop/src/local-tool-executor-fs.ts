@@ -4,6 +4,7 @@ import { isIgnored } from './utils/exemptions';
 import { listDirectoryViaShell } from './utils/list-directory-via-shell';
 import { executeReadFile } from './utils/read-file';
 import { registerReadFileBatchForPreview } from './utils/register-preview-paths';
+import { resolveDirectoryPath } from './utils/read-file/path-resolver';
 
 export async function readBoundedFile(
   args: Record<string, unknown>,
@@ -25,10 +26,16 @@ export async function readBoundedFile(
 export async function listLocalDirectory(
   args: Record<string, unknown>,
 ): Promise<{ ok: true; result: string; rawData?: any } | { ok: false; error: string }> {
-  const dirPath = typeof args.path === 'string' ? args.path : '';
-  if (!dirPath || !path.isAbsolute(dirPath)) {
-    return { ok: false, error: 'path must be an absolute directory path' };
+  const rawPath = typeof args.path === 'string' ? args.path.trim() : '';
+  if (!rawPath) {
+    return { ok: false, error: 'path is required' };
   }
+
+  const pathResult = await resolveDirectoryPath(rawPath);
+  if (!pathResult.ok) {
+    return { ok: false, error: pathResult.error };
+  }
+  const dirPath = pathResult.resolved;
 
   const command = typeof args.command === 'string' ? args.command.trim() : '';
   const recursive = !!args.recursive;

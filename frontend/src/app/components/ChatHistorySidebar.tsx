@@ -123,6 +123,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     const {
         projects: codeProjects,
         addProject,
+        editProject,
         removeProject,
     } = useCodeProjects();
 
@@ -307,6 +308,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                     isActive={sidebarActiveProjectId === infoProject.id}
                     onClose={() => setInfoProjectId(null)}
                     onDelete={handleDeleteProject}
+                    onUpdate={editProject}
                 />
             ) : null}
 

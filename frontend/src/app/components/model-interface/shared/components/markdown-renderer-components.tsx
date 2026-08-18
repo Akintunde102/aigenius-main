@@ -2,9 +2,11 @@
 
 import React from 'react';
 import clsx from 'clsx';
+import { useRouter } from 'next/navigation';
 
 import { buildLocalFilePreviewPayload } from '@/lib/utils/local-file-link';
 import { isWorkflowShellPath, openWorkflow } from '@/lib/utils/open-workflow';
+import { normalizeChatConversationOpenPath } from '@/lib/utils/safe-internal-next-path';
 import { openFilePreview } from '@/app/components/modals/FilePreviewManager';
 import {
     isMarkdownBlockCode,
@@ -27,6 +29,7 @@ export function MarkdownAnchor({
     ...props
 }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown }) {
     void node;
+    const router = useRouter();
     const href = typeof props.href === 'string' ? props.href : undefined;
 
     if (href?.startsWith('local-file://')) {
@@ -50,6 +53,29 @@ export function MarkdownAnchor({
     }
 
     const origin = pageOrigin();
+    const chatPath = href ? normalizeChatConversationOpenPath(href, origin) : null;
+    if (chatPath) {
+        return (
+            <a
+                {...props}
+                href={chatPath}
+                onClick={(e) => {
+                    if (props.onClick) {
+                        props.onClick(e);
+                    }
+                    if (e.defaultPrevented) {
+                        return;
+                    }
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+                        return;
+                    }
+                    e.preventDefault();
+                    router.push(chatPath);
+                }}
+            />
+        );
+    }
+
     const isExternal = href && (href.startsWith('http://') || href.startsWith('https://')) &&
         (!origin || !href.startsWith(origin));
     const openBesideChat = href ? isWorkflowShellPath(href, origin) : false;

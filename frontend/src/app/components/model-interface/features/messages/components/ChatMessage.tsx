@@ -55,6 +55,8 @@ import {
 } from '../../chat/components/cluster-tool-display-blocks';
 import { buildAssistantRenderSegments } from '../../chat/components/assistant-turn-summary.utils';
 import type { ChatMessageDisplayBlock } from './chatMessageDisplay.utils';
+import { EditableUserBubble } from './EditableUserBubble';
+import type { MessageEditDraft } from '../utils/messageEdit.utils';
 import { enrichEventsWithLegacyThinking } from '../../chat/utils/thinkingEvent.utils';
 
 interface ChatMessageProps {
@@ -68,6 +70,14 @@ interface ChatMessageProps {
     onSave: (msg: ChatMessageType) => void;
     onCopy: (content: string) => void;
     onReplay: (message: ChatMessageType, idx: number) => void;
+    editingIdx?: number | null;
+    editDraft?: MessageEditDraft | null;
+    onStartEdit?: (message: ChatMessageType, idx: number) => void;
+    onCancelEdit?: () => void;
+    onUpdateEditDraft?: (draft: MessageEditDraft) => void;
+    onCommitEdit?: (idx: number) => void;
+    conversationId?: string | null;
+    supportsFileUpload?: boolean;
     onStartOrphanReply?: (trigger: OrphanReplyTrigger) => void;
     orphanMarkers?: StickyThreadMarker[];
     orphanMarkersHidden?: boolean;
@@ -98,6 +108,14 @@ export function ChatMessage({
     onSave,
     onCopy,
     onReplay,
+    editingIdx = null,
+    editDraft = null,
+    onStartEdit,
+    onCancelEdit,
+    onUpdateEditDraft,
+    onCommitEdit,
+    conversationId = null,
+    supportsFileUpload = true,
     onStartOrphanReply,
     orphanMarkers = [],
     orphanMarkersHidden = false,
@@ -243,6 +261,32 @@ export function ChatMessage({
         }
     }, [msg, onReplay, idx]);
 
+    const isEditing = msg.role === 'user' && editingIdx === idx;
+
+    const handleUserBubbleClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+        if (msg.role !== 'user' || loading || streaming || isEditing) return;
+
+        const target = event.target as HTMLElement | null;
+        if (target?.closest('button, a, input, textarea, [role="menu"], [role="menuitem"]')) {
+            return;
+        }
+
+        onStartEdit?.(msg, idx);
+    }, [idx, isEditing, loading, msg, onStartEdit, streaming]);
+
+    useEffect(() => {
+        if (!isEditing || !onCancelEdit) return;
+
+        const handlePointerDown = (event: PointerEvent) => {
+            const container = messageContainerRef.current;
+            if (!container || container.contains(event.target as Node)) return;
+            onCancelEdit();
+        };
+
+        document.addEventListener('pointerdown', handlePointerDown);
+        return () => document.removeEventListener('pointerdown', handlePointerDown);
+    }, [isEditing, onCancelEdit]);
+
     const triggerAnchoredReply = useCallback((params?: {
         clientX?: number;
         clientY?: number;
@@ -386,6 +430,9 @@ export function ChatMessage({
 
     // User: bubble chrome. Assistant: flat transcript (no card). Spacing / rhythm from chat-layout.scss.
     const messageContainerClasses = useMemo(() => {
+        if (msg.role === "user" && isEditing) {
+            return "relative ml-auto w-full min-w-0";
+        }
         if (msg.role === "user") {
             return [
                 "relative ml-auto max-w-sm min-w-0 rounded-[22px] border px-4 py-3 leading-relaxed",
@@ -393,7 +440,7 @@ export function ChatMessage({
             ].join(" ");
         }
         return "relative min-w-0 w-full px-1 py-1 leading-relaxed [color:var(--app-ink-900)]";
-    }, [msg.role]);
+    }, [msg.role, isEditing]);
 
     const messageStyles = useMemo(() => ({
         width: '100%',
@@ -402,8 +449,10 @@ export function ChatMessage({
         flexDirection: 'column' as const,
         ...(msg.role !== 'user'
             ? { maxWidth: '100%' }
-            : { maxWidth: isLongUserText ? '352px' : '320px' })
-    }), [msg.role, isLongUserText]);
+            : isEditing
+                ? { maxWidth: '48rem' }
+                : { maxWidth: isLongUserText ? '352px' : '320px' })
+    }), [msg.role, isLongUserText, isEditing]);
 
     if (shouldHideEmptyAssistantMessage(msg, { streaming, displayEvents })) {
         return null;
@@ -418,19 +467,20 @@ export function ChatMessage({
                 className={`relative group flex items-end gap-3 ${msg.role === "user" ? "justify-end w-full" : "justify-start w-full md:max-w-[720px]"}`}
             >
                 <div
-                    className={`${messageContainerClasses} min-w-0`}
+                    className={`${messageContainerClasses} min-w-0${msg.role === 'user' && !isEditing && !loading && !streaming ? ' cursor-text' : ''}`}
                     style={messageStyles}
                     ref={messageContainerRef}
-                    onClickCapture={handleAssistantModifierClick}
+                    onClick={msg.role === 'user' ? handleUserBubbleClick : undefined}
+                    onClickCapture={msg.role === 'assistant' ? handleAssistantModifierClick : undefined}
                     onPointerDownCapture={handlePointerDownCapture}
                     onPointerMoveCapture={handlePointerMoveCapture}
                     onPointerUpCapture={clearLongPress}
                     onPointerCancel={clearLongPress}
                     onMouseUp={handleMouseUp}
                 >
-                    {msg.role === "user" ? (
+                    {msg.role === "user" && !isEditing ? (
                         <div
-                            className="group/replay absolute right-1 top-1 z-20 flex items-center justify-center p-1"
+                            className="group/replay absolute right-0.5 top-0.5 z-20 flex items-center justify-center"
                             title="Replay message"
                         >
                             <button
@@ -438,10 +488,10 @@ export function ChatMessage({
                                 onClick={handleReplay}
                                 disabled={loading || streaming}
                                 tabIndex={-1}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-transparent text-[#64748B] opacity-0 shadow-none transition-opacity duration-150 group-hover/replay:opacity-100 hover:text-[#0F172A] disabled:cursor-not-allowed group-hover/replay:disabled:opacity-40 dark:text-zinc-500 dark:hover:text-zinc-200"
+                                className="inline-flex h-5 w-5 items-center justify-center rounded bg-transparent text-[#64748B] opacity-0 transition-opacity duration-150 group-hover/replay:opacity-100 hover:text-[#0F172A] disabled:cursor-not-allowed group-hover/replay:disabled:opacity-40 dark:text-zinc-500 dark:hover:text-zinc-200"
                                 aria-label="Replay message"
                             >
-                                <FiRepeat size={14} aria-hidden />
+                                <FiRepeat size={11} aria-hidden />
                             </button>
                         </div>
                     ) : null}
@@ -467,12 +517,14 @@ export function ChatMessage({
                                 isSelectionActive={!!selectionTrigger}
                             />
                         )}
-                        <MessageHeader
-                            role={msg.role}
-                            displayName={displayName}
-                            avatarUrl={msg.role === 'assistant' ? assistantAvatarUrl : undefined}
-                            suppressAssistantHeader={msg.role === 'assistant'}
-                        />
+                        {!(msg.role === 'user' && isEditing) ? (
+                            <MessageHeader
+                                role={msg.role}
+                                displayName={displayName}
+                                avatarUrl={msg.role === 'assistant' ? assistantAvatarUrl : undefined}
+                                suppressAssistantHeader={msg.role === 'assistant'}
+                            />
+                        ) : null}
                         {/* Content wrapper: min-w-0 prevents flex blowout; tables/code handle their own overflow */}
                         <div className="min-w-0">
                             {/*
@@ -486,6 +538,18 @@ export function ChatMessage({
                                     segments={renderSegments}
                                     messageRole={msg.role}
                                     streaming={streaming}
+                                />
+                            ) : isEditing && editDraft && onUpdateEditDraft && onCancelEdit && onCommitEdit && selectedModel ? (
+                                <EditableUserBubble
+                                    draft={editDraft}
+                                    onDraftChange={onUpdateEditDraft}
+                                    onCommit={() => onCommitEdit(idx)}
+                                    onCancel={onCancelEdit}
+                                    conversationId={conversationId}
+                                    disabled={loading || streaming}
+                                    selectedModel={selectedModel}
+                                    models={models}
+                                    supportsFileUpload={supportsFileUpload}
                                 />
                             ) : (
                                 <>

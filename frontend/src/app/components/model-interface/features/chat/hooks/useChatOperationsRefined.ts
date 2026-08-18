@@ -28,6 +28,7 @@ import {
 } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { enforceOutgoingChatProjectScope } from '@/lib/code-projects/apply-chat-project-scope';
 import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
+import type { HandleSendQueueOptions } from './messageSendQueue.types';
 
 /**
  * Send/stop orchestration: wallet validation, composer drafts, message shaping for the API,
@@ -59,6 +60,7 @@ export function useChatOperationsRefined({
     onInsufficientFunds,
     getChatForSession,
     isAudioModeRef,
+    onDraftSessionMaterialized,
 }: UseChatOperationsRefinedProps): UseChatOperationsReturn {
 
     const viewSessionId = resolveViewSessionId(routeConversationId, currentSessionId ?? null);
@@ -99,6 +101,20 @@ export function useChatOperationsRefined({
             [activeKey]: typeof val === 'function' ? val(prev[activeKey] ?? '') : val,
         }));
     }, [activeKey]);
+
+    const migrateDraftComposerToSession = useCallback((realId: string) => {
+        setInputMap((prev) => {
+            const draftText = prev[DRAFT_SESSION_KEY] ?? '';
+            if (!draftText || (prev[realId] ?? '').length > 0) {
+                return prev;
+            }
+            return {
+                ...prev,
+                [realId]: draftText,
+                [DRAFT_SESSION_KEY]: '',
+            };
+        });
+    }, []);
 
     const [wallet, setWallet] = useState<number | null>(null);
     const [assistantResponse, setAssistantResponse] = useState('');
@@ -156,6 +172,8 @@ export function useChatOperationsRefined({
                     // under the real id — just clear the draft slot and switch the key.
                     // (Re-writing from the committed view here could drop the final chunk.)
                     setChatForSession(DRAFT_SESSION_KEY, []);
+                    migrateDraftComposerToSession(result.conversationId);
+                    onDraftSessionMaterialized?.(result.conversationId);
                 }
                 setCurrentSessionId(result.conversationId);
             }
@@ -197,6 +215,8 @@ export function useChatOperationsRefined({
             // The response handler already persisted the full transcript under the
             // real id — just clear the draft slot and switch the session pointer.
             setChatForSession(DRAFT_SESSION_KEY, []);
+            migrateDraftComposerToSession(realId);
+            onDraftSessionMaterialized?.(realId);
             setCurrentSessionId?.(realId);
         },
         setWallet,
@@ -211,12 +231,14 @@ export function useChatOperationsRefined({
         enableStreaming?: boolean,
         preCreatedMessage?: ChatMessage,
         chatSnapshot?: ChatMessage[],
+        sendOptions?: HandleSendQueueOptions,
     ): Promise<boolean> => {
+        const modelForSend = sendOptions?.modelOverride ?? selectedModel;
         const shouldStream = enableStreaming !== undefined ? enableStreaming : streamingEnabled;
         const inputToSend = resolveInputToSend(content, input);
-        console.log('[useChatOperationsRefined] handleSend entered', { hasSelectedModel: !!selectedModel, inputLength: inputToSend.length, shouldStream });
+        console.log('[useChatOperationsRefined] handleSend entered', { hasSelectedModel: !!modelForSend, inputLength: inputToSend.length, shouldStream });
 
-        if (!selectedModel) {
+        if (!modelForSend) {
             console.warn('[useChatOperationsRefined] No selected model');
             return false;
         }
@@ -232,8 +254,8 @@ export function useChatOperationsRefined({
             return false;
         }
 
-        const requiredBalance = computeRequiredBalance(selectedModel);
-        const walletValidation = validateBalance(wallet, requiredBalance, selectedModel?.name || selectedModel?.id);
+        const requiredBalance = computeRequiredBalance(modelForSend);
+        const walletValidation = validateBalance(wallet, requiredBalance, modelForSend?.name || modelForSend?.id);
         if (!walletValidation) {
             console.warn('[useChatOperationsRefined] Wallet validation failed');
             return false;
@@ -241,8 +263,13 @@ export function useChatOperationsRefined({
 
         setError('');
 
-        const sendingViewId = resolveViewSessionId(routeConversationId, currentSessionId ?? null);
+        const sendingViewId = sendOptions?.targetSessionKey !== undefined
+            ? (sendOptions.targetSessionKey === DRAFT_SESSION_KEY ? null : sendOptions.targetSessionKey)
+            : resolveViewSessionId(routeConversationId, currentSessionId ?? null);
         const sendingSessionId = sendingViewId ?? DRAFT_SESSION_KEY;
+        const activeComposerKey = viewSessionId ?? DRAFT_SESSION_KEY;
+        const isBackgroundSend = sendOptions?.targetSessionKey !== undefined
+            && sendOptions.targetSessionKey !== activeComposerKey;
         // Build from the captured session slot, not whichever transcript is
         // currently rendered after navigation or a delayed send callback.
         const chatForBuild = chatSnapshot ?? getChatForSession(sendingSessionId) ?? currentChatRef.current;
@@ -260,7 +287,7 @@ export function useChatOperationsRefined({
                 : buildUserMessageState({
                     preCreatedMessage,
                     inputToSend,
-                    selectedModel,
+                    selectedModel: modelForSend,
                     currentSessionId: sendingViewId,
                     chat: chatForBuild,
                 })
@@ -270,18 +297,24 @@ export function useChatOperationsRefined({
             setChatForSession(sendingSessionId, prev => [...prev, userMsg]);
         }
 
-        // Clear the composer draft for the session being sent (not whichever
-        // key a stale closure would resolve).
-        setInputMap(prev => ({ ...prev, [sendingSessionId]: '' }));
+        if (!preCreatedMessage && sendOptions?.targetSessionKey === undefined) {
+            // Clear the composer draft for the session being sent (not whichever
+            // key a stale closure would resolve).
+            setInputMap(prev => ({ ...prev, [sendingSessionId]: '' }));
+        }
         setLoadingForSession(sendingSessionId, true);
 
-        setTimeout(() => {
-            chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, CHAT_CONFIG.SCROLL_DELAY);
+        if (!isBackgroundSend) {
+            setTimeout(() => {
+                chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, CHAT_CONFIG.SCROLL_DELAY);
+        }
 
         if (shouldStream) {
             setStreamingForSession(sendingSessionId, true);
-            setAssistantResponse('');
+            if (!isBackgroundSend) {
+                setAssistantResponse('');
+            }
         }
 
         let wasError = false;
@@ -305,6 +338,7 @@ export function useChatOperationsRefined({
                 sendGeneration,
                 ...(draftEpochAtSend !== undefined ? { draftEpoch: draftEpochAtSend } : {}),
                 ...(pendingOrphanReply ? { orphanReply: pendingOrphanReply } : {}),
+                ...(sendOptions?.modelOverride ? { modelOverride: sendOptions.modelOverride } : {}),
             };
 
             if (optimizationMsg) {
@@ -356,7 +390,7 @@ export function useChatOperationsRefined({
                 }, 100);
             }
         }
-        return true;
+        return !wasError;
 
         function sendOwnsView(): boolean {
             const sameDraftGeneration = draftEpochAtSend === undefined
@@ -365,7 +399,7 @@ export function useChatOperationsRefined({
                 && shouldApplyStreamToOpenTranscript(sendingViewId, activeViewSessionIdRef.current);
         }
     }, [
-        selectedModel, input, project, wallet, currentSessionId, routeConversationId,
+        selectedModel, input, project, wallet, currentSessionId, routeConversationId, viewSessionId,
         streamingEnabled, setChatForSession,
         setLoadingForSession, setStreamingForSession, setError,
         setAssistantResponse, chatEndRef,
