@@ -1,4 +1,4 @@
-import { authorizedFetch, getAccessToken, subscribeToTokenRefresh } from '@/lib/api/auth-client';
+import { authorizedFetch, ensureGatewayAuthReady, getValidAccessToken, subscribeToTokenRefresh } from '@/lib/api/auth-client';
 import { resolveGatewayApiRootUrl } from '@/lib/api/resolve-gateway-api-root';
 import { startTransition, useEffect, useRef } from 'react';
 import { addOrMergeSessionToLocalHistory, upsertChatHistorySession } from '@/lib/utils/modelChatConversationUtils';
@@ -166,6 +166,9 @@ export function useConversationEvents(setChatHistory?: SetChatHistory): void {
         const start = async () => {
             if (disposed) return;
 
+            await ensureGatewayAuthReady();
+            if (disposed) return;
+
             const apiRoot = await resolveGatewayApiRootUrl();
             const url = `${apiRoot}${CONVERSATION_EVENTS_PATH}`;
             if (disposed) return;
@@ -173,7 +176,7 @@ export function useConversationEvents(setChatHistory?: SetChatHistory): void {
             try {
                 await runConversationEventsSubscription(
                     url,
-                    () => getAccessToken(),
+                    () => getValidAccessToken(),
                     setChatHistoryRef,
                     controller.signal,
                 );

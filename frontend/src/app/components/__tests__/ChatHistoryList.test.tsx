@@ -15,63 +15,61 @@ jest.mock('@/app/components/ChatHistoryListItem', () => ({
     ),
 }));
 
-import ChatHistoryList from '@/app/components/ChatHistoryList';
+import ChatHistoryList from '../ChatHistoryList';
 
 describe('ChatHistoryList', () => {
     it('calls handleSessionSwitch synchronously and defers model restoration in transition', async () => {
-        const startTransitionSpy = jest.spyOn(React, 'startTransition');
-        const setSelectedModel = jest.fn();
-        const handleSessionSwitch = jest.fn(); // Now sync
+        const models = [{ id: 'model-1', name: 'Model 1', description: '', context_length: 0 }];
+        const session = {
+            id: 'session-local-1',
+            title: 'Local Session',
+            modelId: 'model-1',
+            messages: [{ role: 'user' as const, content: 'hi', timestamp: 1 }],
+        };
         const onSessionSelect = jest.fn();
-        
-        const models = [
-            { id: 'session-model', name: 'Session Model', description: 'test', context_length: 1 },
-        ];
+        const setSelectedModel = jest.fn();
+        const handleSessionSwitch = jest.fn();
+        const callOrder: string[] = [];
+
+        handleSessionSwitch.mockImplementation(() => {
+            callOrder.push('switch');
+        });
+        setSelectedModel.mockImplementation(() => {
+            callOrder.push('model');
+        });
+
+        const startTransitionSpy = jest
+            .spyOn(React, 'startTransition')
+            .mockImplementation((cb) => {
+                callOrder.push('transition');
+                cb();
+            });
 
         const { findByRole } = render(
             <ChatHistoryList
-                chatHistory={[
-                    {
-                        id: 'history-1',
-                        title: 'Saved Session',
-                        modelId: 'session-model',
-                        messages: [],
-                    },
-                ]}
-                currentSessionId={null}
+                chatHistory={[session]}
+                currentSessionId="session-local-1"
                 models={models}
                 isMobile={false}
                 removeChatHistorySession={jest.fn().mockResolvedValue(true)}
-                removeChatHistorySessionById={jest.fn().mockResolvedValue(true)}
                 setChatHistory={jest.fn()}
                 getChatHistory={jest.fn().mockResolvedValue([])}
                 setSelectedModel={setSelectedModel}
                 onStarToggle={jest.fn().mockResolvedValue(undefined)}
                 handleSessionSwitch={handleSessionSwitch}
                 onSessionSelect={onSessionSelect}
-            />
+            />,
         );
 
-        const callOrder: string[] = [];
-        handleSessionSwitch.mockImplementation(() => callOrder.push('switch'));
-        startTransitionSpy.mockImplementation((cb) => {
-            callOrder.push('transition');
-            cb();
-        });
-        setSelectedModel.mockImplementation(() => callOrder.push('model'));
+        fireEvent.click(await findByRole('button', { name: 'Local Session' }));
 
-        fireEvent.click(await findByRole('button', { name: 'Saved Session' }));
-
-        // 1. Verify Absolute Instant switch
-        expect(handleSessionSwitch).toHaveBeenCalled();
+        expect(handleSessionSwitch).toHaveBeenCalledWith(session);
         expect(callOrder[0]).toBe('switch');
-        
-        // 2. Verify model restoration is deferred in transition
         expect(callOrder[1]).toBe('transition');
         expect(callOrder[2]).toBe('model');
         expect(setSelectedModel).toHaveBeenCalledWith(models[0]);
         expect(onSessionSelect).toHaveBeenCalled();
-        
+
         startTransitionSpy.mockRestore();
     });
 

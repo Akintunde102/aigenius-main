@@ -1,4 +1,6 @@
-import { getValidAccessToken, subscribeToTokenRefresh } from '@/lib/api/auth-client';
+import { ensureGatewayAuthReady, getValidAccessToken, restoreAccessTokenFromStoredSession, subscribeToTokenRefresh } from '@/lib/api/auth-client';
+import { hasAuthSession } from '@/lib/utils/auth-session';
+import { canUseDesktopStoredRefreshToken, readDesktopStoredRefreshToken } from '@/lib/utils/desktop-auth-refresh';
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const POLL_INTERVAL_MS = 50;
@@ -7,14 +9,26 @@ const POLL_INTERVAL_MS = 50;
  * Resolves once a non-expired JWT is available in storage (after OAuth exchange / session restore).
  * Gateway calls made before this often return 401 or empty payloads on desktop.
  */
-export function waitForAccessToken(timeoutMs = DEFAULT_TIMEOUT_MS): Promise<string> {
+export async function waitForAccessToken(timeoutMs = DEFAULT_TIMEOUT_MS): Promise<string> {
     if (typeof window === 'undefined') {
         return Promise.reject(new Error('waitForAccessToken requires a browser environment'));
     }
 
     const existing = getValidAccessToken();
     if (existing) {
-        return Promise.resolve(existing);
+        return existing;
+    }
+
+    const hasSession = hasAuthSession();
+    const desktopRefreshToken = canUseDesktopStoredRefreshToken()
+        ? await readDesktopStoredRefreshToken()
+        : undefined;
+
+    if (hasSession || desktopRefreshToken) {
+        const restored = await ensureGatewayAuthReady();
+        if (restored) {
+            return restored;
+        }
     }
 
     return new Promise((resolve, reject) => {

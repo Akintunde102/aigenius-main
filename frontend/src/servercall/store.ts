@@ -48,6 +48,10 @@ export type ServerCallsKeyType =
     | "postGatewayPaystackTransactionInitiate"
     | "postGatewayPaystackTransactionVerify"
     | "getGatewayPaystackTransactionStatus"
+    | "getGatewayWalletPaymentProvider"
+    | "postGatewayWalletTransactionInitiate"
+    | "postGatewayWalletTransactionVerify"
+    | "getGatewayWalletTransactionStatus"
     | "postGatewayWalletUpdateBalance"
     | "getGatewayViews"
     | "postGatewayViews"
@@ -358,6 +362,26 @@ export const serverCalls: ServerCallsType<ServerCallsKeyType> = {
     getGatewayPaystackTransactionStatus: {
         path: (args: { reference: string }) => `/gateway/*/paystack/transaction/${args.reference}`,
         name: "getGatewayPaystackTransactionStatus",
+        verb: ServerCallVerbs.Get,
+    },
+    getGatewayWalletPaymentProvider: {
+        path: "/gateway/*/wallet/payment-provider",
+        name: "getGatewayWalletPaymentProvider",
+        verb: ServerCallVerbs.Get,
+    },
+    postGatewayWalletTransactionInitiate: {
+        path: "/gateway/*/wallet/transaction/initiate",
+        name: "postGatewayWalletTransactionInitiate",
+        verb: ServerCallVerbs.Post,
+    },
+    postGatewayWalletTransactionVerify: {
+        path: (args: { reference: string }) => `/gateway/*/wallet/transaction/${args.reference}/verify`,
+        name: "postGatewayWalletTransactionVerify",
+        verb: ServerCallVerbs.Post,
+    },
+    getGatewayWalletTransactionStatus: {
+        path: (args: { reference: string }) => `/gateway/*/wallet/transaction/${args.reference}`,
+        name: "getGatewayWalletTransactionStatus",
         verb: ServerCallVerbs.Get,
     },
     postGatewayWalletUpdateBalance: {

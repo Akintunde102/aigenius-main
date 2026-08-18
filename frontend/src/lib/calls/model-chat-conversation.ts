@@ -1,5 +1,6 @@
 import { serverCall } from "@/servercall/init";
 import { serverCalls } from "@/servercall/store";
+import { waitForAccessToken } from '@/lib/api/wait-for-access-token';
 import {
     ChatMessage,
     ChatSession,
@@ -98,12 +99,22 @@ function buildSavedSnippetConversationRow(item: ChatMessage): {
 }
 
 function normalizeAggregatedResourcesPayload(raw: unknown): AllChatResourcesPayload {
-    const d = raw as {
+    let d = raw as {
         savedChats?: ChatMessage[];
         savedFullChats?: ChatSession[];
         chatHistory?: ChatSession[];
         pinnedChats?: ChatSession[];
+        dataReturned?: {
+            savedChats?: ChatMessage[];
+            savedFullChats?: ChatSession[];
+            chatHistory?: ChatSession[];
+            pinnedChats?: ChatSession[];
+        };
     } | null | undefined;
+
+    if (d != null && d.dataReturned && typeof d.dataReturned === 'object') {
+        d = d.dataReturned;
+    }
 
     return {
         savedChats:
@@ -266,18 +277,34 @@ export const getAllChatResources = async (): Promise<AllChatResourcesPayload> =>
         return getAllChatResourcesInflight;
     }
 
-    const request = serverCall({
-        serverCallProps: {
-            call: serverCalls.getGatewayModelChatsResources,
-        },
-        authorized: true,
-    })
-        .then((r) => {
-            if (!r?.success) {
-                throw new Error('Failed to load chat resources');
+    const request = (async () => {
+        await waitForAccessToken();
+
+        const r = await serverCall({
+            serverCallProps: {
+                call: serverCalls.getGatewayModelChatsResources,
+            },
+            authorized: true,
+        });
+
+        if (!r?.success) {
+            throw new Error('Failed to load chat resources');
+        }
+        let payload = normalizeAggregatedResourcesPayload(r.dataReturned);
+
+        if ((payload.chatHistory?.length ?? 0) === 0) {
+            try {
+                const history = await getChatHistory();
+                if (history.length > 0) {
+                    payload = { ...payload, chatHistory: history };
+                }
+            } catch (historyError) {
+                console.warn('Aggregated resources missing chatHistory; history fallback failed:', historyError);
             }
-            return normalizeAggregatedResourcesPayload(r.dataReturned);
-        })
+        }
+
+        return payload;
+    })()
         .finally(() => {
             getAllChatResourcesInflight = null;
         });
