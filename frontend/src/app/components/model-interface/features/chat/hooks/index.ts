@@ -9,6 +9,7 @@ export { useChatState } from './useChatState';
 export { useSessionSwitcher } from './useSessionSwitcher';
 export { useConversationEvents } from './useConversationEvents';
 export { useActiveConversationSync } from './useActiveConversationSync';
+export { usePersistSessionMessages } from './usePersistSessionMessages';
 
 // Utilities
 export * from './chatOperations.types';

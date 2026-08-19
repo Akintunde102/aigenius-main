@@ -33,6 +33,7 @@ interface MessageHandlersProps {
     chatEndRef: React.RefObject<HTMLDivElement>;
     viewSessionId?: string | null;
     updateSessionMessages?: (sessionId: string, messages: ChatMessage[]) => void;
+    persistSessionMessages?: (messages: ChatMessage[]) => void | Promise<void>;
     setLoading?: (loading: boolean) => void;
     handleStop?: () => void;
     loading?: boolean;
@@ -46,6 +47,7 @@ export function MessageHandlers({
     handleSend,
     viewSessionId = null,
     updateSessionMessages,
+    persistSessionMessages,
     setLoading,
     handleStop,
     loading = false,
@@ -128,36 +130,48 @@ export function MessageHandlers({
         resendFromIndex,
     ]);
 
+    const commitMessageList = useCallback((nextChat: ChatMessage[]) => {
+        setChat(nextChat);
+
+        if (viewSessionId && updateSessionMessages) {
+            updateSessionMessages(viewSessionId, nextChat);
+        }
+
+        if (viewSessionId && persistSessionMessages) {
+            void persistSessionMessages(nextChat);
+        }
+    }, [setChat, viewSessionId, updateSessionMessages, persistSessionMessages]);
+
     const handleDeleteMessage = useCallback((idx: number) => {
-        setChat(prev => {
-            const newChat = [...prev];
-            if (idx >= 0 && idx < newChat.length) {
-                const messageToDelete = newChat[idx];
-                if (messageToDelete) {
-                    newChat.splice(idx, 1);
-                } else {
-                    console.warn(`No message found at index ${idx}`);
-                }
-            } else {
-                console.warn(`Invalid index ${idx} for deletion. Array length: ${newChat.length}`);
-            }
-            return newChat;
-        });
-    }, [setChat]);
+        if (idx < 0 || idx >= chat.length) {
+            console.warn(`Invalid index ${idx} for deletion. Array length: ${chat.length}`);
+            return;
+        }
+
+        const messageToDelete = chat[idx];
+        if (!messageToDelete) {
+            console.warn(`No message found at index ${idx}`);
+            return;
+        }
+
+        const nextChat = chat.filter((_, messageIdx) => messageIdx !== idx);
+        commitMessageList(nextChat);
+    }, [chat, commitMessageList]);
 
     const handleDeleteMessageById = useCallback((id: string) => {
-        setChat(prev => {
-            const newChat = prev.filter(msg => msg.id !== id);
-            if (newChat.length === prev.length) {
-                console.warn(`No message found with id ${id}`);
-                const messageToDelete = prev.find(msg => !msg.id && msg.timestamp.toString() === id);
-                if (messageToDelete) {
-                    return prev.filter(msg => msg !== messageToDelete);
-                }
+        let nextChat = chat.filter(msg => msg.id !== id);
+        if (nextChat.length === chat.length) {
+            console.warn(`No message found with id ${id}`);
+            const messageToDelete = chat.find(msg => !msg.id && msg.timestamp.toString() === id);
+            if (messageToDelete) {
+                nextChat = chat.filter(msg => msg !== messageToDelete);
             }
-            return newChat;
-        });
-    }, [setChat]);
+        }
+
+        if (nextChat.length !== chat.length) {
+            commitMessageList(nextChat);
+        }
+    }, [chat, commitMessageList]);
 
     const handleReplayMessage = useCallback((message: ChatMessage, idx: number) => {
         if (message.role !== 'user' || idx < 0 || idx >= chat.length) return;

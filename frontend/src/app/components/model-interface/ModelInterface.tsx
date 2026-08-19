@@ -131,7 +131,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     selectedPersonalityIconUrl,
     setSelectedPersonalityIconUrl,
   } = personalityState;
-  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, showTyping, setShowTyping, showScrollToBottom, queuedMessages, handleQueueMessage, removeQueuedMessage } = chatState;
+  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, persistSessionMessages, showTyping, setShowTyping, showScrollToBottom, queuedMessages, handleQueueMessage, removeQueuedMessage } = chatState;
   const { loading, setLoading, error, setError, streaming, setStreaming, streamingEnabled, setStreamingEnabled, imagePreview, setImagePreview, uploading, setUploading, uploadProgress, setUploadProgress, dragActive, setDragActive, showCosts, showNaira, showSaved, setShowSaved, setTotalSpent, optimizationMessage } = uiState;
   const { showModelDetailsModal, setShowModelDetailsModal, showModelSelectionModal, setShowModelSelectionModal } = modalState;
   const { search, setSearch, historySearch, setHistorySearch, orderByCost, setOrderByCost, allModalities, selectedModalities, allOutputModalities, selectedOutputModalities, showWebSearch, setShowWebSearch, showToolsOnly, setShowToolsOnly, pinnedModelIds, favoritesLoaded, orderBy, setOrderBy, orderDir, setOrderDir, selectedProviders, setSelectedProviders, imageFilterOnly, setImageFilterOnly, toggleModality, toggleOutputModality } = filterState;
@@ -551,6 +551,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     chatContainerRef={chatContainerRef}
                     viewSessionId={viewSessionId}
                     updateSessionMessages={updateSessionMessages}
+                    persistSessionMessages={persistSessionMessages}
                     setLoading={setLoading}
                     selectedModel={selectedModel}
                     models={models}
