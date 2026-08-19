@@ -1,4 +1,5 @@
 import { AudioStatus } from '@/app/components/model-interface/features/chat/hooks/audioMode.utils';
+import type { QueuedComposerMessage } from '@/app/components/model-interface/features/chat/hooks/messageSendQueue.types';
 
 export interface Model {
     id: string;
@@ -89,6 +90,16 @@ export interface ChatBoxInputProps {
     audioStatus?: AudioStatus;
     audioTranscription?: string;
     audioNotice?: string;
+    /** Optional hook for extra key handling (e.g. Escape to cancel inline edit). */
+    onComposerKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+    /** Override the textarea element id (e.g. for inline edit focus). */
+    composerTextareaId?: string;
+    /** Root element id; defaults to `chat-input`. */
+    composerRootId?: string;
+    /** Queued messages waiting to send after the current response finishes. */
+    queuedMessages?: QueuedComposerMessage[];
+    onQueueMessage?: (message: string) => void;
+    onRemoveQueuedMessage?: (messageId: string) => void;
 }
 
 export interface UploadProgressBarProps {
@@ -161,6 +172,8 @@ export interface SubmitButtonProps {
 
 export interface ChatControlsProps {
     disabled: boolean;
+    /** When set, overrides `disabled` for the model quick-pick only. */
+    modelSelectorDisabled?: boolean;
     uploading: boolean;
     supportsFileUpload: boolean;
     selectedModel: Model | null;

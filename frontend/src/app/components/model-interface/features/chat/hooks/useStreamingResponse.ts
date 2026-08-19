@@ -167,7 +167,8 @@ export function useStreamingResponse({
         uiChatBase?: ChatMessage[],
         requestOverrides?: ChatCompletionRequestOverrides,
     ): Promise<void> => {
-        if (!selectedModel) return;
+        const modelForRequest = requestOverrides?.modelOverride ?? selectedModel;
+        if (!modelForRequest) return;
 
         // null for new chats — used for guard comparisons and API conversationId.
         const streamingSessionId = resolveRequestConversationId(requestOverrides, currentSessionId);
@@ -222,7 +223,7 @@ export function useStreamingResponse({
             }
             if (chatMapKey !== DRAFT_SESSION_KEY && updateSessionMessages) {
                 updateSessionMessages(chatMapKey, sessionMessages, {
-                    modelId: selectedModel.id,
+                    modelId: modelForRequest.id,
                     title: sessionMessages[0]?.content as string || 'New chat',
                 });
                 sidebarSynced = true;
@@ -264,7 +265,7 @@ export function useStreamingResponse({
                     assistantMessageId,
                     assistantTimestamp,
                 },
-                options: { model: selectedModel.id },
+                options: { model: modelForRequest.id },
                 signal: abortController.signal,
                 onToolStreamEvent: (event: ToolStreamEvent) => {
                     const lastIdx = sessionMessages.length - 1;
@@ -277,8 +278,8 @@ export function useStreamingResponse({
                         const toolMsg = createChatMessage(
                             'assistant',
                             '',
-                            selectedModel.id,
-                            selectedModel.name || selectedModel.id,
+                            modelForRequest.id,
+                            modelForRequest.name || modelForRequest.id,
                             undefined,
                             undefined,
                             undefined,
@@ -453,7 +454,7 @@ export function useStreamingResponse({
                 setChatForSession(result.conversationId, sessionMessages);
                 if (updateSessionMessages) {
                     updateSessionMessages(result.conversationId, sessionMessages, {
-                        modelId: selectedModel.id,
+                        modelId: modelForRequest.id,
                         title: sessionMessages[0]?.content as string || 'New chat',
                         codeProjectId: scopeId,
                     });
@@ -477,7 +478,7 @@ export function useStreamingResponse({
             if (lastAssistant?.role === 'assistant') {
                 void notifyDesktopChatCompletionIfBackground({
                     body: contentToDisplayText(lastAssistant.content as ProcessedContent),
-                    modelName: selectedModel.name || selectedModel.id,
+                    modelName: modelForRequest.name || modelForRequest.id,
                 });
             }
 

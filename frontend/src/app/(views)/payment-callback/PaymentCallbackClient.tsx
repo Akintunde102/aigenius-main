@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, useReducedMotion } from 'framer-motion';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { clearUserDetailsCache } from '@/lib/calls/get-logged-user-details';
 import { hasAuthSession, syncAuthSessionCookiesFromStorage } from '@/lib/utils/auth-session';

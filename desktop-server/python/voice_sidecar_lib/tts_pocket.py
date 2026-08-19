@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
 import webbrowser
 from pathlib import Path
@@ -72,6 +73,31 @@ def load_tts_model():
             LOGGER.info("TTS model loaded after offline retry")
             _tts_model_singleton = model
             return model
+
+
+def warm_tts_at_sidecar_startup() -> None:
+    """Load TTS in a background thread so the first user generate is not a ~15s stall.
+
+    Hugging Face / network hangs are already guarded in ``load_tts_model``. Failures
+    are logged and the first generate still loads lazily.
+    """
+    if (os.environ.get("AIGENIUS_ENABLE_TTS") or "1").strip() == "0":
+        LOGGER.info("TTS disabled via AIGENIUS_ENABLE_TTS=0 — skipping TTS warm-up")
+        return
+
+    def _warm() -> None:
+        try:
+            backend = _get_tts_backend()
+            if backend == "onnx":
+                from voice_sidecar_lib.tts_onnx import warm_onnx_tts_session
+                warm_onnx_tts_session()
+            else:
+                load_tts_model()
+            LOGGER.info("TTS model warmed at sidecar startup (backend=%s)", backend)
+        except Exception as e:
+            LOGGER.warning("TTS warm-up failed; first generate will load lazily: %s", e)
+
+    threading.Thread(target=_warm, name="tts-warmup", daemon=True).start()
 
 
 def _open_wav_in_default_browser(abs_path: str) -> None:

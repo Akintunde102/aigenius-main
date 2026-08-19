@@ -1,4 +1,33 @@
-import { repairLlmMarkdown } from '../repairLlmMarkdown';
+import { repairEscapedLocalFileMarkdownLinks, repairLlmMarkdown } from '../repairLlmMarkdown';
+
+describe('repairEscapedLocalFileMarkdownLinks', () => {
+    it('unescapes \\[ before local-file markdown links', () => {
+        const input =
+            'Files in \\[C:\\Users\\dev\\Dami](local-file://C%3A%5CUsers%5Cdev%5CDami%5C)';
+        expect(repairEscapedLocalFileMarkdownLinks(input)).toBe(
+            'Files in [C:\\Users\\dev\\Dami](local-file://C%3A%5CUsers%5Cdev%5CDami%5C)',
+        );
+    });
+
+    it('unescapes \\[ before local-file image markdown', () => {
+        const input = 'See !\\[shot](local-file://C%3A%5Ctmp%5Cshot.png)';
+        expect(repairEscapedLocalFileMarkdownLinks(input)).toBe(
+            'See ![shot](local-file://C%3A%5Ctmp%5Cshot.png)',
+        );
+    });
+
+    it('skips fenced code blocks', () => {
+        const input = '```text\n\\[a](local-file://x)\n```\n\\[b](local-file://y)';
+        expect(repairEscapedLocalFileMarkdownLinks(input)).toBe(
+            '```text\n\\[a](local-file://x)\n```\n[b](local-file://y)',
+        );
+    });
+
+    it('returns input unchanged when no escaped local-file links', () => {
+        const md = 'Open [Dami](local-file://ENCODED) or `C:\\path`';
+        expect(repairEscapedLocalFileMarkdownLinks(md)).toBe(md);
+    });
+});
 
 describe('repairLlmMarkdown', () => {
     it('returns empty input unchanged', () => {
@@ -8,6 +37,14 @@ describe('repairLlmMarkdown', () => {
     it('does not alter normal markdown outside tables', () => {
         const md = '## Title\n\n**Bold** and `\\n` in prose stays literal.';
         expect(repairLlmMarkdown(md)).toBe(md);
+    });
+
+    it('repairs escaped local-file links in prose', () => {
+        const md =
+            'Files in \\[C:\\Users\\dev\\Dami](local-file://C%3A%5CUsers%5Cdev%5CDami%5C)';
+        expect(repairLlmMarkdown(md)).toBe(
+            'Files in [C:\\Users\\dev\\Dami](local-file://C%3A%5CUsers%5Cdev%5CDami%5C)',
+        );
     });
 
     it('does not alter a standard GFM table', () => {

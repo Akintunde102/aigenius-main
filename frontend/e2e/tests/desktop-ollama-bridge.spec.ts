@@ -33,14 +33,9 @@ type DesktopWindow = Omit<Window, 'aigeniusDesktop'> & {
 };
 
 test.describe('Desktop Ollama bridge', () => {
-  test('routes an offline Ollama chat from the desktop bridge back into the transcript', async ({ page }) => {
+  test('routes a desktop Ollama chat from the local tool back into the transcript', async ({ page }) => {
     await seedAuthenticatedSession(page);
     await page.addInitScript(() => {
-      Object.defineProperty(navigator, 'onLine', {
-        configurable: true,
-        get: () => false,
-      });
-
       const desktopWindow = window as unknown as DesktopWindow;
       desktopWindow.__ollamaToolCalls = [];
       desktopWindow.aigeniusDesktop = {

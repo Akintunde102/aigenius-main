@@ -3,13 +3,13 @@
  */
 
 import {
-  clearWalletTopUpPendingState,
-  readWalletTopUpPendingState,
-  saveWalletTopUpPendingState,
-  WALLET_TOP_UP_PENDING_KEY,
+  clearWalletTopUpReturnState,
+  readWalletTopUpReturnState,
+  saveWalletTopUpReturnState,
+  WALLET_TOP_UP_RETURN_KEY,
 } from '@/lib/wallet-payment-return';
 
-describe('wallet-payment-return pending state', () => {
+describe('wallet-payment-return return state', () => {
   let memory: Record<string, string>;
 
   beforeEach(() => {
@@ -27,38 +27,24 @@ describe('wallet-payment-return pending state', () => {
           memory = {};
         },
       },
-      writable: true,
       configurable: true,
     });
   });
 
-  it('saves and reads pending desktop top-up state', () => {
-    saveWalletTopUpPendingState({
-      reference: 'ref_123',
-      amountInNaira: '1000',
-      startedAt: 1,
+  it('round-trips wallet top-up return state', () => {
+    saveWalletTopUpReturnState({
+      returnTo: '/chat',
+      amountInNaira: '500',
+      startedAt: Date.now(),
       reopenTarget: 'inline',
     });
 
-    expect(readWalletTopUpPendingState()).toEqual({
-      reference: 'ref_123',
-      amountInNaira: '1000',
-      startedAt: 1,
-      reopenTarget: 'inline',
-    });
-  });
+    const saved = readWalletTopUpReturnState();
+    expect(saved?.returnTo).toBe('/chat');
+    expect(saved?.amountInNaira).toBe('500');
 
-  it('clears pending desktop top-up state', () => {
-    saveWalletTopUpPendingState({
-      reference: 'ref_123',
-      amountInNaira: '1000',
-      startedAt: 1,
-      reopenTarget: 'sidebar',
-    });
-
-    clearWalletTopUpPendingState();
-
-    expect(sessionStorage.getItem(WALLET_TOP_UP_PENDING_KEY)).toBeNull();
-    expect(readWalletTopUpPendingState()).toBeNull();
+    clearWalletTopUpReturnState();
+    expect(readWalletTopUpReturnState()).toBeNull();
+    expect(window.sessionStorage.getItem(WALLET_TOP_UP_RETURN_KEY)).toBeNull();
   });
 });

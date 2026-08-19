@@ -1,5 +1,4 @@
 import fs from 'fs/promises';
-import '../polyfills/pdfjs-node.js';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 export async function extractEmbeddedPdfText(filePath: string): Promise<{ text: string; numPages: number }> {

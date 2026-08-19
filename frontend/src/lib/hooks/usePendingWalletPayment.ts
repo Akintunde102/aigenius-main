@@ -7,7 +7,7 @@ import {
   subscribePendingWalletPaymentPoll,
 } from '@/lib/wallet-pending-payment-poll';
 import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { PAYMENT_POLL_TIMEOUT_MESSAGE } from '@/lib/wallet-pending-payment-poll';
 
 /**

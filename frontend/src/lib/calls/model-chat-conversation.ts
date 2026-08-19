@@ -238,6 +238,30 @@ export const addOrUpdateChatHistory = async (
     return response.dataReturned;
 };
 
+export const updateConversationMessages = async (
+    conversationId: string,
+    messages: ChatMessage[],
+    modelId: string,
+    modelName: string,
+): Promise<ModelChatConversation> => {
+    const response = await serverCall({
+        serverCallProps: {
+            call: serverCalls.postGatewayModelChatsUpdateConversationMessages,
+            data: { messages, modelId, modelName },
+        },
+        pathArgs: { id: conversationId },
+        authorized: true,
+    });
+    const conv = response.dataReturned as
+        | (Omit<ModelChatConversation, 'session'> & { session: ModelChatConversation['session'] | string })
+        | null;
+    const normalized = conv ? normalizeConversationSessionPayload(conv) : null;
+    if (!normalized) {
+        throw new Error('Failed to update conversation messages');
+    }
+    return normalized;
+};
+
 export const getChatHistory = async (): Promise<ChatSession[]> => {
     const response = await serverCall({
         serverCallProps: {

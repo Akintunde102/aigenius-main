@@ -5,7 +5,10 @@ import { createPortal } from "react-dom";
 import { FiCheck, FiChevronDown, FiPlus } from "react-icons/fi";
 import type { Model } from "@/app/components/model-interface/shared/types";
 import { getModelDisplayName } from "@/app/components/model-interface/shared/utils";
-import { QUICK_PICK_DROPDOWN_MAX_WIDTH } from "@/app/components/model-interface/shared/constants/quickPickModels";
+import {
+  QUICK_PICK_DROPDOWN_MAX_WIDTH,
+  QUICK_PICK_DROPDOWN_MIN_WIDTH,
+} from "@/app/components/model-interface/shared/constants/quickPickModels";
 
 type ModelQuickPickDropdownProps = {
   disabled?: boolean;
@@ -23,7 +26,23 @@ type MenuPosition = {
   width: number;
 };
 
-const MENU_MIN_WIDTH = 168;
+const QUICK_PICK_MENU_SCROLL_STYLE = `
+  .quick-pick-menu-scroll {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    scrollbar-color: transparent transparent !important;
+  }
+  .quick-pick-menu-scroll::-webkit-scrollbar {
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+  .quick-pick-menu-scroll::-webkit-scrollbar-thumb,
+  .quick-pick-menu-scroll::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+`;
+
 const MENU_GAP = 8;
 const VIEWPORT_PADDING = 8;
 
@@ -34,7 +53,7 @@ function computeMenuPosition(
   const rect = triggerEl.getBoundingClientRect();
   const width = Math.min(
     QUICK_PICK_DROPDOWN_MAX_WIDTH,
-    Math.max(MENU_MIN_WIDTH, Math.ceil(rect.width)),
+    Math.max(QUICK_PICK_DROPDOWN_MIN_WIDTH, Math.ceil(rect.width)),
     window.innerWidth - VIEWPORT_PADDING * 2,
   );
   const left = Math.min(
@@ -187,16 +206,18 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
           borderColor: "var(--chat-composer-border)",
           backgroundColor: "var(--chat-composer-bg)",
           color: "var(--sidebar-fg)",
+          colorScheme: "dark",
         }}
       >
-        <div className="max-h-[min(50vh,360px)] overflow-y-auto py-1">
+        <style dangerouslySetInnerHTML={{ __html: QUICK_PICK_MENU_SCROLL_STYLE }} />
+        <div className="quick-pick-menu-scroll max-h-[min(50vh,360px)] overflow-y-auto py-1.5">
           {!favoritesLoaded ? (
-            <div className="px-3 py-2 text-xs [color:var(--chat-muted-fg)]">
+            <div className="px-3 py-2.5 text-[11px] [color:var(--chat-muted-fg)]">
               Loading models…
             </div>
           ) : activeOutsideQuickPicks && selectedModel ? (
             <>
-              <div className="px-2.5 pt-1 pb-0.5 text-[10px] font-medium uppercase tracking-wide [color:var(--chat-muted-fg)]">
+              <div className="px-3 pt-1 pb-1 text-[9px] font-medium uppercase tracking-wide [color:var(--chat-muted-fg)]">
                 Current model
               </div>
               <button
@@ -204,13 +225,13 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
                 role="option"
                 aria-selected
                 onClick={() => handleSelect(selectedModel)}
-                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs font-medium transition-colors hover:[background-color:color-mix(in_srgb,var(--chat-composer-border)_35%,transparent)]"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium transition-colors hover:[background-color:color-mix(in_srgb,var(--chat-composer-border)_35%,transparent)]"
               >
                 <span className="min-w-0 flex-1 truncate">
                   {getModelDisplayName(selectedModel)}
                 </span>
                 <FiCheck
-                  size={14}
+                  size={12}
                   className="shrink-0"
                   style={{ color: "var(--chat-accent)" }}
                   aria-hidden
@@ -218,7 +239,7 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
               </button>
               {quickPickModels.length > 0 ? (
                 <div
-                  className="mx-2.5 my-1 border-t"
+                  className="mx-3 my-1.5 border-t"
                   style={{ borderColor: "var(--chat-composer-border)" }}
                 />
               ) : null}
@@ -226,13 +247,13 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
           ) : null}
 
           {!favoritesLoaded ? null : quickPickModels.length === 0 && !activeOutsideQuickPicks ? (
-            <div className="px-3 py-2 text-xs [color:var(--chat-muted-fg)]">
+            <div className="px-3 py-2.5 text-[11px] [color:var(--chat-muted-fg)]">
               No models in your quick picks yet.
             </div>
           ) : quickPickModels.length > 0 ? (
             <>
               {activeOutsideQuickPicks ? (
-                <div className="px-2.5 pt-0.5 pb-0.5 text-[10px] font-medium uppercase tracking-wide [color:var(--chat-muted-fg)]">
+                <div className="px-3 pt-0.5 pb-1 text-[9px] font-medium uppercase tracking-wide [color:var(--chat-muted-fg)]">
                   Quick picks
                 </div>
               ) : null}
@@ -245,14 +266,14 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
                     role="option"
                     aria-selected={isActive}
                     onClick={() => handleSelect(model)}
-                    className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:[background-color:color-mix(in_srgb,var(--chat-composer-border)_35%,transparent)] ${isActive ? "font-medium" : ""}`}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] transition-colors hover:[background-color:color-mix(in_srgb,var(--chat-composer-border)_35%,transparent)] ${isActive ? "font-medium" : ""}`}
                   >
                     <span className="min-w-0 flex-1 truncate">
                       {getModelDisplayName(model)}
                     </span>
                     {isActive && (
                       <FiCheck
-                        size={14}
+                        size={12}
                         className="shrink-0"
                         style={{ color: "var(--chat-accent)" }}
                         aria-hidden
@@ -266,15 +287,15 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
         </div>
 
         <div
-          className="border-t px-2 py-1.5"
+          className="border-t px-2.5 py-2"
           style={{ borderColor: "var(--chat-composer-border)" }}
         >
           <button
             type="button"
             onClick={handleAddModels}
-            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:[background-color:color-mix(in_srgb,var(--chat-composer-border)_35%,transparent)] [color:var(--sidebar-muted-fg)] hover:[color:var(--sidebar-fg)]"
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] transition-colors hover:[background-color:color-mix(in_srgb,var(--chat-composer-border)_35%,transparent)] [color:var(--sidebar-muted-fg)] hover:[color:var(--sidebar-fg)]"
           >
-            <FiPlus size={14} className="shrink-0" />
+            <FiPlus size={12} className="shrink-0" />
             <span>Add models</span>
           </button>
         </div>

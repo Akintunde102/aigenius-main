@@ -13,6 +13,9 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
   submitTitle?: string;
   hasUploadedFiles?: boolean;
   sendBlocked?: boolean;
+  textareaId?: string;
+  actionSlot?: React.ReactNode;
+  canQueueMessage?: boolean;
 }> = React.memo(({
   value,
   onChange,
@@ -31,7 +34,10 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
   onSubmit,
   submitTitle = 'Send message (Shift+Enter)',
   hasUploadedFiles = false,
-  mini = false
+  textareaId = 'chat-composer-textarea',
+  mini = false,
+  actionSlot,
+  canQueueMessage = false,
 }) => {
   // Single consolidated effect for auto-resize and overflow management
   React.useLayoutEffect(() => {
@@ -60,14 +66,15 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
 
   const isSendBlocked = responseInProgress || uploading || sendBlocked;
   const canSend = (value.trim() || hasUploadedFiles) && !isSendBlocked;
+  const canQueueNow = canQueueMessage && value.trim().length > 0;
 
   return (
     <div className={`flex items-end gap-2 w-full ${mini ? 'px-1' : ''}`}>
-      <label htmlFor="chat-composer-textarea" className="sr-only">
+      <label htmlFor={textareaId} className="sr-only">
         {mini ? "Ask a question" : "Message input"}
       </label>
       <textarea
-        id="chat-composer-textarea"
+        id={textareaId}
         ref={textareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -94,20 +101,38 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
         }}
       />
 
-      {responseInProgress && onStopGeneration ? (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            onStopGeneration();
-          }}
-          className="chat-composer-stop flex-shrink-0 rounded-full p-2 transition-all active:scale-95"
-          title="Stop generation"
-          aria-label="Stop generation"
-          style={{ marginBottom: '2px' }}
-        >
-          <Square size={14} fill="currentColor" strokeWidth={0} />
-        </button>
+      {actionSlot}
+
+      {responseInProgress ? (
+        <>
+          {canQueueNow ? (
+            <button
+              type="button"
+              onClick={onSubmit}
+              className="chat-composer-send chat-composer-send--enabled flex-shrink-0 rounded-full p-1.5 transition-colors"
+              title="Add to queue"
+              aria-label="Add message to queue"
+              style={{ marginBottom: '2px' }}
+            >
+              <ArrowUp size={16} />
+            </button>
+          ) : null}
+          {onStopGeneration ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                onStopGeneration();
+              }}
+              className="chat-composer-stop flex-shrink-0 rounded-full p-2 transition-all active:scale-95"
+              title="Stop generation"
+              aria-label="Stop generation"
+              style={{ marginBottom: '2px' }}
+            >
+              <Square size={14} fill="currentColor" strokeWidth={0} />
+            </button>
+          ) : null}
+        </>
       ) : (
         <button
           type="submit"
@@ -170,29 +195,6 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
   50% { caret-color: transparent; }
 }
 
-.blinking-caret {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
-}
-
-.blinking-caret::-webkit-scrollbar {
-  width: 3px;
-}
-
-.blinking-caret::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.blinking-caret::-webkit-scrollbar-thumb {
-  background-color: rgba(148, 163, 184, 0.35);
-  border-radius: 999px;
-}
-
-.blinking-caret::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(148, 163, 184, 0.5);
-}
-
-/* Mobile keyboard handling for textarea */
 @media (max-width: 768px) {
   body.keyboard-open textarea.blinking-caret {
     // max-height: 120px !important;

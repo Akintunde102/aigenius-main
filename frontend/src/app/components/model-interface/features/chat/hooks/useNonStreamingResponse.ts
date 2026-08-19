@@ -59,7 +59,8 @@ export function useNonStreamingResponse({
         uiChatBase?: ChatMessage[],
         requestOverrides?: ChatCompletionRequestOverrides,
     ): Promise<void> => {
-        if (!selectedModel) return;
+        const modelForRequest = requestOverrides?.modelOverride ?? selectedModel;
+        if (!modelForRequest) return;
 
         // null for new chats — used for guard comparisons and API conversationId.
         const requestSessionId = resolveRequestConversationId(requestOverrides, currentSessionId);
@@ -87,7 +88,7 @@ export function useNonStreamingResponse({
                     assistantMessageId,
                     assistantTimestamp,
                 },
-                options: { model: selectedModel.id },
+                options: { model: modelForRequest.id },
                 signal: abortController.signal
             });
 
@@ -108,8 +109,8 @@ export function useNonStreamingResponse({
             const assistantMsg = createChatMessage(
                 'assistant',
                 processedContent,
-                selectedModel.id,
-                selectedModel.name || selectedModel.id,
+                modelForRequest.id,
+                modelForRequest.name || modelForRequest.id,
                 requestSessionId ?? undefined,
                 result.usage,
                 result.cost,
@@ -138,7 +139,7 @@ export function useNonStreamingResponse({
                 // in history even when the user has already moved to another chat.
                 setChatForSession(result.conversationId, fullMessages);
                 updateSessionMessages?.(result.conversationId, fullMessages, {
-                    modelId: selectedModel.id,
+                    modelId: modelForRequest.id,
                     title: deriveChatSessionTitle(fullMessages[0]?.content),
                     codeProjectId: scopeId,
                 });

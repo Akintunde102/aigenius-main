@@ -49,9 +49,6 @@ describe('access-model ollama offline', () => {
     desktopRuntime.resetDesktopRunnableBridgeCacheForTests();
     runLocalDesktopTool.mockReset();
     
-    // Mock offline
-    jest.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
-    
     // Mock desktop bridge
     (window as any).aigeniusDesktop = {
       isDesktop: true,
@@ -204,20 +201,11 @@ describe('access-model ollama offline', () => {
     })).rejects.toThrow('Local Ollama error: model missing');
   });
 
-  it('should connect the relay before using an online Ollama Cloud catalog model', async () => {
+  it('chats through the local Ollama tool for an online Ollama Cloud catalog model', async () => {
     jest.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
     runLocalDesktopTool.mockResolvedValue({
       ok: true,
-      result: 'Relay connected',
-    });
-    (authorizedFetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      headers: { get: () => null },
-      json: async () => ({
-        choices: [{ message: { content: 'GLM cloud relayed' } }],
-        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-        cost: 0,
-      }),
+      result: 'GLM from local Ollama',
     });
 
     const result = await _accessModel({
@@ -227,26 +215,24 @@ describe('access-model ollama offline', () => {
     });
 
     expect(runLocalDesktopTool).toHaveBeenCalledWith({
-      tool: 'local_ollama_connect',
-      arguments: { token: 'test-jwt-token' },
+      tool: 'local_ollama_chat',
+      arguments: {
+        payload: {
+          model: 'glm-5.1:cloud',
+          messages: [{ role: 'user', content: 'hello' }],
+          stream: false,
+        },
+      },
     });
-    expect(result?.content).toBe('GLM cloud relayed');
+    expect(authorizedFetch).not.toHaveBeenCalled();
+    expect(result?.content).toBe('GLM from local Ollama');
   });
 
-  it('should connect the relay before using an online ollama model', async () => {
+  it('chats through the local Ollama tool when the desktop is online', async () => {
     jest.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
     runLocalDesktopTool.mockResolvedValue({
       ok: true,
-      result: 'Relay connected',
-    });
-    (authorizedFetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      headers: { get: () => null },
-      json: async () => ({
-        choices: [{ message: { content: 'Cloud relayed response' } }],
-        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-        cost: 0,
-      }),
+      result: 'Local response while online',
     });
 
     const result = await _accessModel({
@@ -255,10 +241,10 @@ describe('access-model ollama offline', () => {
       config: mockConfig as any,
     });
 
-    expect(runLocalDesktopTool).toHaveBeenCalledWith({
-      tool: 'local_ollama_connect',
-      arguments: { token: 'test-jwt-token' },
-    });
-    expect(result?.content).toBe('Cloud relayed response');
+    expect(runLocalDesktopTool).toHaveBeenCalledWith(expect.objectContaining({
+      tool: 'local_ollama_chat',
+    }));
+    expect(authorizedFetch).not.toHaveBeenCalled();
+    expect(result?.content).toBe('Local response while online');
   });
 });

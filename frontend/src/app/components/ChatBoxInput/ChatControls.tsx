@@ -8,6 +8,7 @@ import type { Model } from '@/app/components/model-interface/shared/types';
 // Left Controls Section Component
 const LeftControlsSection: React.FC<{
     disabled: boolean;
+    modelSelectorDisabled?: boolean;
     uploading: boolean;
     supportsFileUpload: boolean;
     onAttachmentClick: () => void;
@@ -38,6 +39,7 @@ const LeftControlsSection: React.FC<{
     isDictationTranscribing?: boolean;
 }> = ({
     disabled,
+    modelSelectorDisabled,
     uploading,
     supportsFileUpload,
     onAttachmentClick,
@@ -67,13 +69,15 @@ const LeftControlsSection: React.FC<{
     isSTTActive,
     isDictationTranscribing,
 }) => {
+        const modelDisabled = modelSelectorDisabled ?? disabled;
+
         return (
             <div className="flex items-center gap-2">
                 {/* Model Selection Button - hidden when a personality is active or explicitly hidden */}
                 {!selectedPersonalityName && !hideModelSelector && (
                     quickPickModels && onSelectModel && onOpenFullModelPicker ? (
                         <ModelQuickPickDropdown
-                            disabled={disabled}
+                            disabled={modelDisabled}
                             mini={mini}
                             selectedModel={selectedModel}
                             quickPickModels={quickPickModels}
@@ -85,7 +89,7 @@ const LeftControlsSection: React.FC<{
                         <button
                             type="button"
                             onClick={onModelNameClick}
-                            disabled={disabled || !onModelNameClick}
+                            disabled={modelDisabled || !onModelNameClick}
                             className={`inline-flex items-center gap-2 rounded-full border text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 [border-color:var(--chat-composer-border)] [background-color:color-mix(in_srgb,var(--chat-composer-bg)_88%,transparent)] [color:var(--sidebar-muted-fg)] hover:[color:var(--sidebar-fg)] hover:[background-color:var(--chat-composer-bg)] ${mini ? 'px-1.5 py-0.5' : 'px-2 py-0.5'}`}
                             title={selectedModel?.name ? `Model: ${selectedModel.name}` : 'Select model'}
                         >
@@ -239,6 +243,7 @@ const ModelSelectionSection: React.FC<{
 
 export const ChatControls: React.FC<ChatControlsProps> = React.memo(({
     disabled,
+    modelSelectorDisabled,
     uploading,
     supportsFileUpload,
     selectedModel,
@@ -273,6 +278,7 @@ export const ChatControls: React.FC<ChatControlsProps> = React.memo(({
             <div className={`flex items-center rounded-full px-2 py-1 ${compact ? 'p-0' : ''}`}>
                 <LeftControlsSection
                     disabled={disabled}
+                    modelSelectorDisabled={modelSelectorDisabled}
                     uploading={uploading}
                     supportsFileUpload={supportsFileUpload}
                     onAttachmentClick={onAttachmentClick}

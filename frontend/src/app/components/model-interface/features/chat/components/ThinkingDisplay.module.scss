@@ -19,22 +19,3 @@
     min-width: 0;
     word-break: break-word;
 }
-
-.streamingThinkingScroll::-webkit-scrollbar {
-    width: 4px;
-}
-
-.streamingThinkingScroll::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.streamingThinkingScroll::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 2px;
-}
-
-@media (prefers-color-scheme: dark) {
-    .streamingThinkingScroll::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.1);
-    }
-}

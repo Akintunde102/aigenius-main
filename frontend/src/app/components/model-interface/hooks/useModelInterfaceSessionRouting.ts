@@ -72,6 +72,7 @@ type Params = {
   setSelectedSystemPrompt: (p: string | undefined) => void;
   setSelectedPersonalityName: (n: string | undefined) => void;
   setSelectedPersonalityIconUrl: (u: string | undefined) => void;
+  onClearDraftQueue?: () => void;
 };
 
 export function useModelInterfaceSessionRouting({
@@ -102,6 +103,7 @@ export function useModelInterfaceSessionRouting({
   setSelectedSystemPrompt,
   setSelectedPersonalityName,
   setSelectedPersonalityIconUrl,
+  onClearDraftQueue,
 }: Params) {
   const pendingScrollRestoreSessionIdRef = useRef<string | null>(null);
   const lastKnownConversationSignaturesRef = useRef<Record<string, string>>({});
@@ -173,6 +175,7 @@ export function useModelInterfaceSessionRouting({
     setStreaming(false);
     setUploading(false);
     setShowTyping(false);
+    onClearDraftQueue?.();
   }, [
     handleStop,
     setAttachmentIndex,
@@ -188,6 +191,7 @@ export function useModelInterfaceSessionRouting({
     setSelectedPersonalityName,
     setSelectedSystemPrompt,
     setTotalSpent,
+    onClearDraftQueue,
   ]);
 
   useEffect(() => {

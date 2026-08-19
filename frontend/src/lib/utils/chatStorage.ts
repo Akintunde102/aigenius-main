@@ -68,10 +68,19 @@ async function storeData<T>(storeName: string, data: T[]): Promise<void> {
         clearRequest.onerror = () => reject(clearRequest.error);
     });
 
-    // Add new data
+    // Add new data (skip rows missing the object store key path)
     for (const item of data) {
+        if (item == null || typeof item !== 'object') {
+            continue;
+        }
+        const record = item as Record<string, unknown>;
+        if (record.id == null || record.id === '') {
+            console.warn(`Skipping ${storeName} row without id`, item);
+            continue;
+        }
+
         await new Promise<void>((resolve, reject) => {
-            const addRequest = store.add(item);
+            const addRequest = store.put(item);
             addRequest.onsuccess = () => resolve();
             addRequest.onerror = () => reject(addRequest.error);
         });

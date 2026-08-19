@@ -5,6 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
+const { readPortsFile, DEFAULTS } = require('../../../scripts/dev-ports.cjs');
+
 function readUpstreamFromPackageEnv() {
   const fromEnv = process.env.AIGENIUS_UPSTREAM_API_URL?.trim();
   if (fromEnv) {
@@ -32,18 +34,25 @@ function readUpstreamFromPackageEnv() {
 }
 
 const upstream = readUpstreamFromPackageEnv();
+const ports = readPortsFile() || DEFAULTS;
+const sidecarPort = ports.sidecar ?? DEFAULTS.sidecar;
+const apiPort = ports.api ?? DEFAULTS.api;
+const miniServerRoot = `http://127.0.0.1:${sidecarPort}`;
+const apiRoot = upstream || `http://localhost:${apiPort}`;
+
 const env = {
   ...process.env,
   NODE_ENV: 'production',
-  NEXT_PUBLIC_NOBOX_API_ROOT_URL: 'http://127.0.0.1:8001',
+  NEXT_PUBLIC_NOBOX_API_ROOT_URL: miniServerRoot,
+  NEXT_PUBLIC_MINI_SERVER_PORT: String(sidecarPort),
+  NEXT_PUBLIC_DESKTOP_SIDECAR_PORT: String(sidecarPort),
+  NEXT_PUBLIC_DESKTOP_UPSTREAM_API_URL: apiRoot,
 };
 
-if (upstream) {
-  env.NEXT_PUBLIC_DESKTOP_UPSTREAM_API_URL = upstream;
-} else {
+if (!upstream) {
   console.warn(
-    '[desktop-renderer build] No AIGENIUS_UPSTREAM_API_URL in desktop/package.env — '
-      + 'gateway calls may 502 unless you set it before packaging.',
+    '[desktop-renderer build] No AIGENIUS_UPSTREAM_API_URL — using API port from .dev-ports.json:',
+    apiRoot,
   );
 }
 
