@@ -123,7 +123,7 @@ export const ModelSelectionGrid = React.memo(({
     enabled: scrollPaneHeight > 0,
   });
 
-  const slotPadding = isMobile ? "px-2" : "px-4";
+  const slotPadding = isMobile ? "px-1" : "px-2";
 
   if (totalModelCount === 0 && emptyState) {
     return <>{emptyState}</>;
@@ -158,11 +158,11 @@ export const ModelSelectionGrid = React.memo(({
                 height: MODEL_SECTION_HEADER_ROW_HEIGHT_PX,
                 transform: `translateY(${virtualRow.start}px)`,
               }}
-              className={slotPadding}
+              className={`${slotPadding} flex max-w-xl flex-col justify-start`}
             >
               <h3
-                className={`max-w-xl font-medium uppercase tracking-wider ${isMobile ? "text-[9px] pb-1.5 pt-0.5" : "text-[11px] pb-2 pt-1"}`}
-                style={{ color: "var(--modal-muted-fg)", opacity: 0.8 }}
+                className="sidebar-section-label pb-2.5 font-medium uppercase tracking-wider"
+                style={{ color: "var(--sidebar-muted-fg)" }}
               >
                 {row.title}
               </h3>

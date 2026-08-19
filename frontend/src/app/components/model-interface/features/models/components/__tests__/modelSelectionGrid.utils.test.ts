@@ -19,8 +19,8 @@ describe("estimateModelSelectionRowSize", () => {
     expect(estimateModelSelectionRowSize(1, rows, true)).toBe(
       MODEL_CARD_ROW_ESTIMATE_PX.mobile,
     );
-    expect(MODEL_CARD_ROW_ESTIMATE_PX.desktop).toBeLessThan(90);
-    expect(MODEL_CARD_ROW_ESTIMATE_PX.mobile).toBeLessThan(80);
+    expect(MODEL_CARD_ROW_ESTIMATE_PX.desktop).toBeLessThan(60);
+    expect(MODEL_CARD_ROW_ESTIMATE_PX.mobile).toBeLessThan(60);
   });
 
   it("uses the section header height for titles and missing rows", () => {
@@ -30,6 +30,10 @@ describe("estimateModelSelectionRowSize", () => {
     expect(estimateModelSelectionRowSize(99, rows, false)).toBe(
       MODEL_SECTION_HEADER_ROW_HEIGHT_PX,
     );
+  });
+
+  it("reserves space under section titles so the next card does not overlap", () => {
+    expect(MODEL_SECTION_HEADER_ROW_HEIGHT_PX).toBeGreaterThanOrEqual(44);
   });
 });
 

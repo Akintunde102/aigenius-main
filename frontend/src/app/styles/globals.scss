@@ -105,6 +105,10 @@
     --sidebar-row-hover: rgba(0, 0, 0, 0.05);
     --sidebar-row-active: rgba(0, 0, 0, 0.08);
 
+    --scrollbar-size: 4px;
+    --scrollbar-thumb: rgba(15, 23, 42, 0.22);
+    --scrollbar-thumb-hover: rgba(15, 23, 42, 0.38);
+
     --modal-overlay: rgba(15, 23, 42, 0.45);
     --modal-bg: #ffffff;
     --modal-bg-muted: #f8f9fa;
@@ -193,6 +197,9 @@
     --sidebar-row-hover: rgba(255, 255, 255, 0.06);
     --sidebar-row-active: rgba(255, 255, 255, 0.09);
 
+    --scrollbar-thumb: rgba(255, 255, 255, 0.18);
+    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
+
     --chat-canvas-bg: #0b0b0e;
     --chat-composer-bg: #18181c;
     --chat-composer-border: rgba(255, 255, 255, 0.08);
@@ -214,6 +221,43 @@
     --user-bubble-border: rgba(255, 255, 255, 0.1);
     --user-bubble-fg: #ececef;
   }
+
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+}
+
+/* Thin overlay scrollbars on every overflow pane — transparent track, no white gutter */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+  background: transparent;
+}
+
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track-piece,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+  box-shadow: none;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: none;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
 }
 
 @layer components {
@@ -335,25 +379,21 @@
     color: var(--modal-fg);
   }
 
-  /* Model picker rows — compact width, square corners, readable type scale */
+  /* Model picker rows — same surface language as the chat sidebar list */
   .app-model-card {
-    border: 1px solid color-mix(in srgb, var(--modal-border) 55%, transparent);
-    border-radius: 4px;
-    background: var(--surface-muted);
-    color: var(--modal-fg);
-    transition:
-      background-color 150ms ease,
-      border-color 150ms ease,
-      box-shadow 150ms ease;
+    position: relative;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--sidebar-fg);
+    transition: background-color 100ms ease-out;
 
     &:hover {
-      background: var(--surface-elevated);
-      border-color: color-mix(in srgb, var(--modal-border) 90%, transparent);
+      background: var(--sidebar-row-hover);
     }
 
     &:focus-visible {
       outline: none;
-      border-color: color-mix(in srgb, var(--chat-accent) 45%, var(--modal-border));
       box-shadow: 0 0 0 2px color-mix(in srgb, var(--chat-accent) 18%, transparent);
     }
 
@@ -362,34 +402,74 @@
     }
   }
 
+  .app-model-card--selected {
+    background: color-mix(in srgb, var(--sidebar-fg) 11%, transparent);
+
+    &:hover {
+      background: color-mix(in srgb, var(--sidebar-fg) 11%, transparent);
+    }
+  }
+
+  .app-model-card__layout {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2.25rem;
+  }
+
+  .app-model-card__tools-hint {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    display: flex;
+    color: var(--sidebar-muted-fg);
+    opacity: 0.28;
+    pointer-events: none;
+    line-height: 0;
+  }
+
+  .app-model-card__cost {
+    margin-top: 0.125rem;
+    font-size: 0.6875rem; /* 11px — same role as sidebar “1 chat” */
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.3;
+    color: var(--sidebar-muted-fg);
+  }
+
+  .app-model-card__actions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.125rem;
+  }
+
   .app-model-card__title {
-    font-size: 0.9375rem; /* 15px */
-    line-height: 1.35;
-    font-weight: 600;
-    color: var(--modal-fg);
+    flex: 1;
+    min-width: 0;
+    font-size: var(--sidebar-nav-size);
+    line-height: var(--sidebar-nav-leading);
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--sidebar-fg);
+  }
+
+  .app-model-card--selected .app-model-card__title {
+    font-weight: 500;
   }
 
   .app-model-card__desc {
     font-size: 0.8125rem; /* 13px */
     line-height: 1.55;
-    color: color-mix(in srgb, var(--modal-fg) 76%, var(--modal-muted-fg));
+    font-weight: 400;
+    color: color-mix(in srgb, var(--sidebar-fg) 76%, var(--sidebar-muted-fg));
   }
 
   .app-model-card__meta {
     font-size: 0.75rem; /* 12px */
     line-height: 1.4;
-    color: var(--modal-muted-fg);
-  }
-
-  .app-model-card--selected {
-    background: color-mix(in srgb, var(--chat-accent) 5%, var(--surface-muted));
-    border-color: color-mix(in srgb, var(--chat-accent) 24%, var(--modal-border));
-    box-shadow: inset 2px 0 0 color-mix(in srgb, var(--chat-accent) 70%, transparent);
-  }
-
-  .app-model-card--selected:hover {
-    background: color-mix(in srgb, var(--chat-accent) 7%, var(--surface-muted));
-    border-color: color-mix(in srgb, var(--chat-accent) 30%, var(--modal-border));
+    font-weight: 400;
+    color: var(--sidebar-muted-fg);
   }
 
   .app-chip {
@@ -775,31 +855,10 @@ blockquote {
   transition: translate 200ms ease;
 }
 
-/* Custom thin scrollbar for sidebars */
+/* Alias — global overlay scrollbar already applies; keep class for existing markup */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #CBD5E1 transparent;
-  /* slate-300 */
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #CBD5E1;
-  /* slate-300 */
-  border-radius: 9999px;
-  border: 2px solid transparent;
-}
-
-.custom-scrollbar:hover::-webkit-scrollbar-thumb {
-  background-color: #94A3B8;
-  /* slate-400 */
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 /* Composer quick-pick dropdown — hidden scrollbar (portaled; styles also injected in-component for Electron) */

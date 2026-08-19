@@ -195,29 +195,6 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
   50% { caret-color: transparent; }
 }
 
-.blinking-caret {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
-}
-
-.blinking-caret::-webkit-scrollbar {
-  width: 3px;
-}
-
-.blinking-caret::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.blinking-caret::-webkit-scrollbar-thumb {
-  background-color: rgba(148, 163, 184, 0.35);
-  border-radius: 999px;
-}
-
-.blinking-caret::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(148, 163, 184, 0.5);
-}
-
-/* Mobile keyboard handling for textarea */
 @media (max-width: 768px) {
   body.keyboard-open textarea.blinking-caret {
     // max-height: 120px !important;

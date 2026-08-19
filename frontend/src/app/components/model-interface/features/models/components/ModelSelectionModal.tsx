@@ -443,7 +443,11 @@ export const ModelSelectionModal = React.memo(({
 
         {/* Content */}
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-          <div className={`flex-1 min-h-0 overflow-y-auto ${isMobile ? "p-2 pb-4" : "p-4 pb-8"}`} ref={parentRef}>
+          <div
+            className={`flex-1 min-h-0 overflow-y-auto ${isMobile ? "p-2 pb-4" : "px-2 py-3 pb-8"}`}
+            style={{ background: "var(--sidebar-bg)" }}
+            ref={parentRef}
+          >
             <ModelSelectionGrid
               parentRef={parentRef}
               listKey={activeTab}

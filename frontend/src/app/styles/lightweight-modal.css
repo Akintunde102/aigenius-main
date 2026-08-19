@@ -43,7 +43,9 @@
 
 /* Minimal scrollbar styling */
 .lwm-content::-webkit-scrollbar {
-    width: 8px;
+    width: var(--scrollbar-size, 4px);
+    height: var(--scrollbar-size, 4px);
+    background: transparent;
 }
 
 .lwm-content::-webkit-scrollbar-track {
@@ -51,8 +53,8 @@
 }
 
 .lwm-content::-webkit-scrollbar-thumb {
-    background-color: #ccc;
-    border-radius: 4px;
+    background-color: var(--scrollbar-thumb, rgba(15, 23, 42, 0.22));
+    border-radius: 999px;
 }
 
 /* Performance-focused variants */
