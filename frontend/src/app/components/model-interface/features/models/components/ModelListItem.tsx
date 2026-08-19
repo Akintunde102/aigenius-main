@@ -3,6 +3,7 @@ import { FiTrash2, FiMapPin, FiInfo } from "react-icons/fi";
 import { FaRegImage, FaRegFileAlt, FaRegFileAudio, FaRegFileVideo } from "react-icons/fa";
 import { Model } from '@/app/components/model-interface/shared/types';
 import { getProvider, getProviderLabel } from '@/app/components/model-interface/shared/utils';
+import { formatUsdCostAsCredits } from '@/lib/credits';
 
 interface ModelListItemProps {
     model: Model;
@@ -33,15 +34,13 @@ export const ModelListItem: React.FC<ModelListItemProps> = React.memo(({
 }) => {
     const providerLabel = useMemo(() => getProviderLabel(getProvider(model.id)), [model.id]);
 
-    // Helper to get price in naira
-    const USD_TO_NGN = 1400;
-    const getNairaPrice = (model: Model) => {
+    const getCreditsPrice = (model: Model) => {
         if (!model.pricing) return null;
         const price = model.pricing.prompt || Object.values(model.pricing)[0];
         if (!price) return null;
         const num = parseFloat(price);
         if (isNaN(num)) return null;
-        return `₦${(num * USD_TO_NGN).toLocaleString()}`;
+        return formatUsdCostAsCredits(num);
     };
 
     // Helper to get modality icons
@@ -149,7 +148,7 @@ export const ModelListItem: React.FC<ModelListItemProps> = React.memo(({
                 <span>{model.context_length?.toLocaleString()} tokens</span>
                 {model.pricing && (
                     <span className="font-medium">
-                        {showNaira ? getNairaPrice(model) : (
+                        {showNaira ? getCreditsPrice(model) : (
                             isFinite(parseFloat(Object.values(model.pricing)[0]))
                                 ? `$${(parseFloat(Object.values(model.pricing)[0]) * 1000000).toFixed(2)}/1M`
                                 : `$${Object.values(model.pricing)[0]}`

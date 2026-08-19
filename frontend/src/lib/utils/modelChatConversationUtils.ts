@@ -36,11 +36,10 @@ import {
     needsSync
 } from './chatStorage';
 import { normalizeChatMessages, normalizeSessionMessages } from './messageContentUtils';
+import { formatCredits, usdCostToCredits } from '@/lib/credits';
 
 /** Some legacy rows used `_id` instead of `id`. */
 type SessionRow = ChatSession & { _id?: string };
-
-const USD_TO_NGN = 1400;
 
 function sessionRowId(session: SessionRow): string | undefined {
     return session.id ?? session._id;
@@ -433,12 +432,10 @@ export async function getExistingChatTitle(session: ChatMessage[]): Promise<stri
 export function formatNaira(usd: string): string {
     const num = parseFloat(usd);
     if (Number.isNaN(num)) return usd;
-    return `₦${(num * USD_TO_NGN).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    return formatCredits(usdCostToCredits(num), { compact: true });
 }
 
-export function formatCost(usd: number, showNaira: boolean): string {
-    return showNaira
-        ? `₦${(usd * USD_TO_NGN).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-        : `$${usd.toFixed(4)}`;
+export function formatCost(usd: number, _showNaira?: boolean): string {
+    return formatCredits(usdCostToCredits(usd), { compact: true });
 }
 

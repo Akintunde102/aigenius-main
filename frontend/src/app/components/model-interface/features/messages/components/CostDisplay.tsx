@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatUsdCostAsCredits } from '@/lib/credits';
 import { ChatMessage as ChatMessageType } from '@/app/components/model-interface/shared/types';
 import { timeAgo } from "@/lib/time-ago";
 import { formatTime } from '@/lib/utils/modelInterfaceUtils';
@@ -33,7 +34,7 @@ export const CostDisplay: React.FC<CostDisplayProps> = ({
         msg.role === 'assistant' ? (
             typeof msg.cost === 'number' ? (
                 <span className="font-medium text-[#2563EB]">
-                    ₦{(msg.cost * 1400).toFixed(2)}
+                    {formatUsdCostAsCredits(msg.cost)}
                     {modelRoundCount !== undefined && modelRoundCount > 1 && (
                         <span className="ml-1 font-normal text-[#94A3B8]">
                             · {modelRoundCount} calls

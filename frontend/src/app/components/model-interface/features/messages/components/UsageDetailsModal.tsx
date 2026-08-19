@@ -6,8 +6,7 @@ import { FiInfo, FiX } from 'react-icons/fi';
 import { ChatMessage as ChatMessageType } from '@/app/components/model-interface/shared/types';
 import { getModelRoundCount } from './usageMetrics.utils';
 
-/** Matches backend `USD_TO_NAIRA_RATE` for display (see OpenAI chat completions service). */
-const USD_TO_NAIRA_RATE = 1400;
+import { formatCredits, usdCostToCredits } from '@/lib/credits';
 
 function resolveToolUsdTotal(msg: ChatMessageType): number {
     const rows = msg.tool_usage_charges;
@@ -61,7 +60,7 @@ function CostPair({
     usd: number;
     nairaUsd?: number;
 }) {
-    const naira = (nairaUsd ?? usd) * USD_TO_NAIRA_RATE;
+    const credits = usdCostToCredits(nairaUsd ?? usd);
     return (
         <div className="overflow-hidden rounded-xl bg-slate-50/80 dark:bg-zinc-900/50">
             <div className="flex items-baseline justify-between gap-3 px-3 py-2">
@@ -71,9 +70,9 @@ function CostPair({
                 </span>
             </div>
             <div className="flex items-baseline justify-between gap-3 bg-white/50 px-3 py-2 dark:bg-zinc-800/30">
-                <span className="text-[11px] text-slate-500 dark:text-zinc-400">Naira</span>
+                <span className="text-[11px] text-slate-500 dark:text-zinc-400">Credits</span>
                 <span className="text-xs font-semibold tabular-nums text-slate-900 dark:text-zinc-100">
-                    ₦{naira.toFixed(2)}
+                    {formatCredits(credits, { compact: true })}
                 </span>
             </div>
         </div>
@@ -213,7 +212,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                                                         {row.tool}
                                                     </span>
                                                     <span className="tabular-nums">
-                                                        ₦{row.cost_naira.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                        {formatCredits(usdCostToCredits(row.cost_usd), { compact: true })}
                                                         <span className="text-slate-400 dark:text-zinc-600"> · </span>
                                                         ${row.cost_usd.toFixed(6)}
                                                     </span>

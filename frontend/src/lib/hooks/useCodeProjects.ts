@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { subscribeToTokenRefresh } from '@/lib/api/auth-client';
 import {
   createCodeProject,
   deleteCodeProject,
@@ -16,8 +17,10 @@ import {
   type ActiveCodeProjectSnapshot,
 } from '@/lib/code-projects/active-code-project';
 import { applyChatProjectScopeFromSession } from '@/lib/code-projects/apply-chat-project-scope';
+import { useAuthReady } from '@/lib/hooks/useAuthReady';
 
 export function useCodeProjects() {
+  const authReady = useAuthReady();
   const [projects, setProjects] = useState<CodeProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +40,20 @@ export function useCodeProjects() {
   }, []);
 
   useEffect(() => {
+    if (!authReady) {
+      return;
+    }
     void refresh();
-  }, [refresh]);
+  }, [authReady, refresh]);
+
+  useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+    return subscribeToTokenRefresh(() => {
+      void refresh();
+    });
+  }, [authReady, refresh]);
 
   useEffect(() => {
     setActiveProjectState(getActiveCodeProject());

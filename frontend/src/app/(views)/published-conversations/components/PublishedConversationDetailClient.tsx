@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { formatUsdCostAsCredits } from '@/lib/credits';
 import { FiUser, FiCalendar, FiArrowLeft, FiLoader, FiShare2, FiMessageSquare, FiTrash2, FiHome } from 'react-icons/fi';
 import { deletePublishedConversation, PublishedConversation } from '@/lib/calls/model-chat-conversation';
 import { getStoredUserDetailsSnapshot } from '@/lib/calls/get-logged-user-details';
@@ -99,12 +100,7 @@ export default function PublishedConversationDetailClient({ conversation }: Publ
         setImagePreview(url);
     };
 
-    const formatCost = (cost: number, showNaira: boolean) => {
-        if (showNaira) {
-            return `₦${(cost * 1400).toFixed(2)}`;
-        }
-        return `$${cost.toFixed(4)}`;
-    };
+    const formatCost = (cost: number, _showNaira?: boolean) => formatUsdCostAsCredits(cost);
 
     const renderMessage = (message: ChatMessageType, index: number) => {
         return (

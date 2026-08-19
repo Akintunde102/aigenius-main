@@ -1,6 +1,11 @@
 import { Model } from "@/app/components/model-interface/shared/types";
+import {
+  USD_TO_CREDITS_RATE,
+  formatCredits,
+  usdCostToCredits,
+} from "@/lib/credits";
 
-export const USD_TO_NGN = 1400;
+export const USD_TO_NGN = USD_TO_CREDITS_RATE;
 
 // Helper to get the lowest price for a model
 export function getModelLowestPrice(model: Model): number {
@@ -74,9 +79,10 @@ export function formatUSD(value: number): string {
 }
 
 export function formatNGN(valueUSD: number, withoutSymbol = false): string {
-  if (!isFinite(valueUSD)) return "₦0";
-  const naira = valueUSD * USD_TO_NGN;
-  return `${withoutSymbol ? "" : "₦"}${naira.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  if (!isFinite(valueUSD)) return withoutSymbol ? "0" : "0 credits";
+  const credits = usdCostToCredits(valueUSD);
+  const formatted = credits.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  return withoutSymbol ? formatted : `${formatted} credits`;
 }
 
 // Helper to check if model supports extra tooling (function calling, Gmail, Keep, etc.)

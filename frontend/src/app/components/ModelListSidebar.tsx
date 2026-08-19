@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { FiTrash2, FiMapPin, FiInfo } from "react-icons/fi";
 import { FaRegImage, FaRegFileAlt, FaRegFileAudio, FaRegFileVideo } from "react-icons/fa";
 import { getPinnedModels, setPinnedModels, getDeletedModels, setDeletedModels } from '@/lib/utils/modelInterfaceUtils';
+import { formatUsdCostAsCredits } from '@/lib/credits';
 
 interface Model {
     id: string;
@@ -109,11 +110,10 @@ const ModelListSidebar: React.FC<ModelListSidebarProps> = ({ models, selectedMod
         const val = model?.averageUserSpendPerRequest?.totalAverageCost;
         return typeof val === 'number' && isFinite(val) && val > 0 ? `$${val.toFixed(4)}` : null;
     }
-    function getAvgCostNGN(model: Model) {
+    function getAvgCostCredits(model: Model) {
         const usd = model?.averageUserSpendPerRequest?.totalAverageCost;
         if (!(typeof usd === 'number' && isFinite(usd) && usd > 0)) return null;
-        const naira = usd * 1400;
-        return `₦${naira.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+        return formatUsdCostAsCredits(usd);
     }
 
     // Helper to get modality icons
@@ -254,7 +254,7 @@ const ModelListSidebar: React.FC<ModelListSidebarProps> = ({ models, selectedMod
                                 {getModalityIcons(model.architecture?.output_modalities)}
                             </div>
                             <div className="text-xs text-cyan-700 mt-1 font-semibold">
-                                {getAvgCostUSD(model) ? `~${getAvgCostUSD(model)} · ${getAvgCostNGN(model)} credits/msg` : 'No price info'}
+                                {getAvgCostUSD(model) ? `~${getAvgCostUSD(model)} · ${getAvgCostCredits(model)} credits/msg` : 'No price info'}
                             </div>
                         </li>
                     ))}
