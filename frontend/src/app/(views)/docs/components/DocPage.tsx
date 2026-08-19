@@ -89,7 +89,7 @@ export function DocPage({
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
             On this page
           </p>
-          <div className="-mx-1 flex gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin]">
+          <div className="-mx-1 flex gap-2 overflow-x-auto overscroll-x-contain pb-1">
             {sections.map(({ id, title: sectionTitle }) => (
               <TocLink key={id} href={`#${id}`} compact>
                 {sectionTitle}
@@ -187,7 +187,7 @@ export function DocPage({
                     </div>
                   </div>
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-3 py-3 [scrollbar-color:rgba(120,113,108,0.32)_transparent] [scrollbar-width:thin]">
+                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-3 py-3">
                   <ul className="flex flex-col gap-1.5">
                     {sections.map(({ id, title: sectionTitle }) => (
                       <li key={id}>

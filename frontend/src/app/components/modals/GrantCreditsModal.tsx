@@ -358,7 +358,7 @@ const GrantCreditsModal: React.FC<GrantCreditsModalProps> = ({ onClose, onWallet
                                         <p className="text-[14px] font-medium" style={{ color: "var(--modal-muted-fg)" }}>No credits granted yet</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 pb-1 mt-1 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+                                    <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 pb-1 mt-1">
                                         {history.map((item) => (
                                             <div
                                                 key={item.id}

@@ -6,32 +6,47 @@ import {
   stubChatShell,
 } from './helpers/chatTestHarness';
 
-type DesktopToolCall = {
+type DesktopToolPayload = {
   tool: string;
-  arguments: Record<string, unknown>;
+  arguments: {
+    payload: {
+      model: string;
+      messages: Array<{ role: string; content: string }>;
+      stream: boolean;
+    };
+  };
+};
+
+type DesktopToolOptions = {
+  onShellStreamChunk?: (chunk: { stream: 'stdout' | 'stderr'; text: string }) => void;
 };
 
 type DesktopWindow = Omit<Window, 'aigeniusDesktop'> & {
-  __desktopToolCalls: DesktopToolCall[];
-  __chatRequests: number;
+  __desktopToolCalls: DesktopToolPayload[];
   aigeniusDesktop: {
     isDesktop: true;
-    runLocalDesktopTool: (payload: DesktopToolCall) => Promise<{ ok: true; result: string }>;
+    runLocalDesktopTool: (
+      payload: DesktopToolPayload,
+      options?: DesktopToolOptions,
+    ) => Promise<{ ok: true; result: string }>;
   };
 };
 
 test.describe('Desktop Ollama Cloud online', () => {
-  test('connects the relay before gateway chat for a cloud catalog model', async ({ page }) => {
+  test('chats an Ollama Cloud catalog model through the local desktop tool', async ({ page }) => {
     await seedAuthenticatedSession(page);
     await page.addInitScript(() => {
       const desktopWindow = window as unknown as DesktopWindow;
       desktopWindow.__desktopToolCalls = [];
-      desktopWindow.__chatRequests = 0;
       desktopWindow.aigeniusDesktop = {
         isDesktop: true,
-        runLocalDesktopTool: async (payload) => {
+        runLocalDesktopTool: async (payload, options) => {
           desktopWindow.__desktopToolCalls.push(payload);
-          return { ok: true, result: 'relay-connected' };
+          options?.onShellStreamChunk?.({
+            stream: 'stdout',
+            text: '{"message":{"content":"Cloud path OK"}}\n',
+          });
+          return { ok: true, result: 'Cloud path OK' };
         },
       };
     });
@@ -42,18 +57,8 @@ test.describe('Desktop Ollama Cloud online', () => {
       },
     });
 
-    let chatRequestCount = 0;
     await page.route('**/openai/v1/chat/completions**', async (route) => {
-      chatRequestCount += 1;
-      await route.fulfill({
-        status: 200,
-        contentType: 'text/event-stream',
-        headers: { 'X-Conversation-Id': 'conv-ollama-cloud-live-e2e' },
-        body: [
-          'data: {"choices":[{"delta":{"content":"Cloud path OK"}}]}\n\n',
-          'data: [DONE]\n\n',
-        ].join(''),
-      });
+      throw new Error(`Unexpected network chat request: ${route.request().url()}`);
     });
 
     await openChat(page);
@@ -63,9 +68,14 @@ test.describe('Desktop Ollama Cloud online', () => {
 
     const toolCalls = await page.evaluate(() => (window as unknown as DesktopWindow).__desktopToolCalls);
     expect(toolCalls[0]).toEqual({
-      tool: 'local_ollama_connect',
-      arguments: { token: expect.any(String) },
+      tool: 'local_ollama_chat',
+      arguments: {
+        payload: {
+          model: 'glm-5.1:cloud',
+          messages: [{ role: 'user', content: 'Hello cloud' }],
+          stream: true,
+        },
+      },
     });
-    expect(chatRequestCount).toBeGreaterThan(0);
   });
 });

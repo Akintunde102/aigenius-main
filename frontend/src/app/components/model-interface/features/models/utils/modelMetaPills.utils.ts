@@ -12,6 +12,19 @@ export type ModelMetaPill = {
   tone?: "default" | "cost" | "release";
 };
 
+export type ModelCardCostSlot = {
+  label: string;
+  isPaid: boolean;
+};
+
+/** Layout slots for the picker card: identity left, tools center, price/actions right. */
+export type ModelCardSlots = {
+  provider?: string;
+  cost?: ModelCardCostSlot;
+  release?: string;
+  supporting: ModelMetaPill[];
+};
+
 export function formatContextLength(n: number): string {
   if (!Number.isFinite(n) || n <= 0) return "";
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M ctx`;
@@ -45,43 +58,58 @@ function collectNonTextModalities(model: Model): string[] {
   return labels.slice(0, 3);
 }
 
+export function buildModelCardSlots(
+  model: Model,
+  averageCost: number,
+): ModelCardSlots {
+  const provider = getProvider(model.id);
+  const providerLabel = getProviderLabel(provider);
+
+  const supporting: ModelMetaPill[] = [];
+  collectNonTextModalities(model).forEach((label, index) => {
+    supporting.push({ key: `modality-${index}-${label}`, label });
+  });
+
+  let cost: ModelCardCostSlot | undefined;
+  if (Number.isFinite(averageCost)) {
+    cost =
+      averageCost > 0
+        ? {
+            label: `${formatNGN(averageCost, true)} / msg`,
+            isPaid: true,
+          }
+        : { label: "Free", isPaid: false };
+  }
+
+  return {
+    provider:
+      providerLabel && provider !== "openrouter" ? providerLabel : undefined,
+    cost,
+    release: formatReleaseDate(model.created) || undefined,
+    supporting,
+  };
+}
+
 export function buildModelMetaPills(
   model: Model,
   averageCost: number,
 ): ModelMetaPill[] {
+  const slots = buildModelCardSlots(model, averageCost);
   const pills: ModelMetaPill[] = [];
 
-  const provider = getProvider(model.id);
-  const providerLabel = getProviderLabel(provider);
-  if (providerLabel && provider !== "openrouter") {
-    pills.push({ key: "provider", label: providerLabel });
+  if (slots.release) {
+    pills.push({ key: "release", label: slots.release, tone: "release" });
   }
-
-  const releaseLabel = formatReleaseDate(model.created);
-  if (releaseLabel) {
-    pills.push({ key: "release", label: releaseLabel, tone: "release" });
+  pills.push(...slots.supporting);
+  if (slots.cost) {
+    pills.push({
+      key: "cost",
+      label: slots.cost.isPaid
+        ? `~${formatNGN(averageCost, true)} credits/msg`
+        : slots.cost.label,
+      tone: "cost",
+    });
   }
-
-  const contextLabel = formatContextLength(model.context_length);
-  if (contextLabel) {
-    pills.push({ key: "context", label: contextLabel });
-  }
-
-  if (Number.isFinite(averageCost)) {
-    if (averageCost > 0) {
-      pills.push({
-        key: "cost",
-        label: `~${formatNGN(averageCost, true)} credits/msg`,
-        tone: "cost",
-      });
-    } else {
-      pills.push({ key: "cost", label: "Free", tone: "cost" });
-    }
-  }
-
-  collectNonTextModalities(model).forEach((label, index) => {
-    pills.push({ key: `modality-${index}-${label}`, label });
-  });
 
   return pills;
 }

@@ -231,9 +231,8 @@
 /* Workflow-wide custom scrollbar — thin, dark, color-matched to the dark sidebar */
 .workflow-scroll {
     color-scheme: dark;
-    /* tells WebKit/Chrome to use the dark scrollbar — prevents white track */
     scrollbar-width: thin;
-    scrollbar-color: rgba(100, 116, 139, 0.45) rgba(20, 20, 22, 0.0);
+    scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 .workflow-scroll::-webkit-scrollbar {
@@ -243,8 +242,7 @@
 }
 
 .workflow-scroll::-webkit-scrollbar-track {
-    background: rgba(20, 20, 22, 0.55);
-    border-radius: 0;
+    background: transparent;
 }
 
 .workflow-scroll::-webkit-scrollbar-thumb {
@@ -286,7 +284,7 @@
 .workflow-header-scroll {
     color-scheme: dark;
     scrollbar-width: thin;
-    scrollbar-color: rgba(100, 116, 139, 0.45) rgba(20, 20, 22, 0.0);
+    scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 .workflow-header-scroll::-webkit-scrollbar {
@@ -296,8 +294,7 @@
 }
 
 .workflow-header-scroll::-webkit-scrollbar-track {
-    background: rgba(20, 20, 22, 0.55);
-    border-radius: 0;
+    background: transparent;
 }
 
 .workflow-header-scroll::-webkit-scrollbar-thumb {
