@@ -39,4 +39,29 @@ describe("useModelSelection main split", () => {
       "other-b",
     ]);
   });
+
+  it("shows curated defaults on Quick picks when saved list is empty", () => {
+    const catalog: Model[] = [
+      makeModel("openrouter/free"),
+      makeModel("openai/gpt-4o"),
+      makeModel("custom/model"),
+    ];
+
+    const { result } = renderHook(() =>
+      useModelSelection({
+        models: catalog,
+        pinnedModelIds: [],
+        search: "custom",
+      }),
+    );
+
+    act(() => {
+      result.current.setActiveTab("favorites");
+    });
+
+    expect(result.current.favoritesSorted.map((m) => m.id)).toEqual([
+      "openrouter/free",
+      "openai/gpt-4o",
+    ]);
+  });
 });

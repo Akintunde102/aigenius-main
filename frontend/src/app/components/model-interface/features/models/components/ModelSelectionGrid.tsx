@@ -1,7 +1,13 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Model } from "@/app/components/model-interface/shared/types";
 import { ModelSelectionCard } from "./ModelSelectionCard";
+import {
+  MODEL_CARD_GAP_PX,
+  MODEL_SECTION_HEADER_ROW_HEIGHT_PX,
+  estimateModelSelectionRowSize,
+  getModelSelectionRowKey,
+} from "./modelSelectionGrid.utils";
 
 export interface ModelSelectionSection {
   title: string;
@@ -11,9 +17,6 @@ export interface ModelSelectionSection {
 type VirtualRow =
   | { type: "header"; title: string }
   | { type: "model"; model: Model };
-
-const CARD_GAP_PX = 12;
-const HEADER_ROW_HEIGHT_PX = 40;
 
 interface ModelSelectionGridProps {
   parentRef: React.RefObject<HTMLDivElement | null>;
@@ -48,7 +51,7 @@ export const ModelSelectionGrid = React.memo(({
   handleShowModelDetails,
   isSortingByReleaseDate,
 }: ModelSelectionGridProps) => {
-  const modelRowEstimate = isMobile ? 96 : 108;
+  const [scrollPaneHeight, setScrollPaneHeight] = useState(0);
 
   const virtualRows = useMemo((): VirtualRow[] => {
     const appendModels = (rows: VirtualRow[], list: Model[]) => {
@@ -79,44 +82,48 @@ export const ModelSelectionGrid = React.memo(({
     : models.length;
 
   const estimateSize = useCallback(
-    (index: number) => {
-      const row = virtualRows[index];
-      if (!row) return modelRowEstimate;
-      if (row.type === "header") return HEADER_ROW_HEIGHT_PX;
-      return modelRowEstimate + CARD_GAP_PX;
-    },
-    [virtualRows, modelRowEstimate],
+    (index: number) => estimateModelSelectionRowSize(index, virtualRows, isMobile),
+    [virtualRows, isMobile],
   );
+
+  const getItemKey = useCallback(
+    (index: number) => getModelSelectionRowKey(index, virtualRows),
+    [virtualRows],
+  );
+
+  // Portals (especially Electron) can mount before the flex pane has a real height.
+  // Enable virtualization only once the scroll box is measurable so we don't lock in
+  // empty ranges. Do not call virtualizer.measure() here — it wipes item sizes back
+  // to estimates and recreates the oversized gaps.
+  useLayoutEffect(() => {
+    const scrollEl = parentRef.current;
+    if (!scrollEl) return;
+
+    const syncHeight = () => {
+      setScrollPaneHeight(scrollEl.clientHeight);
+    };
+    syncHeight();
+    const frame = requestAnimationFrame(syncHeight);
+
+    const observer = new ResizeObserver(syncHeight);
+    observer.observe(scrollEl);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [parentRef, listKey]);
 
   const virtualizer = useVirtualizer({
     count: virtualRows.length,
     getScrollElement: () => parentRef.current,
     estimateSize,
+    getItemKey,
     overscan: 5,
+    gap: MODEL_CARD_GAP_PX,
+    enabled: scrollPaneHeight > 0,
   });
 
-  // Modal portals often mount before the scroll pane has a stable height (especially in
-  // Electron). Without a remeasure, the virtualizer returns zero rows until a tab switch.
-  useLayoutEffect(() => {
-    virtualizer.measure();
-    const frame = requestAnimationFrame(() => {
-      virtualizer.measure();
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [listKey, virtualRows.length, virtualizer]);
-
-  useEffect(() => {
-    const scrollEl = parentRef.current;
-    if (!scrollEl) return;
-
-    const observer = new ResizeObserver(() => {
-      requestAnimationFrame(() => virtualizer.measure());
-    });
-    observer.observe(scrollEl);
-    return () => observer.disconnect();
-  }, [parentRef, virtualizer, listKey]);
-
-  const slotPadding = isMobile ? "px-2" : "px-4";
+  const slotPadding = isMobile ? "px-1" : "px-2";
 
   if (totalModelCount === 0 && emptyState) {
     return <>{emptyState}</>;
@@ -148,14 +155,14 @@ export const ModelSelectionGrid = React.memo(({
                 top: 0,
                 left: 0,
                 width: "100%",
-                height: HEADER_ROW_HEIGHT_PX,
+                height: MODEL_SECTION_HEADER_ROW_HEIGHT_PX,
                 transform: `translateY(${virtualRow.start}px)`,
               }}
-              className={slotPadding}
+              className={`${slotPadding} flex max-w-xl flex-col justify-start`}
             >
               <h3
-                className={`max-w-xl font-semibold tracking-tight ${isMobile ? "text-[10px] pb-2 pt-1" : "text-xs pb-3 pt-2"}`}
-                style={{ color: "var(--modal-muted-fg)" }}
+                className="sidebar-section-label pb-2.5 font-medium uppercase tracking-wider"
+                style={{ color: "var(--sidebar-muted-fg)" }}
               >
                 {row.title}
               </h3>
@@ -174,7 +181,6 @@ export const ModelSelectionGrid = React.memo(({
               left: 0,
               width: "100%",
               transform: `translateY(${virtualRow.start}px)`,
-              paddingBottom: CARD_GAP_PX,
             }}
             className={slotPadding}
           >

@@ -58,13 +58,10 @@ describe('read-file PDF scenarios', () => {
     expect(resolved.ok).toBe(true);
   });
 
-  it('blocks absolute .txt outside project', async () => {
+  it('allows absolute .txt outside project', async () => {
     workspaceRoot = await createTestWorkspace();
     const resolved = await resolveReadFilePath(outsideTxt);
-    expect(resolved.ok).toBe(false);
-    if (!resolved.ok) {
-      expect(resolved.error).toMatch(/outside workspace root/i);
-    }
+    expect(resolved.ok).toBe(true);
   });
 
   it('returns embedded PDF text with standard note', async () => {

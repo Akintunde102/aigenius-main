@@ -6,6 +6,7 @@ export type CodeProject = {
   userId: string;
   name: string;
   rootPath: string;
+  description?: string | null;
   rules: string | null;
   createdAt: string;
   updatedAt: string;
@@ -14,6 +15,7 @@ export type CodeProject = {
 export type CreateCodeProjectInput = {
   name: string;
   rootPath: string;
+  description?: string | null;
   rules?: string | null;
 };
 

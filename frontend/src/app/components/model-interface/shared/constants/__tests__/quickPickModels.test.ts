@@ -25,7 +25,7 @@ describe("quickPickModels", () => {
     expect(ids).toContain("openai/gpt-5-mini");
     expect(ids).toContain("anthropic/claude-sonnet-4.5");
     expect(ids).toContain("other/model");
-    expect(ids.length).toBeLessThanOrEqual(10);
+    expect(ids.length).toBeLessThanOrEqual(6);
   });
 
   it("resolveDefaultQuickPickModelIds skips unavailable preferred ids", () => {

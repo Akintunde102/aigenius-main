@@ -1,9 +1,8 @@
 /**
  * Human-readable tool labels + live activity hints for the chat UI.
- *
- * Keep in sync with: backend/src/shared/tool-display-names.ts
- * (Next.js must compile this from inside `frontend/src`; it cannot import TS from `backend/` without extra webpack setup.)
+ * AUTO-SYNCED from packages/contracts — run: npm run contracts:sync
  */
+
 export const TOOL_DISPLAY_NAMES: Record<string, string> = {
     gmail_list_messages: 'List Emails',
     gmail_get_message: 'Read Email',
@@ -22,7 +21,6 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
     serper_google_search: 'Google search',
     get_wallet_balance: 'Wallet balance',
     workflow_agent: 'Workflow agent',
-    // Keep key in sync with backend `CALL_MODEL_FUNCTION_NAME` ('call_model').
     call_model: 'Call model (non-streaming)',
     workflow_intent: 'Workflow agent',
     workflow_inner_create: 'Create workflow (agent)',
@@ -77,10 +75,6 @@ function humanizeToolName(toolName: string): string {
     return `${firecrawlPrefix}${label}${desktopSuffix}`;
 }
 
-/**
- * Short live status line when tool logs are sparse (shown under the tool header while running).
- * Tools can rely on stream `log` events instead; this fills gaps for common cases.
- */
 export function getToolActivityHint(
     tool: string,
     args: Record<string, unknown> | undefined,

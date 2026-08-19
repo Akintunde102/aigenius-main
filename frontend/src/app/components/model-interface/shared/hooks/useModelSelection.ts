@@ -7,6 +7,7 @@ import {
   ModelOrderBy,
   ModelOrderDir,
 } from "@/app/components/model-interface/shared/utils";
+import { mergeQuickPickIdsForDisplay } from "@/app/components/model-interface/shared/constants/quickPickModels";
 
 interface UseModelSelectionProps {
   models: Model[];
@@ -126,24 +127,20 @@ export function useModelSelection({
     return m;
   }, [models]);
 
-  // Favorites: pinned models filtered and sorted
+  // Quick picks: same effective list as the composer dropdown (defaults + saved).
+  // Search and All Models filters are intentionally skipped — the list is short and
+  // a lingering search from another tab would hide every pick.
   const favoritesSorted = useMemo(() => {
     if (activeTab !== "favorites") return [];
 
-    // Filter favorites by unified deferred search term
-    const baseFavorites = models.filter((m) => pinnedModelIds.includes(m.id));
+    const effectiveIds = mergeQuickPickIdsForDisplay(models, pinnedModelIds);
+    const byId = new Map(models.map((m) => [m.id, m]));
+    const ordered = effectiveIds
+      .map((id) => byId.get(id))
+      .filter((m): m is Model => m != null);
 
-    // Apply global filters (Provider, Web Search, Image) to favorites as well
-    const filteredFavorites = filterModelsNew(
-      baseFavorites,
-      deferredSearch,
-      selectedProviders,
-      imageFilterOnly,
-      showWebSearch
-    );
-
-    return sortModelsNew(filteredFavorites, orderBy, orderDir);
-  }, [models, pinnedModelIds, deferredSearch, selectedProviders, showWebSearch, imageFilterOnly, orderBy, orderDir, activeTab]);
+    return sortModelsNew(ordered, orderBy, orderDir);
+  }, [models, pinnedModelIds, orderBy, orderDir, activeTab]);
 
   // Ollama Models: filtered and sorted locally
   const ollamaModelsSorted = useMemo(() => {

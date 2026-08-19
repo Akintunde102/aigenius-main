@@ -206,10 +206,6 @@ function normalizeOllamaMessages(
   }));
 }
 
-function isBrowserOffline(): boolean {
-  return typeof navigator !== 'undefined' && navigator.onLine === false;
-}
-
 async function getDesktopBridgeForOllama(): Promise<AigeniusDesktopBridge & { runLocalDesktopTool: NonNullable<AigeniusDesktopBridge['runLocalDesktopTool']> }> {
   let desktop = getRunnableLocalDesktopBridge() as AigeniusDesktopBridge | undefined;
   if (!desktop?.runLocalDesktopTool) {
@@ -224,21 +220,30 @@ async function getDesktopBridgeForOllama(): Promise<AigeniusDesktopBridge & { ru
   return desktop as AigeniusDesktopBridge & { runLocalDesktopTool: NonNullable<AigeniusDesktopBridge['runLocalDesktopTool']> };
 }
 
-async function connectDesktopOllamaRelay(desktop: AigeniusDesktopBridge): Promise<void> {
-  const token = getAccessToken();
-  if (!token) {
-    throw new Error(ERROR_MESSAGES.MISSING_JWT_TOKEN);
-  }
-  if (!desktop.runLocalDesktopTool) {
-    throw new Error('Local tool execution bridge is not available');
-  }
-  const out = await desktop.runLocalDesktopTool({
-    tool: 'local_ollama_connect',
-    arguments: { token },
-  });
-  if (!out.ok) {
-    throw new Error(out.error || 'Failed to connect Ollama relay');
-  }
+function buildLocalOllamaChatArguments(
+  model: string,
+  messages: ChatMessageInput[] | undefined,
+  stream: boolean,
+): {
+  tool: 'local_ollama_chat';
+  arguments: {
+    payload: {
+      model: string;
+      messages: Array<{ role: string; content: string }>;
+      stream: boolean;
+    };
+  };
+} {
+  return {
+    tool: 'local_ollama_chat',
+    arguments: {
+      payload: {
+        model: toOllamaWireModel(model),
+        messages: normalizeOllamaMessages(messages),
+        stream,
+      },
+    },
+  };
 }
 
 function parseOllamaStreamLine(line: string): string | null {
@@ -1119,29 +1124,19 @@ export const _accessModel = async <T>(args: AccessModelArgs<T> & { signal?: Abor
   try {
     if (isOllamaModelId(model)) {
       const desktop = await getDesktopBridgeForOllama();
-      if (isBrowserOffline()) {
-        const out = await desktop.runLocalDesktopTool({
-          tool: 'local_ollama_chat',
-          arguments: {
-            payload: {
-              model: toOllamaWireModel(model),
-              messages: normalizeOllamaMessages(body.messages as ChatMessageInput[]),
-              stream: false,
-            },
-          },
-        });
-        if (!out.ok) {
-          throw new Error(out.error || 'Local Ollama chat failed');
-        }
-        return {
-          content: out.result,
-          usage: OLLAMA_LOCAL_USAGE,
-          cost: 0,
-          token: config.token,
-          user: undefined as T,
-        };
+      const out = await desktop.runLocalDesktopTool(
+        buildLocalOllamaChatArguments(model, body.messages as ChatMessageInput[], false),
+      );
+      if (!out.ok) {
+        throw new Error(out.error || 'Local Ollama chat failed');
       }
-      await connectDesktopOllamaRelay(desktop);
+      return {
+        content: out.result,
+        usage: OLLAMA_LOCAL_USAGE,
+        cost: 0,
+        token: config.token,
+        user: undefined as T,
+      };
     }
 
     const requestBody = {
@@ -1288,35 +1283,23 @@ export const accessModelStream = async <T>(args: AccessModelArgs<T> & {
 
   if (isOllamaModelId(model)) {
     const desktop = await getDesktopBridgeForOllama();
-    if (isBrowserOffline()) {
-      const streamParser = createOllamaStreamChunkParser((content) => {
-        onData(content);
-      });
-      const out = await desktop.runLocalDesktopTool(
-        {
-          tool: 'local_ollama_chat',
-          arguments: {
-            payload: {
-              model: toOllamaWireModel(model),
-              messages: normalizeOllamaMessages(body.messages as ChatMessageInput[]),
-              stream: true,
-            },
-          },
-        },
-        { onShellStreamChunk: streamParser.onShellStreamChunk },
-      );
-      streamParser.flush();
-      if (!out.ok) {
-        throw new Error(out.error || 'Local Ollama chat failed');
-      }
-      const finalResult: StreamingResult = {
-        usage: OLLAMA_LOCAL_USAGE,
-        cost: 0,
-      };
-      onComplete?.(finalResult);
-      return finalResult;
+    const streamParser = createOllamaStreamChunkParser((content) => {
+      onData(content);
+    });
+    const out = await desktop.runLocalDesktopTool(
+      buildLocalOllamaChatArguments(model, body.messages as ChatMessageInput[], true),
+      { onShellStreamChunk: streamParser.onShellStreamChunk },
+    );
+    streamParser.flush();
+    if (!out.ok) {
+      throw new Error(out.error || 'Local Ollama chat failed');
     }
-    await connectDesktopOllamaRelay(desktop);
+    const finalResult: StreamingResult = {
+      usage: OLLAMA_LOCAL_USAGE,
+      cost: 0,
+    };
+    onComplete?.(finalResult);
+    return finalResult;
   }
 
   const requestBody = {

@@ -4,6 +4,7 @@ import {
   ChatContainer,
 } from "../features";
 import type { ChatMessage, ChatSession, Model, PendingOrphanReply } from "../shared/types";
+import type { QueuedComposerMessage } from "../features/chat/hooks/messageSendQueue.types";
 import type { ChatContainerHandle } from "../features/chat/components/ChatContainer";
 import type { FailedUploadEntry } from "../features/file-upload/hooks/useFileUpload";
 import type { AudioStatus } from "../features/chat/hooks/audioMode.utils";
@@ -17,6 +18,12 @@ type MessageHandlerProps = {
   handleDeleteMessage: (idx: number) => void;
   handleDeleteMessageById: (id: string) => void;
   handleReplayMessage: (message: ChatMessage, idx: number) => void;
+  editingIdx: number | null;
+  editDraft: import("../features/messages/utils/messageEdit.utils").MessageEditDraft | null;
+  handleStartEditMessage: (message: ChatMessage, idx: number) => void;
+  handleCancelEditMessage: () => void;
+  handleUpdateEditDraft: (draft: import("../features/messages/utils/messageEdit.utils").MessageEditDraft) => void;
+  handleCommitEditMessage: (idx: number) => void;
 };
 
 type Props = {
@@ -33,6 +40,7 @@ type Props = {
   chatContainerRef: RefObject<ChatContainerHandle | null>;
   viewSessionId?: string | null;
   updateSessionMessages?: (sessionId: string, messages: ChatMessage[]) => void;
+  persistSessionMessages?: (messages: ChatMessage[]) => void | Promise<void>;
   setLoading?: (loading: boolean) => void;
   selectedModel: Model | null;
   models: Model[];
@@ -101,6 +109,9 @@ type Props = {
   /** Controlled value for the chat textarea — drives STT text injection. */
   inputValue?: string;
   onInputChange?: (value: string) => void;
+  queuedMessages?: QueuedComposerMessage[];
+  onQueueMessage?: (message: string) => void;
+  onRemoveQueuedMessage?: (messageId: string) => void;
   onMiniModeToggle?: () => void;
   isMiniMode?: boolean;
   analyzer?: AnalyserNode | null;
@@ -115,6 +126,7 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   chatContainerRef,
   viewSessionId = null,
   updateSessionMessages,
+  persistSessionMessages,
   setLoading,
   selectedModel,
   models,
@@ -176,6 +188,9 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   audioVolume,
   inputValue,
   onInputChange,
+  queuedMessages,
+  onQueueMessage,
+  onRemoveQueuedMessage,
   onMiniModeToggle,
   isMiniMode,
   analyzer = null,
@@ -212,13 +227,22 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
       chatEndRef={chatEndRef as React.RefObject<HTMLDivElement>}
       viewSessionId={viewSessionId}
       updateSessionMessages={updateSessionMessages}
+      persistSessionMessages={persistSessionMessages}
       setLoading={setLoading}
       handleStop={handleStop}
+      loading={loading}
+      streaming={streaming}
     >
       {({
         handleDeleteMessage,
         handleDeleteMessageById,
         handleReplayMessage,
+        editingIdx,
+        editDraft,
+        handleStartEditMessage,
+        handleCancelEditMessage,
+        handleUpdateEditDraft,
+        handleCommitEditMessage,
       }: MessageHandlerProps) => (
         <ChatContainer
           ref={chatContainerRef as React.Ref<ChatContainerHandle>}
@@ -239,6 +263,13 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           onDeleteMessageById={handleDeleteMessageById}
           onSaveMessage={handleSave}
           onReplayMessage={handleReplayMessage}
+          editingIdx={editingIdx}
+          editDraft={editDraft}
+          onStartEditMessage={handleStartEditMessage}
+          onCancelEditMessage={handleCancelEditMessage}
+          onUpdateEditDraft={handleUpdateEditDraft}
+          onCommitEditMessage={handleCommitEditMessage}
+          supportsFileUpload={supportsImageUpload || false}
           currentSessionId={currentSessionId}
           onSendMessage={handleChatBoxSend}
           onFileUpload={handleFileUpload}
@@ -294,6 +325,9 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           audioVolume={audioVolume}
           inputValue={inputValue}
           onInputChange={onInputChange}
+          queuedMessages={queuedMessages}
+          onQueueMessage={onQueueMessage}
+          onRemoveQueuedMessage={onRemoveQueuedMessage}
           onMiniModeToggle={onMiniModeToggle}
           isMiniMode={isMiniMode}
           analyzer={analyzer}

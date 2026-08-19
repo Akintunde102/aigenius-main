@@ -117,39 +117,6 @@ const SidebarContent = React.memo<SidebarContentProps>(({
                     }}
                 />
             </div>
-
-            {/*
-             * Global: scrollbar pseudos must target the element that owns `conversation-list-scroll`.
-             * Scoped styled-jsx on a parent (e.g. ChatHistorySidebar) does NOT apply here — that
-             * caused the default white track. See styled-jsx scoping / child components.
-             */}
-            <style jsx global>{`
-                .conversation-list-scroll {
-                    scrollbar-width: thin;
-                    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
-                    color-scheme: light dark;
-                }
-                .conversation-list-scroll::-webkit-scrollbar {
-                    width: 4px;
-                    height: 4px;
-                    background: transparent;
-                }
-                .conversation-list-scroll::-webkit-scrollbar-track,
-                .conversation-list-scroll::-webkit-scrollbar-track-piece,
-                .conversation-list-scroll::-webkit-scrollbar-corner {
-                    background-color: transparent !important;
-                    background: transparent !important;
-                    box-shadow: none !important;
-                }
-                .conversation-list-scroll::-webkit-scrollbar-thumb {
-                    border-radius: 999px;
-                    background-color: rgba(100, 116, 139, 0.3);
-                    min-height: 28px;
-                }
-                .conversation-list-scroll::-webkit-scrollbar-thumb:hover {
-                    background-color: rgba(100, 116, 139, 0.5);
-                }
-            `}</style>
         </div>
     );
 });

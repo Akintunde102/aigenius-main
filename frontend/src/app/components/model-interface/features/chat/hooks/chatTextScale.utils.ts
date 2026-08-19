@@ -22,7 +22,8 @@ export function applyChatTextScale(element: HTMLElement, scale: number): number 
     "--chat-body-size",
     chatTextScaleToBodySizeRem(clamped),
   );
-  element.style.zoom = String(clamped);
+  const style = element.style as CSSStyleDeclaration & { zoom: string };
+  style.zoom = String(clamped);
   element.dataset.chatTextScale = String(clamped);
   return clamped;
 }

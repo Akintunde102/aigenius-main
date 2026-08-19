@@ -36,15 +36,10 @@ import useTokenHandler from "@/lib/hooks/useTokenHandler";
 import { useWalletTopUpReturn } from "@/lib/hooks/useWalletTopUpReturn";
 import { useWalletManagement } from "./features/chat/hooks";
 import { useKeyboardShortcuts } from "./shared/hooks";
-import { publishConversation } from "@/lib/calls/model-chat-conversation";
-import { ChatMessage, ChatSession, Model } from "./shared/types";
-import { normalizeWalletForGating } from "./features/chat/hooks";
+import { ChatMessage, Model } from "./shared/types";
 import { ERROR_MESSAGES } from "./features/chat/hooks/chatOperations.constants";
 import { clearAuthSession } from "@/lib/utils/auth-session";
 import type { ChatContainerHandle } from "./features/chat/components/ChatContainer";
-import {
-  ModelPickResolver,
-} from "./ModelInterface.helpers";
 import { buildConversationMessageSignature } from "@/lib/utils/conversationScrollMemory";
 import { useModelInterfacePersonality } from "./hooks/useModelInterfacePersonality";
 import { useModelInterfaceAttachments } from "./hooks/useModelInterfaceAttachments";
@@ -62,26 +57,19 @@ import { ModelInterfaceChrome } from "./components/ModelInterfaceChrome";
 import type { PublishState } from "./ModelInterface.types";
 import { chatCanvasSurfaceStyle } from "./chatSurfaceStyle";
 import { workflowShellBgStyle } from "@/app/components/workflows/workflow-info";
+import { FEATURE_FLAGS } from "@/lib/config/features";
 import { openWorkflow } from "@/lib/utils/open-workflow";
 import { ChatShellLoadingSkeleton } from "@/app/components/ChatShellLoadingSkeleton";
 import { useModelInterfaceSidebarActions } from "./hooks/useModelInterfaceSidebarActions";
 import { useModelInterfaceLifecycle } from "./hooks/useModelInterfaceLifecycle";
 import { useModelInterfacePersonalitySelection } from "./hooks/useModelInterfacePersonalitySelection";
+import { useModelInterfaceModelPick } from "./hooks/useModelInterfaceModelPick";
+import { useModelInterfacePublishFlow } from "./hooks/useModelInterfacePublishFlow";
+import { useModelInterfaceChatBoxSend } from "./hooks/useModelInterfaceChatBoxSend";
+import { getSidebarUserInitials } from "./utils/sidebarUserInitials.utils";
 
 interface ModelInterfaceProps {
   routeConversationId?: string | null;
-}
-
-function getSidebarUserInitials(user: unknown): string {
-  if (!user || typeof user !== "object") return "U";
-  const u = user as Record<string, unknown>;
-  const fn = typeof u.firstName === "string" ? u.firstName.trim() : "";
-  const ln = typeof u.lastName === "string" ? u.lastName.trim() : "";
-  if (fn && ln) return `${fn[0]!}${ln[0]!}`.toUpperCase();
-  if (fn) return fn.slice(0, 2).toUpperCase();
-  const email = typeof u.email === "string" ? u.email.trim() : "";
-  if (email) return email.slice(0, 2).toUpperCase();
-  return "U";
 }
 
 export default function ModelInterface({ routeConversationId = null }: ModelInterfaceProps) {
@@ -143,14 +131,14 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     selectedPersonalityIconUrl,
     setSelectedPersonalityIconUrl,
   } = personalityState;
-  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, showTyping, setShowTyping, showScrollToBottom } = chatState;
+  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, persistSessionMessages, showTyping, setShowTyping, showScrollToBottom, queuedMessages, handleQueueMessage, removeQueuedMessage } = chatState;
   const { loading, setLoading, error, setError, streaming, setStreaming, streamingEnabled, setStreamingEnabled, imagePreview, setImagePreview, uploading, setUploading, uploadProgress, setUploadProgress, dragActive, setDragActive, showCosts, showNaira, showSaved, setShowSaved, setTotalSpent, optimizationMessage } = uiState;
   const { showModelDetailsModal, setShowModelDetailsModal, showModelSelectionModal, setShowModelSelectionModal } = modalState;
   const { search, setSearch, historySearch, setHistorySearch, orderByCost, setOrderByCost, allModalities, selectedModalities, allOutputModalities, selectedOutputModalities, showWebSearch, setShowWebSearch, showToolsOnly, setShowToolsOnly, pinnedModelIds, favoritesLoaded, orderBy, setOrderBy, orderDir, setOrderDir, selectedProviders, setSelectedProviders, imageFilterOnly, setImageFilterOnly, toggleModality, toggleOutputModality } = filterState;
   const { wallet, setWallet, refreshWalletFromBackend } = walletState;
   const { chatEndRef, chatAreaRef } = refs;
   const { currentChatCostUSD, currentChatCostNaira } = computed;
-  const { switchToSession, isSessionActive, project } = sessionState;
+  const { switchToSession, isSessionActive, project, onClearDraftQueueRef } = sessionState;
   const {
     isAudioMode,
     isSTTActive,
@@ -172,14 +160,14 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
   const chatContainerRef = useRef<ChatContainerHandle | null>(null);
   const [showPersonalityModal, setShowPersonalityModal] = useState(false);
   const [currentUser, setCurrentUser] = useState<Record<string, unknown> | null>(null);
-  const [pendingModelPick, setPendingModelPick] =
-    useState<ModelPickResolver | null>(null);
-  const pendingModelPickRejectRef = useRef<((reason?: unknown) => void) | null>(
-    null,
-  );
   const [publishState, setPublishState] = useState<PublishState>({
     kind: "closed",
   });
+
+  const { requestModelPick, resolveModelPick } = useModelInterfaceModelPick(
+    showModelSelectionModal,
+    setShowModelSelectionModal,
+  );
 
   const {
     refreshWalletBalance,
@@ -293,6 +281,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     setSelectedSystemPrompt,
     setSelectedPersonalityName,
     setSelectedPersonalityIconUrl,
+    onClearDraftQueue: () => onClearDraftQueueRef.current(),
   });
 
   const { handleGlobalKeyDown } = useKeyboardShortcuts({
@@ -301,34 +290,28 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     onOpenModelSelection: () => setShowModelSelectionModal(true),
   });
 
-  const requestModelPick = useCallback(async (): Promise<{
-    id: string;
-    name?: string;
-  } | null> => {
-    return new Promise((resolve, reject) => {
-      setPendingModelPick(() => resolve);
-      pendingModelPickRejectRef.current = reject;
-      setShowModelSelectionModal(true);
-    });
-  }, [setShowModelSelectionModal]);
+  const { handlePublishFromSidebar, handlePublishConversation } = useModelInterfacePublishFlow(
+    publishState,
+    setPublishState,
+    setChatHistory,
+    setError,
+  );
 
-  useEffect(() => {
-    return () => {
-      if (pendingModelPickRejectRef.current) {
-        pendingModelPickRejectRef.current(new Error("Model picker disposed"));
-        pendingModelPickRejectRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (showModelSelectionModal || !pendingModelPick) {
-      return;
-    }
-    pendingModelPick(null);
-    setPendingModelPick(null);
-    pendingModelPickRejectRef.current = null;
-  }, [pendingModelPick, showModelSelectionModal]);
+  const handleChatBoxSend = useModelInterfaceChatBoxSend({
+    selectedModel,
+    uploadedFiles,
+    project,
+    isInsufficientCredits,
+    requiredWalletBalance,
+    wallet,
+    viewSessionId,
+    currentSessionId,
+    handleSend,
+    setChat,
+    setUploadedFiles,
+    setError,
+    setShowWalletModal,
+  });
 
   const { handleStarToggle, handleRemoveChatHistorySession, handleRemoveChatHistorySessionById, handleWalletUpdateFromSidebar } = useModelInterfaceSidebarActions({
     currentSessionId,
@@ -368,148 +351,25 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     createNewSessionAndSwitchWrapper,
   });
 
-  const handleChatBoxSend = useCallback(async (
-    message: string,
-    _model: Model | null,
-  ): Promise<boolean | void> => {
-    if (!selectedModel) return false;
-    if (!message.trim() && uploadedFiles.length === 0) return false;
-    if (!project) {
-      setError("No project found. Please create or select a project.");
-      return false;
+  const setSelectedModelWrapper = (model: Model | null) => {
+    if (resolveModelPick(model)) {
+      return;
     }
 
-    if (isInsufficientCredits) {
-      const roundedRequired = Math.ceil(requiredWalletBalance);
-      const modelLabel = selectedModel.name || selectedModel.id;
-      const currentBalance = normalizeWalletForGating(wallet) ?? 0;
-      const currentBalanceDisplay = currentBalance
-        .toFixed(2)
-        .replace(/\.00$/, "");
-      setError(
-        `You need at least ${roundedRequired} credits to use ${modelLabel}. Current balance: ${currentBalanceDisplay} credits.`,
-      );
-      setShowWalletModal(true);
-      return false;
-    }
+    const resolved = model
+      ? models.find((m) => m.id === model.id) ?? model
+      : null;
 
-    if (uploadedFiles.length > 0) {
-      const { createChatMessage } = await import("./features/chat/hooks");
-      const contentParts: ChatMessage["content"] extends infer T
-        ? T extends Array<infer U>
-        ? U[]
-        : never
-        : never = [];
+    setSelectedModel(resolved);
 
-      if (message.trim()) {
-        contentParts.push({ type: "text", text: message.trim() });
-      }
-
-      for (const uploadedFile of uploadedFiles) {
-        if (uploadedFile.isImage) {
-          contentParts.push({
-            type: "image_url",
-            image_url: { url: uploadedFile.fileUrl },
-          });
-        } else {
-          contentParts.push({
-            type: "file_url",
-            file_url: {
-              url: uploadedFile.fileUrl,
-              name: uploadedFile.displayName || uploadedFile.file?.name || "file",
-            },
-          });
-        }
-      }
-
-      const userMsg = createChatMessage(
-        "user",
-        contentParts,
-        selectedModel.id,
-        selectedModel.name || selectedModel.id,
-        viewSessionId ?? currentSessionId,
-      );
-
-      const filesBeingSent = uploadedFiles;
-      setChat((prev) => [...prev, userMsg]);
-      setUploadedFiles([]);
-
-      const sent = await handleSend("", undefined, userMsg);
-      if (sent === false) {
-        setChat((prev) => prev.filter((m) => m !== userMsg));
-        setUploadedFiles(filesBeingSent);
-      }
-      return sent;
-    }
-
-    return await handleSend(message);
-  }, [
-    selectedModel,
-    uploadedFiles,
-    project,
-    isInsufficientCredits,
-    requiredWalletBalance,
-    wallet,
-    viewSessionId,
-    currentSessionId,
-    handleSend,
-    setChat,
-    setUploadedFiles,
-    setError,
-  ]);
-
-  const handlePublishFromSidebar = useCallback(
-    (session: ChatSession, isRepublishing = false, existingUrl = "") => {
-      setPublishState({
-        kind: isRepublishing ? "republish" : "new",
-        session,
-        existingUrl,
-      });
-    },
-    [],
-  );
-
-  const handlePublishConversation = async (
-    title: string,
-    description?: string,
-  ): Promise<string> => {
-    try {
-      if (publishState.kind === "closed" || !publishState.session.id) {
-        throw new Error("No session selected for publishing");
-      }
-
-      const conversationId = await publishConversation(
-        publishState.session.id,
-        title,
-        description,
-        {
-          id: publishState.session.id,
-          title: publishState.session.title,
-          modelId: publishState.session.modelId,
-          messages: publishState.session.messages,
-          starred: publishState.session.starred,
-        },
-      );
-
-      setChatHistory((prevHistory) =>
-        prevHistory.map((session) =>
-          session.id === publishState.session.id
-            ? {
-              ...session,
-              isPublished: true,
-              publishedAt: new Date().toISOString(),
-              publishedTitle: title,
-              publishedDescription: description,
-            }
+    if (resolved && currentSessionId) {
+      setChatHistory((prev) =>
+        prev.map((session) =>
+          session.id === currentSessionId
+            ? { ...session, modelId: resolved.id }
             : session,
         ),
       );
-
-      return conversationId;
-    } catch (err) {
-      console.error("Failed to publish conversation:", err);
-      setError("Failed to publish conversation. Please try again.");
-      throw err;
     }
   };
 
@@ -534,32 +394,6 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
         }
       />
     );
-
-  const setSelectedModelWrapper = (model: Model | null) => {
-    if (pendingModelPick) {
-      pendingModelPick(model);
-      setPendingModelPick(null);
-      pendingModelPickRejectRef.current = null;
-      setShowModelSelectionModal(false);
-      return;
-    }
-
-    const resolved = model
-      ? models.find((m) => m.id === model.id) ?? model
-      : null;
-
-    setSelectedModel(resolved);
-
-    if (resolved && currentSessionId) {
-      setChatHistory((prev) =>
-        prev.map((session) =>
-          session.id === currentSessionId
-            ? { ...session, modelId: resolved.id }
-            : session,
-        ),
-      );
-    }
-  };
 
   const isWorkspaceBootstrapping =
     (modelsLoading && models.length === 0) ||
@@ -699,7 +533,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     onWalletUpdate={handleWalletUpdateFromSidebar}
                     onStarToggle={handleStarToggle}
                     onPublish={handlePublishFromSidebar}
-                    onOpenWorkflows={handleOpenWorkflows}
+                    onOpenWorkflows={FEATURE_FLAGS.WORKFLOWS ? handleOpenWorkflows : undefined}
                     onOpenNotifications={() => router.push("/notifications")}
                     switchToSession={handleSessionSwitch}
                     createNewSessionAndSwitch={createNewSessionAndSwitchWrapper}
@@ -717,6 +551,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     chatContainerRef={chatContainerRef}
                     viewSessionId={viewSessionId}
                     updateSessionMessages={updateSessionMessages}
+                    persistSessionMessages={persistSessionMessages}
                     setLoading={setLoading}
                     selectedModel={selectedModel}
                     models={models}
@@ -781,6 +616,9 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     audioVolume={audioVolume}
                     inputValue={input}
                     onInputChange={setInput}
+                    queuedMessages={queuedMessages}
+                    onQueueMessage={handleQueueMessage}
+                    onRemoveQueuedMessage={removeQueuedMessage}
                     onMiniModeToggle={handleMiniModeToggle}
                     isMiniMode={isMiniMode}
                     analyzer={analyzer}

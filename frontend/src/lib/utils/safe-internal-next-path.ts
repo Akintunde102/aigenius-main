@@ -38,3 +38,56 @@ export function resolveAuthenticatedDesktopShellRedirect(
   }
   return next;
 }
+
+const CHAT_CONVERSATION_PATH = /^\/chat\/([^/?#]+)$/;
+
+function isSafeInternalPath(path: string): boolean {
+  return path.startsWith("/") && !path.startsWith("//") && !path.includes("\\") && !/[\s\r\n]/.test(path);
+}
+
+/**
+ * Returns a safe in-app `/chat/{conversationId}` path when `href` points at a saved conversation.
+ * Rejects draft/new segments and unsafe values.
+ */
+export function normalizeChatConversationOpenPath(
+  href: string,
+  pageOrigin?: string,
+): string | null {
+  const trimmed = href.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  let path = trimmed;
+  if (!path.startsWith("/")) {
+    if (!pageOrigin) {
+      return null;
+    }
+    try {
+      const url = new URL(trimmed);
+      if (url.origin !== pageOrigin) {
+        return null;
+      }
+      path = `${url.pathname}${url.search}${url.hash}`;
+    } catch {
+      return null;
+    }
+  }
+
+  if (!isSafeInternalPath(path)) {
+    return null;
+  }
+
+  const pathname = path.split(/[?#]/)[0] ?? path;
+  const match = CHAT_CONVERSATION_PATH.exec(pathname);
+  if (!match) {
+    return null;
+  }
+
+  const conversationId = match[1]?.trim();
+  if (!conversationId || conversationId === "__draft__" || conversationId === "new") {
+    return null;
+  }
+
+  return `/chat/${conversationId}`;
+}

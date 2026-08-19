@@ -1,10 +1,12 @@
 'use client';
 
 import type { CSSProperties } from "react";
-import { useRouter } from "next/navigation";
 import { Database, FolderOpen } from "lucide-react";
 import { useLayoutEffect, useState } from "react";
 import { openFilePreview } from "./modals/FilePreviewManager";
+
+/** Re-enable root file explorer + local search index caption buttons when ready. */
+const SHOW_EXTRA_CAPTION_ACTIONS = false;
 
 /** `-webkit-app-region` is not in `CSSProperties` from csstype; Electron needs it for caption clicks. */
 type ElectronCaptionStyle = CSSProperties & {
@@ -48,7 +50,6 @@ const CAPTION_BTN_CLASS =
 
 export default function DesktopTitleBarActions() {
   const [mounted, setMounted] = useState(false);
-  const router = useRouter();
 
   useLayoutEffect(() => {
     setMounted(true);
@@ -119,16 +120,32 @@ export default function DesktopTitleBarActions() {
 
   return (
     <>
-      <button
-        type="button"
-        aria-label="Root File Explorer"
-        title="Open Monaco Root File Explorer"
-        onClick={handleOpenFileBrowser}
-        className={CAPTION_BTN_CLASS}
-        style={fileBrowserStyle}
-      >
-        <FolderOpen className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-      </button>
+      {SHOW_EXTRA_CAPTION_ACTIONS ? (
+        <>
+          <button
+            type="button"
+            aria-label="Root File Explorer"
+            title="Open Monaco Root File Explorer"
+            onClick={handleOpenFileBrowser}
+            className={CAPTION_BTN_CLASS}
+            style={fileBrowserStyle}
+          >
+            <FolderOpen className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+          </button>
+          <button
+            type="button"
+            aria-label="Local search index"
+            title="Local search index — SQLite file_index & excerpts"
+            onClick={() => {
+              void window.aigeniusDesktop?.openNewWindow?.("/desktop-search-index");
+            }}
+            className={CAPTION_BTN_CLASS}
+            style={indexStyle}
+          >
+            <Database className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+          </button>
+        </>
+      ) : null}
       <button
         type="button"
         aria-label="New window"
@@ -140,18 +157,6 @@ export default function DesktopTitleBarActions() {
         style={newWindowStyle}
       >
         <CaptionPlusGlyph />
-      </button>
-      <button
-        type="button"
-        aria-label="Local search index"
-        title="Local search index — SQLite file_index & excerpts"
-        onClick={() => {
-          void window.aigeniusDesktop?.openNewWindow?.("/desktop-search-index");
-        }}
-        className={CAPTION_BTN_CLASS}
-        style={indexStyle}
-      >
-        <Database className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
       </button>
     </>
   );

@@ -102,8 +102,8 @@ describe('conversationTranscriptExport', () => {
 
     it('downloads a blob-backed file in the browser', () => {
         const click = jest.fn();
-        const appendChild = jest.spyOn(document.body, 'appendChild').mockImplementation((node) => node);
-        const removeChild = jest.spyOn(document.body, 'removeChild').mockImplementation((node) => node);
+        const appendChild = jest.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => node);
+        const removeChild = jest.spyOn(document.body, 'removeChild').mockImplementation((node: Node) => node);
         const createObjectURL = jest.fn().mockReturnValue('blob:mock');
         const revokeObjectURL = jest.fn();
         const originalUrl = global.URL;
@@ -112,10 +112,10 @@ describe('conversationTranscriptExport', () => {
             ...originalUrl,
             createObjectURL,
             revokeObjectURL,
-        } as typeof URL;
+        } as unknown as typeof URL;
 
-        const anchor = { click, href: '', download: '' } as HTMLAnchorElement;
-        const createElement = jest.spyOn(document, 'createElement').mockReturnValue(anchor);
+        const anchor = { click, href: '', download: '' };
+        const createElement = jest.spyOn(document, 'createElement').mockReturnValue(anchor as unknown as HTMLAnchorElement);
 
         const session: ChatSession = {
             id: 'session-1',

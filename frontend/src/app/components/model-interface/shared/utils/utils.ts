@@ -227,6 +227,56 @@ export function getProviderLabel(providerId: string): string {
   );
 }
 
+/** Collapse lab ids/labels for prefix matching (`x-ai`, `xAI`, `Z.ai` → `xai`). */
+function normalizeLabKey(value: string): string {
+  return value.toLowerCase().replace(/[\s_.-]/g, "");
+}
+
+function labKeysMatch(prefixKey: string, candidateKey: string): boolean {
+  if (!prefixKey || !candidateKey) return false;
+  if (prefixKey === candidateKey) return true;
+  if (prefixKey.length < 3 || candidateKey.length < 3) return false;
+  return candidateKey.startsWith(prefixKey) || prefixKey.startsWith(candidateKey);
+}
+
+/**
+ * OpenRouter-style names are `Lab: Model`. Strip the lab when it matches this model's id.
+ * Does not mutate `model.name` — search and catalog data keep the original string.
+ */
+export function stripLabPrefixFromModelName(name: string, modelId: string): string {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return trimmed;
+
+  const separator = ": ";
+  const sepIndex = trimmed.indexOf(separator);
+  if (sepIndex <= 0 || sepIndex > 40) return trimmed;
+
+  const prefix = trimmed.slice(0, sepIndex).trim();
+  const rest = trimmed.slice(sepIndex + separator.length).trim();
+  if (!prefix || !rest) return trimmed;
+
+  const prefixKey = normalizeLabKey(prefix);
+  if (prefixKey.length < 2) return trimmed;
+
+  const providerId = getProvider(modelId);
+  const candidates = [
+    providerId,
+    getProviderLabel(providerId),
+    providerId.split(/[-_]/)[0],
+  ];
+
+  if (candidates.some((candidate) => labKeysMatch(prefixKey, normalizeLabKey(candidate)))) {
+    return rest;
+  }
+
+  const idKey = normalizeLabKey(modelId);
+  if (prefixKey.length >= 3 && idKey.includes(prefixKey)) {
+    return rest;
+  }
+
+  return trimmed;
+}
+
 /** Display name for a model: use generic "Free" instead of "openrouter/free". */
 export function getModelDisplayName(model: Model): string {
   const id = model?.id ?? "";
@@ -238,7 +288,8 @@ export function getModelDisplayName(model: Model): string {
   ) {
     return "Free";
   }
-  return (model?.name ?? id) || "";
+  const rawName = (model?.name ?? id) || "";
+  return stripLabPrefixFromModelName(rawName, id);
 }
 
 /** Biggest/major labs for the provider filter, in display order. (Grok = xAI.) */

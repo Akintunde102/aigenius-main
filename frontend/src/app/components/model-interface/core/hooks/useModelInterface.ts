@@ -9,8 +9,10 @@ import {
   useSessionSwitcher,
   useConversationEvents,
   useActiveConversationSync,
+  usePersistSessionMessages,
 } from "../../features/chat/hooks";
 import { DRAFT_SESSION_KEY } from "../../features/chat/hooks/chatOperations.constants";
+import { useModelInterfaceMessageQueue } from "../../features/chat/hooks/useModelInterfaceMessageQueue";
 import { useUIState, useScrollAndKeyboard } from "../../shared/hooks";
 import { useModelInterfacePersonality } from "../../hooks/useModelInterfacePersonality";
 import {
@@ -173,7 +175,11 @@ export function useModelInterface(options?: {
     isSyncBlocked: viewSessionId ? isPassiveSyncBlocked(viewSessionId) : true,
   });
 
-  useConversationEvents(setChatHistory);
+  const persistSessionMessages = usePersistSessionMessages({
+    viewSessionId,
+    selectedModel,
+    chatHistory,
+  });
 
   const setChat = useCallback((updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
     setChatForSession(activeKey, updater);
@@ -253,20 +259,22 @@ export function useModelInterface(options?: {
     setChatHistory,
   });
 
-  const isAudioModeRef = useRef(false);
+    const isAudioModeRef = useRef(false);
+    const onDraftSessionMaterializedRef = useRef<(realId: string) => void>(() => {});
+    const onClearDraftQueueRef = useRef<() => void>(() => {});
 
-  const {
-    input,
-    setInput,
-    wallet,
-    setWallet,
-    assistantResponse,
-    optimizationMessage,
-    handleSend,
-    handleStop,
-    canRetryLastSend,
-    retryLastFailedSend,
-  } = useChatOperationsRefined({
+    const {
+        input,
+        setInput,
+        wallet,
+        setWallet,
+        assistantResponse,
+        optimizationMessage,
+        handleSend,
+        handleStop,
+        canRetryLastSend,
+        retryLastFailedSend,
+    } = useChatOperationsRefined({
     selectedModel,
     chat,
     setChat,
@@ -294,6 +302,7 @@ export function useModelInterface(options?: {
     onPrefetchConversationRoute: options?.onPrefetchConversationRoute,
     getChatForSession,
     isAudioModeRef,
+    onDraftSessionMaterialized: (realId) => onDraftSessionMaterializedRef.current(realId),
   });
 
   const audioSession = useAudioSocket();
@@ -358,6 +367,24 @@ export function useModelInterface(options?: {
   useLayoutEffect(() => {
     conversationalMicLiveRef.current = isAudioMode && isConversationalRecording;
   }, [isAudioMode, isConversationalRecording]);
+
+  const {
+    queuedMessages,
+    handleQueueMessage,
+    removeQueuedMessage,
+  } = useModelInterfaceMessageQueue({
+    activeSessionKey: activeKey,
+    loadingMap,
+    streamingMap,
+    isAudioMode,
+    audioStatus,
+    models,
+    selectedModel,
+    setInput,
+    handleSend,
+    onDraftSessionMaterializedRef,
+    onClearDraftQueueRef,
+  });
 
   useSentenceStreaming({
     isAudioMode,
@@ -560,10 +587,14 @@ export function useModelInterface(options?: {
       refreshChatHistory,
       populateFromBackend,
       updateSessionMessages,
+      persistSessionMessages,
       showTyping,
       setShowTyping,
       showScrollToBottom,
       setShowScrollToBottom,
+      queuedMessages,
+      handleQueueMessage,
+      removeQueuedMessage,
     },
     uiState: {
       loading,
@@ -572,6 +603,7 @@ export function useModelInterface(options?: {
       setError: setModelError,
       streaming,
       streamingMap,
+      loadingMap,
       setStreaming: (s: boolean) => setStreamingForSession(activeKey, s),
       streamingEnabled,
       setStreamingEnabled,
@@ -647,6 +679,7 @@ export function useModelInterface(options?: {
       isSessionActive,
       startOrphanReply,
       project: "projectt",
+      onClearDraftQueueRef,
     },
     audioState: {
       isAudioMode,

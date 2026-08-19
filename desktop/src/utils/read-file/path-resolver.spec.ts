@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import { resolveLocalImagePath, resolveReadFilePath } from './path-resolver';
+import { resolveDirectoryPath, resolveLocalImagePath, resolveReadFilePath } from './path-resolver';
 
 jest.mock('../../active-code-project', () => ({
   getActiveCodeProjectRootPath: () => path.join(os.tmpdir(), 'aigenius-test-project'),
@@ -63,12 +63,26 @@ describe('resolveReadFilePath workspace guard', () => {
     await fs.unlink(outsideDocx).catch(() => undefined);
   });
 
-  it('still blocks absolute non-document paths outside workspace', async () => {
+  it('allows absolute non-document paths outside workspace', async () => {
     const projectRoot = path.join(os.tmpdir(), 'aigenius-test-project');
     const outsideTxt = path.join(os.tmpdir(), `outside-${Date.now()}.txt`);
     await fs.mkdir(projectRoot, { recursive: true });
     await fs.writeFile(outsideTxt, 'hello');
     const result = await resolveReadFilePath(outsideTxt);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.resolved).toBe(outsideTxt);
+    }
+    await fs.unlink(outsideTxt).catch(() => undefined);
+  });
+
+  it('blocks relative paths that escape workspace via traversal', async () => {
+    const projectRoot = path.join(os.tmpdir(), 'aigenius-test-project');
+    const outsideTxt = path.join(os.tmpdir(), `escape-${Date.now()}.txt`);
+    await fs.mkdir(projectRoot, { recursive: true });
+    await fs.writeFile(outsideTxt, 'escaped');
+    const traversal = path.join('..', path.basename(outsideTxt));
+    const result = await resolveReadFilePath(traversal);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toMatch(/outside workspace root/i);
@@ -112,5 +126,43 @@ describe('resolveReadFilePath workspace guard', () => {
       expect(result.resolved).toBe(insideTxt);
     }
     await fs.unlink(insideTxt).catch(() => undefined);
+  });
+});
+
+describe('resolveDirectoryPath', () => {
+  it('allows absolute directory paths outside the project root', async () => {
+    const outsideDir = path.join(os.tmpdir(), `outside-dir-${Date.now()}`);
+    await fs.mkdir(outsideDir, { recursive: true });
+    const result = await resolveDirectoryPath(outsideDir);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.resolved).toBe(outsideDir);
+    }
+    await fs.rm(outsideDir, { recursive: true, force: true }).catch(() => undefined);
+  });
+
+  it('allows relative directory paths under the project root', async () => {
+    const projectRoot = path.join(os.tmpdir(), 'aigenius-test-project');
+    const nestedDir = path.join(projectRoot, 'nested');
+    await fs.mkdir(nestedDir, { recursive: true });
+    const result = await resolveDirectoryPath('nested');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.resolved).toBe(nestedDir);
+    }
+    await fs.rm(projectRoot, { recursive: true, force: true }).catch(() => undefined);
+  });
+
+  it('rejects file paths that are not directories', async () => {
+    const projectRoot = path.join(os.tmpdir(), 'aigenius-test-project');
+    const filePath = path.join(projectRoot, 'file.txt');
+    await fs.mkdir(projectRoot, { recursive: true });
+    await fs.writeFile(filePath, 'hello');
+    const result = await resolveDirectoryPath(filePath);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/not a directory/i);
+    }
+    await fs.rm(projectRoot, { recursive: true, force: true }).catch(() => undefined);
   });
 });

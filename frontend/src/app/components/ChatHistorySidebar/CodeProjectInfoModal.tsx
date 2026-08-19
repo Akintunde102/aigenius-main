@@ -1,11 +1,18 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FiX } from "react-icons/fi";
-import { FolderKanban, MessageSquare, Star } from "lucide-react";
+import { FolderKanban, FolderOpen, MessageSquare, Pencil, Star } from "lucide-react";
 import type { CodeProject } from "@/lib/calls/code-projects";
 import type { ChatSession } from "@/app/components/model-interface/shared/types";
+import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
+
+type CodeProjectUpdateInput = {
+  name?: string;
+  description?: string | null;
+  rules?: string | null;
+};
 
 type CodeProjectInfoModalProps = {
   project: CodeProject;
@@ -13,61 +20,16 @@ type CodeProjectInfoModalProps = {
   isActive: boolean;
   onClose: () => void;
   onDelete?: (id: string) => Promise<void>;
+  onUpdate?: (id: string, input: CodeProjectUpdateInput) => Promise<unknown>;
 };
 
-function formatDate(value: string): string {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
-function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <tr className="border-b last:border-b-0" style={{ borderColor: "var(--modal-border)" }}>
-      <th
-        scope="row"
-        className="w-[7.5rem] shrink-0 px-3 py-2.5 text-left align-top text-[11px] font-medium uppercase tracking-wide"
-        style={{ color: "var(--modal-muted-fg)" }}
-      >
-        {label}
-      </th>
-      <td className="px-3 py-2.5 text-sm leading-relaxed" style={{ color: "var(--modal-fg)" }}>
-        {children}
-      </td>
-    </tr>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-}) {
+function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="rounded-lg border px-3 py-2.5"
-      style={{
-        borderColor: "var(--modal-border)",
-        backgroundColor: "var(--modal-bg-muted)",
-      }}
+      className="mb-1 text-[10px] font-semibold uppercase tracking-wide"
+      style={{ color: "var(--modal-muted-fg)" }}
     >
-      <div
-        className="mb-1 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide"
-        style={{ color: "var(--modal-muted-fg)" }}
-      >
-        {icon}
-        <span>{label}</span>
-      </div>
-      <p className="text-xl font-semibold tabular-nums" style={{ color: "var(--modal-fg)" }}>
-        {value}
-      </p>
+      {children}
     </div>
   );
 }
@@ -78,11 +40,22 @@ export function CodeProjectInfoModal({
   isActive,
   onClose,
   onDelete,
+  onUpdate,
 }: CodeProjectInfoModalProps) {
   const [mounted, setMounted] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(project.name);
+  const [descriptionDraft, setDescriptionDraft] = useState(project.description ?? "");
+  const [rulesDraft, setRulesDraft] = useState(project.rules ?? "");
+  const [savingName, setSavingName] = useState(false);
+  const [savingDescription, setSavingDescription] = useState(false);
+  const [savingRules, setSavingRules] = useState(false);
+  const [openingFolder, setOpeningFolder] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const isDesktop = isAigeniusDesktopRuntime();
 
   const handleConfirmDelete = async () => {
     if (!onDelete) return;
@@ -110,15 +83,103 @@ export function CodeProjectInfoModal({
   }, []);
 
   useEffect(() => {
+    if (!editingName) setNameDraft(project.name);
+  }, [project.name, editingName]);
+
+  useEffect(() => {
+    setDescriptionDraft(project.description ?? "");
+  }, [project.description]);
+
+  useEffect(() => {
+    setRulesDraft(project.rules ?? "");
+  }, [project.rules]);
+
+  useEffect(() => {
+    if (editingName) nameInputRef.current?.focus();
+  }, [editingName]);
+
+  useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
       e.stopPropagation();
+      if (editingName) {
+        setNameDraft(project.name);
+        setEditingName(false);
+        return;
+      }
       onClose();
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [onClose]);
+  }, [onClose, editingName, project.name]);
+
+  const handleOpenFolder = useCallback(async () => {
+    const openFile = window.aigeniusDesktop?.openFile;
+    if (!openFile) return;
+    setOpeningFolder(true);
+    try {
+      const result = await openFile(project.rootPath);
+      if (!result.ok && result.error) {
+        console.error("[CodeProjectInfoModal] open folder:", result.error);
+      }
+    } finally {
+      setOpeningFolder(false);
+    }
+  }, [project.rootPath]);
+
+  const commitName = async () => {
+    const trimmed = nameDraft.trim();
+    if (!trimmed || trimmed === project.name) {
+      setNameDraft(project.name);
+      setEditingName(false);
+      return;
+    }
+    if (!onUpdate) {
+      setEditingName(false);
+      return;
+    }
+    setSavingName(true);
+    try {
+      await onUpdate(project.id, { name: trimmed });
+      setEditingName(false);
+    } catch {
+      setNameDraft(project.name);
+      setEditingName(false);
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const commitDescription = async () => {
+    const trimmed = descriptionDraft.trim();
+    const current = (project.description ?? "").trim();
+    if (trimmed === current) return;
+    if (!onUpdate) return;
+    setSavingDescription(true);
+    try {
+      await onUpdate(project.id, { description: trimmed || null });
+    } catch {
+      setDescriptionDraft(project.description ?? "");
+    } finally {
+      setSavingDescription(false);
+    }
+  };
+
+  const commitRules = async () => {
+    const trimmed = rulesDraft.trim();
+    const current = (project.rules ?? "").trim();
+    if (trimmed === current) return;
+    if (!onUpdate) return;
+    setSavingRules(true);
+    try {
+      await onUpdate(project.id, { rules: trimmed || null });
+    } catch {
+      setRulesDraft(project.rules ?? "");
+    } finally {
+      setSavingRules(false);
+    }
+  };
 
   if (!mounted || typeof document === "undefined") {
     return null;
@@ -135,7 +196,7 @@ export function CodeProjectInfoModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="code-project-info-title"
-        className="flex max-h-[min(90vh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-xl border shadow-xl"
+        className="flex max-h-[min(90vh,34rem)] w-full max-w-md flex-col overflow-hidden rounded-xl border shadow-xl"
         style={{
           background: "var(--modal-bg)",
           borderColor: "var(--modal-border)",
@@ -143,114 +204,166 @@ export function CodeProjectInfoModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div
-          className="flex shrink-0 items-start justify-between gap-3 border-b px-5 py-4"
-          style={{
-            borderColor: "var(--modal-border)",
-            background: "var(--modal-bg-muted)",
-          }}
-        >
-          <div className="min-w-0">
-            <div className="mb-1 flex items-center gap-2">
-              <div
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
-                style={{
-                  borderColor: "var(--modal-border)",
-                  background: "var(--modal-bg)",
-                  color: "var(--chat-accent)",
-                }}
-                aria-hidden
-              >
-                <FolderKanban className="h-4 w-4" />
-              </div>
-              <h2 id="code-project-info-title" className="truncate text-base font-semibold">
-                {project.name}
-              </h2>
+        <div className="flex shrink-0 items-center justify-between gap-2 px-4 pt-2 pb-1.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <div
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+              style={{
+                background: "color-mix(in srgb, var(--chat-accent) 12%, transparent)",
+                color: "var(--chat-accent)",
+              }}
+              aria-hidden
+            >
+              <FolderKanban className="h-3 w-3" />
             </div>
-            <p className="text-xs" style={{ color: "var(--modal-muted-fg)" }}>
-              {isActive ? "Active project for new chats" : "Project details"}
-            </p>
+
+            <div className="relative min-h-[1.375rem] min-w-0 flex-1">
+              <div
+                className={`flex min-w-0 items-center gap-1 ${editingName ? "invisible" : ""}`}
+                aria-hidden={editingName}
+              >
+                <h2
+                  id="code-project-info-title"
+                  className="truncate text-sm font-semibold leading-snug"
+                >
+                  {project.name}
+                </h2>
+                {onUpdate ? (
+                  <button
+                    type="button"
+                    onClick={() => setEditingName(true)}
+                    className="shrink-0 rounded p-0.5 transition-colors hover:bg-[color-mix(in_srgb,var(--surface-muted)_80%,transparent)]"
+                    style={{ color: "var(--modal-muted-fg)" }}
+                    aria-label="Edit project name"
+                  >
+                    <Pencil className="h-2.5 w-2.5" />
+                  </button>
+                ) : null}
+                {isActive ? (
+                  <span
+                    className="shrink-0 rounded-full px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide"
+                    style={{
+                      background: "color-mix(in srgb, var(--chat-accent) 14%, transparent)",
+                      color: "var(--chat-accent)",
+                    }}
+                  >
+                    Active
+                  </span>
+                ) : null}
+              </div>
+
+              {editingName ? (
+                <input
+                  ref={nameInputRef}
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onBlur={() => void commitName()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void commitName();
+                    }
+                  }}
+                  disabled={savingName}
+                  className="app-modal-input absolute inset-0 h-full min-w-0 px-1.5 py-0 text-sm font-semibold leading-snug"
+                  aria-label="Project name"
+                />
+              ) : null}
+            </div>
           </div>
+
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-lg p-2 transition-colors hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+            className="shrink-0 rounded-md p-1 transition-colors hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
             style={{ color: "var(--modal-muted-fg)" }}
             aria-label="Close"
           >
-            <FiX className="h-4 w-4" />
+            <FiX className="h-3.5 w-3.5" />
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          <div className="mb-4 grid grid-cols-2 gap-2">
-            <StatCard
-              label="Chats"
-              value={stats.conversations}
-              icon={<MessageSquare className="h-3 w-3" aria-hidden />}
+        <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 pb-2">
+          <div
+            className="flex items-center gap-2 rounded-lg px-2.5 py-1.5"
+            style={{ background: "var(--modal-bg-muted)" }}
+          >
+            <FolderOpen
+              className="h-3 w-3 shrink-0"
+              style={{ color: "var(--modal-muted-fg)" }}
+              aria-hidden
             />
-            <StatCard
-              label="Starred"
-              value={stats.starred}
-              icon={<Star className="h-3 w-3" aria-hidden />}
+            <p
+              className="min-w-0 flex-1 truncate font-mono text-[10px] leading-snug"
+              style={{ color: "var(--modal-fg)" }}
+              title={project.rootPath}
+            >
+              {project.rootPath}
+            </p>
+            {isDesktop ? (
+              <button
+                type="button"
+                onClick={() => void handleOpenFolder()}
+                disabled={openingFolder}
+                className="shrink-0 rounded border px-2 py-0.5 text-[10px] font-medium transition-colors hover:bg-[color-mix(in_srgb,var(--surface-muted)_60%,transparent)] disabled:opacity-50"
+                style={{
+                  borderColor: "var(--modal-border)",
+                  color: "var(--modal-fg)",
+                }}
+                title="Open in File Explorer"
+              >
+                {openingFolder ? "Opening…" : "Open"}
+              </button>
+            ) : null}
+          </div>
+
+          <div>
+            <FieldLabel>Description</FieldLabel>
+            <textarea
+              value={descriptionDraft}
+              onChange={(e) => setDescriptionDraft(e.target.value)}
+              onBlur={() => void commitDescription()}
+              disabled={!onUpdate || savingDescription}
+              rows={2}
+              placeholder="What is this project about?"
+              className="app-modal-input resize-y text-xs leading-relaxed disabled:opacity-70"
+              aria-label="Project description"
             />
           </div>
 
-          <div
-            className="overflow-hidden rounded-lg border"
-            style={{ borderColor: "var(--modal-border)" }}
-          >
-            <table className="w-full border-collapse text-left">
-              <tbody>
-                <InfoRow label="Folder">
-                  <code className="break-all text-xs">{project.rootPath}</code>
-                </InfoRow>
-                <InfoRow label="Rules">
-                  {project.rules?.trim() ? (
-                    <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap font-sans text-xs leading-relaxed opacity-90">
-                      {project.rules}
-                    </pre>
-                  ) : (
-                    <span className="text-xs" style={{ color: "var(--modal-muted-fg)" }}>
-                      No rules set
-                    </span>
-                  )}
-                </InfoRow>
-                <InfoRow label="Created">{formatDate(project.createdAt)}</InfoRow>
-                <InfoRow label="Updated">{formatDate(project.updatedAt)}</InfoRow>
-                <InfoRow label="Project ID">
-                  <code className="break-all text-xs opacity-80">{project.id}</code>
-                </InfoRow>
-              </tbody>
-            </table>
+          <div>
+            <FieldLabel>Rules</FieldLabel>
+            <textarea
+              value={rulesDraft}
+              onChange={(e) => setRulesDraft(e.target.value)}
+              onBlur={() => void commitRules()}
+              disabled={!onUpdate || savingRules}
+              rows={3}
+              placeholder="Stack, conventions, or architecture notes for the model…"
+              className="app-modal-input resize-y text-xs leading-relaxed disabled:opacity-70"
+              aria-label="Project rules"
+            />
           </div>
         </div>
 
         {showConfirmDelete ? (
           <div
-            className="flex shrink-0 flex-col gap-3 border-t bg-red-500/5 px-5 py-4"
+            className="flex shrink-0 flex-col gap-2 border-t bg-red-500/5 px-4 py-2.5"
             style={{ borderColor: "var(--modal-border)" }}
           >
-            <div className="flex flex-col gap-1">
-              <p className="text-sm font-semibold text-red-500">
-                Are you sure you want to delete this project?
-              </p>
-              <p className="text-xs opacity-80" style={{ color: "var(--modal-muted-fg)" }}>
-                This will permanently delete the project and all conversations associated with it. This action cannot be undone.
-              </p>
-              {deleteError && (
-                <p className="text-xs text-red-500 mt-1 font-semibold">
-                  {deleteError}
-                </p>
-              )}
-            </div>
+            <p className="text-sm font-medium text-red-500">
+              Delete this project and all its chats?
+            </p>
+            {deleteError ? (
+              <p className="text-xs font-medium text-red-500">{deleteError}</p>
+            ) : null}
             <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShowConfirmDelete(false)}
                 disabled={deleting}
-                className="rounded-lg border px-4 py-2 text-sm font-semibold transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                style={{ borderColor: "var(--modal-border)", color: "var(--modal-fg)" }}
+                className="rounded-lg px-3 py-1.5 text-sm font-medium transition-opacity hover:opacity-80"
+                style={{ color: "var(--modal-muted-fg)" }}
               >
                 Cancel
               </button>
@@ -258,32 +371,58 @@ export function CodeProjectInfoModal({
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={deleting}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
               >
-                {deleting ? "Deleting..." : "Yes, Delete"}
+                {deleting ? "Deleting…" : "Delete"}
               </button>
             </div>
           </div>
         ) : (
-          <div
-            className="flex shrink-0 items-center justify-between border-t px-5 py-4"
-            style={{ borderColor: "var(--modal-border)" }}
-          >
-            {onDelete ? (
+          <>
+            <div
+              className="flex shrink-0 items-center justify-between border-t px-4 py-1"
+              style={{ borderColor: "var(--modal-border)" }}
+            >
+              <span
+                className="flex items-center gap-1 text-[9px] tabular-nums"
+                style={{ color: "var(--modal-muted-fg)" }}
+              >
+                <MessageSquare className="h-2 w-2" aria-hidden />
+                {stats.conversations} chat{stats.conversations !== 1 ? "s" : ""}
+              </span>
+              <span
+                className="flex items-center gap-1 text-[9px] tabular-nums"
+                style={{ color: "var(--modal-muted-fg)" }}
+              >
+                <Star className="h-2 w-2" aria-hidden />
+                {stats.starred} starred
+              </span>
+            </div>
+
+            <div
+              className="flex shrink-0 items-center justify-between px-4 py-2"
+              style={{ borderColor: "var(--modal-border)" }}
+            >
+              {onDelete ? (
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmDelete(true)}
+                  className="text-xs font-medium text-red-500 transition-opacity hover:opacity-80 focus-visible:outline-none"
+                >
+                  Delete project
+                </button>
+              ) : (
+                <div />
+              )}
               <button
                 type="button"
-                onClick={() => setShowConfirmDelete(true)}
-                className="rounded-lg border border-red-500/30 px-4 py-2 text-sm font-semibold text-red-500 transition-colors hover:bg-red-500/10 focus-visible:outline-none"
+                onClick={onClose}
+                className="app-modal-btn-primary px-4 py-1.5 text-sm"
               >
-                Delete Project
+                Done
               </button>
-            ) : (
-              <div />
-            )}
-            <button type="button" onClick={onClose} className="app-modal-btn-primary px-4 py-2">
-              Close
-            </button>
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>
