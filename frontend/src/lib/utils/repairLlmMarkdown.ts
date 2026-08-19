@@ -1,5 +1,9 @@
 const TABLE_ROW_RE = /^\s*\|(.+)\|\s*$/;
 const TABLE_SEPARATOR_RE = /^\s*\|[\s\-:|]+\|\s*$/;
+const FENCED_CODE_BLOCK_RE = /```[\s\S]*?```/g;
+
+/** LLMs sometimes escape `[` before `local-file://` links, which leaves raw markdown in chat. */
+const ESCAPED_LOCAL_FILE_LINK_RE = /!?\\\[([^\]]*)\]\((local-file:\/\/[^)]+)\)/g;
 
 const PSEUDO_CODE_FENCE_RE = /```(\w*)\\n([\s\S]*?)\\n```/g;
 
@@ -52,17 +56,50 @@ function isTableRow(line: string): boolean {
     return TABLE_ROW_RE.test(line) && !TABLE_SEPARATOR_RE.test(line);
 }
 
+function repairEscapedLocalFileLinkSegment(segment: string): string {
+    if (!segment.includes('\\[') || !segment.includes('local-file://')) {
+        return segment;
+    }
+    return segment.replace(ESCAPED_LOCAL_FILE_LINK_RE, (match, label: string, href: string) => {
+        const prefix = match.startsWith('!') ? '!' : '';
+        return `${prefix}[${label}](${href})`;
+    });
+}
+
+/** Unescape `\[` / `!\[` before `local-file://` markdown links (skipped inside fenced code). */
+export function repairEscapedLocalFileMarkdownLinks(markdown: string): string {
+    if (!markdown || !markdown.includes('\\[') || !markdown.includes('local-file://')) {
+        return markdown;
+    }
+
+    let result = '';
+    let lastIndex = 0;
+    FENCED_CODE_BLOCK_RE.lastIndex = 0;
+
+    for (const match of Array.from(markdown.matchAll(FENCED_CODE_BLOCK_RE))) {
+        const index = match.index ?? 0;
+        result += repairEscapedLocalFileLinkSegment(markdown.slice(lastIndex, index));
+        result += match[0];
+        lastIndex = index + match[0].length;
+    }
+
+    result += repairEscapedLocalFileLinkSegment(markdown.slice(lastIndex));
+    return result;
+}
+
 /**
  * Repairs common LLM markdown mistakes in GFM tables without altering normal prose.
  * - Pulls pseudo-fenced code (` ```lang\\n...\\n``` `) out of table cells below the table.
  * - Converts literal `\\n` in table cells to `<br>` (parsed via rehype-raw).
+ * - Unescapes `\[` before `local-file://` preview links so desktop chat renders clickable paths.
  */
 export function repairLlmMarkdown(markdown: string): string {
     if (!markdown) {
         return markdown;
     }
 
-    const lines = markdown.split('\n');
+    const repairedLinks = repairEscapedLocalFileMarkdownLinks(markdown);
+    const lines = repairedLinks.split('\n');
     const out: string[] = [];
     const appendedBlocks: string[] = [];
 

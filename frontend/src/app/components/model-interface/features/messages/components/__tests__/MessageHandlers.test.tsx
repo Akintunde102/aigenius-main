@@ -20,6 +20,7 @@ describe('MessageHandlers', () => {
     const setChat = jest.fn();
     const handleSend = jest.fn();
     const updateSessionMessages = jest.fn();
+    const persistSessionMessages = jest.fn();
     const setLoading = jest.fn();
     const handleStop = jest.fn();
     const chatEndRef = { current: null } as React.RefObject<HTMLDivElement>;
@@ -38,6 +39,7 @@ describe('MessageHandlers', () => {
                 chatEndRef={chatEndRef}
                 viewSessionId="session-1"
                 updateSessionMessages={updateSessionMessages}
+                persistSessionMessages={persistSessionMessages}
                 setLoading={setLoading}
                 handleStop={handleStop}
                 {...extra}
@@ -72,24 +74,18 @@ describe('MessageHandlers', () => {
         const { handlers } = renderWithHandlers();
         handlers().handleDeleteMessage(0);
         
-        expect(setChat).toHaveBeenCalled();
-        const updateFn = setChat.mock.calls[0][0];
-        const result = updateFn(mockChat);
-        
-        expect(result).toHaveLength(1);
-        expect(result[0].id).toBe('2');
+        expect(setChat).toHaveBeenCalledWith([mockChat[1]]);
+        expect(updateSessionMessages).toHaveBeenCalledWith('session-1', [mockChat[1]]);
+        expect(persistSessionMessages).toHaveBeenCalledWith([mockChat[1]]);
     });
 
     it('handleDeleteMessageById removes a message by ID', () => {
         const { handlers } = renderWithHandlers();
         handlers().handleDeleteMessageById('1');
         
-        expect(setChat).toHaveBeenCalled();
-        const updateFn = setChat.mock.calls[0][0];
-        const result = updateFn(mockChat);
-        
-        expect(result).toHaveLength(1);
-        expect(result[0].id).toBe('2');
+        expect(setChat).toHaveBeenCalledWith([mockChat[1]]);
+        expect(updateSessionMessages).toHaveBeenCalledWith('session-1', [mockChat[1]]);
+        expect(persistSessionMessages).toHaveBeenCalledWith([mockChat[1]]);
     });
 
     it('handleDeleteMessageById handles non-existent ID by trying timestamp fallback', () => {
@@ -101,11 +97,9 @@ describe('MessageHandlers', () => {
         // Try to delete by "12345" which matches the timestamp
         handlers().handleDeleteMessageById('12345');
         
-        expect(setChat).toHaveBeenCalled();
-        const updateFn = setChat.mock.calls[0][0];
-        const result = updateFn(chatWithTimestampId);
-        
-        expect(result).toHaveLength(0);
+        expect(setChat).toHaveBeenCalledWith([]);
+        expect(updateSessionMessages).toHaveBeenCalledWith('session-1', []);
+        expect(persistSessionMessages).toHaveBeenCalledWith([]);
     });
 
     it('handleReplayMessage trims after the user message and resends without duplicating it', () => {

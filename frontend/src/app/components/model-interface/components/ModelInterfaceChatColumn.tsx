@@ -40,6 +40,7 @@ type Props = {
   chatContainerRef: RefObject<ChatContainerHandle | null>;
   viewSessionId?: string | null;
   updateSessionMessages?: (sessionId: string, messages: ChatMessage[]) => void;
+  persistSessionMessages?: (messages: ChatMessage[]) => void | Promise<void>;
   setLoading?: (loading: boolean) => void;
   selectedModel: Model | null;
   models: Model[];
@@ -125,6 +126,7 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   chatContainerRef,
   viewSessionId = null,
   updateSessionMessages,
+  persistSessionMessages,
   setLoading,
   selectedModel,
   models,
@@ -225,6 +227,7 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
       chatEndRef={chatEndRef as React.RefObject<HTMLDivElement>}
       viewSessionId={viewSessionId}
       updateSessionMessages={updateSessionMessages}
+      persistSessionMessages={persistSessionMessages}
       setLoading={setLoading}
       handleStop={handleStop}
       loading={loading}

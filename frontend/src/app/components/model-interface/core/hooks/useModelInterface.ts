@@ -9,6 +9,7 @@ import {
   useSessionSwitcher,
   useConversationEvents,
   useActiveConversationSync,
+  usePersistSessionMessages,
 } from "../../features/chat/hooks";
 import { DRAFT_SESSION_KEY } from "../../features/chat/hooks/chatOperations.constants";
 import { useModelInterfaceMessageQueue } from "../../features/chat/hooks/useModelInterfaceMessageQueue";
@@ -172,6 +173,12 @@ export function useModelInterface(options?: {
     setChatForSession,
     setChatHistory,
     isSyncBlocked: viewSessionId ? isPassiveSyncBlocked(viewSessionId) : true,
+  });
+
+  const persistSessionMessages = usePersistSessionMessages({
+    viewSessionId,
+    selectedModel,
+    chatHistory,
   });
 
   const setChat = useCallback((updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
@@ -580,6 +587,7 @@ export function useModelInterface(options?: {
       refreshChatHistory,
       populateFromBackend,
       updateSessionMessages,
+      persistSessionMessages,
       showTyping,
       setShowTyping,
       showScrollToBottom,
