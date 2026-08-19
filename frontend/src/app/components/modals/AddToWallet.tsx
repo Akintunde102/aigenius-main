@@ -22,6 +22,14 @@ import {
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
 import { openPayazaWalletCheckout, type PayazaCheckoutConfig } from "@/lib/payaza-checkout";
 import { isPayazaWalletProvider } from "@/lib/wallet-payment-provider";
+import {
+  creditsToUsd,
+  formatUsdAmount,
+  getCreditEquivalenceLabel,
+  MIN_TOP_UP_CREDITS,
+  WALLET_PAYMENT_CURRENCY,
+} from "@/lib/credits";
+import { notifyWalletCreditsUpdated } from "@/lib/wallet-credits-migration";
 import { serverCall } from "@/servercall/init";
 import { serverCalls } from "@/servercall/store";
 import React, { useEffect, useRef, useState } from "react";
@@ -42,7 +50,7 @@ interface AddToWalletProps {
   insufficientFundsMessage?: string;
 }
 
-const MIN_TOP_UP_NAIRA = 200;
+const MIN_TOP_UP_CREDITS_FALLBACK = MIN_TOP_UP_CREDITS;
 
 type TransactionStatusResponse = {
   status?: string;
@@ -89,7 +97,7 @@ const AddToWallet = ({
   showInsufficientFundsWarning,
   insufficientFundsMessage,
 }: AddToWalletProps) => {
-  const [amount, setAmount] = useState<string>("1000");
+  const [amount, setAmount] = useState<string>("10000");
   const [updating, setUpdating] = useState(false);
   const [loadingCredits, setLoadingCredits] = useState(true);
   const [wallet, setWallet] = useState<number | null>(null);
@@ -100,6 +108,7 @@ const AddToWallet = ({
   const paymentSettledRef = useRef(false);
   const [firstName, setFirstName] = useState<string>("");
   const [lastName, setLastName] = useState<string>("");
+  const [minTopUpCredits, setMinTopUpCredits] = useState(MIN_TOP_UP_CREDITS_FALLBACK);
 
   // Fetch wallet on mount and after update
   const fetchWallet = async () => {
@@ -121,6 +130,27 @@ const AddToWallet = ({
   }, []);
 
   useEffect(() => {
+    void (async () => {
+      try {
+        const res = await serverCall({
+          serverCallProps: {
+            call: serverCalls.getGatewayWalletCreditsConfig,
+          },
+          authorized: true,
+        });
+        const config = res?.dataReturned as {
+          minTopUpCredits?: number;
+        } | undefined;
+        if (typeof config?.minTopUpCredits === "number" && config.minTopUpCredits > 0) {
+          setMinTopUpCredits(config.minTopUpCredits);
+        }
+      } catch {
+        // Keep env fallback when config cannot be loaded.
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
     if (!showSuccess) {
       return;
     }
@@ -131,7 +161,8 @@ const AddToWallet = ({
   }, [showSuccess]);
 
   const parsedAmount = parseAmountNaira(amount);
-  const canSubmitAmount = parsedAmount >= MIN_TOP_UP_NAIRA;
+  const canSubmitAmount = parsedAmount >= minTopUpCredits;
+  const paymentUsd = creditsToUsd(parsedAmount);
 
   const applySuccessfulTopUp = React.useCallback(async (
     amountInNaira: string,
@@ -151,6 +182,7 @@ const AddToWallet = ({
     }
     setShowSuccess(true);
     toast.success("Payment verified. Your wallet has been updated.");
+    notifyWalletCreditsUpdated(newWalletBalance ?? null);
     void onSuccessfulPayment(amountInNaira, newWalletBalance ?? null, {
       keepModalOpen: true,
     });
@@ -339,23 +371,23 @@ const AddToWallet = ({
   }, [amount, onSuccessfulPayment, pollPendingPaymentInBackground, resolvePendingPayment]);
 
   // Submit logic
-  function submit(amountInNaira: number) {
+  function submit(credits: number) {
     if (
-      !amountInNaira ||
-      Number.isNaN(amountInNaira) ||
-      amountInNaira < MIN_TOP_UP_NAIRA
+      !credits ||
+      Number.isNaN(credits) ||
+      credits < minTopUpCredits
     ) {
-      toast.error(`Enter a valid amount (minimum ₦${MIN_TOP_UP_NAIRA})`);
+      toast.error(`Enter a valid amount (minimum ${minTopUpCredits.toLocaleString()} credits)`);
       return;
     }
     if (!email) {
       toast.error("Could not determine user email. Please try again.");
       return;
     }
-    handleSubmit(amountInNaira.toString(), email);
+    handleSubmit(credits.toString(), email);
   }
 
-  async function handleSubmit(amountInNaira: string, email: string) {
+  async function handleSubmit(credits: string, email: string) {
     if (submitInFlightRef.current || updating || confirmingPayment) {
       return;
     }
@@ -369,11 +401,12 @@ const AddToWallet = ({
         serverCallProps: {
           call: serverCalls.postGatewayWalletTransactionInitiate,
           data: {
-            amountInNaira,
+            credits,
+            paymentCurrency: WALLET_PAYMENT_CURRENCY,
             email,
             firstName,
             lastName,
-            callbackUrl: buildPaymentCallbackUrl(amountInNaira, reopenTarget),
+            callbackUrl: buildPaymentCallbackUrl(credits, reopenTarget),
           },
         },
         authorized: true,
@@ -399,7 +432,7 @@ const AddToWallet = ({
             WALLET_PENDING_PAYMENT_KEY,
             JSON.stringify({
               reference,
-              amountInNaira,
+              amountInNaira: credits,
               createdAt: Date.now(),
               provider: "payaza",
               checkoutStarted: false,
@@ -413,7 +446,7 @@ const AddToWallet = ({
           checkout,
           onPopupOpen: () => {
             if (reference) {
-              void startPolling(reference, amountInNaira);
+              void startPolling(reference, credits);
             }
           },
           onSuccess: () => {
@@ -465,12 +498,12 @@ const AddToWallet = ({
             WALLET_PENDING_PAYMENT_KEY,
             JSON.stringify({
               reference,
-              amountInNaira,
+              amountInNaira: credits,
               createdAt: Date.now(),
               provider: "paystack",
             }),
           );
-          void startPolling(reference, amountInNaira);
+          void startPolling(reference, credits);
         }
         setUpdating(false);
         openWalletPaymentCheckout(data.authorization_url);
@@ -579,7 +612,7 @@ const AddToWallet = ({
                 <path d="M16 3v4" />
                 <path d="M8 3v4" />
               </svg>
-              Present Credits
+              Current balance
             </span>
             <div className="w-full flex items-center justify-center mb-1">
               {loadingCredits ? (
@@ -592,11 +625,11 @@ const AddToWallet = ({
                 </span>
               )}
             </div>
-            {/* Info line for credit/naira/dollar equivalence */}
+            {/* Credit / USD equivalence */}
             <span
               className="text-[12px] font-medium rounded px-2 py-1 mt-2 mb-1 border shadow-sm flex items-center gap-1"
               tabIndex={0}
-              aria-label="Credit to Naira and Dollar equivalence"
+              aria-label="Credit to USD equivalence"
               style={{
                 background: "var(--modal-bg)",
                 borderColor: "var(--modal-border)",
@@ -618,9 +651,17 @@ const AddToWallet = ({
                 <line x1="12" y1="16" x2="12" y2="12" />
                 <line x1="12" y1="8" x2="12" y2="8" />
               </svg>
-              1 credit = ₦1.00 ≈ $0.00063
+              {getCreditEquivalenceLabel()}
             </span>
           </div>
+          {parsedAmount >= minTopUpCredits && (
+            <p
+              className="text-[12px] text-center mb-2 w-full"
+              style={{ color: "var(--modal-muted-fg)" }}
+            >
+              Pay {formatUsdAmount(paymentUsd)} for {addCommas(parsedAmount)} credits
+            </p>
+          )}
           {/* Success message if top-up was successful */}
           {showSuccess && (
             <div className="w-full flex flex-col items-center mb-2 animate-fadeIn">
@@ -642,7 +683,7 @@ const AddToWallet = ({
               </span>
             </div>
           )}
-          {/* Input and Add Money always available */}
+          {/* Credits input and checkout CTA */}
           <form
             className="w-full flex flex-row items-center mb-2 mt-1"
             onSubmit={(e) => {
@@ -658,7 +699,7 @@ const AddToWallet = ({
                 label=""
                 name="amount"
                 type="text"
-                placeholder="Amount (₦)"
+                placeholder="Credits to add"
                 value={amount ? addCommas(Number(amount)) : ""}
                 style={{
                   textAlign: "center",
@@ -669,7 +710,7 @@ const AddToWallet = ({
                   borderRight: "none",
                   boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
                 }}
-                aria-label="Amount in Naira"
+                aria-label="Credits to add"
                 onChange={(name: string, value: string) => {
                   const numberValue = value.replace(/[^0-9]/g, "");
                   setAmount(numberValue);
@@ -686,7 +727,7 @@ const AddToWallet = ({
                 minWidth: "110px",
               }}
               disabled={paymentModalLoading || updating || confirmingPayment || !canSubmitAmount}
-              aria-label="Add Money"
+              aria-label="Add credits"
             >
               {updating || paymentModalLoading ? (
                 <svg
@@ -704,7 +745,7 @@ const AddToWallet = ({
                   <path d="M12 2a10 10 0 0 1 10 10" />
                 </svg>
               ) : null}
-              Add Money
+              Add credits
             </button>
           </form>
           {/* Helper text for min amount */}
@@ -712,7 +753,7 @@ const AddToWallet = ({
             className="text-[10px] mt-0.5 mb-1"
             style={{ color: "var(--modal-muted-fg)" }}
           >
-            Minimum top-up: ₦200
+            Minimum top-up: {minTopUpCredits.toLocaleString()} credits ({formatUsdAmount(creditsToUsd(minTopUpCredits))})
           </span>
           {(updating || confirmingPayment) && (
             <div

@@ -2,7 +2,7 @@ import { markPendingWalletCheckoutStarted } from '@/lib/wallet-pending-payment-p
 
 export type PayazaCheckoutConfig = {
     checkoutAmount: number;
-    currencyCode: 'NGN';
+    currencyCode: 'NGN' | 'USD';
     emailAddress: string;
     firstName: string;
     lastName: string;

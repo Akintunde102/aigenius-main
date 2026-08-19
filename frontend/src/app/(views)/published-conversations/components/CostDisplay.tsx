@@ -1,4 +1,4 @@
-import React from 'react';
+import { formatUsdCostAsCredits } from '@/lib/credits';
 import { ChatMessage as ChatMessageType } from '@/app/components/model-interface/shared/types';
 import { timeAgo } from '@/lib/time-ago';
 import { formatTime } from '@/lib/utils/modelInterfaceUtils';
@@ -23,7 +23,7 @@ export const CostDisplay: React.FC<CostDisplayProps> = ({
     <div className="flex items-center justify-end gap-2 flex-wrap min-w-0">
         {msg.role === 'assistant' && (
             typeof msg.cost === 'number' ? (
-                <span className="text-green-600 font-medium">₦{(msg.cost * 1400).toFixed(2)}</span>
+                <span className="text-green-600 font-medium">{formatUsdCostAsCredits(msg.cost)}</span>
             ) : streaming ? (
                 showCosts && <span className="text-gray-400 animate-pulse">calculating...</span>
             ) : (

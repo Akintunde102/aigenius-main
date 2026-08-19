@@ -1,4 +1,5 @@
 import { ChatMessage, ChatSession, ModelPricing } from '@/app/components/model-interface/shared/types';
+import { USD_TO_CREDITS_RATE, formatCredits, usdCostToCredits } from '@/lib/credits';
 
 // Constants
 export const STORAGE_KEYS = {
@@ -10,7 +11,7 @@ export const STORAGE_KEYS = {
 } as const;
 
 export const CONVERSION_RATES = {
-    USD_TO_NGN: 1400
+    USD_TO_NGN: USD_TO_CREDITS_RATE
 } as const;
 
 export const DEFAULT_VALUES = {
@@ -227,13 +228,10 @@ export function formatTime(timestamp: number): string {
 export function formatNaira(usd: string | number): string {
     const num = typeof usd === 'string' ? parseFloat(usd) : usd;
     if (isNaN(num)) return String(usd);
-    return `₦${(num * CONVERSION_RATES.USD_TO_NGN).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    return formatCredits(usdCostToCredits(num), { compact: true });
 }
 
-/** Display formatting for known USD amounts (not pricing estimation). */
-export function formatCost(usd: number, showNaira: boolean): string {
-    if (showNaira) {
-        return `₦${(usd * CONVERSION_RATES.USD_TO_NGN).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-    }
-    return `$${usd.toFixed(4)}`;
+/** Display formatting for known USD amounts (always as credits). */
+export function formatCost(usd: number, _showNaira?: boolean): string {
+    return formatCredits(usdCostToCredits(usd), { compact: true });
 } 

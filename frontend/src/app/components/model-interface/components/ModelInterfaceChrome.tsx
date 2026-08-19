@@ -2,6 +2,7 @@
 
 import React from "react";
 import { ChatErrorMessage } from "@/app/components/model-interface/features/chat/components/ChatErrorMessage";
+import { WalletCreditsMigrationBanner } from "@/app/components/model-interface/components/WalletCreditsMigrationBanner";
 import type { ChatMessage } from "@/app/components/model-interface/shared/types";
 import styles from "../ModelInterface.module.scss";
 
@@ -25,6 +26,8 @@ export function ModelInterfaceChrome({
 }: ModelInterfaceChromeProps) {
   return (
     <>
+      <WalletCreditsMigrationBanner />
+
       {error ? (
         <ChatErrorMessage
           message={error}

@@ -60,7 +60,7 @@ export const AuthLayout = ({ children, title, subtitle }: AuthLayoutProps) => {
                             <div>
                                 <p className="font-medium">Pay-as-you-go pricing</p>
                                 <p className="text-sm text-auth-sidebar-foreground/70">
-                                    No monthly subscriptions. Purchase credits in Naira.
+                                    No monthly subscriptions. Top up credits in USD as you go.
                                 </p>
                             </div>
                         </div>

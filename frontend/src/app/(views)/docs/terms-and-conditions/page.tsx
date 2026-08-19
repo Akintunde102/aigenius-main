@@ -94,11 +94,11 @@ export default function TermsAndConditionsPage() {
         </p>
         <DocList
           items={[
-            <><strong className="text-stone-900">Credits:</strong> Credits are purchased in Naira (₦) via Paystack. A minimum amount per transaction may apply.</>,
+            <><strong className="text-stone-900">Credits:</strong> Credits are purchased in USD (1,000 credits = $1). Checkout is processed by our payment provider. A minimum top-up may apply.</>,
             <><strong className="text-stone-900">Usage:</strong> Each AI request consumes credits based on model pricing and token usage. You must maintain a sufficient balance to use models.</>,
             <><strong className="text-stone-900">Insufficient funds:</strong> If your balance is below the required minimum, you may be unable to use certain models until you add credits.</>,
             <><strong className="text-stone-900">Refunds:</strong> Refunds are handled according to our refund policy. Contact us for refund requests.</>,
-            <><strong className="text-stone-900">Payment provider:</strong> Paystack processes payments; their terms and policies apply.</>,
+            <><strong className="text-stone-900">Payment provider:</strong> Payaza or Paystack processes payments; their terms and policies apply.</>,
           ]}
         />
       </DocSection>

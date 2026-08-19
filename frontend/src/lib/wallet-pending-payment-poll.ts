@@ -1,4 +1,5 @@
 import { clearUserDetailsCache } from '@/lib/calls/get-logged-user-details';
+import { notifyWalletCreditsUpdated } from '@/lib/wallet-credits-migration';
 import {
   clearPendingPaymentStorage,
   WALLET_PENDING_PAYMENT_KEY,
@@ -59,6 +60,7 @@ function notifySuccess(
   listeners.forEach((listener) => {
     listener.onSuccess(amountInNaira, newWalletBalance);
   });
+  notifyWalletCreditsUpdated(newWalletBalance);
 }
 
 function notifyFailed(): void {
