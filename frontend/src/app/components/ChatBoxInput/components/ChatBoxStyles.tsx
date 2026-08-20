@@ -12,6 +12,14 @@ const ChatBoxStyles: React.FC = () => (
         .glisten-border {
             animation: glisten 2.2s linear;
         }
+        .chat-composer--wallet-muted {
+            opacity: 0.9;
+            filter: saturate(0.78);
+            transition: opacity 0.2s ease, filter 0.2s ease;
+        }
+        .chat-composer--wallet-muted .chat-composer-textarea::placeholder {
+            opacity: 0.72;
+        }
     `}</style>
 );
 

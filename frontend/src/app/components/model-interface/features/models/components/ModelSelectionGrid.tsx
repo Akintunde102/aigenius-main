@@ -1,12 +1,17 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Model } from "@/app/components/model-interface/shared/types";
 import { ModelSelectionCard } from "./ModelSelectionCard";
 import {
+  ModelPickerSectionBlock,
+  ModelPickerSectionLabel,
+} from "./ModelPickerSectionLabel";
+import {
   MODEL_CARD_GAP_PX,
-  MODEL_SECTION_HEADER_ROW_HEIGHT_PX,
+  buildModelSelectionVirtualRows,
   estimateModelSelectionRowSize,
   getModelSelectionRowKey,
+  isModelSectionCollapsed,
 } from "./modelSelectionGrid.utils";
 
 export interface ModelSelectionSection {
@@ -15,13 +20,73 @@ export interface ModelSelectionSection {
 }
 
 type VirtualRow =
-  | { type: "header"; title: string }
-  | { type: "model"; model: Model };
+  | {
+      type: "header";
+      title: string;
+      modelCount: number;
+      isCollapsed: boolean;
+      isFirstSection: boolean;
+      hasLeadingControl: boolean;
+    }
+  | { type: "model"; model: Model; isLastInSection: boolean };
+
+function ModelSectionHeader({
+  title,
+  modelCount,
+  isCollapsed,
+  isFirstSection,
+  hasLeadingControl,
+  onToggle,
+}: {
+  title: string;
+  modelCount: number;
+  isCollapsed: boolean;
+  isFirstSection: boolean;
+  hasLeadingControl: boolean;
+  onToggle: () => void;
+}) {
+  const countLabel = modelCount === 1 ? "1 model" : `${modelCount} models`;
+  const headerTitle = isCollapsed
+    ? `${title} — click to expand`
+    : `${title} — click to collapse`;
+
+  const blockClassName = [
+    isFirstSection && hasLeadingControl ? "pt-0" : "",
+    isCollapsed ? "" : "pb-0",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <ModelPickerSectionBlock
+      isFirst={isFirstSection && !hasLeadingControl}
+      className={blockClassName || undefined}
+    >
+      <ModelPickerSectionLabel
+        onClick={onToggle}
+        title={headerTitle}
+        ariaExpanded={!isCollapsed}
+      >
+        {title}
+      </ModelPickerSectionLabel>
+      {isCollapsed ? (
+        <p
+          className="px-1 text-[10px] leading-tight tabular-nums"
+          style={{ color: "var(--sidebar-muted-fg)", opacity: 0.65 }}
+        >
+          {countLabel}
+        </p>
+      ) : null}
+    </ModelPickerSectionBlock>
+  );
+}
 
 interface ModelSelectionGridProps {
   parentRef: React.RefObject<HTMLDivElement | null>;
   /** Busts virtualizer layout when tab/data shape changes (e.g. favorites → all sections). */
   listKey?: string;
+  /** True when an affordability toggle sits directly above the grid. */
+  hasLeadingControl?: boolean;
   models?: Model[];
   /** When set, renders titled sections (single virtualized list). */
   sections?: ModelSelectionSection[];
@@ -34,11 +99,14 @@ interface ModelSelectionGridProps {
   selectedModelId?: string;
   handleShowModelDetails: (model: Model) => void;
   isSortingByReleaseDate: boolean;
+  wallet?: number | null;
+  onAddCredits?: () => void;
 }
 
 export const ModelSelectionGrid = React.memo(({
   parentRef,
   listKey,
+  hasLeadingControl = false,
   models = [],
   sections,
   isMobile,
@@ -50,32 +118,31 @@ export const ModelSelectionGrid = React.memo(({
   selectedModelId,
   handleShowModelDetails,
   isSortingByReleaseDate,
+  wallet,
+  onAddCredits,
 }: ModelSelectionGridProps) => {
   const [scrollPaneHeight, setScrollPaneHeight] = useState(0);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setCollapsedSections({});
+  }, [listKey]);
+
+  const toggleSectionCollapsed = useCallback((title: string) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [title]: !isModelSectionCollapsed(title, prev),
+    }));
+  }, []);
 
   const virtualRows = useMemo((): VirtualRow[] => {
-    const appendModels = (rows: VirtualRow[], list: Model[]) => {
-      for (const model of list) {
-        rows.push({ type: "model", model });
-      }
-    };
-
-    if (sections?.length) {
-      const rows: VirtualRow[] = [];
-      for (const section of sections) {
-        if (section.models.length === 0) continue;
-        if (section.title.trim()) {
-          rows.push({ type: "header", title: section.title });
-        }
-        appendModels(rows, section.models);
-      }
-      return rows;
-    }
-
-    const rows: VirtualRow[] = [];
-    appendModels(rows, models);
-    return rows;
-  }, [sections, models]);
+    return buildModelSelectionVirtualRows(
+      sections,
+      models,
+      collapsedSections,
+      hasLeadingControl,
+    ) as VirtualRow[];
+  }, [sections, models, collapsedSections, hasLeadingControl]);
 
   const totalModelCount = sections?.length
     ? sections.reduce((sum, s) => sum + s.models.length, 0)
@@ -91,10 +158,6 @@ export const ModelSelectionGrid = React.memo(({
     [virtualRows],
   );
 
-  // Portals (especially Electron) can mount before the flex pane has a real height.
-  // Enable virtualization only once the scroll box is measurable so we don't lock in
-  // empty ranges. Do not call virtualizer.measure() here — it wipes item sizes back
-  // to estimates and recreates the oversized gaps.
   useLayoutEffect(() => {
     const scrollEl = parentRef.current;
     if (!scrollEl) return;
@@ -150,22 +213,24 @@ export const ModelSelectionGrid = React.memo(({
             <div
               key={String(virtualRow.key)}
               data-index={virtualRow.index}
+              ref={virtualizer.measureElement}
               style={{
                 position: "absolute",
                 top: 0,
                 left: 0,
                 width: "100%",
-                height: MODEL_SECTION_HEADER_ROW_HEIGHT_PX,
                 transform: `translateY(${virtualRow.start}px)`,
               }}
-              className={`${slotPadding} flex max-w-xl flex-col justify-start`}
+              className={slotPadding}
             >
-              <h3
-                className="sidebar-section-label pb-2.5 font-medium uppercase tracking-wider"
-                style={{ color: "var(--sidebar-muted-fg)" }}
-              >
-                {row.title}
-              </h3>
+              <ModelSectionHeader
+                title={row.title}
+                modelCount={row.modelCount}
+                isCollapsed={row.isCollapsed}
+                isFirstSection={row.isFirstSection}
+                hasLeadingControl={row.hasLeadingControl}
+                onToggle={() => toggleSectionCollapsed(row.title)}
+              />
             </div>
           );
         }
@@ -194,6 +259,9 @@ export const ModelSelectionGrid = React.memo(({
               onShowDetails={handleShowModelDetails}
               isMobile={isMobile}
               isSortingByReleaseDate={isSortingByReleaseDate}
+              wallet={wallet}
+              selectedModelId={selectedModelId}
+              onAddCredits={onAddCredits}
             />
           </div>
         );

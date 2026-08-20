@@ -94,6 +94,9 @@ type Props = {
   setError?: (error: string | ((prev: string) => string)) => void;
   setWallet?: (wallet: number | null | ((prev: number | null) => number | null)) => void;
   onInsufficientFunds?: () => void;
+  wallet?: number | null;
+  onAddCredits?: () => void;
+  isInsufficientCredits?: boolean;
   requestModelPick?: () => Promise<{ id: string; name?: string } | null>;
   onAudioModeToggle?: (enabled: boolean) => void;
   isAudioMode?: boolean;
@@ -174,6 +177,9 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   setError,
   setWallet,
   onInsufficientFunds,
+  wallet,
+  onAddCredits,
+  isInsufficientCredits = false,
   requestModelPick,
   onAudioModeToggle,
   isAudioMode,
@@ -312,6 +318,9 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           setError={setError}
           setWallet={setWallet}
           onInsufficientFunds={onInsufficientFunds}
+          wallet={wallet}
+          onAddCredits={onAddCredits}
+          isInsufficientCredits={isInsufficientCredits}
           onAudioModeToggle={onAudioModeToggle}
           isAudioMode={isAudioMode}
           onStartSTT={onStartSTT}

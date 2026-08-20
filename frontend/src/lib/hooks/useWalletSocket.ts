@@ -15,7 +15,7 @@ interface WalletUpdatedPayload {
 }
 
 interface UseWalletSocketOptions {
-    onWalletUpdated: (newBalance: number) => void;
+    onWalletUpdated: (payload: WalletUpdatedPayload) => void;
 }
 
 async function resolveWalletSocketBaseUrl(): Promise<string | null> {
@@ -72,7 +72,7 @@ export function useWalletSocket({ onWalletUpdated }: UseWalletSocketOptions) {
             socket.on('wallet:updated', (payload: WalletUpdatedPayload) => {
                 console.log('[WalletSocket] wallet:updated', payload);
                 clearUserDetailsCache();
-                callbackRef.current(payload.newBalance);
+                callbackRef.current(payload);
             });
 
             socket.on('disconnect', (reason) => {

@@ -11,6 +11,7 @@ import { useInputState } from './hooks/useInputState';
 import { useGlistenEffect } from './hooks/useGlistenEffect';
 import { getContainerStyles } from './utils/styles';
 import { ComposerMessageQueue } from './ComposerMessageQueue';
+import { computeModelRequiredBalance } from '@/app/components/model-interface/features/models/utils/modelWalletAffordance.utils';
 
 /** True when viewport is wide (PC); false for mobile viewport. Uses 768px breakpoint to match app layout. */
 function useIsPc() {
@@ -38,6 +39,9 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     quickPickModels,
     favoritesLoaded,
     onOpenFullModelPicker,
+    wallet,
+    onAddCredits,
+    isInsufficientCredits = false,
     placeholder = "How can I help you today?",
     responseInProgress = false,
     onStopGeneration,
@@ -222,6 +226,11 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
 
 
     const styles = getContainerStyles(sidebarStyle);
+    const composerWalletMuted = isInsufficientCredits && !responseInProgress;
+    const requiredWalletBalance = useMemo(
+        () => computeModelRequiredBalance(selectedModel),
+        [selectedModel],
+    );
 
     const attachmentPreviews =
         uploadedFiles.length > 0 || activePendingFiles.length > 0 || failedUploadFiles.length > 0 ? (
@@ -455,7 +464,9 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
 
             {attachmentPreviews}
 
-            <div className={styles.container}>
+            <div
+                className={`${styles.container} ${composerWalletMuted ? "chat-composer--wallet-muted" : ""}`}
+            >
                 <div className="relative flex flex-col">
                     {/* STT status pill — minimal, non-intrusive */}
                     {(isSTTActive || isDictationTranscribing || ((audioStatus === 'transcribing' || audioStatus === 'interrupted') && !isAudioMode)) && (
@@ -586,6 +597,10 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                         quickPickModels={quickPickModels}
                         favoritesLoaded={favoritesLoaded}
                         onOpenFullModelPicker={onOpenFullModelPicker}
+                        wallet={wallet}
+                        onAddCredits={onAddCredits}
+                        isInsufficientCredits={isInsufficientCredits}
+                        requiredWalletBalance={requiredWalletBalance}
                         onAttachmentClick={handleAttachmentClick}
                         sidebarStyle={sidebarStyle}
                         streaming={streaming}
@@ -647,6 +662,9 @@ export default React.memo(ChatBoxInput, (prevProps, nextProps) => {
         prevProps.onSelectModel === nextProps.onSelectModel &&
         prevProps.onModelNameClick === nextProps.onModelNameClick &&
         prevProps.onOpenFullModelPicker === nextProps.onOpenFullModelPicker &&
+        prevProps.wallet === nextProps.wallet &&
+        prevProps.onAddCredits === nextProps.onAddCredits &&
+        prevProps.isInsufficientCredits === nextProps.isInsufficientCredits &&
         prevProps.favoritesLoaded === nextProps.favoritesLoaded &&
         prevProps.quickPickModels === nextProps.quickPickModels &&
         prevProps.sidebarStyle === nextProps.sidebarStyle &&

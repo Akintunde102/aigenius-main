@@ -9,6 +9,11 @@ import {
   ModelOrderDir,
 } from "@/app/components/model-interface/shared/utils";
 import { ModelSelectionFiltersNew } from "./ModelSelectionFiltersNew";
+import { ModelToggleSwitch } from "@/app/components/ChatBoxInput/ModelToggleSwitch";
+import {
+  ModelPickerSectionLabel,
+  ModelPickerToggleRow,
+} from "./ModelPickerSectionLabel";
 import { useModelSelection } from "@/app/components/model-interface/shared/hooks/useModelSelection";
 import { RecentModelChips } from "./RecentModelChips";
 import { ModelSelectionGrid } from "./ModelSelectionGrid";
@@ -19,6 +24,11 @@ import {
   isModelInCatalog,
   mergeQuickPickIdsForDisplay,
 } from "@/app/components/model-interface/shared/constants/quickPickModels";
+import {
+  isModelWalletGatingEnabled,
+  partitionModelsByWalletAffordance,
+} from "@/app/components/model-interface/features/models/utils/modelWalletAffordance.utils";
+import type { ModelSelectionSection } from "./ModelSelectionGrid";
 
 interface ModelSelectionModalProps {
   isOpen: boolean;
@@ -58,6 +68,8 @@ interface ModelSelectionModalProps {
   setShowToolsOnly?: (show: boolean) => void;
   orderByCost?: "none" | "asc" | "desc";
   setOrderByCost?: (order: "none" | "asc" | "desc") => void;
+  wallet?: number | null;
+  onAddCredits?: () => void;
 }
 
 export const ModelSelectionModal = React.memo(({
@@ -86,11 +98,14 @@ export const ModelSelectionModal = React.memo(({
   setImageFilterOnly: setImageFilterOnlyProp,
   showWebSearch: showWebSearchProp,
   setShowWebSearch: setShowWebSearchProp,
+  wallet = null,
+  onAddCredits,
 }: ModelSelectionModalProps) => {
   const [isMobile, setIsMobile] = useState(false);
   const [showFilterSortRow, setShowFilterSortRow] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [previewedRecentModel, setPreviewedRecentModel] = useState<Model | null>(null);
+  const [groupByAffordability, setGroupByAffordability] = useState(false);
 
   // Progressive rendering (removed in favor of virtualization)
   const hasAutoSwitchedRef = React.useRef(false);
@@ -180,7 +195,9 @@ export const ModelSelectionModal = React.memo(({
     handleShowModelDetails,
     isMobile,
     isSortingByReleaseDate: orderBy === "release_date",
-  }), [isModelPinned, togglePinModel, setSelectedModel, onClose, avgCostById, selectedModel?.id, handleShowModelDetails, isMobile, orderBy]);
+    wallet,
+    onAddCredits,
+  }), [isModelPinned, togglePinModel, setSelectedModel, onClose, avgCostById, selectedModel?.id, handleShowModelDetails, isMobile, orderBy, wallet, onAddCredits]);
 
   const majorProviders = useMemo(
     () => getMajorProviders(extractProviders(models)),
@@ -210,6 +227,7 @@ export const ModelSelectionModal = React.memo(({
     if (!isOpen) {
       setSelectedModelForDetails(null);
       setPreviewedRecentModel(null);
+      setGroupByAffordability(false);
     }
   }, [isOpen, setSelectedModelForDetails]);
 
@@ -233,8 +251,41 @@ export const ModelSelectionModal = React.memo(({
     [otherModelsSorted, previewedRecentModel],
   );
 
+  const allModelsFlat = useMemo(() => {
+    const list: Model[] = [...filteredMainModels];
+    if (previewedRecentModel) {
+      list.push(previewedRecentModel);
+    }
+    list.push(...filteredOtherModels);
+    return list;
+  }, [filteredMainModels, filteredOtherModels, previewedRecentModel]);
+
+  const buildAffordabilitySections = useCallback(
+    (modelsToSplit: Model[]): ModelSelectionSection[] => {
+      const { affordable, locked } = partitionModelsByWalletAffordance(
+        modelsToSplit,
+        wallet,
+        avgCostById,
+        selectedModel?.id,
+      );
+      const sections: ModelSelectionSection[] = [];
+      if (affordable.length > 0) {
+        sections.push({ title: "Models you can use", models: affordable });
+      }
+      if (locked.length > 0) {
+        sections.push({ title: "Need more credits", models: locked });
+      }
+      return sections;
+    },
+    [wallet, avgCostById, selectedModel?.id],
+  );
+
   const allModelSections = useMemo(() => {
-    const sections = [];
+    if (groupByAffordability) {
+      return buildAffordabilitySections(allModelsFlat);
+    }
+
+    const sections: ModelSelectionSection[] = [];
     if (filteredMainModels.length > 0) {
       sections.push({ title: "Main models", models: filteredMainModels });
     }
@@ -250,7 +301,14 @@ export const ModelSelectionModal = React.memo(({
       });
     }
     return sections;
-  }, [filteredMainModels, filteredOtherModels, previewedRecentModel]);
+  }, [
+    groupByAffordability,
+    buildAffordabilitySections,
+    allModelsFlat,
+    filteredMainModels,
+    filteredOtherModels,
+    previewedRecentModel,
+  ]);
 
   const favoritesGridSections = useMemo(() => {
     if (activeTab !== "favorites") return undefined;
@@ -266,14 +324,65 @@ export const ModelSelectionModal = React.memo(({
     }
 
     if (favoritesSorted.length > 0) {
-      sections.push({
-        title: showActiveOutside ? "Quick picks" : "",
-        models: favoritesSorted,
-      });
+      if (groupByAffordability) {
+        sections.push(...buildAffordabilitySections(favoritesSorted));
+      } else {
+        sections.push({
+          title: showActiveOutside ? "Quick picks" : "",
+          models: favoritesSorted,
+        });
+      }
     }
 
     return sections.length > 0 ? sections : undefined;
-  }, [activeTab, selectedModel, effectiveQuickPickIds, models, favoritesSorted]);
+  }, [
+    activeTab,
+    selectedModel,
+    effectiveQuickPickIds,
+    models,
+    favoritesSorted,
+    groupByAffordability,
+    buildAffordabilitySections,
+  ]);
+
+  const ollamaModelSections = useMemo(() => {
+    if (activeTab !== "ollama" || !groupByAffordability) {
+      return undefined;
+    }
+    return buildAffordabilitySections(ollamaModelsSorted);
+  }, [activeTab, groupByAffordability, ollamaModelsSorted, buildAffordabilitySections]);
+
+  const showAffordabilityToggle = useMemo(() => {
+    if (!isModelWalletGatingEnabled()) {
+      return false;
+    }
+    if (wallet === null || wallet === undefined || !Number.isFinite(wallet)) {
+      return false;
+    }
+
+    const modelsForTab =
+      activeTab === "favorites"
+        ? favoritesSorted
+        : activeTab === "ollama"
+          ? ollamaModelsSorted
+          : allModelsFlat;
+
+    const { locked } = partitionModelsByWalletAffordance(
+      modelsForTab,
+      wallet,
+      avgCostById,
+      selectedModel?.id,
+    );
+    return locked.length > 0;
+  }, [
+    wallet,
+    activeTab,
+    favoritesSorted,
+    ollamaModelsSorted,
+    allModelsFlat,
+    avgCostById,
+    selectedModel?.id,
+  ]);
 
   // Set initial tab once when the modal opens — not when quick picks change mid-session.
   useEffect(() => {
@@ -444,20 +553,42 @@ export const ModelSelectionModal = React.memo(({
         {/* Content */}
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           <div
-            className={`flex-1 min-h-0 overflow-y-auto ${isMobile ? "p-2 pb-4" : "px-2 py-3 pb-8"}`}
+            className={`flex-1 min-h-0 overflow-y-auto ${isMobile ? "p-2 pb-3" : "px-2 py-2 pb-6"}`}
             style={{ background: "var(--sidebar-bg)" }}
             ref={parentRef}
           >
+            {showAffordabilityToggle && (
+              <div className={isMobile ? "px-1" : "px-2"}>
+                <ModelPickerToggleRow>
+                  <ModelToggleSwitch
+                    checked={groupByAffordability}
+                    onChange={() => setGroupByAffordability((prev) => !prev)}
+                    label="show me all models I can use"
+                    size="xs"
+                    variant={groupByAffordability ? "default" : "quiet"}
+                  />
+                  <ModelPickerSectionLabel
+                    onClick={() => setGroupByAffordability((prev) => !prev)}
+                    ariaPressed={groupByAffordability}
+                  >
+                    show me all models I can use
+                  </ModelPickerSectionLabel>
+                </ModelPickerToggleRow>
+              </div>
+            )}
             <ModelSelectionGrid
               parentRef={parentRef}
-              listKey={activeTab}
+              hasLeadingControl={showAffordabilityToggle}
+              listKey={`${activeTab}-${groupByAffordability ? "afford" : "all"}`}
               models={
                 activeTab === "favorites"
                   ? favoritesGridSections
                     ? undefined
                     : favoritesSorted
                   : activeTab === "ollama"
-                    ? ollamaModelsSorted
+                    ? ollamaModelSections
+                      ? undefined
+                      : ollamaModelsSorted
                     : undefined
               }
               sections={
@@ -465,7 +596,9 @@ export const ModelSelectionModal = React.memo(({
                   ? allModelSections
                   : activeTab === "favorites"
                     ? favoritesGridSections
-                    : undefined
+                    : activeTab === "ollama"
+                      ? ollamaModelSections
+                      : undefined
               }
               emptyState={
                 activeTab === "favorites" && !favoritesGridSections

@@ -24,6 +24,9 @@ export const MIN_TOP_UP_CREDITS = parsePositiveRate(
   1000,
 );
 
+/** Free credits granted to new accounts at registration. */
+export const SIGNUP_BONUS_CREDITS = 100;
+
 export function creditsToUsd(credits: number): number {
   return Math.round((credits / CREDITS_PER_USD) * 100) / 100;
 }

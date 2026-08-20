@@ -20,7 +20,7 @@ import {
   subscribePendingWalletPaymentPoll,
 } from "@/lib/wallet-pending-payment-poll";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
-import { openPayazaWalletCheckout, type PayazaCheckoutConfig } from "@/lib/payaza-checkout";
+import { openPayazaHostedWalletCheckout, type PayazaCheckoutConfig } from "@/lib/payaza-checkout";
 import { isPayazaWalletProvider } from "@/lib/wallet-payment-provider";
 import {
   creditsToUsd,
@@ -215,7 +215,7 @@ const AddToWallet = ({
     try {
       const response = (await serverCall({
         serverCallProps: {
-          call: serverCalls.getGatewayPaystackTransactionStatus,
+          call: serverCalls.getGatewayWalletTransactionStatus,
         },
         pathArgs: { reference },
         authorized: true,
@@ -322,7 +322,7 @@ const AddToWallet = ({
           if (paymentResult.status === "pending") {
             toast(
               paymentResult.message ||
-                "We are still confirming your payment with Paystack.",
+                "We are still confirming your payment.",
               { icon: "⏳" },
             );
             void pollPendingPaymentInBackground(paymentResult.reference, amountInNaira);
@@ -396,6 +396,7 @@ const AddToWallet = ({
     paymentSettledRef.current = false;
     setUpdating(true);
     setConfirmingPayment(false);
+    const paymentCallbackUrl = buildPaymentCallbackUrl(credits, reopenTarget);
     try {
       const response = (await serverCall({
         serverCallProps: {
@@ -406,7 +407,7 @@ const AddToWallet = ({
             email,
             firstName,
             lastName,
-            callbackUrl: buildPaymentCallbackUrl(credits, reopenTarget),
+            callbackUrl: paymentCallbackUrl,
           },
         },
         authorized: true,
@@ -435,51 +436,24 @@ const AddToWallet = ({
               amountInNaira: credits,
               createdAt: Date.now(),
               provider: "payaza",
-              checkoutStarted: false,
+              checkoutStarted: true,
             }),
           );
+          void startPolling(reference, credits);
         }
 
-        let payazaPaymentSubmitted = false;
-        await openPayazaWalletCheckout({
+        setUpdating(false);
+        openPayazaHostedWalletCheckout({
           publicKey,
           checkout,
-          onPopupOpen: () => {
-            if (reference) {
-              void startPolling(reference, credits);
-            }
-          },
-          onSuccess: () => {
-            payazaPaymentSubmitted = true;
-            if (paymentSettledRef.current) {
-              return;
-            }
-            setConfirmingPayment(true);
-            setUpdating(true);
-            toast.success("Payment submitted. Confirming your wallet top-up…");
-          },
-          onError: (errorResponse) => {
-            if (paymentSettledRef.current) {
-              return;
-            }
-            submitInFlightRef.current = false;
-            setConfirmingPayment(false);
-            setUpdating(false);
-            toast.error(
-              errorResponse.data?.message || "Payaza payment failed. Please try again.",
-            );
-          },
-          onClose: () => {
-            if (paymentSettledRef.current) {
-              return;
-            }
-            if (!payazaPaymentSubmitted) {
-              submitInFlightRef.current = false;
-              setConfirmingPayment(false);
-              setUpdating(false);
-            }
-          },
+          redirectUrl: paymentCallbackUrl,
         });
+        if (isAigeniusDesktopRuntime()) {
+          toast(
+            "Complete payment in your browser. Your wallet will update automatically in the app.",
+            { icon: "🌐", duration: 6000 },
+          );
+        }
         return;
       }
 
@@ -755,6 +729,15 @@ const AddToWallet = ({
           >
             Minimum top-up: {minTopUpCredits.toLocaleString()} credits ({formatUsdAmount(creditsToUsd(minTopUpCredits))})
           </span>
+          {isPayazaWalletProvider()
+            && process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY?.includes("PKTEST") ? (
+            <p
+              className="text-[10px] mt-1 text-center leading-relaxed"
+              style={{ color: "var(--modal-muted-fg)" }}
+            >
+              Payaza test card: 4508750015741019 · expiry 01/39 · CVV 100
+            </p>
+          ) : null}
           {(updating || confirmingPayment) && (
             <div
               className="mt-2 text-xs"

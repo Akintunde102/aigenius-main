@@ -74,4 +74,29 @@ describe("ModelSelectionFeaturedCard layout", () => {
     expect(container.querySelector(".app-model-card--selected")).toBeInTheDocument();
     expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "true");
   });
+
+  it("grays out models that need more credits and opens top-up on click", () => {
+    const onAddCredits = jest.fn();
+    const onSelect = jest.fn();
+    const { container } = render(
+      <ModelSelectionFeaturedCard
+        model={model}
+        isPinned={false}
+        onTogglePin={jest.fn()}
+        onSelect={onSelect}
+        averageCost={0.05}
+        isSelected={false}
+        wallet={10}
+        onAddCredits={onAddCredits}
+      />,
+    );
+
+    expect(container.querySelector(".app-model-card--wallet-locked")).toBeInTheDocument();
+    expect(screen.getByText(/Load \d+ more credits to use/)).toBeInTheDocument();
+    container.querySelector(".app-model-card")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    expect(onAddCredits).toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
 });

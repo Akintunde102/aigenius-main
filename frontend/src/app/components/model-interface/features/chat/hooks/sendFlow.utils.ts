@@ -1,6 +1,5 @@
 import { ChatMessage, Model } from '@/app/components/model-interface/shared/types';
-import { getModelAverageRequestPrice, USD_TO_NGN } from '@/app/components/model-interface/shared/utils';
-import { CHAT_CONFIG } from './chatOperations.constants';
+import { computeModelRequiredBalance } from '../../models/utils/modelWalletAffordance.utils';
 import { createChatMessage } from './contentProcessing.utils';
 import { augmentUserTextForWorkflowPlanConfirmation } from './workflow-plan-confirmation.utils';
 
@@ -9,17 +8,7 @@ export function resolveInputToSend(content: string | undefined, input: string): 
 }
 
 export function computeRequiredBalance(selectedModel: Model | null): number {
-    if (!selectedModel) {
-        return CHAT_CONFIG.MIN_WALLET_BALANCE;
-    }
-
-    const averageCostUSD = getModelAverageRequestPrice(selectedModel);
-    const averageCostCredits = averageCostUSD * USD_TO_NGN;
-
-    return Math.max(
-        CHAT_CONFIG.MIN_WALLET_BALANCE,
-        averageCostCredits > 0 ? averageCostCredits * CHAT_CONFIG.MODEL_BALANCE_FACTOR : 0,
-    );
+    return computeModelRequiredBalance(selectedModel);
 }
 
 export function buildUserMessageState(args: {

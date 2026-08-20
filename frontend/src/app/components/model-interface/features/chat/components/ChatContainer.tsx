@@ -83,6 +83,9 @@ interface ChatContainerProps {
     setError?: (error: string | ((prev: string) => string)) => void;
     setWallet?: (wallet: number | null | ((prev: number | null) => number | null)) => void;
     onInsufficientFunds?: () => void;
+    wallet?: number | null;
+    onAddCredits?: () => void;
+    isInsufficientCredits?: boolean;
     requestModelPick?: () => Promise<{ id: string; name?: string } | null>;
     // Audio props
     onAudioModeToggle?: (enabled: boolean) => void;
@@ -173,6 +176,9 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     setError,
     setWallet,
     onInsufficientFunds,
+    wallet,
+    onAddCredits,
+    isInsufficientCredits = false,
     requestModelPick,
     onAudioModeToggle,
     isAudioMode,
@@ -452,6 +458,9 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         quickPickModels={quickPickModels}
                         favoritesLoaded={favoritesLoaded}
                         onOpenFullModelPicker={onOpenFullModelPicker}
+                        wallet={wallet}
+                        onAddCredits={onAddCredits}
+                        isInsufficientCredits={isInsufficientCredits}
                         selectedPersonalityName={selectedPersonalityName}
                         onPersonalityClick={onPersonalityClick}
                         selectedPersonalityIconUrl={selectedPersonalityIconUrl}

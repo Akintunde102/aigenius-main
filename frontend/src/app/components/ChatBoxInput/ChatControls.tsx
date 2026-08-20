@@ -4,6 +4,7 @@ import { ActionButtons } from './ActionButtons';
 import { ChatControlsProps } from './types';
 import { ModelQuickPickDropdown } from './ModelQuickPickDropdown';
 import type { Model } from '@/app/components/model-interface/shared/types';
+import { ModelWalletLockIndicator } from '@/app/components/model-interface/features/models/components/ModelWalletLockIndicator';
 
 // Left Controls Section Component
 const LeftControlsSection: React.FC<{
@@ -20,6 +21,10 @@ const LeftControlsSection: React.FC<{
     quickPickModels?: Model[];
     favoritesLoaded?: boolean;
     onOpenFullModelPicker?: () => void;
+    wallet?: number | null;
+    onAddCredits?: () => void;
+    isInsufficientCredits?: boolean;
+    requiredWalletBalance?: number;
     sidebarStyle: boolean;
     glisten: boolean;
     selectedPersonalityName?: string;
@@ -51,6 +56,10 @@ const LeftControlsSection: React.FC<{
     quickPickModels,
     favoritesLoaded,
     onOpenFullModelPicker,
+    wallet,
+    onAddCredits,
+    isInsufficientCredits = false,
+    requiredWalletBalance = 0,
     sidebarStyle,
     glisten,
     selectedPersonalityName,
@@ -70,12 +79,17 @@ const LeftControlsSection: React.FC<{
     isDictationTranscribing,
 }) => {
         const modelDisabled = modelSelectorDisabled ?? disabled;
+        const showComposerWalletHint =
+            isInsufficientCredits && requiredWalletBalance > 0 && onAddCredits;
 
         return (
             <div className="flex items-center gap-2">
                 {/* Model Selection Button - hidden when a personality is active or explicitly hidden */}
                 {!selectedPersonalityName && !hideModelSelector && (
-                    quickPickModels && onSelectModel && onOpenFullModelPicker ? (
+                    <div
+                        className={`flex min-w-0 flex-col gap-1 ${showComposerWalletHint ? "rounded-lg px-2 py-1.5 [background-color:color-mix(in_srgb,var(--chat-composer-border)_42%,transparent)]" : ""}`}
+                    >
+                    {quickPickModels && onSelectModel && onOpenFullModelPicker ? (
                         <ModelQuickPickDropdown
                             disabled={modelDisabled}
                             mini={mini}
@@ -84,6 +98,8 @@ const LeftControlsSection: React.FC<{
                             favoritesLoaded={favoritesLoaded ?? true}
                             onSelectModel={onSelectModel}
                             onOpenFullPicker={onOpenFullModelPicker}
+                            wallet={wallet}
+                            onAddCredits={onAddCredits}
                         />
                     ) : (
                         <button
@@ -97,7 +113,20 @@ const LeftControlsSection: React.FC<{
                                 {selectedModel?.name ?? 'Select model'}
                             </span>
                         </button>
-                    )
+                    )}
+                    {showComposerWalletHint ? (
+                        <button
+                            type="button"
+                            onClick={onAddCredits}
+                            className="max-w-[11rem] text-left"
+                        >
+                            <ModelWalletLockIndicator
+                                requiredBalance={requiredWalletBalance}
+                                wallet={wallet}
+                            />
+                        </button>
+                    ) : null}
+                    </div>
                 )}
 
                 {/* Personality controls: select or clear - hidden in compact mode if not active */}
@@ -252,6 +281,10 @@ export const ChatControls: React.FC<ChatControlsProps> = React.memo(({
     quickPickModels,
     favoritesLoaded,
     onOpenFullModelPicker,
+    wallet,
+    onAddCredits,
+    isInsufficientCredits = false,
+    requiredWalletBalance = 0,
     onAttachmentClick,
     sidebarStyle = false,
     streaming,
@@ -290,6 +323,10 @@ export const ChatControls: React.FC<ChatControlsProps> = React.memo(({
                     quickPickModels={quickPickModels}
                     favoritesLoaded={favoritesLoaded}
                     onOpenFullModelPicker={onOpenFullModelPicker}
+                    wallet={wallet}
+                    onAddCredits={onAddCredits}
+                    isInsufficientCredits={isInsufficientCredits}
+                    requiredWalletBalance={requiredWalletBalance}
                     sidebarStyle={sidebarStyle}
                     glisten={glisten}
                     selectedPersonalityName={selectedPersonalityName}

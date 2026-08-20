@@ -22,6 +22,11 @@ jest.mock('../ModelSelectionGrid', () => ({
         if (allModels.length === 0 && emptyState) return <>{emptyState}</>;
         return (
             <div data-testid="grid">
+                {sections?.map((section: any) => (
+                    section.title ? (
+                        <h3 key={section.title} data-testid="section-title">{section.title}</h3>
+                    ) : null
+                ))}
                 {allModels.map((m: any) => <div key={m.id} data-testid="model-item">{m.name}</div>)}
             </div>
         );
@@ -146,5 +151,38 @@ describe('ModelSelectionModal', () => {
         
         // Clean up
         document.body.removeChild(modalRoot);
+    });
+
+    it('splits models by wallet affordability when the toggle is clicked', () => {
+        const expensiveModel: Model = {
+            ...mockModels[1],
+            id: 'expensive',
+            name: 'Model Expensive',
+            pricing: {
+                prompt: '0.05',
+                completion: '0.05',
+            },
+        };
+
+        render(
+            <ModelSelectionModal
+                {...defaultProps}
+                models={[mockModels[0], expensiveModel]}
+                wallet={10}
+                favoritesLoaded
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'All Models' }));
+
+        const toggle = screen.getByRole('switch', {
+            name: 'show me all models I can use',
+        });
+        expect(toggle).toBeInTheDocument();
+
+        fireEvent.click(toggle);
+
+        expect(screen.getByText('Models you can use')).toBeInTheDocument();
+        expect(screen.getByText('Need more credits')).toBeInTheDocument();
     });
 });

@@ -18,12 +18,19 @@ import {
     getTierPricingEntries,
     pricingLabel,
 } from '../utils/modelPricingDisplay.utils';
+import {
+    computeModelRequiredBalance,
+    getModelWalletLockShortHint,
+    isModelPickLocked,
+} from '../utils/modelWalletAffordance.utils';
 
 interface ModelDetailsModalProps {
     isOpen: boolean;
     onClose: () => void;
     model: Model | null;
     onPickModel?: (model: Model) => void;
+    wallet?: number | null;
+    onAddCredits?: () => void;
 }
 
 function formatContextLength(n: number): string {
@@ -33,7 +40,7 @@ function formatContextLength(n: number): string {
     return String(n);
 }
 
-export function ModelDetailsModal({ isOpen, onClose, model, onPickModel }: ModelDetailsModalProps) {
+export function ModelDetailsModal({ isOpen, onClose, model, onPickModel, wallet = null, onAddCredits }: ModelDetailsModalProps) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -57,6 +64,10 @@ export function ModelDetailsModal({ isOpen, onClose, model, onPickModel }: Model
     const isFree = provider === 'openrouter' && model.id?.split('/')[1]?.toLowerCase() === 'free';
     const avgCost = getModelAverageRequestPrice(model);
     const showAvgCost = Number.isFinite(avgCost) && avgCost > 0;
+    const requiredBalance = computeModelRequiredBalance(model, avgCost);
+    const isWalletLocked = isModelPickLocked(wallet, requiredBalance, {
+        modelId: model.id,
+    });
     const inputMods = model.architecture?.input_modalities ?? [];
     const outputMods = model.architecture?.output_modalities ?? [];
     const hasModalities = inputMods.length > 0 || outputMods.length > 0;
@@ -112,11 +123,21 @@ export function ModelDetailsModal({ isOpen, onClose, model, onPickModel }: Model
                             {onPickModel && (
                                 <button
                                     type="button"
-                                    className="app-modal-btn-primary rounded-md px-2.5 py-1 text-xs"
-                                    onClick={() => onPickModel(model)}
-                                    title="Use this model"
+                                    className={`app-modal-btn-primary rounded-md px-2.5 py-1 text-xs ${isWalletLocked ? 'cursor-not-allowed opacity-50 grayscale' : ''}`}
+                                    onClick={() => {
+                                        if (isWalletLocked) {
+                                            onAddCredits?.();
+                                            return;
+                                        }
+                                        onPickModel(model);
+                                    }}
+                                    title={
+                                        isWalletLocked
+                                            ? getModelWalletLockShortHint(requiredBalance, wallet)
+                                            : 'Use this model'
+                                    }
                                 >
-                                    Use model
+                                    {isWalletLocked ? 'Load credits to use' : 'Use model'}
                                 </button>
                             )}
                             <button

@@ -75,7 +75,10 @@ describe("AuthPage", () => {
         screen.getByRole("heading", { name: "Create your account" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByText("Every top AI model, in one workspace"),
+        screen.getByText("Start with 100 free credits — every top AI model in one workspace"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/land in your wallet when you sign up/),
       ).toBeInTheDocument();
     });
 

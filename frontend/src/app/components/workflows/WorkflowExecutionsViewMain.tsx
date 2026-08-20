@@ -292,7 +292,9 @@ export function WorkflowExecutionsViewMain() {
     }
   }, []);
 
-  useWalletSocket({ onWalletUpdated: setWalletCredits });
+  useWalletSocket({
+    onWalletUpdated: (payload) => setWalletCredits(payload.newBalance),
+  });
 
   useEffect(() => {
     let cancelled = false;

@@ -31,8 +31,8 @@ export function useWorkflowsStudioWallet(hydrated: boolean, authBlocked: boolean
     }
   }, []);
 
-  const handleSocketWalletCredits = useCallback((newBalance: number) => {
-    setWalletCredits(newBalance);
+  const handleSocketWalletCredits = useCallback((payload: { newBalance: number }) => {
+    setWalletCredits(payload.newBalance);
   }, []);
 
   useWalletSocket({ onWalletUpdated: handleSocketWalletCredits });
