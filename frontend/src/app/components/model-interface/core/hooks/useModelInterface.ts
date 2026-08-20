@@ -126,8 +126,7 @@ export function useModelInterface(options?: {
   const isPassiveSyncBlocked = useCallback((sessionId: string) => {
     return Boolean(
       streamingMap[sessionId] ||
-      loadingMap[sessionId] ||
-      streamingMap[DRAFT_SESSION_KEY],
+      loadingMap[sessionId],
     );
   }, [streamingMap, loadingMap]);
 
@@ -403,6 +402,7 @@ export function useModelInterface(options?: {
   }, [toggleAudioMode]);
 
   const handleStartSTT = useCallback(() => {
+    if (!FEATURE_FLAGS.VOICE_DICTATION) return;
     if (isAudioMode) {
       toggleAudioMode(false);
     }
@@ -450,7 +450,12 @@ export function useModelInterface(options?: {
 
   // Session switching
   const { switchToSession, createAndSwitchToNewSession, isSessionActive } =
-    useSessionSwitcher({ currentSessionId, chatMap, setChatForSession });
+    useSessionSwitcher({
+      currentSessionId,
+      chatMap,
+      setChatForSession,
+      isPassiveSyncBlocked,
+    });
 
   // Methods
   const handleSaveWithUpdate = useCallback(async (msg: ChatMessage) => {
@@ -588,6 +593,7 @@ export function useModelInterface(options?: {
       populateFromBackend,
       updateSessionMessages,
       persistSessionMessages,
+      isPassiveSyncBlocked,
       showTyping,
       setShowTyping,
       showScrollToBottom,

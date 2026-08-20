@@ -519,7 +519,7 @@ export const deletePersonality = async (id: string): Promise<boolean> => {
 
 export const setConversationPersonality = async (
     conversationId: string,
-    payload: { personalityId?: string; systemPrompt?: string },
+    payload: { personalityId?: string | null; systemPrompt?: string | null },
 ) => {
     const response = await serverCall({
         serverCallProps: {

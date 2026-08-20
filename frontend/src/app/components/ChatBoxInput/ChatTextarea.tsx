@@ -37,7 +37,6 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
   textareaId = 'chat-composer-textarea',
   mini = false,
   actionSlot,
-  canQueueMessage = false,
 }) => {
   // Single consolidated effect for auto-resize and overflow management
   React.useLayoutEffect(() => {
@@ -66,7 +65,6 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
 
   const isSendBlocked = responseInProgress || uploading || sendBlocked;
   const canSend = (value.trim() || hasUploadedFiles) && !isSendBlocked;
-  const canQueueNow = canQueueMessage && value.trim().length > 0;
 
   return (
     <div className={`flex items-end gap-2 w-full ${mini ? 'px-1' : ''}`}>
@@ -105,18 +103,6 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
 
       {responseInProgress ? (
         <>
-          {canQueueNow ? (
-            <button
-              type="button"
-              onClick={onSubmit}
-              className="chat-composer-send chat-composer-send--enabled flex-shrink-0 rounded-full p-1.5 transition-colors"
-              title="Add to queue"
-              aria-label="Add message to queue"
-              style={{ marginBottom: '2px' }}
-            >
-              <ArrowUp size={16} />
-            </button>
-          ) : null}
           {onStopGeneration ? (
             <button
               type="button"

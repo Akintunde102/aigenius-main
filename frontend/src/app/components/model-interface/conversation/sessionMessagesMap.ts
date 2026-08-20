@@ -1,4 +1,5 @@
 import type { ChatMessage, ChatSession } from "@/app/components/model-interface/shared/types";
+import { resolveSessionLastMessageTimestamp } from "@/app/components/model-interface/conversation/sessionRecency";
 import { deriveChatSessionTitle } from "@/lib/utils/messageTextUtils";
 
 /**
@@ -44,12 +45,26 @@ export function upsertSessionMessagesInHistory(
   sessionData?: Partial<ChatSession>,
 ): ChatSession[] {
   const resolvedTitle = deriveChatSessionTitle(sessionData?.title ?? messages[0]?.content);
+  const lastMessageAt = resolveSessionLastMessageTimestamp({
+    messages,
+    metadata: sessionData?.metadata,
+  } as ChatSession);
 
   const exists = prev.some((s) => s.id === sessionId);
   if (exists) {
     return prev.map((session) =>
       session.id === sessionId
-        ? { ...session, ...sessionData, title: resolvedTitle, messages: [] }
+        ? {
+            ...session,
+            ...sessionData,
+            title: resolvedTitle,
+            messages: [],
+            metadata: {
+              ...session.metadata,
+              ...sessionData?.metadata,
+              ...(lastMessageAt > 0 ? { lastMessageAt } : {}),
+            },
+          }
         : session,
     );
   }
@@ -59,6 +74,10 @@ export function upsertSessionMessagesInHistory(
     modelId: sessionData?.modelId || "",
     ...sessionData,
     title: resolvedTitle,
+    metadata: {
+      ...sessionData?.metadata,
+      ...(lastMessageAt > 0 ? { lastMessageAt } : {}),
+    },
   };
   return [newSession, ...prev];
 }
