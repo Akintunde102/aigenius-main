@@ -135,7 +135,7 @@ export function PaymentCallbackLoadingView() {
                     Processing payment
                 </h1>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                    Verifying your transaction with Paystack…
+                    Verifying your transaction with your payment provider…
                 </p>
             </StatusCard>
         </StatusShell>
@@ -159,6 +159,17 @@ class PaymentFailedError extends Error {
     }
 }
 
+function resolvePaymentReference(searchParams: URLSearchParams): string | null {
+    const reference = searchParams.get('reference')
+        || searchParams.get('trxref')
+        || searchParams.get('transaction_reference');
+    return reference?.trim() || null;
+}
+
+function resolveMissingReferenceMessage(): string {
+    return 'The payment provider did not return a transaction reference.';
+}
+
 function extractServerData<T>(response: unknown): T | null {
     if (!response || typeof response !== 'object') {
         return null;
@@ -169,7 +180,7 @@ function extractServerData<T>(response: unknown): T | null {
 async function fetchTransactionStatus(reference: string): Promise<VerifyPaymentResponse | null> {
     const statusResponse = await serverCall({
         serverCallProps: {
-            call: serverCalls.getGatewayPaystackTransactionStatus,
+            call: serverCalls.getGatewayWalletTransactionStatus,
         },
         pathArgs: { reference },
         authorized: true,
@@ -213,7 +224,7 @@ export default function PaymentCallbackClient() {
         async function verifyAndReturn() {
             syncAuthSessionCookiesFromStorage();
 
-            const reference = searchParams.get('reference') || searchParams.get('trxref');
+            const reference = resolvePaymentReference(searchParams);
             const returnState = readWalletTopUpReturnState();
             const returnTo = resolveWalletPaymentReturnTarget(
                 searchParams.get('returnTo') || returnState?.returnTo,
@@ -244,7 +255,7 @@ export default function PaymentCallbackClient() {
                         status: 'failed',
                         reference: null,
                         amountInNaira: returnState?.amountInNaira,
-                        message: 'Paystack did not return a transaction reference.',
+                        message: resolveMissingReferenceMessage(),
                         verifiedAt: Date.now(),
                         reopenTarget: returnState?.reopenTarget,
                     });
@@ -301,7 +312,7 @@ export default function PaymentCallbackClient() {
                     status: 'failed',
                     reference: null,
                     amountInNaira: returnState?.amountInNaira,
-                    message: 'Paystack did not return a transaction reference.',
+                    message: resolveMissingReferenceMessage(),
                     verifiedAt: Date.now(),
                     reopenTarget: returnState?.reopenTarget,
                 });
@@ -320,7 +331,7 @@ export default function PaymentCallbackClient() {
 
                 if (verifyData && isRecordedPaymentFailure(verifyData.status)) {
                     throw new PaymentFailedError(
-                        verifyData.message || 'Payment failed on Paystack.',
+                        verifyData.message || 'Payment failed.',
                     );
                 }
 
@@ -330,7 +341,7 @@ export default function PaymentCallbackClient() {
 
                 if (verifyData && isRecordedPaymentFailure(verifyData.status)) {
                     throw new PaymentFailedError(
-                        verifyData.message || 'Payment failed on Paystack.',
+                        verifyData.message || 'Payment failed.',
                     );
                 }
 
@@ -379,7 +390,7 @@ export default function PaymentCallbackClient() {
                         }
 
                         if (isRecordedPaymentFailure(data.status)) {
-                            throw new PaymentFailedError(data.message || 'Payment failed on Paystack.');
+                            throw new PaymentFailedError(data.message || 'Payment failed.');
                         }
                     } catch (statusError) {
                         if (statusError instanceof PaymentFailedError) {
@@ -401,7 +412,7 @@ export default function PaymentCallbackClient() {
                     status: 'pending',
                     reference,
                     amountInNaira: returnState?.amountInNaira,
-                    message: 'We are still confirming your payment with Paystack. Your wallet balance will update automatically.',
+                    message: 'We are still confirming your payment. Your wallet balance will update automatically.',
                     verifiedAt: Date.now(),
                     reopenTarget: returnState?.reopenTarget,
                 });
@@ -416,7 +427,7 @@ export default function PaymentCallbackClient() {
                         return;
                     }
                     if (lastChance && isRecordedPaymentFailure(lastChance.status)) {
-                        throw new PaymentFailedError(lastChance.message || 'Payment failed on Paystack.');
+                        throw new PaymentFailedError(lastChance.message || 'Payment failed.');
                     }
                 } catch (lastChanceError) {
                     if (lastChanceError instanceof PaymentFailedError) {
@@ -502,7 +513,7 @@ export default function PaymentCallbackClient() {
                     <p className="mt-3 text-sm leading-relaxed text-zinc-400">
                         {isDesktopHandoff
                             ? 'We could not verify your payment in this browser yet. Return to the app — it will confirm your payment and update your wallet automatically.'
-                            : 'We could not verify your payment yet. You can wait here or return to your wallet — your balance will update automatically once Paystack confirms the payment.'}
+                            : 'We could not verify your payment yet. You can wait here or return to your wallet — your balance will update automatically once payment is confirmed.'}
                     </p>
                     <button
                         type="button"

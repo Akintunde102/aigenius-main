@@ -60,6 +60,8 @@ interface ModalContainerProps {
   setSelectedProviders?: (v: string[] | ((prev: string[]) => string[])) => void;
   imageFilterOnly?: boolean;
   setImageFilterOnly?: (v: boolean | ((prev: boolean) => boolean)) => void;
+  wallet?: number | null;
+  onAddCredits?: () => void;
 }
 
 export function ModalContainer({
@@ -110,6 +112,8 @@ export function ModalContainer({
   setSelectedProviders,
   imageFilterOnly = false,
   setImageFilterOnly,
+  wallet = null,
+  onAddCredits,
 }: ModalContainerProps) {
   return (
     <>
@@ -129,6 +133,8 @@ export function ModalContainer({
           setSelectedModel(model);
           setShowModelDetailsModal(false);
         }}
+        wallet={wallet}
+        onAddCredits={onAddCredits}
       />
 
       <ModelSelectionModal
@@ -167,6 +173,8 @@ export function ModalContainer({
         imageFilterOnly={imageFilterOnly}
         setImageFilterOnly={setImageFilterOnly}
         handleShowModelDetails={handleShowModelDetails}
+        wallet={wallet}
+        onAddCredits={onAddCredits}
       />
     </>
   );

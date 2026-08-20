@@ -12,6 +12,7 @@ import { initializeChatStorage } from "@/lib/utils/chatStorageInit";
 import "@/lib/utils/chatStorageUtils";
 import { hasAuthSession } from "@/lib/utils/auth-session";
 import { exchangeOAuthAccessTokenForSession } from "@/lib/utils/oauth-connection-token";
+import { markSignupWelcomeSessionPending } from "@/lib/signup-welcome";
 import { useCrossTabActiveConversationSync } from "@/app/components/model-interface/conversation/useCrossTabActiveConversationSync";
 import { prefetchPublicRoutes } from "@/lib/public-route-prefetch";
 import { ChatShellLoadingSkeleton } from "@/app/components/ChatShellLoadingSkeleton";
@@ -38,6 +39,7 @@ export default function AuthenticatedChatPage({
   useCrossTabActiveConversationSync(routeConversationId);
 
   const tokenInUrl = searchParams.get("token");
+  const signupWelcomeInUrl = searchParams.get("signup_welcome");
   const redirectPath = routeConversationId
     ? `/chat/${routeConversationId}`
     : "/";
@@ -78,6 +80,10 @@ export default function AuthenticatedChatPage({
         setLoading(false);
         setAuthReady(true);
 
+        if (signupWelcomeInUrl === "1") {
+          markSignupWelcomeSessionPending();
+        }
+
         // Clear previous user's local caches/IndexedDB before redirecting to the new session
         import('@/lib/utils/chatStorage').then(({ clearChatStorage }) => {
             void clearChatStorage().catch((err) => console.error("Failed to clear chat IndexedDB storage:", err));
@@ -95,7 +101,7 @@ export default function AuthenticatedChatPage({
     };
 
     void getAuthConnectionToken();
-  }, [tokenInUrl]);
+  }, [tokenInUrl, signupWelcomeInUrl]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

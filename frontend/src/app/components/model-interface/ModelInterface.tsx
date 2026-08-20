@@ -32,6 +32,7 @@ import { useMobileSidebar } from "@/app/components/MobileSidebarContext";
 import { useBrowserDetection } from "./shared/hooks";
 
 import AddToWallet from "../modals/AddToWallet";
+import { WelcomeSignupCreditsModal } from "../modals/WelcomeSignupCreditsModal";
 import useTokenHandler from "@/lib/hooks/useTokenHandler";
 import { useWalletTopUpReturn } from "@/lib/hooks/useWalletTopUpReturn";
 import { useWalletManagement } from "./features/chat/hooks";
@@ -66,6 +67,7 @@ import { useModelInterfacePersonalitySelection } from "./hooks/useModelInterface
 import { useModelInterfaceModelPick } from "./hooks/useModelInterfaceModelPick";
 import { useModelInterfacePublishFlow } from "./hooks/useModelInterfacePublishFlow";
 import { useModelInterfaceChatBoxSend } from "./hooks/useModelInterfaceChatBoxSend";
+import { useSignupWelcomeCredits } from "./hooks/useSignupWelcomeCredits";
 import { getSidebarUserInitials } from "./utils/sidebarUserInitials.utils";
 
 interface ModelInterfaceProps {
@@ -78,6 +80,11 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
   const router = useRouter();
   const { isMobile } = useBrowserDetection();
   const isDesktopShell = useIsDesktopShell();
+  const {
+    showWelcomeModal,
+    welcomeCredits,
+    dismissWelcomeModal,
+  } = useSignupWelcomeCredits();
 
   const handleLogout = useCallback(() => {
     clearAuthSession();
@@ -95,6 +102,10 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [walletModalFromServerAbort, setWalletModalFromServerAbort] =
     useState(false);
+  const handleAddCredits = useCallback(() => {
+    setWalletModalFromServerAbort(false);
+    setShowWalletModal(true);
+  }, []);
   const [showAttachmentSourcePicker, setShowAttachmentSourcePicker] = useState(false);
   const [showAttachmentLibrary, setShowAttachmentLibrary] = useState(false);
   const attachmentLibrary = useUploadedFilesList();
@@ -425,6 +436,13 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     >
       {renderWalletModal()}
 
+      {showWelcomeModal ? (
+        <WelcomeSignupCreditsModal
+          credits={welcomeCredits}
+          onClose={dismissWelcomeModal}
+        />
+      ) : null}
+
       <ModelInterfaceChrome
         error={error || ""}
         optimizationMessage={optimizationMessage}
@@ -603,6 +621,9 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                       setWalletModalFromServerAbort(true);
                       setShowWalletModal(true);
                     }}
+                    wallet={wallet}
+                    onAddCredits={handleAddCredits}
+                    isInsufficientCredits={isInsufficientCredits}
                     onAudioModeToggle={handleAudioModeToggle}
                     isAudioMode={isAudioMode}
                     onStartSTT={handleStartSTT}
@@ -671,6 +692,8 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                 setSelectedProviders,
                 imageFilterOnly,
                 setImageFilterOnly,
+                wallet,
+                onAddCredits: handleAddCredits,
               }}
               showPersonalityModal={showPersonalityModal}
               setShowPersonalityModal={setShowPersonalityModal}

@@ -61,8 +61,8 @@ export function useWalletManagement({
 
     // Real-time updates: when the server pushes wallet:updated (e.g. after admin grants credits),
     // update local UI immediately without requiring a page reload.
-    const handleSocketWalletUpdate = useCallback((newBalance: number) => {
-        setWallet(newBalance);
+    const handleSocketWalletUpdate = useCallback((payload: { newBalance: number; reason?: string }) => {
+        setWallet(payload.newBalance);
     }, [setWallet]);
 
     useWalletSocket({ onWalletUpdated: handleSocketWalletUpdate });

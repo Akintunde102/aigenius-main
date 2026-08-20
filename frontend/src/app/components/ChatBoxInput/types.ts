@@ -48,6 +48,10 @@ export interface ChatBoxInputProps {
     quickPickModels?: Model[];
     favoritesLoaded?: boolean;
     onOpenFullModelPicker?: () => void;
+    wallet?: number | null;
+    onAddCredits?: () => void;
+    /** When true, composer shows a muted low-credits state (send remains blocked upstream). */
+    isInsufficientCredits?: boolean;
     placeholder?: string;
     /** While true, user can still type; send is blocked and the send control becomes Stop. */
     responseInProgress?: boolean;
@@ -183,6 +187,10 @@ export interface ChatControlsProps {
     quickPickModels?: Model[];
     favoritesLoaded?: boolean;
     onOpenFullModelPicker?: () => void;
+    wallet?: number | null;
+    onAddCredits?: () => void;
+    isInsufficientCredits?: boolean;
+    requiredWalletBalance?: number;
     onAttachmentClick: () => void;
     sidebarStyle?: boolean; // new prop for Sidebar-matching style
     streaming?: boolean;

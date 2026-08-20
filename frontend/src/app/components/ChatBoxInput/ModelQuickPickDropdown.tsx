@@ -6,6 +6,11 @@ import { FiCheck, FiChevronDown, FiPlus } from "react-icons/fi";
 import type { Model } from "@/app/components/model-interface/shared/types";
 import { getModelDisplayName } from "@/app/components/model-interface/shared/utils";
 import {
+  computeModelRequiredBalance,
+  isModelPickLocked,
+} from "@/app/components/model-interface/features/models/utils/modelWalletAffordance.utils";
+import { ModelWalletLockIndicator } from "@/app/components/model-interface/features/models/components/ModelWalletLockIndicator";
+import {
   QUICK_PICK_DROPDOWN_MAX_WIDTH,
   QUICK_PICK_DROPDOWN_MIN_WIDTH,
 } from "@/app/components/model-interface/shared/constants/quickPickModels";
@@ -18,6 +23,8 @@ type ModelQuickPickDropdownProps = {
   favoritesLoaded: boolean;
   onSelectModel: (model: Model) => void;
   onOpenFullPicker: () => void;
+  wallet?: number | null;
+  onAddCredits?: () => void;
 };
 
 type MenuPosition = {
@@ -45,6 +52,76 @@ const QUICK_PICK_MENU_SCROLL_STYLE = `
 
 const MENU_GAP = 8;
 const VIEWPORT_PADDING = 8;
+
+type QuickPickOptionProps = {
+  model: Model;
+  isActive: boolean;
+  wallet: number | null | undefined;
+  selectedModelId?: string;
+  onSelect: (model: Model) => void;
+  onAddCredits?: () => void;
+};
+
+function QuickPickOption({
+  model,
+  isActive,
+  wallet,
+  selectedModelId,
+  onSelect,
+  onAddCredits,
+}: QuickPickOptionProps) {
+  const displayName = getModelDisplayName(model);
+  const requiredBalance = computeModelRequiredBalance(model);
+  const isWalletLocked = isModelPickLocked(wallet, requiredBalance, {
+    modelId: model.id,
+    selectedModelId,
+  });
+
+  const handleClick = () => {
+    if (isWalletLocked) {
+      onAddCredits?.();
+      return;
+    }
+    onSelect(model);
+  };
+
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={isActive}
+      aria-disabled={isWalletLocked}
+      onClick={handleClick}
+      className={
+        isWalletLocked
+          ? "mx-2 mb-1.5 flex w-[calc(100%-16px)] cursor-not-allowed flex-col gap-1 rounded-lg px-2.5 py-2 text-left text-[11px] [background-color:color-mix(in_srgb,var(--chat-composer-border)_52%,transparent)]"
+          : `flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] transition-colors hover:[background-color:color-mix(in_srgb,var(--chat-composer-border)_35%,transparent)] ${isActive ? "font-medium" : ""}`
+      }
+    >
+      {isWalletLocked ? (
+        <>
+          <span className="min-w-0 truncate text-[11px] opacity-80">{displayName}</span>
+          <ModelWalletLockIndicator
+            requiredBalance={requiredBalance}
+            wallet={wallet}
+          />
+        </>
+      ) : (
+        <>
+          <span className="min-w-0 flex-1 truncate">{displayName}</span>
+          {isActive && (
+            <FiCheck
+              size={12}
+              className="shrink-0"
+              style={{ color: "var(--chat-accent)" }}
+              aria-hidden
+            />
+          )}
+        </>
+      )}
+    </button>
+  );
+}
 
 function computeMenuPosition(
   triggerEl: HTMLElement,
@@ -90,6 +167,8 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
   favoritesLoaded,
   onSelectModel,
   onOpenFullPicker,
+  wallet = null,
+  onAddCredits,
 }) => {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -210,7 +289,7 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
         }}
       >
         <style dangerouslySetInnerHTML={{ __html: QUICK_PICK_MENU_SCROLL_STYLE }} />
-        <div className="quick-pick-menu-scroll max-h-[min(50vh,360px)] overflow-y-auto py-1.5">
+        <div className="quick-pick-menu-scroll max-h-[min(50vh,360px)] overflow-y-auto py-2">
           {!favoritesLoaded ? (
             <div className="px-3 py-2.5 text-[11px] [color:var(--chat-muted-fg)]">
               Loading models…
@@ -257,31 +336,17 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
                   Quick picks
                 </div>
               ) : null}
-              {quickPickModels.map((model) => {
-                const isActive = selectedModel?.id === model.id;
-                return (
-                  <button
-                    key={model.id}
-                    type="button"
-                    role="option"
-                    aria-selected={isActive}
-                    onClick={() => handleSelect(model)}
-                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] transition-colors hover:[background-color:color-mix(in_srgb,var(--chat-composer-border)_35%,transparent)] ${isActive ? "font-medium" : ""}`}
-                  >
-                    <span className="min-w-0 flex-1 truncate">
-                      {getModelDisplayName(model)}
-                    </span>
-                    {isActive && (
-                      <FiCheck
-                        size={12}
-                        className="shrink-0"
-                        style={{ color: "var(--chat-accent)" }}
-                        aria-hidden
-                      />
-                    )}
-                  </button>
-                );
-              })}
+              {quickPickModels.map((model) => (
+                <QuickPickOption
+                  key={model.id}
+                  model={model}
+                  isActive={selectedModel?.id === model.id}
+                  wallet={wallet}
+                  selectedModelId={selectedModel?.id}
+                  onSelect={handleSelect}
+                  onAddCredits={onAddCredits}
+                />
+              ))}
             </>
           ) : null}
         </div>

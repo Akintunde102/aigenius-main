@@ -9,6 +9,7 @@ import { PublicPageShell } from "@/app/components/PublicPageShell";
 import { LandingAmbientBackground } from "@/app/components/ui";
 import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
 import { cn } from "@/lib/utils";
+import { SIGNUP_BONUS_CREDITS } from "@/lib/credits";
 
 export type AuthPageVariant = "login" | "signup";
 
@@ -31,7 +32,7 @@ const COPY: Record<
   },
   signup: {
     title: "Create your account",
-    subtitle: "Every top AI model, in one workspace",
+    subtitle: `Start with ${SIGNUP_BONUS_CREDITS} free credits — every top AI model in one workspace`,
     swapPrompt: "Already have an account?",
     swapLabel: "Sign in",
     swapHref: "/login",
@@ -154,6 +155,19 @@ export function AuthPage({ variant }: { variant: AuthPageVariant }) {
                   </h1>
                   <p className="text-sm text-zinc-400 sm:text-base">{copy.subtitle}</p>
                 </motion.div>
+
+                {variant === "signup" ? (
+                  <motion.div
+                    variants={reduce ? undefined : fadeUp}
+                    transition={{ duration: 0.5, ease: EASE }}
+                    className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-center text-sm leading-relaxed text-cyan-100/90"
+                  >
+                    <span className="font-semibold text-cyan-200">
+                      {SIGNUP_BONUS_CREDITS} free credits
+                    </span>{" "}
+                    land in your wallet when you sign up — no credit card required.
+                  </motion.div>
+                ) : null}
 
                 <motion.div
                   variants={reduce ? undefined : fadeUp}

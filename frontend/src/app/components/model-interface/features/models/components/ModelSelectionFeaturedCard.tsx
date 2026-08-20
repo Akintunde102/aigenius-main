@@ -4,6 +4,11 @@ import { Model } from '@/app/components/model-interface/shared/types';
 import { hasExtraToolingCapability, getModelDisplayName } from '@/app/components/model-interface/shared/utils';
 import { ModelToggleSwitch } from '@/app/components/ChatBoxInput/ModelToggleSwitch';
 import { buildModelCardSlots } from '../utils/modelMetaPills.utils';
+import {
+    computeModelRequiredBalance,
+    isModelPickLocked,
+} from '../utils/modelWalletAffordance.utils';
+import { ModelWalletLockIndicator } from './ModelWalletLockIndicator';
 
 const ToolsCapabilityIcon = ({ size = 7, className = '' }: { size?: number; className?: string }) => (
     <FiLayers size={size} className={className} aria-hidden strokeWidth={1.25} />
@@ -19,6 +24,9 @@ type ModelSelectionFeaturedCardProps = {
     onShowDetails?: () => void;
     isMobile?: boolean;
     isSortingByReleaseDate?: boolean;
+    wallet?: number | null;
+    selectedModelId?: string;
+    onAddCredits?: () => void;
 };
 
 const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
@@ -30,33 +38,56 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
     isSelected,
     onShowDetails,
     isMobile = false,
+    wallet = null,
+    selectedModelId,
+    onAddCredits,
 }: ModelSelectionFeaturedCardProps) {
     const supportsTools = hasExtraToolingCapability(model);
     const displayName = getModelDisplayName(model);
+    const requiredBalance = useMemo(
+        () => computeModelRequiredBalance(model, averageCost),
+        [model, averageCost],
+    );
+    const isWalletLocked = useMemo(
+        () =>
+            isModelPickLocked(wallet, requiredBalance, {
+                modelId: model.id,
+                selectedModelId,
+            }),
+        [wallet, requiredBalance, model.id, selectedModelId],
+    );
     const slots = useMemo(
         () => buildModelCardSlots(model, averageCost),
         [model, averageCost],
     );
 
+    const handlePrimaryAction = () => {
+        if (isWalletLocked) {
+            onAddCredits?.();
+            return;
+        }
+        onSelect();
+        try {
+            document.getElementById('chat-input')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch {
+            /* ignore */
+        }
+    };
+
     return (
         <div
             role="button"
-            tabIndex={0}
-            className={`group app-model-card w-full max-w-xl cursor-pointer px-2.5 py-1.5 ${isSelected ? 'app-model-card--selected' : ''}`}
-            onClick={() => {
-                onSelect();
-                try {
-                    document.getElementById('chat-input')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } catch {
-                    /* ignore */
-                }
-            }}
+            tabIndex={isWalletLocked ? -1 : 0}
+            className={`group app-model-card relative w-full max-w-xl px-2.5 py-1.5 ${isSelected ? 'app-model-card--selected' : ''} ${isWalletLocked ? 'app-model-card--wallet-locked mb-1 cursor-not-allowed [background-color:color-mix(in_srgb,var(--modal-fg)_8%,transparent)]' : 'cursor-pointer'}`}
+            onClick={handlePrimaryAction}
             onKeyDown={(e) => {
+                if (isWalletLocked) return;
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    onSelect();
+                    handlePrimaryAction();
                 }
             }}
+            aria-disabled={isWalletLocked}
         >
             {supportsTools && (
                 <span
@@ -69,14 +100,20 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
 
             <div className="app-model-card__layout">
                 <div className="min-w-0 flex-1">
-                    <span className="block truncate app-model-card__title">
+                    <span className={`block truncate app-model-card__title ${isWalletLocked ? 'opacity-70' : ''}`}>
                         {displayName}
                     </span>
-                    {slots.cost && (
+                    {isWalletLocked ? (
+                        <ModelWalletLockIndicator
+                            requiredBalance={requiredBalance}
+                            wallet={wallet}
+                            className="mt-1"
+                        />
+                    ) : slots.cost ? (
                         <span className="block truncate app-model-card__cost">
                             {slots.cost.label}
                         </span>
-                    )}
+                    ) : null}
                 </div>
 
                 <div className="app-model-card__actions">

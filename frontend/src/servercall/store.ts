@@ -50,6 +50,7 @@ export type ServerCallsKeyType =
     | "getGatewayPaystackTransactionStatus"
     | "getGatewayWalletPaymentProvider"
     | "getGatewayWalletCreditsConfig"
+    | "postGatewayDismissSignupWelcome"
     | "postGatewayWalletTransactionInitiate"
     | "postGatewayWalletTransactionVerify"
     | "getGatewayWalletTransactionStatus"
@@ -375,6 +376,11 @@ export const serverCalls: ServerCallsType<ServerCallsKeyType> = {
         path: "/gateway/*/wallet/credits-config",
         name: "getGatewayWalletCreditsConfig",
         verb: ServerCallVerbs.Get,
+    },
+    postGatewayDismissSignupWelcome: {
+        path: "/gateway/*/user/signup-welcome/dismiss",
+        name: "postGatewayDismissSignupWelcome",
+        verb: ServerCallVerbs.Post,
     },
     postGatewayWalletTransactionInitiate: {
         path: "/gateway/*/wallet/transaction/initiate",

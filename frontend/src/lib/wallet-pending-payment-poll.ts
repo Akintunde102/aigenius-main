@@ -12,7 +12,7 @@ export type PendingPaymentRecord = {
   amountInNaira: string;
   createdAt: number;
   provider?: 'paystack' | 'payaza';
-  /** Payaza: set after checkout popup opens so we do not verify before Payaza knows the reference. */
+  /** Payaza: set after hosted checkout opens so we do not verify before Payaza knows the reference. */
   checkoutStarted?: boolean;
 };
 

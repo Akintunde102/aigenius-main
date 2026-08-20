@@ -12,6 +12,9 @@ interface ModelSelectionCardProps {
   onShowDetails: (model: Model) => void;
   isMobile: boolean;
   isSortingByReleaseDate?: boolean;
+  wallet?: number | null;
+  selectedModelId?: string;
+  onAddCredits?: () => void;
 }
 
 /**
@@ -30,6 +33,9 @@ export const ModelSelectionCard = memo(function ModelSelectionCard({
   onShowDetails,
   isMobile,
   isSortingByReleaseDate,
+  wallet,
+  selectedModelId,
+  onAddCredits,
 }: ModelSelectionCardProps) {
   const handleSelect = useCallback(
     () => onSelect(model),
@@ -55,6 +61,9 @@ export const ModelSelectionCard = memo(function ModelSelectionCard({
       onShowDetails={handleDetails}
       isMobile={isMobile}
       isSortingByReleaseDate={isSortingByReleaseDate}
+      wallet={wallet}
+      selectedModelId={selectedModelId}
+      onAddCredits={onAddCredits}
     />
   );
 });
