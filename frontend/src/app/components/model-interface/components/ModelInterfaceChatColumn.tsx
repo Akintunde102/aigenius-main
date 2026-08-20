@@ -80,6 +80,7 @@ type Props = {
   currentSessionId: string | null;
   pendingOrphanReply?: PendingOrphanReply | null;
   onCancelOrphanReply?: () => void;
+  onClearPersonality?: () => void | Promise<void>;
   createNewSessionAndSwitchWrapper: (modelId: string) => void | Promise<void>;
   modelsFallback: Model[];
   handleCancelUpload: () => void;
@@ -161,6 +162,7 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   currentSessionId,
   pendingOrphanReply,
   onCancelOrphanReply,
+  onClearPersonality,
   createNewSessionAndSwitchWrapper,
   modelsFallback,
   handleCancelUpload,
@@ -293,13 +295,7 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           selectedPersonalityName={selectedPersonalityName}
           pendingOrphanReply={pendingOrphanReply}
           onCancelOrphanReply={onCancelOrphanReply}
-          onClearPersonality={async () => {
-            if (selectedModel) {
-              await createNewSessionAndSwitchWrapper(selectedModel.id);
-            } else if (modelsFallback.length > 0) {
-              await createNewSessionAndSwitchWrapper(modelsFallback[0].id);
-            }
-          }}
+          onClearPersonality={onClearPersonality}
           onCancelUpload={handleCancelUpload}
           onShowSavedChats={() => setShowSaved(true)}
           sidebarStyle={true}

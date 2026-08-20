@@ -243,6 +243,8 @@ export interface ChatSession {
         totalCost?: number;
         totalTokens?: number;
         lastAccessed?: string | Date;
+        /** Denormalized from the last message when sidebar strips message bodies. */
+        lastMessageAt?: number;
         orphanAnchor?: OrphanReplyAnchor;
     };
 }
