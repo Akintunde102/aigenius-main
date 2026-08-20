@@ -8,12 +8,13 @@ import { DRAFT_SESSION_KEY } from '../chatOperations.constants';
 import type { ChatMessage, ChatSession } from '@/app/components/model-interface/shared/types';
 
 describe('chatMapMemoryPolicy', () => {
-  it('stripMessagesFromHistorySessions clears message arrays', () => {
+  it('stripMessagesFromHistorySessions clears message arrays but keeps lastMessageAt', () => {
     const sessions: ChatSession[] = [
       { id: 'a', title: 'A', modelId: 'm', messages: [{ role: 'user', content: 'hi', timestamp: 1 }] },
     ];
     const stripped = stripMessagesFromHistorySessions(sessions);
     expect(stripped[0].messages).toEqual([]);
+    expect(stripped[0].metadata?.lastMessageAt).toBe(1);
     expect(stripped[0].title).toBe('A');
   });
 

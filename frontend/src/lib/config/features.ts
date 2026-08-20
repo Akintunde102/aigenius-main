@@ -7,9 +7,17 @@ function isDevBuild(): boolean {
  * In local dev/test, workflows default on unless explicitly set to `false`.
  */
 export const FEATURE_FLAGS = {
-  /** Phone icon + conversational audio overlay. Mic dictation (STT) is always available. */
+  /** Phone icon + conversational audio overlay. */
   AUDIO_CONVERSATION:
     process.env.NEXT_PUBLIC_ENABLE_AUDIO_CONVERSATION === "true",
+
+  /**
+   * Mic icon + local Whisper dictation in the composer.
+   * Off by default — local STT is heavy and unreliable on many machines.
+   * Set NEXT_PUBLIC_ENABLE_VOICE_DICTATION=true to show.
+   */
+  VOICE_DICTATION:
+    process.env.NEXT_PUBLIC_ENABLE_VOICE_DICTATION === "true",
 
   INTEGRATIONS: process.env.NEXT_PUBLIC_ENABLE_INTEGRATIONS === "true",
 

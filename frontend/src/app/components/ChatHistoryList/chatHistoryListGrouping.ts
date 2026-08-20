@@ -1,11 +1,9 @@
 import type { ChatSession } from "@/app/components/model-interface/shared/types";
 import type { CodeProject } from "@/lib/calls/code-projects";
+import { resolveSessionLastMessageTimestamp } from "@/app/components/model-interface/conversation/sessionRecency";
 
 function lastMessageTimestamp(session: ChatSession): number {
-  const msgs = session.messages;
-  if (!msgs?.length) return 0;
-  const last = msgs[msgs.length - 1];
-  return typeof last?.timestamp === "number" ? last.timestamp : 0;
+  return resolveSessionLastMessageTimestamp(session);
 }
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -165,20 +163,19 @@ export function groupSidebarSessionsByProject(
     );
   });
 
-  return pinActiveProjectBucket(sortBucketsByLastMessage(buckets));
+  return orderSidebarBuckets(buckets);
 }
 
-/** Keep the project containing the open chat at the top; others stay recency-sorted. */
-function pinActiveProjectBucket(
+/** Project folders stay above General; each group is sorted by latest activity. */
+function orderSidebarBuckets(
   buckets: ProjectSidebarBucket[],
 ): ProjectSidebarBucket[] {
-  const activeIdx = buckets.findIndex(
-    (b) => b.hasActiveSession && b.projectId !== null,
-  );
-  if (activeIdx <= 0) return buckets;
-  const result = [...buckets];
-  const [active] = result.splice(activeIdx, 1);
-  return [active, ...result];
+  const projectBuckets = buckets.filter((bucket) => bucket.projectId !== null);
+  const generalBuckets = buckets.filter((bucket) => bucket.projectId === null);
+  return [
+    ...sortBucketsByLastMessage(projectBuckets),
+    ...generalBuckets,
+  ];
 }
 
 function bucketLastMessageAt(bucket: ProjectSidebarBucket): number {

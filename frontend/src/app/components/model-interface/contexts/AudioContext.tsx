@@ -13,6 +13,7 @@ import { useSentenceStreaming } from '../features/chat/hooks/useSentenceStreamin
 import { useChatOperationsContext } from './ChatOperationsContext';
 import { useChatContext } from './ChatContext';
 import { AudioStatus } from '../features/chat/hooks/audioMode.utils';
+import { FEATURE_FLAGS } from '@/lib/config/features';
 
 export interface AudioContextValue {
   isAudioMode: boolean;
@@ -93,6 +94,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   });
 
   const handleStartSTT = useCallback(() => {
+    if (!FEATURE_FLAGS.VOICE_DICTATION) return;
     if (isAudioMode) {
       toggleAudioMode(false);
     }

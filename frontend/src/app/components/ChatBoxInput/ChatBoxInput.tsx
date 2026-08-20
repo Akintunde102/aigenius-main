@@ -12,6 +12,7 @@ import { useGlistenEffect } from './hooks/useGlistenEffect';
 import { getContainerStyles } from './utils/styles';
 import { ComposerMessageQueue } from './ComposerMessageQueue';
 import { computeModelRequiredBalance } from '@/app/components/model-interface/features/models/utils/modelWalletAffordance.utils';
+import { FEATURE_FLAGS } from '@/lib/config/features';
 
 /** True when viewport is wide (PC); false for mobile viewport. Uses 768px breakpoint to match app layout. */
 function useIsPc() {
@@ -152,11 +153,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     const isAnyFileUploading = uploading || activePendingFiles.length > 0;
     const hasFilesButModelUnsupported = uploadedFiles.length > 0 && !supportsFileUpload;
     const sendBlocked = responseInProgress || hasFilesButModelUnsupported || isAnyFileUploading;
-    const canQueueMessage = responseInProgress
-        && !hasFilesButModelUnsupported
-        && !isAnyFileUploading
-        && uploadedFiles.length === 0
-        && Boolean(onQueueMessage);
+    const canQueueMessage = false;
 
     const onQueueMessageRef = useRef(onQueueMessage);
     useEffect(() => {
@@ -469,7 +466,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
             >
                 <div className="relative flex flex-col">
                     {/* STT status pill — minimal, non-intrusive */}
-                    {(isSTTActive || isDictationTranscribing || ((audioStatus === 'transcribing' || audioStatus === 'interrupted') && !isAudioMode)) && (
+                    {FEATURE_FLAGS.VOICE_DICTATION && (isSTTActive || isDictationTranscribing || ((audioStatus === 'transcribing' || audioStatus === 'interrupted') && !isAudioMode)) && (
                         <div
                             style={{
                                 position: 'absolute',
