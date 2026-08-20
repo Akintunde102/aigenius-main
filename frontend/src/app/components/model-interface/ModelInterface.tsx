@@ -142,7 +142,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     selectedPersonalityIconUrl,
     setSelectedPersonalityIconUrl,
   } = personalityState;
-  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, persistSessionMessages, showTyping, setShowTyping, showScrollToBottom, queuedMessages, handleQueueMessage, removeQueuedMessage } = chatState;
+  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, assistantResponse, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, persistSessionMessages, isPassiveSyncBlocked, showTyping, setShowTyping, showScrollToBottom, queuedMessages, handleQueueMessage, removeQueuedMessage } = chatState;
   const { loading, setLoading, error, setError, streaming, setStreaming, streamingEnabled, setStreamingEnabled, imagePreview, setImagePreview, uploading, setUploading, uploadProgress, setUploadProgress, dragActive, setDragActive, showCosts, showNaira, showSaved, setShowSaved, setTotalSpent, optimizationMessage } = uiState;
   const { showModelDetailsModal, setShowModelDetailsModal, showModelSelectionModal, setShowModelSelectionModal } = modalState;
   const { search, setSearch, historySearch, setHistorySearch, orderByCost, setOrderByCost, allModalities, selectedModalities, allOutputModalities, selectedOutputModalities, showWebSearch, setShowWebSearch, showToolsOnly, setShowToolsOnly, pinnedModelIds, favoritesLoaded, orderBy, setOrderBy, orderDir, setOrderDir, selectedProviders, setSelectedProviders, imageFilterOnly, setImageFilterOnly, toggleModality, toggleOutputModality } = filterState;
@@ -199,6 +199,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     selectedSystemPrompt,
     setSelectedSystemPrompt,
     applySessionPersonalityState,
+    clearConversationPersonality,
   } = useModelInterfacePersonality({
     currentSessionId,
     chatHistory,
@@ -206,6 +207,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     setSelectedPersonalityName,
     setSelectedPersonalityIconUrl,
     setChatHistory,
+    setChatForSession,
   });
 
   const {
@@ -278,6 +280,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     setSelectedModel,
     setError,
     setChatForSession,
+    isPassiveSyncBlocked,
     switchToSession,
     setAttachmentIndex,
     setUploadedFiles,
@@ -605,6 +608,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     requestModelPick={requestModelPick}
                     pendingOrphanReply={pendingOrphanReply}
                     onCancelOrphanReply={clearPendingOrphanReply}
+                    onClearPersonality={clearConversationPersonality}
                     createNewSessionAndSwitchWrapper={createNewSessionAndSwitchWrapper}
                     modelsFallback={models}
                     handleCancelUpload={handleCancelUpload}

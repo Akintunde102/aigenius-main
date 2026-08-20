@@ -1,6 +1,6 @@
 import type { ChatSession } from "@/app/components/model-interface/shared/types";
 import type { CodeProject } from "@/lib/calls/code-projects";
-import { groupSidebarSessionsByProject } from "./chatHistoryListGrouping";
+import { groupSidebarSessionsByProject, sortSidebarSessions } from "./chatHistoryListGrouping";
 
 const projects: CodeProject[] = [
   {
@@ -25,6 +25,21 @@ function session(id: string, overrides: Partial<ChatSession> = {}): ChatSession 
 }
 
 describe("groupSidebarSessionsByProject", () => {
+  it("sorts stripped sidebar rows by metadata.lastMessageAt", () => {
+    const sorted = sortSidebarSessions([
+      session("older", {
+        messages: [],
+        metadata: { lastMessageAt: 100 },
+      }),
+      session("newer", {
+        messages: [],
+        metadata: { lastMessageAt: 9_000 },
+      }),
+    ]);
+
+    expect(sorted.map((s) => s.id)).toEqual(["newer", "older"]);
+  });
+
   it("groups the active session under activeProjectId when codeProjectId is missing", () => {
     const buckets = groupSidebarSessionsByProject(
       [session("active-1")],
@@ -130,7 +145,24 @@ describe("groupSidebarSessionsByProject", () => {
     expect(nobox?.sessions.map((s) => s.id)).toEqual(["active-1", "older-1"]);
   });
 
-  it("pins the active project bucket to the top even when another project is more recent", () => {
+  it("keeps General below all project folders regardless of recency", () => {
+    const buckets = groupSidebarSessionsByProject(
+      [
+        session("general-hot", {
+          messages: [{ role: "user", content: "hi", timestamp: 99_000 }],
+        }),
+        session("proj-chat", {
+          codeProjectId: "proj-nobox",
+          messages: [{ role: "user", content: "hi", timestamp: 100 }],
+        }),
+      ],
+      projects,
+    );
+
+    expect(buckets.map((b) => b.projectId)).toEqual(["proj-nobox", null]);
+  });
+
+  it("orders project buckets by recency even when one contains the active session", () => {
     const extraProjects: CodeProject[] = [
       {
         id: "proj-active",
@@ -167,7 +199,7 @@ describe("groupSidebarSessionsByProject", () => {
       { activeSessionId: "active-chat", activeProjectId: "proj-active" },
     );
 
-    expect(buckets[0]?.projectId).toBe("proj-active");
-    expect(buckets[1]?.projectId).toBe("proj-hotter");
+    expect(buckets[0]?.projectId).toBe("proj-hotter");
+    expect(buckets[1]?.projectId).toBe("proj-active");
   });
 });
