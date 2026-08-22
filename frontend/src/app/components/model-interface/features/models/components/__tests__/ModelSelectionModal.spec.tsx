@@ -185,4 +185,33 @@ describe('ModelSelectionModal', () => {
         expect(screen.getByText('Models you can use')).toBeInTheDocument();
         expect(screen.getByText('Need more credits')).toBeInTheDocument();
     });
+
+    it('shows affordability toggle on Quick picks when catalog has locked models', () => {
+        const expensiveModel: Model = {
+            ...mockModels[1],
+            id: 'expensive',
+            name: 'Model Expensive',
+            pricing: {
+                prompt: '0.05',
+                completion: '0.05',
+            },
+        };
+
+        render(
+            <ModelSelectionModal
+                {...defaultProps}
+                models={[mockModels[0], expensiveModel]}
+                pinnedModelIds={[mockModels[0].id]}
+                wallet={10}
+                favoritesLoaded
+            />,
+        );
+
+        expect(screen.getByRole('button', { name: 'Quick picks' })).toHaveClass(
+            'app-tab-pill--active',
+        );
+        expect(
+            screen.getByRole('switch', { name: 'show me all models I can use' }),
+        ).toBeInTheDocument();
+    });
 });

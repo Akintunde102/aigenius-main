@@ -33,6 +33,7 @@ export type AccessModelStreamFn = (
         ) => void;
         onToolStreamEvent?: (event: ToolStreamEvent) => void;
         onComplete?: (result: StreamingResult) => void;
+        onStreamStart?: (meta: { conversationId?: string }) => void;
         signal?: AbortSignal;
     },
 ) => Promise<StreamingResult>;
@@ -116,6 +117,8 @@ export type LastFailedSendPayload = {
 export interface UseChatOperationsReturn {
     input: string;
     setInput: React.Dispatch<React.SetStateAction<string>>;
+    composerSessionKey: string;
+    commitComposerDraftForKey: (key: string, value: string) => void;
     wallet: number | null;
     setWallet: React.Dispatch<React.SetStateAction<number | null>>;
     assistantResponse: string;

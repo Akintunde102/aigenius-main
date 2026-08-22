@@ -69,6 +69,8 @@ export interface ChatBoxInputProps {
     onRemoveUploadedFile?: (index: number) => void;
     inputValue?: string;
     onInputChange?: (value: string) => void;
+    composerSessionKey?: string;
+    commitComposerDraftForKey?: (key: string, value: string) => void;
     sidebarStyle?: boolean; // new prop for Sidebar-matching style
     streaming?: boolean;
     onStreamingToggle?: (enabled: boolean) => void;

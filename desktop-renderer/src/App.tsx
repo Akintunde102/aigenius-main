@@ -1,5 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import DesktopLoginPage from '@/app/(views)/desktop-login/page';
+import DesktopWelcomePage from '@/app/(views)/desktop-welcome/page';
+import DesktopSearchIndexPage from '@/app/(views)/desktop-search-index/page';
+import DesktopSuccessPage from '@/app/(views)/desktop-success/page';
 import AuthenticatedChatPage from '@/app/components/AuthenticatedChatPage';
 import ClientAnalytics from '@/app/components/ClientAnalytics';
 import DesktopShellChrome from '@/app/components/DesktopShellChrome';
@@ -32,6 +35,9 @@ export default function App() {
             <ReactQueryProvider>
               <Routes>
                 <Route path="/desktop-login" element={<DesktopLoginPage />} />
+                <Route path="/desktop-welcome" element={<DesktopWelcomePage />} />
+                <Route path="/desktop-search-index" element={<DesktopSearchIndexPage />} />
+                <Route path="/desktop-success" element={<DesktopSuccessPage />} />
                 <Route
                   path="/"
                   element={

@@ -170,4 +170,23 @@ describe("groupSidebarSessionsByProject", () => {
     expect(buckets[0]?.projectId).toBe("proj-active");
     expect(buckets[1]?.projectId).toBe("proj-hotter");
   });
+
+  it("pins the active General bucket to the top when it has the open chat", () => {
+    const buckets = groupSidebarSessionsByProject(
+      [
+        session("general-active", {
+          messages: [{ role: "user", content: "hi", timestamp: 100 }],
+        }),
+        session("project-chat", {
+          codeProjectId: "proj-nobox",
+          messages: [{ role: "user", content: "hi", timestamp: 9_000 }],
+        }),
+      ],
+      projects,
+      { activeSessionId: "general-active", activeProjectId: null },
+    );
+
+    expect(buckets[0]?.projectId).toBeNull();
+    expect(buckets[0]?.hasActiveSession).toBe(true);
+  });
 });

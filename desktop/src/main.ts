@@ -3,18 +3,16 @@ if (!__filename.includes('app.asar')) {
   require('dotenv/config');
 }
 
-import { attachStdioEpipeHandlers, safeStdioWrite } from './stdio-safe';
+import { attachStdioEpipeHandlers } from './stdio-safe';
 import {
   installDesktopPerfInstrumentation,
-  isDesktopPerfBenchmarkEnabled,
-  isDesktopPerfEnabled,
-  maybeRunPerfBenchmark,
   startupMark,
-  startupMarkSummary,
 } from './perf';
+import { registerDesktopUiPrivilegedScheme } from './desktop-ui-protocol';
 
 attachStdioEpipeHandlers();
 installDesktopPerfInstrumentation();
+registerDesktopUiPrivilegedScheme();
 
 if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = 'production';
@@ -33,68 +31,25 @@ import {
   BrowserWindow,
   dialog,
   globalShortcut,
-  ipcMain,
-  nativeImage,
-  screen,
-  shell,
   session,
 } from 'electron';
-import { runLocalDesktopTool } from './local-tool-executor';
-import { getChatRuntimeContextForIpc, USER_HOME_DIR_AT_STARTUP } from './chat-runtime-context';
-import { fetchLocalSearchIndexState } from './local-search-index-state';
 import {
   loadToolPermissionPreferences,
-  applySyncedToolPermissionPreferences,
 } from './tool-permission-preferences';
 import { initLocalRetrievalMemory } from './local-retrieval-memory';
-import { attachMainShellNavigationGuards, deliverOpenExternalOrAuthUrl } from './navigation-guards';
-import { mainShellBrowserWindowOptions } from './shell-chrome';
 import { registerIpcHandlers } from './search';
-import { registerAudioRecorderHandlers } from './audio-recorder-handler';
 import { setupCrashHandlers } from './crash-handler';
 import { checkInotifyLimit } from './utils/sys-limits';
-import fs from 'fs';
-import path from 'path';
-import http from 'http';
-import os from 'os';
-import crypto from 'crypto';
-import { resolveFrontendPort } from './frontend-port';
-import { DEV_LOOPBACK_HOST, loopbackHttpUrl } from './loopback-host';
-import { resolveUpstreamApiUrl as resolveDesktopUpstreamApiUrl } from './resolve-upstream-api-url';
 import { setActiveCodeProjectIndex } from './active-code-project';
-import { refreshProjectArchitectureMemory } from './project-architecture-memory';
-import { setMainActiveEditor } from './active-editor-main';
-import { startIndexerUtilityProcess, stopIndexerUtilityProcess } from './indexer-utility-process';
+import { loadLastCodeProject } from './last-code-project';
 import {
-  killManagedDesktopChild,
-  spawnDesktopChild,
-  type ManagedDesktopChild,
-} from './desktop-child-process';
-import { exchangeDesktopOAuthCode } from './desktop-auth-exchange';
-import {
-  clearDesktopRefreshToken,
-  readDesktopRefreshToken,
-  storeDesktopRefreshToken,
-} from './desktop-auth-store';
-import { saveLastCodeProject, loadLastCodeProject } from './last-code-project';
-import { MINI_SERVER_PORT } from './mini-server-port';
-import net from 'net';
-import {
-  attachChatCompletionWindowFocusHandlers,
   configureDesktopNotificationBranding,
-  notifyChatCompletionIfBackground,
   setChatCompletionNotificationIcon,
-  type ChatCompletionNotifyPayload,
 } from './chat-completion-notifications';
-import { setLastFocusedMainShellWindow } from './main-shell-focus';
 import {
-  captureBrowserWindowPngBase64,
-  defaultScreenshotBasename,
   attachFullDesktopToChatShell,
-  DESKTOP_QUEUE_CHAT_SCREENSHOT_CHAN,
 } from './main-chat-screenshot';
 import { createApplicationMenu } from './main-application-menu';
-
 import { CHAT_SCREENSHOT_GLOBAL_ACCELERATOR } from './main-chat-screenshot';
 import { DESKTOP_BRIDGE_DEBUG } from './main-devtools';
 import {
@@ -103,20 +58,31 @@ import {
   markAppShutdownStarted,
   isAppShutdownStarted,
   FRONTEND_PORT,
-  FRONTEND_URL,
+  desktopUiStaticDir,
 } from './main-backend-lifecycle';
-import { createWindow, getWindowIcon, resolveWindowIconPath } from './main-window';
+import { createWindow, getWindowIcon, navigateMainShellToApp, resolveWindowIconPath } from './main-window';
 import { registerMainIpcHandlers } from './main-ipc-handlers';
+import { installDesktopUiProtocolHandler } from './desktop-ui-protocol';
 
-function normalizeRendererFilesystemPath(filePath: string): string {
-  let normalizedPath = filePath;
-  if (process.platform === 'win32') {
-    normalizedPath = filePath.replace(/\//g, '\\');
-    if (normalizedPath.startsWith('\\') && /^[a-zA-Z]:/.test(normalizedPath.slice(1))) {
-      normalizedPath = normalizedPath.slice(1);
-    }
+function showInotifyWarningAsync(): void {
+  const limitCheck = checkInotifyLimit();
+  if (!limitCheck || limitCheck.isSufficient) {
+    return;
   }
-  return normalizedPath;
+  void (async () => {
+    const { clipboard } = await import('electron');
+    const choice = await dialog.showMessageBox({
+      type: 'warning',
+      title: 'System Limit Warning',
+      message: `Your system's file watcher limit (inotify) is too low (${limitCheck.currentValue}).`,
+      detail: `The AIGenius search engine needs to watch more files than the system allows. This can cause search to fail or the app to crash.\n\nRecommended: ${limitCheck.recommendedValue}\n\nWould you like to copy the fix command to your clipboard?`,
+      buttons: ['Copy & Close', 'Ignore'],
+      defaultId: 0,
+    });
+    if (choice.response === 0) {
+      clipboard.writeText(limitCheck.fixCommand);
+    }
+  })();
 }
 
 const gotLock = app.requestSingleInstanceLock();
@@ -167,7 +133,6 @@ if (!gotLock) {
 
   registerMainIpcHandlers();
 
-
   app.whenReady().then(async () => {
     startupMark('app_when_ready');
     createApplicationMenu({
@@ -176,28 +141,12 @@ if (!gotLock) {
       attachFullDesktopToChatShell,
     });
 
-    // Check system limits (Linux only)
-    const limitCheck = checkInotifyLimit();
-    if (limitCheck && !limitCheck.isSufficient) {
-      const { dialog, clipboard } = await import('electron');
-      const choice = dialog.showMessageBoxSync({
-        type: 'warning',
-        title: 'System Limit Warning',
-        message: `Your system's file watcher limit (inotify) is too low (${limitCheck.currentValue}).`,
-        detail: `The AIGenius search engine needs to watch more files than the system allows. This can cause search to fail or the app to crash.\n\nRecommended: ${limitCheck.recommendedValue}\n\nWould you like to copy the fix command to your clipboard?`,
-        buttons: ['Copy & Close', 'Ignore'],
-        defaultId: 0,
-      });
-
-      if (choice === 0) {
-        clipboard.writeText(limitCheck.fixCommand);
-      }
-    }
+    showInotifyWarningAsync();
 
     const iconPathForDock = resolveWindowIconPath();
     const appIcon = getWindowIcon();
     setChatCompletionNotificationIcon(appIcon ?? iconPathForDock);
-    if (iconPathForDock && process.platform === 'darwin') {
+    if (iconPathForDock && process.platform === 'darwin' && app.dock) {
       try {
         app.dock.setIcon(iconPathForDock);
       } catch {
@@ -205,11 +154,26 @@ if (!gotLock) {
       }
     }
 
+    await installDesktopUiProtocolHandler(desktopUiStaticDir());
+
+    setupCrashHandlers();
+    initLocalRetrievalMemory(app.getPath('userData'));
+    const lastProject = loadLastCodeProject(app.getPath('userData'));
+    if (lastProject?.projectId && lastProject?.rootPath) {
+      setActiveCodeProjectIndex({
+        projectId: lastProject.projectId,
+        rootPath: lastProject.rootPath,
+      });
+    }
+    await loadToolPermissionPreferences();
+    registerIpcHandlers();
+
+    const mainWindow = createWindow({ deferAppLoad: true });
+
     try {
       await startBackendProcesses();
     } catch (err) {
       console.error(err);
-      const { dialog } = await import('electron');
       await dialog.showErrorBox(
         'AIGenius',
         app.isPackaged
@@ -230,21 +194,11 @@ if (!gotLock) {
     }
     startupMark('backend_processes_ready');
 
-    // Setup crash handlers
-    setupCrashHandlers();
-
-    initLocalRetrievalMemory(app.getPath('userData'));
-    const lastProject = loadLastCodeProject(app.getPath('userData'));
-    if (lastProject?.projectId && lastProject?.rootPath) {
-      setActiveCodeProjectIndex({
-        projectId: lastProject.projectId,
-        rootPath: lastProject.rootPath,
-      });
-    }
-    await loadToolPermissionPreferences();
-    registerIpcHandlers();
+    const { registerAudioRecorderHandlers } = await import('./audio-recorder-handler');
     registerAudioRecorderHandlers();
     startupMark('ipc_handlers_registered');
+
+    await navigateMainShellToApp(mainWindow);
 
     const registeredGlobalShot = globalShortcut.register(CHAT_SCREENSHOT_GLOBAL_ACCELERATOR, () => {
       void attachFullDesktopToChatShell(null);
@@ -256,16 +210,13 @@ if (!gotLock) {
       );
     }
 
-    createWindow();
-
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
         createWindow();
       }
     });
 
-    // Handle microphone/camera permission requests in Electron shell
-    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
       const allowed = ['media', 'audioCapture', 'notifications'];
       if (allowed.includes(permission)) {
         return callback(true);

@@ -143,6 +143,7 @@ interface ChatHistoryListProps {
     // New session management functions
     handleSessionSwitch?: (session: ChatSession) => void;
     isSessionActive?: (sessionId: string) => boolean;
+    isSessionInFlight?: (sessionId: string) => boolean;
     onSessionSelect?: () => void;
     isInitialLoading?: boolean;
     codeProjects?: CodeProject[];
@@ -165,6 +166,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
     onPublish,
     handleSessionSwitch,
     isSessionActive,
+    isSessionInFlight,
     onSessionSelect,
     isInitialLoading = false,
     codeProjects = [],
@@ -204,6 +206,14 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
             return isSessionActive ? isSessionActive(sid) : sid === currentSessionId;
         },
         [currentSessionId, isSessionActive],
+    );
+
+    const rowIsGenerating = useCallback(
+        (session: ChatSession) => {
+            const sid = session.id || "";
+            return sid ? Boolean(isSessionInFlight?.(sid)) : false;
+        },
+        [isSessionInFlight],
     );
 
     const sortedSessions = useMemo(
@@ -360,6 +370,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                 key={sessionId || `session-${session.title}`}
                 session={session}
                 isActive={isActive}
+                isGenerating={rowIsGenerating(session)}
                 models={models}
                 onSelect={handleSelect}
                 onStarRequest={handleStarRequest}
@@ -399,17 +410,39 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
             opts?.truncate && sessions.length > SIDEBAR_SESSION_PREVIEW_LIMIT,
         );
         const isSessionsExpanded = sessionsExpandedByKey[sectionKey] ?? false;
-        const visibleSessions = shouldTruncate && !isSessionsExpanded
+        let visibleSessions = shouldTruncate && !isSessionsExpanded
             ? sessions.slice(0, SIDEBAR_SESSION_PREVIEW_LIMIT)
             : sessions;
-        const hiddenCount = sessions.length - SIDEBAR_SESSION_PREVIEW_LIMIT;
+
+        // Keep the open conversation visible even when the section is truncated.
+        if (shouldTruncate && !isSessionsExpanded && activeSessionId) {
+            const activeInSection = sessions.find((s) => s.id === activeSessionId);
+            if (activeInSection && !visibleSessions.some((s) => s.id === activeSessionId)) {
+                visibleSessions = [...visibleSessions, activeInSection];
+            }
+        }
+
+        // Keep background in-flight conversations visible so users can return to them.
+        if (shouldTruncate && !isSessionsExpanded && isSessionInFlight) {
+            for (const session of sessions) {
+                const sid = session.id || "";
+                if (!sid || !isSessionInFlight(sid)) {
+                    continue;
+                }
+                if (!visibleSessions.some((s) => s.id === sid)) {
+                    visibleSessions = [...visibleSessions, session];
+                }
+            }
+        }
+
+        const hiddenCount = sessions.length - visibleSessions.length;
 
         return (
             <>
                 <ul className="m-0 list-none space-y-0 px-3 pb-1">
                     {visibleSessions.map((session) => renderRow(session, rowIsActive(session)))}
                 </ul>
-                {shouldTruncate && !isSessionsExpanded ? (
+                {shouldTruncate && !isSessionsExpanded && hiddenCount > 0 ? (
                     <button
                         type="button"
                         onClick={() => toggleSessionsExpanded(sectionKey)}
@@ -441,7 +474,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                 {useProjectLayout ? (
                     projectBuckets.map((bucket) => {
                         const sectionKey = bucket.projectId ?? 'general';
-                        const hasInlineActive = bucket.projectId !== null && bucket.hasActiveSession;
+                        const hasInlineActive = bucket.hasActiveSession;
                         const isCollapsed = hasInlineActive
                             ? false
                             : (collapsedSections[sectionKey] ?? true);

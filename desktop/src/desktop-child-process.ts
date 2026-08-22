@@ -137,9 +137,10 @@ export function spawnDesktopChild(
   scriptPath: string,
   opts: SpawnDesktopChildOptions,
 ): ManagedDesktopChild {
-  const useUtility = !opts.preferNodeSpawn && process.platform === 'darwin';
+  const preferNodeSpawn =
+    opts.preferNodeSpawn || process.env.AIGENIUS_DESKTOP_PREFER_NODE_SPAWN === '1';
 
-  if (useUtility) {
+  if (!preferNodeSpawn) {
     try {
       return forkUtilityProcess(scriptPath, opts);
     } catch (err) {

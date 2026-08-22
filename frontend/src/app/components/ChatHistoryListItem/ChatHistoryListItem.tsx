@@ -13,6 +13,7 @@ import { ChatHistoryListItemProps } from './types';
 const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
     session,
     isActive,
+    isGenerating = false,
     models,
     onSelect,
     onStarRequest,
@@ -65,6 +66,7 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
             <SessionInfo
                 title={displayTitle || 'Untitled Chat'}
                 isActive={isActive}
+                isGenerating={isGenerating}
             />
 
             <ActionButtons

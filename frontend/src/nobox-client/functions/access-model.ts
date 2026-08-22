@@ -365,7 +365,7 @@ async function mergeRuntimeContextIntoRequestBody(
     requestBody.codeProjectId = resolved.projectScopeId;
 
     const snapshot = resolved.snapshot;
-    let activeProjectPayload = snapshot
+    const activeProjectPayload = snapshot
       ? {
           id: snapshot.id,
           name: snapshot.name,
@@ -378,18 +378,17 @@ async function mergeRuntimeContextIntoRequestBody(
       localSearchIndex
       && typeof localSearchIndex === 'object'
       && (localSearchIndex as { mode?: string }).mode;
-    if (
+    const activeCodeProject =
       activeProjectPayload
       && mode === 'active_project_ready'
       && digest
-    ) {
-      activeProjectPayload = { ...activeProjectPayload, structuralDigest: digest };
-    }
+        ? { ...activeProjectPayload, structuralDigest: digest }
+        : activeProjectPayload;
     const activeEditor = activeEditorForRuntime();
 
     requestBody.runtimeContext = {
       ...runtimeContext,
-      ...(activeProjectPayload ? { activeCodeProject: activeProjectPayload } : {}),
+      ...(activeCodeProject ? { activeCodeProject } : {}),
       ...(activeEditor ? { activeEditor } : {}),
     };
   }
@@ -1276,9 +1275,11 @@ export const accessModelStream = async <T>(args: AccessModelArgs<T> & {
   }>, reasoning?: string, reasoningDetails?: any[]) => void;
   onToolStreamEvent?: (event: ToolStreamEvent) => void;
   onComplete?: (result: StreamingResult) => void;
+  /** Fired as soon as response headers arrive (before the first stream chunk). */
+  onStreamStart?: (meta: { conversationId?: string }) => void;
   signal?: AbortSignal;
 }): Promise<StreamingResult> => {
-  const { body, config, options, onData, onToolStreamEvent, onComplete, signal } = args;
+  const { body, config, options, onData, onToolStreamEvent, onComplete, onStreamStart, signal } = args;
   const { model } = options;
 
   if (isOllamaModelId(model)) {
@@ -1340,6 +1341,7 @@ export const accessModelStream = async <T>(args: AccessModelArgs<T> & {
 
 
   const conversationId = res.headers.get('X-Conversation-Id') ?? undefined;
+  onStreamStart?.({ conversationId });
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let finalResult: StreamingResult = { ...(conversationId && { conversationId }) };

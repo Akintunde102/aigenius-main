@@ -57,6 +57,8 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     onRemoveUploadedFile,
     inputValue: externalInputValue,
     onInputChange,
+    composerSessionKey,
+    commitComposerDraftForKey,
     onShowSavedChats,
     sidebarStyle = false,
     streaming = true,
@@ -103,7 +105,9 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     const glisten = useGlistenEffect();
     const { inputValue, handleInputChange, flushInputToParent } = useInputState({
         externalInputValue,
-        onInputChange
+        onInputChange,
+        composerSessionKey,
+        commitDraftForKey: commitComposerDraftForKey,
     });
 
     const attachmentsDisabled = responseInProgress;
@@ -645,6 +649,8 @@ export default React.memo(ChatBoxInput, (prevProps, nextProps) => {
         prevProps.onRetryFailedUpload === nextProps.onRetryFailedUpload &&
         prevProps.onRemoveFailedUpload === nextProps.onRemoveFailedUpload &&
         prevProps.onInputChange === nextProps.onInputChange &&
+        prevProps.composerSessionKey === nextProps.composerSessionKey &&
+        prevProps.commitComposerDraftForKey === nextProps.commitComposerDraftForKey &&
         prevProps.onStreamingToggle === nextProps.onStreamingToggle &&
         prevProps.inputValue === nextProps.inputValue &&
         prevProps.responseInProgress === nextProps.responseInProgress &&

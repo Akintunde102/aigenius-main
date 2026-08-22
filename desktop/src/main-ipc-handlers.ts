@@ -12,6 +12,7 @@ import { loopbackHttpUrl } from './loopback-host';
 import { MINI_SERVER_PORT } from './mini-server-port';
 import { runLocalDesktopTool } from './local-tool-executor';
 import { getChatRuntimeContextForIpc, USER_HOME_DIR_AT_STARTUP } from './chat-runtime-context';
+import { getChatRuntimeContextCached } from './chat-runtime-context-cache';
 import { fetchLocalSearchIndexState } from './local-search-index-state';
 import { applySyncedToolPermissionPreferences } from './tool-permission-preferences';
 import { setActiveCodeProjectIndex } from './active-code-project';
@@ -218,14 +219,8 @@ export function registerMainIpcHandlers(): void {
   ipcMain.handle('get-local-search-index-state', async () => fetchLocalSearchIndexState());
 
   ipcMain.handle('get-chat-runtime-context', async () => {
-    console.log('[aigenius-desktop][ipc] get-chat-runtime-context started');
     try {
-      const context = await getChatRuntimeContextForIpc();
-      console.log('[aigenius-desktop][ipc] get-chat-runtime-context success', {
-        platform: context.desktopHost.platform,
-        catalogSize: context.retrievalMemoryCatalog.entries.length
-      });
-      return context;
+      return await getChatRuntimeContextCached(getChatRuntimeContextForIpc);
     } catch (err) {
       console.error('[aigenius-desktop][ipc] get-chat-runtime-context failed', err);
       return {
