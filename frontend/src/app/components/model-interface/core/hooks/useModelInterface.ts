@@ -257,6 +257,7 @@ export function useModelInterface(options?: {
     setSelectedPersonalityName,
     setSelectedPersonalityIconUrl,
     setChatHistory,
+    setChatForSession,
   });
 
     const isAudioModeRef = useRef(false);

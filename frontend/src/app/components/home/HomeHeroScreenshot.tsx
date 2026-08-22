@@ -10,15 +10,18 @@ const HERO_HEIGHT = 634;
 const IMAGE_CLASS =
   "h-auto w-auto max-w-full border-0 dark:hidden";
 
+const ALT_TEXT =
+  "AIGenius interface screenshot displaying multi-model AI conversation, code project workspace, token cost metrics, and integrated tools";
+
 /**
- * App screenshot at native resolution — no zoom or crop.
+ * App screenshot at native resolution — no zoom or crop, accessible alt text.
  */
 export function HomeHeroScreenshot() {
   return (
-    <>
+    <figure className="m-0 p-0">
       <Image
         src={SCREENSHOT_LIGHT}
-        alt=""
+        alt={ALT_TEXT}
         width={HERO_WIDTH}
         height={HERO_HEIGHT}
         priority
@@ -27,13 +30,16 @@ export function HomeHeroScreenshot() {
       />
       <Image
         src={SCREENSHOT_DARK}
-        alt=""
+        alt={ALT_TEXT}
         width={HERO_WIDTH}
         height={HERO_HEIGHT}
         priority
         className={cn(IMAGE_CLASS, "hidden dark:block")}
         quality={92}
       />
-    </>
+      <figcaption className="sr-only">
+        {ALT_TEXT}
+      </figcaption>
+    </figure>
   );
 }

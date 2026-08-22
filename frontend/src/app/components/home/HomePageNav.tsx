@@ -29,29 +29,32 @@ function PrefetchRoutes() {
 }
 
 /**
- * Ghost nav links fixed to the top-right — no header background chrome.
+ * Ghost nav links fixed to the top-right — accessible landmark and semantic navigation.
  */
 export function HomePageNav() {
   return (
     <>
       <PrefetchRoutes />
       <nav
-        aria-label="Home navigation"
-        className="flex items-center justify-end gap-0.5 px-6 pt-5 sm:px-11 lg:px-14"
+        aria-label="Main Navigation"
+        className="flex items-center justify-end gap-1 px-6 pt-5 sm:px-11 lg:px-14"
       >
-        {NAV_LINKS.map((link) => (
-          <Link
-            key={link.href}
-            prefetch
-            href={link.href}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 transition hover:text-zinc-900 active:scale-[0.99] dark:text-zinc-300 dark:hover:text-white",
-              FOCUS_RING
-            )}
-          >
-            {link.label}
-          </Link>
-        ))}
+        <ul className="flex items-center gap-1 list-none p-0 m-0">
+          {NAV_LINKS.map((link) => (
+            <li key={link.href}>
+              <Link
+                prefetch
+                href={link.href}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 transition hover:text-zinc-900 active:scale-[0.99] dark:text-zinc-300 dark:hover:text-white",
+                  FOCUS_RING
+                )}
+              >
+                {link.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
       </nav>
     </>
   );
