@@ -116,7 +116,7 @@ export default function AuthenticatedChatPage({
     prefetchPublicRoutes(router);
   }, [token, router]);
 
-  if (!authReady || loading) {
+  if (tokenInUrl || (routeConversationId && (!authReady || loading))) {
     return <ChatShellLoadingSkeleton />;
   }
 
