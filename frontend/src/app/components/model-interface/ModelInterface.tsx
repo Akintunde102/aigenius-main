@@ -142,14 +142,14 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     selectedPersonalityIconUrl,
     setSelectedPersonalityIconUrl,
   } = personalityState;
-  const { input, setInput, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, persistSessionMessages, showTyping, setShowTyping, showScrollToBottom, queuedMessages, handleQueueMessage, removeQueuedMessage } = chatState;
+  const { input, setInput, composerSessionKey, commitComposerDraftForKey, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, persistSessionMessages, showTyping, setShowTyping, showScrollToBottom, queuedMessages, handleQueueMessage, removeQueuedMessage } = chatState;
   const { loading, setLoading, error, setError, streaming, setStreaming, streamingEnabled, setStreamingEnabled, imagePreview, setImagePreview, uploading, setUploading, uploadProgress, setUploadProgress, dragActive, setDragActive, showCosts, showNaira, showSaved, setShowSaved, setTotalSpent, optimizationMessage } = uiState;
   const { showModelDetailsModal, setShowModelDetailsModal, showModelSelectionModal, setShowModelSelectionModal } = modalState;
   const { search, setSearch, historySearch, setHistorySearch, orderByCost, setOrderByCost, allModalities, selectedModalities, allOutputModalities, selectedOutputModalities, showWebSearch, setShowWebSearch, showToolsOnly, setShowToolsOnly, pinnedModelIds, favoritesLoaded, orderBy, setOrderBy, orderDir, setOrderDir, selectedProviders, setSelectedProviders, imageFilterOnly, setImageFilterOnly, toggleModality, toggleOutputModality } = filterState;
   const { wallet, setWallet, refreshWalletFromBackend } = walletState;
   const { chatEndRef, chatAreaRef } = refs;
   const { currentChatCostUSD, currentChatCostNaira } = computed;
-  const { switchToSession, isSessionActive, project, onClearDraftQueueRef } = sessionState;
+  const { switchToSession, isSessionActive, isSessionInFlight, project, onClearDraftQueueRef } = sessionState;
   const {
     isAudioMode,
     isSTTActive,
@@ -293,6 +293,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     setSelectedPersonalityName,
     setSelectedPersonalityIconUrl,
     onClearDraftQueue: () => onClearDraftQueueRef.current(),
+    isSessionInFlight,
   });
 
   const { handleGlobalKeyDown } = useKeyboardShortcuts({
@@ -545,6 +546,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     setTotalSpent={setTotalSpent}
                     setError={setError}
                     currentSessionId={currentSessionId}
+                    activeSessionId={viewSessionId}
                     setCurrentSessionId={setCurrentSessionId}
                     setShowSaved={setShowSaved}
                     wallet={wallet}
@@ -556,6 +558,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     switchToSession={handleSessionSwitch}
                     createNewSessionAndSwitch={createNewSessionAndSwitchWrapper}
                     isSessionActive={isSessionActive}
+                    isSessionInFlight={isSessionInFlight}
                     isInitialLoading={isInitialLoading || (modelsLoading && models.length === 0)}
                     onLogout={handleLogout}
                     userInitials={getSidebarUserInitials(currentUser)}
@@ -637,6 +640,8 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     audioVolume={audioVolume}
                     inputValue={input}
                     onInputChange={setInput}
+                    composerSessionKey={composerSessionKey}
+                    commitComposerDraftForKey={commitComposerDraftForKey}
                     queuedMessages={queuedMessages}
                     onQueueMessage={handleQueueMessage}
                     onRemoveQueuedMessage={removeQueuedMessage}

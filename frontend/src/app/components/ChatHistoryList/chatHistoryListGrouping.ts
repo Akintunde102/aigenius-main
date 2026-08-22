@@ -172,9 +172,7 @@ export function groupSidebarSessionsByProject(
 function pinActiveProjectBucket(
   buckets: ProjectSidebarBucket[],
 ): ProjectSidebarBucket[] {
-  const activeIdx = buckets.findIndex(
-    (b) => b.hasActiveSession && b.projectId !== null,
-  );
+  const activeIdx = buckets.findIndex((b) => b.hasActiveSession);
   if (activeIdx <= 0) return buckets;
   const result = [...buckets];
   const [active] = result.splice(activeIdx, 1);

@@ -73,6 +73,7 @@ type Params = {
   setSelectedPersonalityName: (n: string | undefined) => void;
   setSelectedPersonalityIconUrl: (u: string | undefined) => void;
   onClearDraftQueue?: () => void;
+  isSessionInFlight?: (sessionId: string) => boolean;
 };
 
 export function useModelInterfaceSessionRouting({
@@ -104,6 +105,7 @@ export function useModelInterfaceSessionRouting({
   setSelectedPersonalityName,
   setSelectedPersonalityIconUrl,
   onClearDraftQueue,
+  isSessionInFlight,
 }: Params) {
   const pendingScrollRestoreSessionIdRef = useRef<string | null>(null);
   const lastKnownConversationSignaturesRef = useRef<Record<string, string>>({});
@@ -155,8 +157,10 @@ export function useModelInterfaceSessionRouting({
     });
   }, [chatAreaRef, currentChatSignature, currentSessionId]);
 
-  const resetDraftConversation = useCallback(() => {
-    handleStop();
+  const resetDraftConversation = useCallback((options?: { stopCurrentSession?: boolean }) => {
+    if (options?.stopCurrentSession !== false) {
+      handleStop();
+    }
     // Invalidate any in-flight draft sends so their completion callbacks
     // cannot hijack the fresh draft (see conversationViewSession draft epoch).
     bumpDraftConversationEpoch();
@@ -269,6 +273,12 @@ export function useModelInterfaceSessionRouting({
         storedScrollState &&
         storedScrollState.messageSignature === currentChatSignature;
 
+      if (isSessionInFlight?.(currentSessionId)) {
+        chatArea.scrollTop = Math.max(0, chatArea.scrollHeight - chatArea.clientHeight);
+        pendingScrollRestoreSessionIdRef.current = null;
+        return;
+      }
+
       const hasVisibleMessages =
         chat.filter((message) => message.role !== "system").length > 0;
       const maxScrollTop = Math.max(
@@ -307,7 +317,7 @@ export function useModelInterfaceSessionRouting({
     return () => {
       window.cancelAnimationFrame(frameId);
     };
-  }, [chat, chatAreaRef, currentChatSignature, currentSessionId]);
+  }, [chat, chatAreaRef, currentChatSignature, currentSessionId, isSessionInFlight]);
 
   useEffect(() => {
     const nextSignatures: Record<string, string> = {};
@@ -347,7 +357,7 @@ export function useModelInterfaceSessionRouting({
   const createNewSessionAndSwitchWrapper = useCallback(
     (_modelId: string) => {
       persistCurrentConversationScroll();
-      resetDraftConversation();
+      resetDraftConversation({ stopCurrentSession: false });
       pendingDraftModeRef.current = true;
       setPendingDraftMode(true);
       setSelectedPersonalityId(undefined);

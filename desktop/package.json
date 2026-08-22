@@ -4,6 +4,7 @@
   "private": true,
   "description": "AIGenius Electron shell (Linux, macOS, Windows)",
   "dependencies": {
+    "better-sqlite3": "^13.0.3",
     "mammoth": "^1.12.0",
     "pdf-parse": "^1.1.4",
     "word-extractor": "^1.0.4"
@@ -13,7 +14,7 @@
   "main": "dist/main.js",
   "scripts": {
     "postinstall": "exit 0",
-    "rebuild:better-sqlite3": "electron-rebuild -v 33.2.1 -f -m ../desktop-server -w better-sqlite3",
+    "rebuild:better-sqlite3": "electron-rebuild -v 43.4.1 -f -m ../desktop-server -o better-sqlite3",
     "test": "cross-env NODE_ENV=test jest --config jest.config.cjs",
     "test:tools:scenarios": "cross-env NODE_ENV=test jest --config jest.config.cjs --testPathPattern=local-desktop-tools\\.scenarios",
     "test:tools:all": "cross-env NODE_ENV=test jest --config jest.config.cjs --testPathPattern=\"local-desktop-tools|local-tool-executor|tool-formatter|read-file\"",
@@ -60,9 +61,10 @@
     "@types/sharp": "^0.31.1",
     "cross-env": "^7.0.3",
     "dotenv": "^16.4.5",
-    "electron": "33.2.1",
+    "electron": "^43.4.1",
     "electron-builder": "^25.1.8",
     "electron-rebuild": "^3.2.9",
+    "node-abi": "^4.33.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.5",
     "typescript": "^5.6.3"
@@ -70,7 +72,7 @@
   "build": {
     "appId": "chat.aigenius.desktop",
     "productName": "AIGenius",
-    "electronVersion": "33.2.1",
+    "electronVersion": "43.4.1",
     "directories": {
       "output": "release"
     },

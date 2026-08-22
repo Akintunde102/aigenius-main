@@ -24,6 +24,16 @@ jest.mock('./utils/read-file/path-resolver', () => ({
       : `/home/user/${inputPath}`;
     return { ok: true, resolved, displayPath: inputPath };
   }),
+  resolveDirectoryPath: jest.fn(async (inputPath: string) => {
+    if (!inputPath?.trim()) {
+      return { ok: false, error: 'path is required' };
+    }
+    const resolved =
+      inputPath.startsWith('/') || /^[A-Za-z]:/.test(inputPath)
+        ? inputPath
+        : `/home/user/${inputPath}`;
+    return { ok: true, resolved, displayPath: inputPath };
+  }),
 }));
 
 jest.mock('./active-code-project', () => ({

@@ -1,9 +1,9 @@
 'use client';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { filePreviewEmitter, FilePreviewPayload, closeFilePreview } from './FilePreviewManager';
 import { setActiveEditorContext, clearActiveEditorContext } from '@/lib/code-projects/active-editor-context';
 import { PanelLeft, Folder } from 'lucide-react';
-import Editor, { loader } from '@monaco-editor/react';
 import { MarkdownRenderer } from '../model-interface/shared/components/MarkdownRenderer';
 import { useTheme } from '@/lib/providers/ThemeProvider';
 import { defineMonacoAppThemes, getMonacoThemeId } from './monaco-app-theme';
@@ -17,12 +17,16 @@ import { PanelResizeHandles } from './PanelResizeHandles';
 import { FilePreviewUnavailable } from './FilePreviewUnavailable';
 import { usePanelDisplayMode } from './usePanelDisplayMode';
 
-// Configure Monaco loader to use local files from public directory
-loader.config({
-    paths: {
-        vs: '/monaco-editor/min/vs'
-    }
-});
+const Editor = dynamic(
+  () =>
+    import('@monaco-editor/react').then((mod) => {
+      mod.loader.config({
+        paths: { vs: '/monaco-editor/min/vs' },
+      });
+      return mod.default;
+    }),
+  { ssr: false, loading: () => <div className="p-4 text-sm text-muted-foreground">Loading editor…</div> },
+);
 
 interface FolderItem {
     path: string;
@@ -167,12 +171,6 @@ export const FilePreviewModal: React.FC = () => {
     const handleEditorWillMount = useCallback((monaco: Parameters<NonNullable<React.ComponentProps<typeof Editor>['beforeMount']>>[0]) => {
         defineMonacoAppThemes(monaco);
     }, []);
-
-    useEffect(() => {
-        loader.init().then((monaco) => {
-            defineMonacoAppThemes(monaco);
-        });
-    }, [resolvedTheme]);
 
     // Helper to cleanup blob URLs
     const cleanupBlob = useCallback(() => {

@@ -17,6 +17,7 @@ import {
   buildShellApprovalFallbackDetail,
   sidecarAuthHeaders,
 } from './local-tool-executor-helpers';
+import { executeSidecarTool, sidecarToolsEnabled } from './sidecar-tools';
 
 const MAX_CMD_LEN = 64_000;
 const MAX_SHELL_OUT = 512 * 1024;
@@ -132,6 +133,18 @@ export async function runShell(
   const approved = await confirmLocalShellExecution(parent, command, cwdResolved, timeoutMs);
   if (!approved) {
     return { ok: false, error: 'User declined to run the command' };
+  }
+
+  // Streaming shell output must stay in the main process (IPC chunks). Non-streaming runs in sidecar.
+  if (sidecarToolsEnabled() && !streamId) {
+    const sidecar = await executeSidecarTool('local_shell', {
+      command,
+      cwd: cwdResolved,
+      timeout_ms: timeoutMs,
+    });
+    if (sidecar) {
+      return sidecar;
+    }
   }
 
   const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';

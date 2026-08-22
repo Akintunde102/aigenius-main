@@ -1,7 +1,18 @@
-# desktop-renderer (stub workspace)
+# desktop-renderer (Vite packaged UI)
 
-This Yarn workspace entry exists for a planned Vite-based desktop renderer build script.
+Production desktop packages use this workspace by default (`AIGENIUS_DESKTOP_UI=vite`).
 
-**Status:** stub — only `scripts/build-desktop-vite.cjs` is present. The active desktop shell embeds the Next.js frontend via Electron (`client/desktop/`).
+- Builds a **client-only** Vite bundle from shared `client/frontend/src` code
+- Next.js APIs are shimmed (`src/shims/next-*.tsx`)
+- React Router handles `/desktop-login`, `/desktop-welcome`, `/desktop-search-index`, `/desktop-success`, `/`, and `/chat/:conversationId`
+- Packaged apps load via `aigenius://app/...` (default) or a tiny static HTTP server (`AIGENIUS_DESKTOP_UI_PROTOCOL=0`)
 
-Do not add features here unless migrating off the embedded Next.js renderer. See [ARCHITECTURE.md](../../ARCHITECTURE.md).
+## Build
+
+```bash
+cd client/desktop-renderer && npm run build
+# or from client/desktop:
+npm run build:desktop:ui
+```
+
+Dev still uses live Next.js (`client/frontend`). Do not add features here unless they are required for the packaged desktop shell.

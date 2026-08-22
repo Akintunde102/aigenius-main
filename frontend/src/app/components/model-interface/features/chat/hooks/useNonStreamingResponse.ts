@@ -10,6 +10,7 @@ import { getDraftConversationEpoch } from '@/app/components/model-interface/conv
 import { resolveRequestConversationId } from './requestConversationId.utils';
 import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
 import { notifyDesktopChatCompletionIfBackground } from '@/lib/utils/desktop-chat-completion-notify';
+import { notifyBackgroundConversationReady } from '@/lib/utils/background-conversation-notify';
 import { contentToDisplayText } from './contentProcessing.utils';
 import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
 
@@ -187,6 +188,12 @@ export function useNonStreamingResponse({
                 body: contentToDisplayText(processedContent),
                 modelName: selectedModel.name || selectedModel.id,
             });
+
+            if (!ownsView) {
+                void notifyBackgroundConversationReady({
+                    title: deriveChatSessionTitle(fullMessages[0]?.content) || 'Chat',
+                });
+            }
 
             logMetrics(result.usage, result.cost);
         } finally {

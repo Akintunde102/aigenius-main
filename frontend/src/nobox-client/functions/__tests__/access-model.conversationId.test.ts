@@ -224,6 +224,40 @@ describe('conversationId in access-model', () => {
             expect(result.conversationId).toBe('stream-conv-999');
         });
 
+        it('calls onStreamStart with conversationId before stream chunks are processed', async () => {
+            const body = {
+                getReader: () => ({
+                    read: jest
+                        .fn()
+                        .mockResolvedValueOnce({ done: false, value: Buffer.from('data: [DONE]\n', 'utf8') })
+                        .mockResolvedValueOnce({ done: true, value: undefined }),
+                    releaseLock: jest.fn(),
+                }),
+            };
+            mockFetch.mockResolvedValue({
+                ok: true,
+                headers: new Headers({ 'X-Conversation-Id': 'stream-conv-early' }),
+                body,
+            } as unknown as Response);
+
+            const onStreamStart = jest.fn();
+            const onData = jest.fn();
+
+            const { accessModelStream } = await import('../access-model');
+            await accessModelStream({
+                body: { messages: [{ role: 'user', content: 'Hello' }] },
+                options: { model: 'gpt-4' },
+                config: mockConfig as any,
+                onData,
+                onStreamStart,
+            });
+
+            expect(onStreamStart).toHaveBeenCalledWith({ conversationId: 'stream-conv-early' });
+            expect(onStreamStart.mock.invocationCallOrder[0]).toBeLessThan(
+                onData.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
+            );
+        });
+
         it('includes orphan side-thread metadata in streaming request bodies', async () => {
             const body = {
                 getReader: () => ({

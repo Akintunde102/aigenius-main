@@ -231,6 +231,67 @@ describe('ChatHistoryList', () => {
         expect(queryByRole('button', { name: 'Chat chat-1' })).toBeNull();
     });
 
+    it('expands the General section when it contains the active conversation', async () => {
+        const { findByRole, queryByRole } = render(
+            <ChatHistoryList
+                chatHistory={[
+                    {
+                        id: 'general-active',
+                        title: 'Active General Chat',
+                        modelId: 'session-model',
+                        messages: [{ role: 'user', content: 'hi', timestamp: 1 }],
+                    },
+                ]}
+                currentSessionId="general-active"
+                models={[]}
+                isMobile={false}
+                removeChatHistorySession={jest.fn().mockResolvedValue(true)}
+                setChatHistory={jest.fn()}
+                getChatHistory={jest.fn().mockResolvedValue([])}
+                setSelectedModel={jest.fn()}
+                onStarToggle={jest.fn().mockResolvedValue(undefined)}
+                codeProjects={[baseProject]}
+            />,
+        );
+
+        expect(await findByRole('button', { name: 'Active General Chat' })).toBeTruthy();
+    });
+
+    it('keeps the active conversation visible when it is beyond the preview limit', async () => {
+        const makeChat = (id: string, ts: number) => ({
+            id,
+            title: `Chat ${id}`,
+            modelId: 'session-model',
+            messages: [{ role: 'user' as const, content: 'hi', timestamp: ts }],
+        });
+
+        const { findByRole, findByText, queryByRole } = render(
+            <ChatHistoryList
+                chatHistory={[
+                    makeChat('chat-6', 6),
+                    makeChat('chat-5', 5),
+                    makeChat('chat-4', 4),
+                    makeChat('chat-3', 3),
+                    makeChat('chat-2', 2),
+                    makeChat('chat-hidden-active', 1),
+                ]}
+                currentSessionId="chat-hidden-active"
+                models={[]}
+                isMobile={false}
+                removeChatHistorySession={jest.fn().mockResolvedValue(true)}
+                setChatHistory={jest.fn()}
+                getChatHistory={jest.fn().mockResolvedValue([])}
+                setSelectedModel={jest.fn()}
+                onStarToggle={jest.fn().mockResolvedValue(undefined)}
+                codeProjects={[baseProject]}
+            />,
+        );
+
+        fireEvent.click(await findByRole('button', { name: 'General' }));
+
+        expect(await findByRole('button', { name: 'Chat chat-hidden-active' })).toBeTruthy();
+    });
+
     it('expands a collapsed project section on single click', async () => {
         const { findByRole, queryByRole } = render(
             <ChatHistoryList

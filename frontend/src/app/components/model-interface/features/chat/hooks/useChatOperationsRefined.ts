@@ -29,6 +29,8 @@ import {
 import { enforceOutgoingChatProjectScope } from '@/lib/code-projects/apply-chat-project-scope';
 import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
 import type { HandleSendQueueOptions } from './messageSendQueue.types';
+import { notifyBackgroundConversationReady } from '@/lib/utils/background-conversation-notify';
+import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
 
 /**
  * Send/stop orchestration: wallet validation, composer drafts, message shaping for the API,
@@ -101,6 +103,10 @@ export function useChatOperationsRefined({
             [activeKey]: typeof val === 'function' ? val(prev[activeKey] ?? '') : val,
         }));
     }, [activeKey]);
+
+    const commitComposerDraftForKey = useCallback((key: string, val: string) => {
+        setInputMap((prev) => ({ ...prev, [key]: val }));
+    }, []);
 
     const migrateDraftComposerToSession = useCallback((realId: string) => {
         setInputMap((prev) => {
@@ -176,6 +182,18 @@ export function useChatOperationsRefined({
                     onDraftSessionMaterialized?.(result.conversationId);
                 }
                 setCurrentSessionId(result.conversationId);
+            }
+
+            if (!ownsView) {
+                const resolvedId = streamingSessionId ?? result.conversationId ?? null;
+                const sessionTitle = resolvedId
+                    ? chatHistory.find((s) => s.id === resolvedId)?.title?.trim()
+                    : undefined;
+                void notifyBackgroundConversationReady({
+                    title: sessionTitle || deriveChatSessionTitle(
+                        getChatForSession(resolvedId ?? chatMapKey)?.[0]?.content,
+                    ) || 'Chat',
+                });
             }
 
             if (
@@ -419,6 +437,8 @@ export function useChatOperationsRefined({
     return {
         input,
         setInput: setInput as React.Dispatch<React.SetStateAction<string>>,
+        composerSessionKey: activeKey,
+        commitComposerDraftForKey,
         wallet,
         setWallet,
         assistantResponse,

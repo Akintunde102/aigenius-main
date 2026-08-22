@@ -3,78 +3,123 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 interface UseInputStateProps {
     externalInputValue?: string;
     onInputChange?: (value: string) => void;
+    /** Conversation id (or draft key) for the open composer — used to flush drafts on switch. */
+    composerSessionKey?: string;
+    /** Persist draft text under a specific session key (e.g. when switching before debounce). */
+    commitDraftForKey?: (key: string, value: string) => void;
 }
 
-export const useInputState = ({ externalInputValue, onInputChange }: UseInputStateProps) => {
-    // Initialize state directly from external value if present
+const INPUT_DEBOUNCE_MS = 150;
+
+export const useInputState = ({
+    externalInputValue,
+    onInputChange,
+    composerSessionKey = '',
+    commitDraftForKey,
+}: UseInputStateProps) => {
     const [internalInputValue, setInternalInputValue] = useState(externalInputValue || '');
-    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const onInputChangeRef = useRef(onInputChange);
-    // Keep track of the last value pushed up to the parent component
+    const commitDraftForKeyRef = useRef(commitDraftForKey);
     const lastSentValueRef = useRef(externalInputValue || '');
+    const internalInputValueRef = useRef(internalInputValue);
+    const composerSessionKeyRef = useRef(composerSessionKey);
+    const prevSessionKeyRef = useRef(composerSessionKey);
+
+    internalInputValueRef.current = internalInputValue;
+    composerSessionKeyRef.current = composerSessionKey;
 
     useEffect(() => {
         onInputChangeRef.current = onInputChange;
     }, [onInputChange]);
 
-    // Sync internal state with external value only when it originates from an outside source
-    // (e.g. STT speech-to-text, switching sessions, or inserting saved chats)
     useEffect(() => {
+        commitDraftForKeyRef.current = commitDraftForKey;
+    }, [commitDraftForKey]);
+
+    const cancelDebounce = useCallback(() => {
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+            debounceTimeoutRef.current = null;
+        }
+    }, []);
+
+    const flushPendingToKey = useCallback((key: string, value: string) => {
+        if (value === lastSentValueRef.current) return;
+        commitDraftForKeyRef.current?.(key, value);
+        lastSentValueRef.current = value;
+    }, []);
+
+    // Session switch: save in-progress text to the old conversation, then load the new one.
+    useEffect(() => {
+        if (composerSessionKey === prevSessionKeyRef.current) {
+            return;
+        }
+
+        cancelDebounce();
+        const oldKey = prevSessionKeyRef.current;
+        flushPendingToKey(oldKey, internalInputValueRef.current);
+
+        prevSessionKeyRef.current = composerSessionKey;
+
+        const external = externalInputValue ?? '';
+        setInternalInputValue(external);
+        lastSentValueRef.current = external;
+    }, [composerSessionKey, externalInputValue, cancelDebounce, flushPendingToKey]);
+
+    // Same-session external updates (STT, insert saved chat, etc.)
+    useEffect(() => {
+        if (composerSessionKey !== prevSessionKeyRef.current) {
+            return;
+        }
         if (externalInputValue !== undefined && externalInputValue !== lastSentValueRef.current) {
+            cancelDebounce();
             setInternalInputValue(externalInputValue);
             lastSentValueRef.current = externalInputValue;
         }
-    }, [externalInputValue]);
+    }, [externalInputValue, composerSessionKey, cancelDebounce]);
 
     const handleInputChange = useCallback((val: string) => {
         setInternalInputValue(val);
+        cancelDebounce();
 
-        // Clear previous pending timeout
-        if (debounceTimeoutRef.current) {
-            clearTimeout(debounceTimeoutRef.current);
-        }
-
-        // Debounce update to parent component to avoid layout rendering thrashing (150ms delay)
+        const sessionAtSchedule = composerSessionKeyRef.current;
         debounceTimeoutRef.current = setTimeout(() => {
-            lastSentValueRef.current = val;
-            if (onInputChangeRef.current) {
-                onInputChangeRef.current(val);
+            debounceTimeoutRef.current = null;
+            if (sessionAtSchedule !== composerSessionKeyRef.current) {
+                flushPendingToKey(sessionAtSchedule, val);
+                return;
             }
-        }, 150);
-    }, []);
+            lastSentValueRef.current = val;
+            onInputChangeRef.current?.(val);
+        }, INPUT_DEBOUNCE_MS);
+    }, [cancelDebounce, flushPendingToKey]);
 
     const clearInput = useCallback(() => {
-        if (debounceTimeoutRef.current) {
-            clearTimeout(debounceTimeoutRef.current);
-            debounceTimeoutRef.current = null;
-        }
+        cancelDebounce();
         setInternalInputValue('');
         lastSentValueRef.current = '';
-        if (onInputChangeRef.current) {
-            onInputChangeRef.current('');
-        }
-    }, []);
+        onInputChangeRef.current?.('');
+    }, [cancelDebounce]);
 
     /** Push any pending debounced keystrokes to the parent before sending. */
     const flushInputToParent = useCallback(() => {
-        if (debounceTimeoutRef.current) {
-            clearTimeout(debounceTimeoutRef.current);
-            debounceTimeoutRef.current = null;
-        }
-        lastSentValueRef.current = internalInputValue;
-        if (onInputChangeRef.current) {
-            onInputChangeRef.current(internalInputValue);
-        }
-    }, [internalInputValue]);
+        cancelDebounce();
+        const value = internalInputValueRef.current;
+        lastSentValueRef.current = value;
+        onInputChangeRef.current?.(value);
+    }, [cancelDebounce]);
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
-            if (debounceTimeoutRef.current) {
-                clearTimeout(debounceTimeoutRef.current);
+            cancelDebounce();
+            const key = prevSessionKeyRef.current;
+            const pending = internalInputValueRef.current;
+            if (pending !== lastSentValueRef.current) {
+                commitDraftForKeyRef.current?.(key, pending);
             }
         };
-    }, []);
+    }, [cancelDebounce]);
 
     return {
         inputValue: internalInputValue,
