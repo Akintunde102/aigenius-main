@@ -1,125 +1,175 @@
-"use client";
+"use client";`n/* eslint-disable @next/next/no-img-element */
 
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { PublicPageShell } from "@/app/components/PublicPageShell";
-import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
-import { HomeHeroScreenshot } from "@/app/components/home/HomeHeroScreenshot";
-import { DesktopDownloadDropdown } from "@/app/components/home/DesktopDownloadDropdown";
-import { HomePageNav } from "@/app/components/home/HomePageNav";
-import { cn } from "@/lib/utils";
+import "./home.css";
 
-const VALUE_STATEMENTS = [
-  "Chat with GPT, Claude, Gemini, and more — in one workspace.",
-  "Work on your projects with files, images, and voice.",
-  "Pay only for what you use — no subscriptions or seats.",
-] as const;
+export default function HomePage() {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
-const HomePage = () => {
-  const year = new Date().getFullYear();
+  useEffect(() => {
+    // Theme logic
+    const html = document.documentElement;
+    const stored = localStorage.getItem("aigenius-theme");
+    if (stored === "light" || stored === "dark") {
+      html.setAttribute("data-theme", stored);
+    } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+      html.setAttribute("data-theme", "light");
+    } else {
+      html.setAttribute("data-theme", "dark");
+    }
+
+    // Dropdown outside click
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEsc);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, []);
+
+  const toggleTheme = () => {
+    const html = document.documentElement;
+    const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    html.setAttribute("data-theme", next);
+    localStorage.setItem("aigenius-theme", next);
+  };
 
   return (
-    <PublicPageShell
-      hideHeader
-      hideAmbient
-      showFooter={false}
-      rootClassName="bg-[#f5f4f0] text-zinc-900 selection:bg-emerald-500 selection:text-zinc-950 dark:bg-[#0b0b0e] dark:text-zinc-100 min-h-screen"
-      contentClassName="flex-1"
-    >
-      <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#f5f4f0] dark:bg-[#0b0b0e]">
-        {/* Hidden Top-level H1 for Screen Readers and Search Indexers */}
-        <h1 className="sr-only">
-          AIGenius — Chat with every AI model in one workspace
-        </h1>
+    <div className="home-root">
+      <div className="page">
+        {/* Nav */}
+        <nav className="nav">
+          <Link href="/" className="nav-logo">
+            <span className="nav-logo-mark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden={true}>
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+            </span>
+            <span className="nav-logo-text">AIGenius</span>
+          </Link>
 
-        {/* Full-bleed/Split Background App Screenshot */}
-        <div className="relative flex min-h-[100dvh] flex-col sm:flex-row">
-          {/* Left / Full App Screenshot Canvas */}
-          <section
-            aria-label="Application Interface Preview"
-            className="flex w-full items-start justify-start overflow-hidden bg-[#f5f4f0] dark:bg-[#0b0b0e] sm:w-7/12 sm:min-h-[100dvh] lg:w-3/5"
-          >
-            <div className="relative w-full">
-              {/* Subtle ambient lighting behind the screenshot */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute -left-20 -top-20 -z-0 h-[400px] w-[500px] opacity-20 blur-[100px] dark:opacity-30"
-                style={{
-                  background: "radial-gradient(circle, rgba(52, 211, 153, 0.4), transparent 70%)",
-                }}
-              />
-              <HomeHeroScreenshot />
-            </div>
-          </section>
+          <div className="nav-links">
+            <Link href="#">About</Link>
+            <Link href="/login" className="nav-signin">Sign in</Link>
+            <button type="button" className="theme-toggle" id="theme-toggle" aria-label="Toggle theme" onClick={toggleTheme}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" aria-hidden={true}>
+                <circle cx="12" cy="12" r="9" /><line x1="12" y1="3" x2="12" y2="21" />
+              </svg>
+            </button>
+          </div>
+        </nav>
 
-          {/* Right: Frosted Overlap Marketing Panel */}
-          <section
-            aria-label="Platform Overview and Downloads"
-            className="relative flex min-h-0 flex-1 flex-col border-t border-black/[0.08] bg-[#f5f4f0]/90 backdrop-blur-2xl dark:border-white/[0.08] dark:bg-[#0b0e14]/92 sm:min-h-[100dvh] sm:border-l sm:border-t-0 sm:shadow-[-20px_0_50px_rgba(0,0,0,0.25)]"
-          >
-            {/* Top Right Ghost Nav */}
-            <HomePageNav />
+        {/* Main */}
+        <main className="main">
+          {/* Left: Copy & CTA */}
+          <div className="content">
+            <h1 className="headline">
+              AI models in one workspace.
+            </h1>
+            <p className="subtext">
+              Bring files, voice, and projects. Pay only for what you use.
+            </p>
 
-            {/* Centered Value Proposition & Download CTA */}
-            <div className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-12 sm:py-12 lg:px-16">
-              {/* Brand Eyebrow with Luminous Pulse */}
-              <div className="mb-6 flex items-center gap-2" aria-hidden="true">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-sky-400 opacity-75 dark:bg-emerald-400" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-600 dark:bg-emerald-400" />
-                </span>
-                <p className="text-[0.6875rem] font-bold uppercase tracking-[0.2em] text-sky-600 dark:text-emerald-400">
-                  AIGenius
-                </p>
-              </div>
+            <div className="cta-wrap">
+              <div className={"download-wrap" + (dropdownOpen ? " open" : "")} id="download-wrap" ref={wrapRef}>
+                <button type="button" className="download-btn" id="download-btn" aria-expanded={dropdownOpen} aria-haspopup="menu" onClick={() => setDropdownOpen(!dropdownOpen)}>
+                  Download desktop app
+                  <svg className="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden={true}>
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
 
-              <h2 className="sr-only">Platform Highlights</h2>
-
-              {/* Three Value Statements */}
-              <ul className="space-y-4">
-                {VALUE_STATEMENTS.map((statement) => (
-                  <li
-                    key={statement}
-                    className="relative pl-5 text-[1.0625rem] font-medium leading-relaxed sm:text-lg before:absolute before:left-0 before:top-[0.58em] before:h-2 before:w-2 before:rounded-full before:bg-sky-600 before:content-[''] dark:before:bg-emerald-400 dark:before:shadow-[0_0_8px_rgba(52,211,153,0.8)]"
-                  >
-                    {statement}
+                <ul className="dropdown" role="menu">
+                  <li role="none">
+                    <button type="button" role="menuitem">
+                      <span className="dd-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden={true}><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" /></svg>
+                      </span>
+                      macOS
+                      <span className="soon">Soon</span>
+                    </button>
                   </li>
-                ))}
-              </ul>
-
-              {/* Primary Download Button with Platform Dropdown */}
-              <div className="mt-9 sm:mt-10">
-                <DesktopDownloadDropdown />
-                <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-                  macOS, Windows &amp; Linux · Free to start
-                </p>
+                  <li role="none">
+                    <button type="button" role="menuitem">
+                      <span className="dd-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden={true}><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" /></svg>
+                      </span>
+                      Windows
+                      <span className="soon">Soon</span>
+                    </button>
+                  </li>
+                  <hr className="dropdown-divider" role="separator" />
+                  <li role="none">
+                    <button type="button" role="menuitem">
+                      <span className="dd-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden={true}><polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" /></svg>
+                      </span>
+                      Linux
+                      <span className="soon">Soon</span>
+                    </button>
+                  </li>
+                </ul>
               </div>
 
-              {/* Bottom Footer */}
-              <footer className="mt-12 border-t border-black/[0.06] pt-6 text-xs text-zinc-500 dark:border-white/[0.06] sm:mt-16">
-                <nav aria-label="Legal Links" className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                  <Link
-                    prefetch
-                    href="/docs/privacy-policy"
-                    className={cn("transition hover:text-zinc-900 dark:hover:text-zinc-200", FOCUS_RING)}
-                  >
-                    Privacy Policy
-                  </Link>
-                  <Link
-                    prefetch
-                    href="/docs/terms-and-conditions"
-                    className={cn("transition hover:text-zinc-900 dark:hover:text-zinc-200", FOCUS_RING)}
-                  >
-                    Terms of Service
-                  </Link>
-                </nav>
-                <p className="mt-2 text-[11px] text-zinc-400">© {year} Nobox Labs Limited</p>
-              </footer>
+              <div className="cta-note">
+                <span className="platform-pill">
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden={true}><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" /></svg>
+                  macOS
+                </span>
+                <span className="platform-pill">
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden={true}><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" /></svg>
+                  Windows
+                </span>
+                <span className="platform-pill">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden={true}><polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" /></svg>
+                  Linux
+                </span>
+                <span>• Free to start</span>
+              </div>
             </div>
-          </section>
-        </div>
-      </div>
-    </PublicPageShell>
-  );
-};
+          </div>
 
-export default HomePage;
+          {/* Right: macOS window mockup */}
+          <div className="mockup-wrap" aria-hidden={true}>
+            <div className="window">
+              <div className="window-bar">
+                <span className="traffic-dot td-red"></span>
+                <span className="traffic-dot td-yellow"></span>
+                <span className="traffic-dot td-green"></span>
+                <span className="window-title">AIGenius</span>
+              </div>
+              <div className="window-body">
+                <img className="hero-light" src="/images/home-hero-light.png" alt="AIGenius Interface" />
+                <img className="hero-dark" src="/images/home-hero-dark.png" alt="AIGenius Interface Dark Mode" />
+              </div>
+            </div>
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="footer">
+          <span>© {new Date().getFullYear()} Nobox Labs Limited</span>
+          <nav className="footer-links" aria-label="Legal">
+            <Link href="/docs/privacy-policy">Privacy Policy</Link>
+            <Link href="/docs/terms-and-conditions">Terms of Service</Link>
+          </nav>
+        </footer>
+      </div>
+    </div>
+  );
+}
