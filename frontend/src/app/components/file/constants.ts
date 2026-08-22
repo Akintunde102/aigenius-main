@@ -1,5 +1,5 @@
 const API_LINK = process.env.NEXT_PUBLIC_NOBOX_API_ROOT_URL;
-if (!API_LINK) {
+if (!API_LINK && typeof window !== "undefined") { console.warn("Server link not given"); } if (false) {
     throw new Error("Server link not given");
 }
 
