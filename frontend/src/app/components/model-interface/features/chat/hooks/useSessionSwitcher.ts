@@ -8,11 +8,14 @@ import { SetChatForSession } from './chatOperations.types';
 import { DRAFT_SESSION_KEY } from './chatOperations.constants';
 import { bumpDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { applyChatProjectScopeFromSession } from '@/lib/code-projects/apply-chat-project-scope';
+import { shouldAcceptRemoteConversationSync } from '@/lib/utils/conversationScrollMemory';
+import { mergeSidebarSessionRecord } from '@/app/components/model-interface/conversation/sessionRecency';
 
 interface UseSessionSwitcherOptions {
     currentSessionId: string | null;
     chatMap: Record<string, ChatMessage[]>;
     setChatForSession: SetChatForSession;
+    isPassiveSyncBlocked?: (sessionId: string) => boolean;
 }
 
 /**
@@ -21,7 +24,12 @@ interface UseSessionSwitcherOptions {
  * Switching is now a synchronous key change — messages derive from chatMap
  * which is populated on demand (LRU) when the user opens a conversation.
  */
-export function useSessionSwitcher({ currentSessionId, chatMap, setChatForSession }: UseSessionSwitcherOptions) {
+export function useSessionSwitcher({
+    currentSessionId,
+    chatMap,
+    setChatForSession,
+    isPassiveSyncBlocked,
+}: UseSessionSwitcherOptions) {
     const queryClient = useQueryClient();
 
     const ensureSystemPromptMessage = useCallback((session: ChatSession): ChatSession => {
@@ -71,8 +79,16 @@ export function useSessionSwitcher({ currentSessionId, chatMap, setChatForSessio
             } else {
                 void loadSessionFromBackend(queryClient, session.id).then((loaded) => {
                     if (!loaded?.messages?.length) return;
+                    const sid = session.id!;
+                    if (isPassiveSyncBlocked?.(sid)) return;
                     const normalized = normalizeSessionMessages(ensureSystemPromptMessage(loaded));
-                    setChatForSession(session.id!, (normalized.messages || []) as ChatMessage[]);
+                    const incoming = (normalized.messages || []) as ChatMessage[];
+                    setChatForSession(sid, (prev) => {
+                        if (prev.length && !shouldAcceptRemoteConversationSync(prev, incoming)) {
+                            return prev;
+                        }
+                        return incoming;
+                    });
                 });
             }
         }
@@ -91,8 +107,10 @@ export function useSessionSwitcher({ currentSessionId, chatMap, setChatForSessio
                     if (!messages.length) {
                         return prev;
                     }
-                    // Do not clobber a just-streamed local transcript with a lagging server snapshot.
-                    if (prev.length > messages.length) {
+                    if (isPassiveSyncBlocked?.(sid)) {
+                        return prev;
+                    }
+                    if (!shouldAcceptRemoteConversationSync(prev, messages)) {
                         return prev;
                     }
                     return messages;
@@ -100,14 +118,16 @@ export function useSessionSwitcher({ currentSessionId, chatMap, setChatForSessio
 
                 if (setChatHistory) {
                     setChatHistory(prev =>
-                        prev.map(s => s.id === sid ? { ...s, ...normalized, messages: [] } : s)
+                        prev.map(s =>
+                            s.id === sid ? mergeSidebarSessionRecord(s, normalized) : s,
+                        ),
                     );
                 }
             } catch {
                 // Silently ignore — local data is already shown.
             }
         })();
-    }, [chatMap, setChatForSession, ensureSystemPromptMessage, queryClient]);
+    }, [chatMap, setChatForSession, ensureSystemPromptMessage, queryClient, isPassiveSyncBlocked]);
 
     /**
      * Create a new draft session (clears the draft slot).

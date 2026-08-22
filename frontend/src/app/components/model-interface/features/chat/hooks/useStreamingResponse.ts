@@ -216,6 +216,7 @@ export function useStreamingResponse({
             || draftEpochAtDispatch === getDraftConversationEpoch();
 
         let lastUiUpdateTime = 0;
+        let lastLocalPersistTime = 0;
         let sidebarSynced = false;
         let materializedConversationId: string | undefined;
 
@@ -242,6 +243,22 @@ export function useStreamingResponse({
             sidebarSynced = true;
         };
 
+        const persistStreamProgressLocally = (force = false) => {
+            if (chatMapKey === DRAFT_SESSION_KEY || !streamStillOwnsDraftSlot()) {
+                return;
+            }
+            const now = Date.now();
+            if (!force && now - lastLocalPersistTime < 5000) {
+                return;
+            }
+            lastLocalPersistTime = now;
+            void addOrMergeSessionToLocalHistory({
+                id: chatMapKey,
+                codeProjectId: getChatProjectScopeId(),
+                session: { messages: sessionMessages, modelId: modelForRequest.id },
+            });
+        };
+
         const syncSidebarHistory = () => {
             if (sidebarSynced || !streamStillOwnsDraftSlot()) {
                 return;
@@ -266,6 +283,7 @@ export function useStreamingResponse({
                 }
                 setChatForSession(chatMapKey, sessionMessages);
                 lastUiUpdateTime = now;
+                persistStreamProgressLocally();
             }
         };
 
@@ -473,6 +491,7 @@ export function useStreamingResponse({
 
             // Force a final flush so nothing is missed.
             flushUiUpdate(true);
+            persistStreamProgressLocally(true);
             syncSidebarHistory();
 
             const result = streamResult ?? {};
@@ -514,6 +533,7 @@ export function useStreamingResponse({
             handleStreamResult(result, streamingSessionId, requestOverrides?.draftEpoch, requestOverrides?.sendGeneration);
         } catch (err) {
             flushUiUpdate(true);
+            persistStreamProgressLocally(true);
             syncSidebarHistory();
             throw err;
         } finally {

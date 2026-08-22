@@ -37,6 +37,7 @@ import {
 } from './chatStorage';
 import { normalizeChatMessages, normalizeSessionMessages } from './messageContentUtils';
 import { formatCredits, usdCostToCredits } from '@/lib/credits';
+import { mergeSidebarSessionRecord } from '@/app/components/model-interface/conversation/sessionRecency';
 
 /** Some legacy rows used `_id` instead of `id`. */
 type SessionRow = ChatSession & { _id?: string };
@@ -51,24 +52,36 @@ export function upsertChatHistorySession(
 ): ChatSession[] {
     const normalizedIncoming = normalizeSessionMessages(incoming) as ChatSession;
     const incomingId = sessionRowId(normalizedIncoming as SessionRow);
+    const existing = sessions.find((session) => sessionRowId(session as SessionRow) === incomingId);
+    const merged = mergeSidebarSessionRecord(existing, normalizedIncoming);
     const rest = sessions.filter((session) => sessionRowId(session as SessionRow) !== incomingId);
-    return [normalizedIncoming, ...rest];
+    return [...rest, merged];
 }
 
 export function mergeChatHistorySessions(
     backendSessions: ChatSession[],
     previousSessions: ChatSession[],
 ): ChatSession[] {
-    return previousSessions.reduce<ChatSession[]>(
-        (merged, session) => {
-            const sessionId = sessionRowId(session as SessionRow);
-            if (!sessionId || merged.some((item) => sessionRowId(item as SessionRow) === sessionId)) {
-                return merged;
-            }
-            return [...merged, normalizeSessionMessages(session) as ChatSession];
-        },
-        backendSessions.map((session) => normalizeSessionMessages(session) as ChatSession),
-    );
+    const byId = new Map<string, ChatSession>();
+
+    for (const session of backendSessions) {
+        const normalized = normalizeSessionMessages(session) as ChatSession;
+        const sessionId = sessionRowId(normalized as SessionRow);
+        if (!sessionId) continue;
+        byId.set(sessionId, mergeSidebarSessionRecord(undefined, normalized));
+    }
+
+    for (const session of previousSessions) {
+        const normalized = normalizeSessionMessages(session) as ChatSession;
+        const sessionId = sessionRowId(normalized as SessionRow);
+        if (!sessionId) continue;
+        byId.set(
+            sessionId,
+            mergeSidebarSessionRecord(byId.get(sessionId), normalized),
+        );
+    }
+
+    return Array.from(byId.values());
 }
 
 async function refreshSavedSnippetsFromServer(): Promise<ChatMessage[]> {

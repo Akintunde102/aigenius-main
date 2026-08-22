@@ -34,8 +34,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 </button>
             ) : null}
 
-            {/* Mic / STT Toggle (or Cancel / Confirm) */}
-            {micTranscribing ? (
+            {/* Mic / STT Toggle (or Cancel / Confirm) — hidden unless VOICE_DICTATION is enabled */}
+            {FEATURE_FLAGS.VOICE_DICTATION && micTranscribing ? (
                 <button
                     type="button"
                     className="p-1.5 rounded-full text-blue-500 bg-blue-50 disabled:opacity-50 cursor-not-allowed"
@@ -44,7 +44,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 >
                     <Loader2 size={12} className="animate-spin" />
                 </button>
-            ) : isSTTActive ? (
+            ) : FEATURE_FLAGS.VOICE_DICTATION && isSTTActive ? (
                 <div className="flex items-center space-x-1">
                     {/* Cancel Button (Outline Style - matches other composer controls) */}
                     <button
@@ -65,7 +65,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                         <Check size={12} />
                     </button>
                 </div>
-            ) : (
+            ) : FEATURE_FLAGS.VOICE_DICTATION ? (
                 <button
                     type="button"
                     className="p-1.5 rounded-full text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -75,7 +75,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 >
                     <Mic size={12} />
                 </button>
-            )}
+            ) : null}
 
             {/* File attachment button */}
             <button

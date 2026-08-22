@@ -24,6 +24,7 @@ import {
   getConversationScrollState,
   getStaleConversationIds,
   saveConversationScrollState,
+  shouldAcceptRemoteConversationSync,
 } from "@/lib/utils/conversationScrollMemory";
 import { useSyncRouteConversationId } from "../conversation/useSyncRouteConversationId";
 import { reduceNullRouteOrchestration } from "../conversation/activeConversationPhase";
@@ -58,6 +59,7 @@ type Params = {
     sessionKey: string,
     messages: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[]),
   ) => void;
+  isPassiveSyncBlocked?: (sessionId: string) => boolean;
   switchToSession: (session: ChatSession) => void;
   setAttachmentIndex: Dispatch<SetStateAction<AttachmentIndexItem[]>>;
   setUploadedFiles: Dispatch<SetStateAction<UploadedFileEntry[]>>;
@@ -90,6 +92,7 @@ export function useModelInterfaceSessionRouting({
   setSelectedModel,
   setError,
   setChatForSession,
+  isPassiveSyncBlocked,
   switchToSession,
   setAttachmentIndex,
   setUploadedFiles,
@@ -542,7 +545,16 @@ export function useModelInterfaceSessionRouting({
         const loadedId = normalizedSession.id || null;
         setCurrentSessionId(loadedId);
         if (loadedId) {
-          setChatForSession(loadedId, (normalizedSession.messages || []) as ChatMessage[]);
+          const incoming = (normalizedSession.messages || []) as ChatMessage[];
+          setChatForSession(loadedId, (prev) => {
+            if (isPassiveSyncBlocked?.(loadedId)) {
+              return prev.length ? prev : incoming;
+            }
+            if (prev.length && !shouldAcceptRemoteConversationSync(prev, incoming)) {
+              return prev;
+            }
+            return incoming.length ? incoming : prev;
+          });
         }
         setChatHistory((prevHistory) =>
           upsertChatHistorySession(prevHistory, normalizedSession),
@@ -581,11 +593,7 @@ export function useModelInterfaceSessionRouting({
     resetDraftConversation,
     router,
     setChatForSession,
-    setChatHistory,
-    setCurrentSessionId,
-    setError,
-    setSelectedModel,
-    setAttachmentIndex,
+    isPassiveSyncBlocked,
     switchToSession,
   ]);
 

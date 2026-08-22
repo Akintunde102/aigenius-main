@@ -1,14 +1,26 @@
 import { ChatMessage, ChatSession } from '@/app/components/model-interface/shared/types';
+import { resolveSessionLastMessageTimestamp } from '@/app/components/model-interface/conversation/sessionRecency';
 import { DRAFT_SESSION_KEY } from './chatOperations.constants';
 
 /** Max conversation transcripts kept in React state (LRU); others reload on switch. */
-export const CHAT_MAP_MAX_RETAINED_SESSIONS = 5;
+export const CHAT_MAP_MAX_RETAINED_SESSIONS = 8;
 
-/** Sidebar uses titles only — drop message bodies from history list state. */
+/** Sidebar uses titles only — drop message bodies but keep recency for sorting. */
 export function stripMessagesFromHistorySessions(sessions: ChatSession[]): ChatSession[] {
-  return sessions.map((session) =>
-    session.messages?.length ? { ...session, messages: [] } : session,
-  );
+  return sessions.map((session) => {
+    if (!session.messages?.length) {
+      return session;
+    }
+    const lastMessageAt = resolveSessionLastMessageTimestamp(session);
+    return {
+      ...session,
+      messages: [],
+      metadata: {
+        ...session.metadata,
+        ...(lastMessageAt > 0 ? { lastMessageAt } : {}),
+      },
+    };
+  });
 }
 
 export function touchSessionLru(order: string[], sessionId: string): string[] {
