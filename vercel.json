@@ -1,0 +1,3 @@
+{
+  "installCommand": "yarn install --ignore-scripts && cd frontend && yarn postinstall"
+}
