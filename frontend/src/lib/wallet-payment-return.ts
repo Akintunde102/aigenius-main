@@ -33,6 +33,43 @@ export function clearPendingPaymentStorage(): void {
   window.localStorage.removeItem(WALLET_PENDING_PAYMENT_KEY);
 }
 
+type PendingPaymentReferenceRecord = {
+  reference?: string;
+};
+
+/**
+ * Payaza hosted checkout may redirect without query params — fall back to the pending
+ * payment record we stored before opening checkout.
+ */
+export function resolveWalletPaymentReference(
+  searchParams: Pick<URLSearchParams, 'get'>,
+): string | null {
+  const fromUrl =
+    searchParams.get('reference')
+    || searchParams.get('trxref')
+    || searchParams.get('transaction_reference');
+  const trimmed = fromUrl?.trim();
+  if (trimmed) {
+    return trimmed;
+  }
+
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const stored = window.localStorage.getItem(WALLET_PENDING_PAYMENT_KEY);
+  if (!stored) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(stored) as PendingPaymentReferenceRecord;
+    return parsed.reference?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Opens Paystack hosted checkout.
  * - Web: navigates the current tab.
@@ -165,4 +202,24 @@ export function buildPaymentCallbackUrl(
     callbackUrl.searchParams.set('desktop', '1');
   }
   return callbackUrl.toString();
+}
+
+/** Embed the transaction reference so Payaza redirects back with it (system browser has no app localStorage). */
+export function appendWalletPaymentReferenceToCallbackUrl(
+  callbackUrl: string,
+  reference: string,
+): string {
+  const trimmed = reference.trim();
+  if (!trimmed) {
+    return callbackUrl;
+  }
+
+  try {
+    const url = new URL(callbackUrl);
+    url.searchParams.set('reference', trimmed);
+    return url.toString();
+  } catch {
+    const sep = callbackUrl.includes('?') ? '&' : '?';
+    return `${callbackUrl}${sep}reference=${encodeURIComponent(trimmed)}`;
+  }
 }

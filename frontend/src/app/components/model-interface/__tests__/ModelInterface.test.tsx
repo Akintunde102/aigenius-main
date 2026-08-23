@@ -52,6 +52,9 @@ jest.mock('@/lib/hooks/useTokenHandler', () => jest.fn());
 jest.mock('@/lib/hooks/useWalletTopUpReturn', () => ({
     useWalletTopUpReturn: jest.fn(),
 }));
+jest.mock('@/lib/hooks/usePendingWalletPayment', () => ({
+    usePendingWalletPayment: jest.fn(),
+}));
 jest.mock('@/lib/calls/get-logged-user-details', () => ({
     getUserDetails: jest.fn().mockResolvedValue(null),
 }));

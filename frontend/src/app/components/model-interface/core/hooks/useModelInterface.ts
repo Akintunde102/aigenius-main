@@ -249,6 +249,7 @@ export function useModelInterface(options?: {
     selectedSystemPrompt,
     setSelectedSystemPrompt,
     applySessionPersonalityState,
+    clearConversationPersonality,
   } = useModelInterfacePersonality({
     currentSessionId,
     chatHistory,
@@ -256,6 +257,7 @@ export function useModelInterface(options?: {
     setSelectedPersonalityName,
     setSelectedPersonalityIconUrl,
     setChatHistory,
+    setChatForSession,
   });
 
     const isAudioModeRef = useRef(false);
@@ -568,6 +570,7 @@ export function useModelInterface(options?: {
       selectedSystemPrompt,
       setSelectedSystemPrompt,
       applySessionPersonalityState,
+      clearConversationPersonality,
     },
     chatState: {
       input,

@@ -98,6 +98,14 @@
         "to": "aigenius-desktop-ui"
       },
       {
+        "from": "dist-resources/desktop-ui",
+        "to": "desktop-ui"
+      },
+      {
+        "from": "dist-resources/desktop-ui-server",
+        "to": "desktop-ui-server"
+      },
+      {
         "from": "dist-resources/python-venv",
         "to": "python-venv"
       },

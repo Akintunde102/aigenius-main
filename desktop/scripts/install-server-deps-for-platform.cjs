@@ -32,6 +32,7 @@ const markers = [
   path.join(nodeModulesDir, 'better-sqlite3'),
   path.join(nodeModulesDir, 'sharp'),
   path.join(nodeModulesDir, 'onnxruntime-node'),
+  path.join(nodeModulesDir, 'ppu-paddle-ocr'),
   path.join(nodeModulesDir, 'ts-morph'),
   path.join(nodeModulesDir, 'web-tree-sitter'),
 ];

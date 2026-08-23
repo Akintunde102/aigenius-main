@@ -1,10 +1,11 @@
 'use client';
-import { getUploadedFiles, sendUploadStream } from "./constants";
-import useFileContext from "./FileContext";
-import { CloudFile } from "./file.interface";
 import { AxiosProgressEvent } from "axios";
 import { useEffect, useRef } from "react";
 import { authHttp } from "@/lib/api/auth-client";
+import { gatewayUploadFilesListUrl, gatewayUploadStreamUrl } from "@/lib/api/gateway-upload-paths";
+import { resolveGatewayApiRootUrl } from "@/lib/api/resolve-gateway-api-root";
+import useFileContext from "./FileContext";
+import { CloudFile } from "./file.interface";
 
 interface FileHook {
     getFiles: () => CloudFile[],
@@ -21,8 +22,8 @@ export function useFiles(folderId?: string, userId?: string): FileHook {
 
     async function loadUserFiles(shouldToast = false) {
         try {
-
-            const link = getUploadedFiles({ folderId, userId });
+            const apiRoot = await resolveGatewayApiRootUrl();
+            const link = gatewayUploadFilesListUrl(apiRoot, { folderId, userId });
             const response = await authHttp.get(link);
 
             if (response.status !== 200) {
@@ -70,9 +71,11 @@ export function useFiles(folderId?: string, userId?: string): FileHook {
                 throw new Error("No File to upload");
             }
 
+            const apiRoot = await resolveGatewayApiRootUrl();
+            const streamBase = gatewayUploadStreamUrl(apiRoot);
             const link = folderId
-                ? `${sendUploadStream}?fileName=${file.name}&folderId=${folderId}`
-                : `${sendUploadStream}?fileName=${file.name}`;
+                ? `${streamBase}?fileName=${file.name}&folderId=${folderId}`
+                : `${streamBase}?fileName=${file.name}`;
 
             const extension = file?.name?.split(".")?.pop()?.toLowerCase() || "unknown";
             const mimeTypes: Record<string, string> = {

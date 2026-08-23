@@ -365,7 +365,13 @@ async function mergeRuntimeContextIntoRequestBody(
     requestBody.codeProjectId = resolved.projectScopeId;
 
     const snapshot = resolved.snapshot;
-    let activeProjectPayload = snapshot
+    let activeProjectPayload: {
+      id: string;
+      name: string;
+      rootPath: string;
+      rules?: string;
+      structuralDigest?: string;
+    } | undefined = snapshot
       ? {
           id: snapshot.id,
           name: snapshot.name,

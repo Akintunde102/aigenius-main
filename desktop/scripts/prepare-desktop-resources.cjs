@@ -121,14 +121,19 @@ try {
   console.error(err instanceof Error ? err.message : err);
   process.exit(1);
 }
-const honoServer = path.join(nodeMods, '@hono', 'node-server');
-if (!fs.existsSync(honoServer)) {
-  console.error(
-    'Incomplete desktop-server node_modules (missing @hono/node-server).\n' +
-      'Workspace hoisting leaves desktop-server/node_modules incomplete.\n' +
-      '  Run: cd desktop && npm run install:server-deps',
-  );
-  process.exit(1);
+const requiredModules = [
+  ['@hono/node-server', path.join(nodeMods, '@hono', 'node-server')],
+  ['ppu-paddle-ocr', path.join(nodeMods, 'ppu-paddle-ocr')],
+];
+for (const [name, modulePath] of requiredModules) {
+  if (!fs.existsSync(modulePath)) {
+    console.error(
+      `Incomplete desktop-server node_modules (missing ${name}).\n` +
+        'Workspace hoisting leaves desktop-server/node_modules incomplete.\n' +
+        '  Run: cd desktop && npm run install:server-deps',
+    );
+    process.exit(1);
+  }
 }
 const indexJs = path.join(serverSrc, 'index.js');
 
