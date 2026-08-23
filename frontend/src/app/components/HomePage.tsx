@@ -10,7 +10,7 @@ export default function HomePage() {
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Theme logic
+    // Theme logic — matches home.html exactly
     const html = document.documentElement;
     const stored = localStorage.getItem("aigenius-theme");
     if (stored === "light" || stored === "dark") {
@@ -65,7 +65,7 @@ export default function HomePage() {
           </Link>
 
           <div className="nav-links">
-            <Link href="#">About</Link>
+            <Link href="/docs">About</Link>
             <Link href="/login" className="nav-signin">Sign in</Link>
             <button type="button" className="theme-toggle" aria-label="Toggle theme" onClick={toggleTheme}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" aria-hidden={true}>
@@ -79,10 +79,9 @@ export default function HomePage() {
         <main className="main">
           {/* Left: Copy & CTA */}
           <div className="content">
-            <h1 className="headline">
-              AI models in one workspace.
-            </h1>
+            <h1 className="headline">Chat with every AI<br />model, in one place.</h1>
             <p className="subtext">
+              Switch between GPT, Claude, Gemini and more — without juggling tabs or subscriptions.
               Bring files, voice, and projects. Pay only for what you use.
             </p>
 
@@ -128,9 +127,7 @@ export default function HomePage() {
                   <li role="none">
                     <button type="button" role="menuitem">
                       <span className="dd-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden={true}>
-                          <polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" />
-                        </svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden={true}><polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" /></svg>
                       </span>
                       Linux
                       <span className="soon">Soon</span>
@@ -153,12 +150,10 @@ export default function HomePage() {
                   Windows
                 </span>
                 <span className="platform-pill">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden={true}>
-                    <polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" />
-                  </svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden={true}><polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" /></svg>
                   Linux
                 </span>
-                <span>&#x2022; Free to start</span>
+                <span>· Free to start</span>
               </div>
             </div>
           </div>
@@ -173,8 +168,22 @@ export default function HomePage() {
                 <span className="window-title">AIGenius</span>
               </div>
               <div className="window-body">
-                <img className="hero-light" src="/images/home-hero-light.png" alt="AIGenius app interface in light mode" />
-                <img className="hero-dark" src="/images/home-hero-dark.png" alt="AIGenius app interface in dark mode" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className="hero-light"
+                  src="/images/home-hero-light.png"
+                  alt="AIGenius app interface in light mode"
+                  loading="eager"
+                  decoding="sync"
+                />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className="hero-dark"
+                  src="/images/home-hero-dark.png"
+                  alt="AIGenius app interface in dark mode"
+                  loading="eager"
+                  decoding="sync"
+                />
               </div>
             </div>
           </div>
