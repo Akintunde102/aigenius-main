@@ -60,6 +60,7 @@ import { runShell, connectLocalOllamaRelay } from './local-tool-executor-shell';
 import { readBoundedFile, listLocalDirectory } from './local-tool-executor-fs';
 import { checkLocalOllamaStatus, runLocalOllamaChat } from './local-tool-executor-ollama';
 import { sidecarAuthHeaders } from './local-tool-executor-helpers';
+import { executeSidecarTool } from './sidecar-tools';
 
 export async function runLocalDesktopTool(
   sender: WebContents,
@@ -82,7 +83,13 @@ export async function runLocalDesktopTool(
     case 'local_shell':
       return runShell(sender, win, rawArgs, shellStreamId);
     case 'local_read_file':
+    case 'read_file': {
+      const sidecarRead = await executeSidecarTool(tool, rawArgs);
+      if (sidecarRead) {
+        return sidecarRead;
+      }
       return readBoundedFile(rawArgs);
+    }
     case 'local_read_image': {
       try {
         const readsRaw = rawArgs.reads;
@@ -245,6 +252,14 @@ export async function runLocalDesktopTool(
       }
     }
     case 'local_git_status': {
+      const sidecarGit = await executeSidecarTool('local_git_status', rawArgs);
+      if (sidecarGit?.ok) {
+        const hint = formatEditSessionHint();
+        return {
+          ok: true,
+          result: hint ? `${sidecarGit.result}\n\n${hint}` : sidecarGit.result,
+        };
+      }
       const res = await runGitStatus(rawArgs);
       if (!res.ok) return res;
       const hint = formatEditSessionHint();
@@ -254,6 +269,10 @@ export async function runLocalDesktopTool(
       };
     }
     case 'local_git_diff': {
+      const sidecarDiff = await executeSidecarTool('local_git_diff', rawArgs);
+      if (sidecarDiff) {
+        return sidecarDiff;
+      }
       return runGitDiff(rawArgs);
     }
     case 'local_find_references': {
@@ -323,8 +342,13 @@ export async function runLocalDesktopTool(
         applyEditorDefaultsToToolArgs(rawArgs, { path: true, line: true, character: true }),
       );
     }
-    case 'local_grep':
+    case 'local_grep': {
+      const sidecarGrep = await executeSidecarTool('local_grep', rawArgs);
+      if (sidecarGrep) {
+        return sidecarGrep;
+      }
       return runGrep(rawArgs);
+    }
     case 'local_trace_call_chain':
     case 'local_symbol_blast_radius':
     case 'local_import_blast_radius':

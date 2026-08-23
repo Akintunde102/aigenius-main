@@ -115,7 +115,7 @@ describe('conversationTranscriptExport', () => {
         } as unknown as typeof URL;
 
         const anchor = { click, href: '', download: '' };
-        const createElement = jest.spyOn(document, 'createElement').mockReturnValue(anchor as unknown as HTMLAnchorElement);
+        const createElement = jest.spyOn(document, 'createElement').mockImplementation((() => anchor) as any);
 
         const session: ChatSession = {
             id: 'session-1',

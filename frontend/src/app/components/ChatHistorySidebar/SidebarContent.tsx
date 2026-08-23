@@ -25,6 +25,7 @@ interface SidebarContentProps {
     onPublish?: (session: ChatSession, isRepublishing?: boolean, existingUrl?: string) => void;
     handleSessionSwitch?: (session: ChatSession) => void;
     isSessionActive?: (sessionId: string) => boolean;
+    isSessionInFlight?: (sessionId: string) => boolean;
     isInitialLoading?: boolean;
     codeProjects?: import("@/lib/calls/code-projects").CodeProject[];
     activeProjectId?: string | null;
@@ -49,6 +50,7 @@ const SidebarContent = React.memo<SidebarContentProps>(({
     onPublish,
     handleSessionSwitch,
     isSessionActive,
+    isSessionInFlight,
     isInitialLoading = false,
     codeProjects = [],
     activeProjectId = null,
@@ -100,6 +102,7 @@ const SidebarContent = React.memo<SidebarContentProps>(({
                         onPublish={onPublish}
                         handleSessionSwitch={handleSessionSwitch}
                         isSessionActive={isSessionActive}
+                        isSessionInFlight={isSessionInFlight}
                         onSessionSelect={handleSessionSelect}
                         isInitialLoading={isInitialLoading}
                         codeProjects={codeProjects}

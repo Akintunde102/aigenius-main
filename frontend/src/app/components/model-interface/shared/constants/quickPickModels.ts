@@ -51,17 +51,10 @@ export function markQuickPicksDefaultsMerged(): void {
 
 /**
  * Resolves platform default quick-pick IDs against the live model catalog.
- * Falls back to featured models when preferred IDs are unavailable.
+ * Uses only models marked featured: true in the backend catalog.
  */
 export function resolveDefaultQuickPickModelIds(models: Model[]): string[] {
-  const availableIds = new Set(models.map((m) => m.id));
   const resolved: string[] = [];
-
-  for (const id of PREFERRED_QUICK_PICK_MODEL_IDS) {
-    if (availableIds.has(id) && !resolved.includes(id)) {
-      resolved.push(id);
-    }
-  }
 
   for (const model of models) {
     if (model.featured && !resolved.includes(model.id)) {

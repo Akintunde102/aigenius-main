@@ -55,6 +55,10 @@ const desktopUpstreamApiUrl =
 
 const desktopUpstreamOrigins = apiConnectOrigins(desktopUpstreamApiUrl);
 
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+    enabled: process.env.ANALYZE === 'true',
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     // Build optimizations
@@ -68,7 +72,15 @@ const nextConfig = {
     // Performance optimizations
     experimental: {
         optimizeCss: false,
-        optimizePackageImports: ['antd', '@radix-ui/react-*'],
+        optimizePackageImports: [
+            'antd',
+            '@radix-ui/react-*',
+            'lucide-react',
+            'framer-motion',
+            'date-fns',
+            '@tanstack/react-query',
+            'react-hook-form',
+        ],
     },
     transpilePackages: ['react-pdf', 'pdfjs-dist'],
 
@@ -289,4 +301,4 @@ const nextConfig = {
     },
 };
 
-module.exports = nextConfig;
+module.exports = withBundleAnalyzer(nextConfig);

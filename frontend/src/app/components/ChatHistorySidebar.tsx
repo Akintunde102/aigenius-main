@@ -45,6 +45,8 @@ interface ChatHistorySidebarProps {
     setTotalSpent: (n: number) => void;
     setError: (s: string) => void;
     currentSessionId: string | null;
+    /** Conversation shown in the main pane — used for sidebar highlight (may differ from currentSessionId during route sync). */
+    activeSessionId?: string | null;
     setCurrentSessionId: (sessionId: string | null) => void;
     mobileSidebarOpen?: boolean;
     setMobileSidebarOpen?: (open: boolean) => void;
@@ -60,6 +62,7 @@ interface ChatHistorySidebarProps {
     switchToSession?: (session: ChatSession) => void;
     createNewSessionAndSwitch?: (modelId: string) => void;
     isSessionActive?: (sessionId: string) => boolean;
+    isSessionInFlight?: (sessionId: string) => boolean;
     isInitialLoading?: boolean;
     onLogout?: () => void;
     /** Initials for collapsed desktop rail avatar (e.g. from logged-in user). */
@@ -80,6 +83,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     setTotalSpent,
     setError,
     currentSessionId,
+    activeSessionId = currentSessionId,
     setCurrentSessionId,
     mobileSidebarOpen = false,
     setMobileSidebarOpen,
@@ -95,6 +99,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     switchToSession,
     createNewSessionAndSwitch,
     isSessionActive,
+    isSessionInFlight,
     isInitialLoading = false,
     onLogout,
     userInitials = "?",
@@ -129,7 +134,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     } = useCodeProjects();
 
     const sidebarActiveProjectId = resolveSidebarActiveProjectId(
-        currentSessionId,
+        activeSessionId,
         chatHistory,
     );
     const desktopSyncProject = sidebarActiveProjectId
@@ -251,7 +256,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
 
     const handleDeleteProject = React.useCallback(async (projectId: string) => {
         const activeSessionBelongsToProject = chatHistory.some(
-            (session) => session.id === currentSessionId && session.codeProjectId === projectId
+            (session) => session.id === activeSessionId && session.codeProjectId === projectId
         );
 
         await removeProject(projectId);
@@ -265,7 +270,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         if (activeSessionBelongsToProject) {
             handleNewChat();
         }
-    }, [chatHistory, currentSessionId, removeProject, setChatHistory, handleNewChat]);
+    }, [activeSessionId, chatHistory, removeProject, setChatHistory, handleNewChat]);
 
     const infoProject = infoProjectId
         ? codeProjects.find((p) => p.id === infoProjectId) ?? null
@@ -343,7 +348,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
 
             <SidebarContent
                 chatHistory={(chatHistory || []).filter(session => session.conversationKind !== 'orphan_question')}
-                currentSessionId={currentSessionId}
+                currentSessionId={activeSessionId}
                 models={models || []}
                 historySearch={historySearch}
                 removeChatHistorySession={removeChatHistorySession}
@@ -357,6 +362,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 onPublish={onPublish}
                 handleSessionSwitch={handleSessionSwitch}
                 isSessionActive={isSessionActive}
+                isSessionInFlight={isSessionInFlight}
                 isInitialLoading={isInitialLoading}
                 codeProjects={codeProjects}
                 activeProjectId={sidebarActiveProjectId}

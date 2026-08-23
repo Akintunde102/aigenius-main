@@ -9,6 +9,8 @@ import { MINI_SERVER_PORT } from './mini-server-port';
 import {
   showAuxiliaryWindowWhenReady,
 } from './secondary-browser-window';
+import { DESKTOP_UI_SCHEME } from './desktop-ui-mode';
+import { isShellBootDataUrl } from './shell-boot-page';
 
 const FRONTEND_PORT = resolveFrontendPort();
 const API_PORT = process.env.AIGENIUS_API_PORT ?? process.env.DEV_API_PORT ?? '8000';
@@ -216,6 +218,13 @@ export function isUrlAllowedInMainShell(urlString: string): boolean {
     u = new URL(urlString);
   } catch {
     return false;
+  }
+
+  if (u.protocol === `${DESKTOP_UI_SCHEME}:` && u.hostname === 'app') {
+    return true;
+  }
+  if (u.protocol === 'data:' && isShellBootDataUrl(urlString)) {
+    return true;
   }
 
   if (u.protocol === 'http:' || u.protocol === 'https:') {

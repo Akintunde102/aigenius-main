@@ -8,6 +8,21 @@ if (typeof global.TextEncoder === 'undefined') {
     global.TextEncoder = TextEncoder
 }
 
+// Ensure Node 18+ web fetch globals are available in jsdom environment
+try {
+    const { Response, Request, Headers, FormData, File, Blob } = require('undici');
+    if (typeof global.Response === 'undefined') global.Response = Response;
+    if (typeof global.Request === 'undefined') global.Request = Request;
+    if (typeof global.Headers === 'undefined') global.Headers = Headers;
+    if (typeof window !== 'undefined') {
+        if (typeof window.Response === 'undefined') window.Response = Response;
+        if (typeof window.Request === 'undefined') window.Request = Request;
+        if (typeof window.Headers === 'undefined') window.Headers = Headers;
+    }
+} catch {
+    // fallback if undici is not directly resolvable
+}
+
 // Support React act() in Jest (avoids "not configured to support act" warnings)
 if (typeof globalThis.IS_REACT_ACT_ENVIRONMENT === 'undefined') {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true

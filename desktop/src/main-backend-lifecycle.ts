@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { DEV_LOOPBACK_HOST, loopbackHttpUrl } from './loopback-host';
 import { resolveUpstreamApiUrl as resolveDesktopUpstreamApiUrl } from './resolve-upstream-api-url';
 import { MINI_SERVER_PORT } from './mini-server-port';
+import { desktopUiAppUrl, shouldUseDesktopUiCustomProtocol } from './desktop-ui-mode';
 import {
   killManagedDesktopChild,
   spawnDesktopChild,
@@ -23,7 +24,9 @@ export const SECRET_TOKEN =
     process.env.AIGENIUS_SECRET_TOKEN) ||
   crypto.randomBytes(32).toString('hex');
 process.env.AIGENIUS_SECRET_TOKEN = SECRET_TOKEN;
-export const FRONTEND_URL = `${loopbackHttpUrl(FRONTEND_PORT, '/desktop-login')}?aigenius_shell=1`;
+export const FRONTEND_URL = shouldUseDesktopUiCustomProtocol()
+  ? desktopUiAppUrl('/desktop-login')
+  : `${loopbackHttpUrl(FRONTEND_PORT, '/desktop-login')}?aigenius_shell=1`;
 
 export const children: ManagedDesktopChild[] = [];
 
@@ -335,7 +338,7 @@ export async function startBackendProcesses(): Promise<void> {
     console.info('[aigenius-desktop] Using external mini-server (Docker). Skipping local spawn.');
   }
 
-  if (app.isPackaged) {
+  if (app.isPackaged && !shouldUseDesktopUiCustomProtocol()) {
     if (desktopUiMode() === 'next') {
       const { scriptPath: serverJs, cwd: nextCwd } = resolveNextStandaloneLaunch();
       children.push(
@@ -370,12 +373,15 @@ export async function startBackendProcesses(): Promise<void> {
     }
   }
 
-  // Dev: Next must already be running (Tilt `web` resource). Indexer starts after the shell loads.
+  const useCustomUiProtocol = shouldUseDesktopUiCustomProtocol();
   const frontendWaitMs = app.isPackaged ? 120_000 : 180_000;
-  await Promise.all([
+  const waitTargets: Promise<void>[] = [
     waitForHttpOk(loopbackHttpUrl(miniPort, '/health'), 60_000, 1000),
-    waitForFrontendPageReady(FRONTEND_URL, frontendWaitMs, 400),
-  ]);
+  ];
+  if (!useCustomUiProtocol) {
+    waitTargets.push(waitForFrontendPageReady(FRONTEND_URL, frontendWaitMs, 400));
+  }
+  await Promise.all(waitTargets);
 
   deferredIndexerContext = { userDataPath, modelsDir, token, logsDir };
 }
