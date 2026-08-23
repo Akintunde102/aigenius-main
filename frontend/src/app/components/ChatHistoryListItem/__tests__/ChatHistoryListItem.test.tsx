@@ -73,4 +73,11 @@ describe('ChatHistoryListItem', () => {
         expect(listItem.className).toContain('transition-colors');
         expect(listItem.className).toContain('duration-100');
     });
+
+    it('shows a generating indicator when isGenerating is true', () => {
+        const { getByTitle } = render(
+            <ChatHistoryListItem {...defaultProps} isGenerating />,
+        );
+        expect(getByTitle(/Test Session — generating/i)).toBeTruthy();
+    });
 });

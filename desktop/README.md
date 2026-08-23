@@ -61,7 +61,11 @@ Measure before tuning (cold start, long sessions, IPC latency):
 - **Renderer (Next inside Electron):** Chrome DevTools **Performance** and **Memory** (heap snapshots if investigating leaks); React DevTools **Profiler** for rerenders. For bundle size, use `@next/bundle-analyzer` in `frontend/` when optimizing what the shell loads.
 - **Main process:** Electron [`contentTracing`](https://www.electronjs.org/docs/latest/api/content-tracing), or run with `--trace-startup` / `--trace-startup-file` to inspect startup. Optional: `node --cpu-prof` when profiling the compiled main bundle.
 - **Local profiling toggles:** `AIGENIUS_SKIP_AUTO_INDEX=1` skips background indexing; `AIGENIUS_DESKTOP_BRIDGE_DEBUG=1` logs preload/renderer bridge diagnostics.
-- **Background throttling:** By default the shell keeps **`backgroundThrottling: false`** (smoother timers when the window is unfocused). Set **`AIGENIUS_BACKGROUND_THROTTLING=1`** to enable Chromium’s background throttling (better idle power; verify animations/timers if you enable it).
+- **Background throttling:** Defaults to **on** (Chromium idle savings). Set **`AIGENIUS_BACKGROUND_THROTTLING=0`** for legacy smooth-unfocused behavior.
+- **Dev session cache:** Cleared only when **`AIGENIUS_DEV_CLEAR_CACHE=1`** (no longer every dev launch).
+- **Packaged UI:** Default **`aigenius://app`** custom protocol (no UI HTTP child). Set **`AIGENIUS_DESKTOP_UI_PROTOCOL=0`** to use the tiny static server on localhost.
+- **Sidecar tools:** Grep/git/read-file run in the Hono mini-server when available. Set **`AIGENIUS_TOOLS_VIA_SIDECAR=0`** to run them in the Electron main process.
+- **Child processes:** Mini-server and UI server use **`utilityProcess`** on all platforms. Set **`AIGENIUS_DESKTOP_PREFER_NODE_SPAWN=1`** to force `ELECTRON_RUN_AS_NODE` spawn.
 
 ### Navigation lock (main window)
 

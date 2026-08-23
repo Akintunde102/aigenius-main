@@ -113,6 +113,8 @@ type Props = {
   /** Controlled value for the chat textarea — drives STT text injection. */
   inputValue?: string;
   onInputChange?: (value: string) => void;
+  composerSessionKey?: string;
+  commitComposerDraftForKey?: (key: string, value: string) => void;
   queuedMessages?: QueuedComposerMessage[];
   onQueueMessage?: (message: string) => void;
   onRemoveQueuedMessage?: (messageId: string) => void;
@@ -196,6 +198,8 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   audioVolume,
   inputValue,
   onInputChange,
+  composerSessionKey,
+  commitComposerDraftForKey,
   queuedMessages,
   onQueueMessage,
   onRemoveQueuedMessage,
@@ -330,6 +334,8 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           audioVolume={audioVolume}
           inputValue={inputValue}
           onInputChange={onInputChange}
+          composerSessionKey={composerSessionKey}
+          commitComposerDraftForKey={commitComposerDraftForKey}
           queuedMessages={queuedMessages}
           onQueueMessage={onQueueMessage}
           onRemoveQueuedMessage={onRemoveQueuedMessage}

@@ -12,6 +12,7 @@ import {
   usePersistSessionMessages,
 } from "../../features/chat/hooks";
 import { DRAFT_SESSION_KEY } from "../../features/chat/hooks/chatOperations.constants";
+import { isSessionInFlight as checkSessionInFlight } from "../../conversation/sessionInFlight";
 import { useModelInterfaceMessageQueue } from "../../features/chat/hooks/useModelInterfaceMessageQueue";
 import { useUIState, useScrollAndKeyboard } from "../../shared/hooks";
 import { useModelInterfacePersonality } from "../../hooks/useModelInterfacePersonality";
@@ -267,6 +268,8 @@ export function useModelInterface(options?: {
     const {
         input,
         setInput,
+        composerSessionKey,
+        commitComposerDraftForKey,
         wallet,
         setWallet,
         assistantResponse,
@@ -451,13 +454,23 @@ export function useModelInterface(options?: {
   ]);
 
   // Session switching
-  const { switchToSession, createAndSwitchToNewSession, isSessionActive } =
+  const { switchToSession, createAndSwitchToNewSession } =
     useSessionSwitcher({
       currentSessionId,
       chatMap,
       setChatForSession,
       isPassiveSyncBlocked,
     });
+
+  const isSessionActive = useCallback(
+    (sessionId: string) => viewSessionId === sessionId,
+    [viewSessionId],
+  );
+
+  const isSessionInFlight = useCallback(
+    (sessionId: string) => checkSessionInFlight(sessionId, loadingMap, streamingMap),
+    [loadingMap, streamingMap],
+  );
 
   // Methods
   const handleSaveWithUpdate = useCallback(async (msg: ChatMessage) => {
@@ -575,6 +588,8 @@ export function useModelInterface(options?: {
     chatState: {
       input,
       setInput,
+      composerSessionKey,
+      commitComposerDraftForKey,
       chat,
       setChat,
       pendingOrphanReply,
@@ -686,6 +701,7 @@ export function useModelInterface(options?: {
       switchToSession: enhancedSwitchToSession,
       createNewSessionAndSwitch: enhancedCreateNewSession,
       isSessionActive,
+      isSessionInFlight,
       startOrphanReply,
       project: "projectt",
       onClearDraftQueueRef,

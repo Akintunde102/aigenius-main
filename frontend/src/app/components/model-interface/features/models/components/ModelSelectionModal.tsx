@@ -30,6 +30,27 @@ import {
 } from "@/app/components/model-interface/features/models/utils/modelWalletAffordance.utils";
 import type { ModelSelectionSection } from "./ModelSelectionGrid";
 
+const MODEL_PICKER_GROUP_BY_AFFORDABILITY_KEY =
+  "nobox-model-picker-group-by-affordability";
+
+function readGroupByAffordabilityPreference(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return localStorage.getItem(MODEL_PICKER_GROUP_BY_AFFORDABILITY_KEY) === "1";
+}
+
+function persistGroupByAffordabilityPreference(value: boolean): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (value) {
+    localStorage.setItem(MODEL_PICKER_GROUP_BY_AFFORDABILITY_KEY, "1");
+  } else {
+    localStorage.removeItem(MODEL_PICKER_GROUP_BY_AFFORDABILITY_KEY);
+  }
+}
+
 interface ModelSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -105,7 +126,20 @@ export const ModelSelectionModal = React.memo(({
   const [showFilterSortRow, setShowFilterSortRow] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [previewedRecentModel, setPreviewedRecentModel] = useState<Model | null>(null);
-  const [groupByAffordability, setGroupByAffordability] = useState(false);
+  const [groupByAffordability, setGroupByAffordability] = useState(
+    readGroupByAffordabilityPreference,
+  );
+
+  const setGroupByAffordabilityPersisted = useCallback(
+    (value: boolean | ((prev: boolean) => boolean)) => {
+      setGroupByAffordability((prev) => {
+        const next = typeof value === "function" ? value(prev) : value;
+        persistGroupByAffordabilityPreference(next);
+        return next;
+      });
+    },
+    [],
+  );
 
   // Progressive rendering (removed in favor of virtualization)
   const hasAutoSwitchedRef = React.useRef(false);
@@ -227,7 +261,6 @@ export const ModelSelectionModal = React.memo(({
     if (!isOpen) {
       setSelectedModelForDetails(null);
       setPreviewedRecentModel(null);
-      setGroupByAffordability(false);
     }
   }, [isOpen, setSelectedModelForDetails]);
 
@@ -360,29 +393,14 @@ export const ModelSelectionModal = React.memo(({
       return false;
     }
 
-    const modelsForTab =
-      activeTab === "favorites"
-        ? favoritesSorted
-        : activeTab === "ollama"
-          ? ollamaModelsSorted
-          : allModelsFlat;
-
     const { locked } = partitionModelsByWalletAffordance(
-      modelsForTab,
+      models,
       wallet,
       avgCostById,
       selectedModel?.id,
     );
     return locked.length > 0;
-  }, [
-    wallet,
-    activeTab,
-    favoritesSorted,
-    ollamaModelsSorted,
-    allModelsFlat,
-    avgCostById,
-    selectedModel?.id,
-  ]);
+  }, [wallet, models, avgCostById, selectedModel?.id]);
 
   // Set initial tab once when the modal opens — not when quick picks change mid-session.
   useEffect(() => {
@@ -562,13 +580,17 @@ export const ModelSelectionModal = React.memo(({
                 <ModelPickerToggleRow>
                   <ModelToggleSwitch
                     checked={groupByAffordability}
-                    onChange={() => setGroupByAffordability((prev) => !prev)}
+                    onChange={() =>
+                      setGroupByAffordabilityPersisted((prev) => !prev)
+                    }
                     label="show me all models I can use"
                     size="xs"
                     variant={groupByAffordability ? "default" : "quiet"}
                   />
                   <ModelPickerSectionLabel
-                    onClick={() => setGroupByAffordability((prev) => !prev)}
+                    onClick={() =>
+                      setGroupByAffordabilityPersisted((prev) => !prev)
+                    }
                     ariaPressed={groupByAffordability}
                   >
                     show me all models I can use

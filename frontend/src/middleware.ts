@@ -29,6 +29,9 @@ function isPublicPath(pathname: string): boolean {
     if (
         pathname.startsWith('/_next') ||
         pathname.startsWith('/assets') ||
+        pathname.startsWith('/images') ||
+        pathname.startsWith('/vad') ||
+        pathname.startsWith('/stream-status') ||
         pathname.startsWith('/public') ||
         pathname.startsWith('/api') ||
         // Monaco ships from `public/monaco-editor` (see FilePreviewModal); must not auth-redirect loader.js.
@@ -38,6 +41,11 @@ function isPublicPath(pathname: string): boolean {
     }
 
     if (PUBLIC_PATHS.has(pathname)) {
+        return true;
+    }
+
+    // Static asset extensions (images, fonts, json)
+    if (/\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|woff|woff2|ttf|eot)$/i.test(pathname)) {
         return true;
     }
 
@@ -80,8 +88,6 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/', request.url));
     }
 
-    console.log(`Middleware pathname: ${pathname}`);
-
     if (isPublicPath(pathname)) {
         return NextResponse.next();
     }
@@ -109,6 +115,6 @@ export function middleware(request: NextRequest) {
 export const config = {
     matcher: [
         '/_next/static/:path*',
-        '/((?!_next/static|_next/image|favicon\\.ico|logo\\.png|assets|public|api).*)',
+        '/((?!_next/static|_next/image|favicon\\.ico|logo\\.png|assets|images|vad|stream-status|monaco-editor|public|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|woff|woff2|ttf|eot)$).*)',
     ],
 };

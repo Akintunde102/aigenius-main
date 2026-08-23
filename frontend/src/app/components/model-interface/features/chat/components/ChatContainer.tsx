@@ -102,6 +102,8 @@ interface ChatContainerProps {
     /** Controlled textarea value — set by STT to inject transcribed text. */
     inputValue?: string;
     onInputChange?: (value: string) => void;
+    composerSessionKey?: string;
+    commitComposerDraftForKey?: (key: string, value: string) => void;
     queuedMessages?: QueuedComposerMessage[];
     onQueueMessage?: (message: string) => void;
     onRemoveQueuedMessage?: (messageId: string) => void;
@@ -193,6 +195,8 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     audioVolume = 0,
     inputValue,
     onInputChange,
+    composerSessionKey,
+    commitComposerDraftForKey,
     queuedMessages,
     onQueueMessage,
     onRemoveQueuedMessage,
@@ -480,6 +484,8 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         audioNotice={audioNotice}
                         inputValue={inputValue}
                         onInputChange={onInputChange}
+                        composerSessionKey={composerSessionKey}
+                        commitComposerDraftForKey={commitComposerDraftForKey}
                         queuedMessages={queuedMessages}
                         onQueueMessage={onQueueMessage}
                         onRemoveQueuedMessage={onRemoveQueuedMessage}

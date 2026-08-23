@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIGenius — AI models in one workspace</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100dvh;
+      overflow: hidden;
+      background: #0e0d0c;
+      color: #f5f5f0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Page shell ───────────────────────────────── */
+    .page {
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Subtle warm noise grain overlay */
+    .page::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.35;
+    }
+
+    /* ── Nav ──────────────────────────────────────── */
+    .nav {
+      position: relative;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 2rem;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      color: #f5f5f0;
+    }
+
+    .nav-logo-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      background: #f5f5f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .nav-logo-mark svg { width: 13px; height: 13px; color: #0e0d0c; }
+
+    .nav-logo-text {
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.125rem;
+    }
+
+    .nav-links a {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: #a1a1aa;
+      text-decoration: none;
+      border-radius: 0.5rem;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .nav-links a:hover { color: #f5f5f0; background: rgba(255,255,255,0.06); }
+
+    .nav-signin {
+      border: 1px solid rgba(255,255,255,0.1) !important;
+      color: #d4d4d8 !important;
+    }
+
+    .theme-toggle {
+      width: 1.875rem;
+      height: 1.875rem;
+      margin-left: 0.25rem;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 0.5rem;
+      background: transparent;
+      color: #71717a;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .theme-toggle:hover { background: rgba(255,255,255,0.07); color: #f5f5f0; }
+
+    /* ── Main area ────────────────────────────────── */
+    .main {
+      flex: 1;
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+    }
+
+    /* ── Left content ─────────────────────────────── */
+    .content {
+      position: relative;
+      z-index: 10;
+      flex-shrink: 0;
+      width: 42%;
+      padding: 0 2.5rem 3rem 2.5rem;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .headline {
+      font-size: clamp(1.75rem, 3.2vw, 2.75rem);
+      font-weight: 700;
+      line-height: 1.18;
+      letter-spacing: -0.035em;
+      color: #f5f5f0;
+      margin-bottom: 0.875rem;
+    }
+
+    .subtext {
+      font-size: 0.9375rem;
+      line-height: 1.65;
+      color: #71717a;
+      margin-bottom: 1.75rem;
+      max-width: 34ch;
+    }
+
+    /* Download CTA — styled like the Cursor orange link but as a button group */
+    .cta-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .download-wrap {
+      position: relative;
+      display: inline-block;
+    }
+
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: #f97316;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: -0.01em;
+      transition: color 0.15s, gap 0.2s;
+    }
+
+    .download-btn:hover { color: #fb923c; gap: 0.75rem; }
+    .download-btn svg { width: 1rem; height: 1rem; flex-shrink: 0; }
+
+    .chevron { transition: transform 0.2s ease; }
+    .download-wrap.open .chevron { transform: rotate(90deg); }
+
+    /* Dropdown */
+    .dropdown {
+      position: absolute;
+      left: 0;
+      top: calc(100% + 0.625rem);
+      padding: 0.375rem;
+      list-style: none;
+      border-radius: 0.875rem;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: #1a1916;
+      box-shadow: 0 24px 56px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.3);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-6px) scale(0.97);
+      transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+      z-index: 50;
+      min-width: 14rem;
+    }
+
+    .download-wrap.open .dropdown {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+
+    .dropdown button {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      width: 100%;
+      padding: 0.625rem 0.75rem;
+      border: none;
+      border-radius: 0.5rem;
+      background: transparent;
+      color: #d4d4d8;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.12s;
+      text-align: left;
+    }
+
+    .dropdown button:hover { background: rgba(255,255,255,0.07); }
+
+    .dd-icon {
+      width: 1.375rem;
+      height: 1.375rem;
+      border-radius: 0.375rem;
+      background: rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #a1a1aa;
+    }
+
+    .dd-icon svg { width: 0.8125rem; height: 0.8125rem; }
+
+    .soon {
+      margin-left: auto;
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #52525b;
+      padding: 0.15rem 0.375rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .dropdown-divider {
+      margin: 0.25rem 0.375rem;
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .cta-note {
+      font-size: 0.75rem;
+      color: #52525b;
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      flex-wrap: wrap;
+    }
+
+    .platform-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: #52525b;
+    }
+
+    .platform-pill svg { width: 0.65rem; height: 0.65rem; }
+
+    /* ── Right: App window mockup ─────────────────── */
+    .mockup-wrap {
+      position: absolute;
+      right: -3%;
+      top: -2%;
+      bottom: -5%;
+      width: 64%;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      pointer-events: none;
+    }
+
+    .window {
+      width: 100%;
+      height: 100%;
+      background: #1a1916;
+      border-radius: 14px 14px 0 0;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.07),
+        0 60px 120px rgba(0,0,0,0.7),
+        0 20px 40px rgba(0,0,0,0.4);
+    }
+
+    /* macOS window bar */
+    .window-bar {
+      height: 38px;
+      background: #252420;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .traffic-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .td-red    { background: #ff5f57; }
+    .td-yellow { background: #febc2e; }
+    .td-green  { background: #28c840; }
+
+    .window-title {
+      flex: 1;
+      text-align: center;
+      font-size: 0.75rem;
+      color: #52525b;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      margin-right: 36px; /* offset from dots */
+    }
+
+    .window-body {
+      width: 100%;
+      height: calc(100% - 38px);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .window-body img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: left top;
+      display: block;
+    }
+
+    /* Fade bottom of window into page */
+    .window-body::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, transparent 55%, #0e0d0c 100%);
+      pointer-events: none;
+    }
+
+    /* ── Footer ───────────────────────────────────── */
+    .footer {
+      position: relative;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.875rem 2rem;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.6875rem;
+      color: #3f3f46;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.25rem;
+    }
+
+    .footer-links a {
+      color: inherit;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-links a:hover { color: #71717a; }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- Nav -->
+    <nav class="nav">
+      <a href="#" class="nav-logo">
+        <span class="nav-logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+        </span>
+        <span class="nav-logo-text">AIGenius</span>
+      </a>
+
+      <div class="nav-links">
+        <a href="#">About</a>
+        <a href="#" class="nav-signin">Sign in</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><line x1="12" y1="3" x2="12" y2="21"/>
+          </svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main -->
+    <div class="main">
+
+      <!-- Left text + CTA -->
+      <div class="content">
+        <h1 class="headline">Chat with every AI<br>model, in one place.</h1>
+        <p class="subtext">
+          Switch between GPT, Claude, Gemini and more — without juggling tabs or subscriptions.
+          Bring files, voice, and projects. Pay only for what you use.
+        </p>
+
+        <div class="cta-wrap">
+          <div class="download-wrap" id="download-wrap">
+            <button type="button" class="download-btn" id="download-btn" aria-expanded="false" aria-haspopup="menu">
+              Download desktop app
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+
+            <ul class="dropdown" role="menu">
+              <li role="none">
+                <button type="button" role="menuitem">
+                  <span class="dd-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                  </span>
+                  macOS
+                  <span class="soon">Soon</span>
+                </button>
+              </li>
+              <li role="none">
+                <button type="button" role="menuitem">
+                  <span class="dd-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                  </span>
+                  Windows
+                  <span class="soon">Soon</span>
+                </button>
+              </li>
+              <hr class="dropdown-divider" role="separator"/>
+              <li role="none">
+                <button type="button" role="menuitem">
+                  <span class="dd-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                  </span>
+                  Linux
+                  <span class="soon">Soon</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="cta-note">
+            <span class="platform-pill">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              macOS
+            </span>
+            <span class="platform-pill">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+              Windows
+            </span>
+            <span class="platform-pill">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              Linux
+            </span>
+            <span>· Free to start</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: macOS window mockup -->
+      <div class="mockup-wrap" aria-hidden="true">
+        <div class="window">
+          <div class="window-bar">
+            <span class="traffic-dot td-red"></span>
+            <span class="traffic-dot td-yellow"></span>
+            <span class="traffic-dot td-green"></span>
+            <span class="window-title">AIGenius</span>
+          </div>
+          <div class="window-body">
+            <img class="hero-light" src="images/home-hero-light.png" alt="" />
+            <img class="hero-dark"  src="images/home-hero-dark.png"  alt="" />
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /main -->
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span>© 2026 Nobox Labs Limited</span>
+      <nav class="footer-links" aria-label="Legal">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+      </nav>
+    </footer>
+
+  </div><!-- /page -->
+
+  <style>
+    /* Hero image theme switching */
+    .hero-light { display: block; }
+    .hero-dark  { display: none;  }
+    html[data-theme="dark"]  .hero-light { display: none;  }
+    html[data-theme="dark"]  .hero-dark  { display: block; }
+    html:not([data-theme="dark"]) .window { background: #f0efeb; }
+    html:not([data-theme="dark"]) .window-bar { background: #e5e4e0; border-color: rgba(0,0,0,0.08); }
+    html:not([data-theme="dark"]) body { background: #f7f6f2; color: #18181b; }
+    html:not([data-theme="dark"]) .page::before { opacity: 0.1; }
+    html:not([data-theme="dark"]) .nav-logo { color: #18181b; }
+    html:not([data-theme="dark"]) .nav-logo-mark { background: #18181b; }
+    html:not([data-theme="dark"]) .nav-logo-mark svg { color: #f5f5f0; }
+    html:not([data-theme="dark"]) .nav-links a { color: #52525b; }
+    html:not([data-theme="dark"]) .nav-links a:hover { color: #18181b; background: rgba(0,0,0,0.05); }
+    html:not([data-theme="dark"]) .nav-signin { border-color: rgba(0,0,0,0.1) !important; color: #3f3f46 !important; }
+    html:not([data-theme="dark"]) .theme-toggle { border-color: rgba(0,0,0,0.1); color: #71717a; }
+    html:not([data-theme="dark"]) .headline { color: #18181b; }
+    html:not([data-theme="dark"]) .window { box-shadow: 0 0 0 1px rgba(0,0,0,0.08), 0 60px 120px rgba(0,0,0,0.18), 0 20px 40px rgba(0,0,0,0.1); }
+    html:not([data-theme="dark"]) .window-body::after { background: linear-gradient(to bottom, transparent 55%, #f7f6f2 100%); }
+    html:not([data-theme="dark"]) .footer { border-color: rgba(0,0,0,0.06); color: #a1a1aa; }
+    html:not([data-theme="dark"]) .dropdown { background: #18181b; }
+  </style>
+
+  <script>
+    // ── Theme ──────────────────────────────────────
+    const html = document.documentElement;
+    const stored = localStorage.getItem("aigenius-theme");
+    if (stored === "light" || stored === "dark") {
+      html.setAttribute("data-theme", stored);
+    } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+      html.setAttribute("data-theme", "light");
+    } else {
+      html.setAttribute("data-theme", "dark");
+    }
+
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+      const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      html.setAttribute("data-theme", next);
+      localStorage.setItem("aigenius-theme", next);
+    });
+
+    // ── Dropdown ───────────────────────────────────
+    const wrap = document.getElementById("download-wrap");
+    const btn  = document.getElementById("download-btn");
+
+    btn.addEventListener("click", () => {
+      const open = wrap.classList.toggle("open");
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+
+    document.addEventListener("mousedown", (e) => {
+      if (!wrap.contains(e.target)) {
+        wrap.classList.remove("open");
+        btn.setAttribute("aria-expanded", "false");
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        wrap.classList.remove("open");
+        btn.setAttribute("aria-expanded", "false");
+      }
+    });
+  </script>
+</body>
+</html>

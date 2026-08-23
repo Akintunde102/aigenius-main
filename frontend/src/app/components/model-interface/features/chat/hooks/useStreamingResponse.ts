@@ -29,6 +29,7 @@ import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interf
 import { getDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { resolveRequestConversationId } from './requestConversationId.utils';
 import { notifyDesktopChatCompletionIfBackground } from '@/lib/utils/desktop-chat-completion-notify';
+import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
 import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
 
 /**
@@ -217,6 +218,30 @@ export function useStreamingResponse({
         let lastUiUpdateTime = 0;
         let lastLocalPersistTime = 0;
         let sidebarSynced = false;
+        let materializedConversationId: string | undefined;
+
+        const materializeSidebarEntry = (conversationId: string) => {
+            if (sidebarSynced || !streamStillOwnsDraftSlot()) {
+                return;
+            }
+            materializedConversationId = conversationId;
+            const scopeId = getChatProjectScopeId();
+            const title = deriveChatSessionTitle(sessionMessages[0]?.content);
+            if (streamingSessionId === null) {
+                setChatForSession(conversationId, sessionMessages);
+            }
+            updateSessionMessages?.(conversationId, sessionMessages, {
+                modelId: modelForRequest.id,
+                title,
+                codeProjectId: scopeId,
+            });
+            void addOrMergeSessionToLocalHistory({
+                id: conversationId,
+                codeProjectId: scopeId,
+                session: { messages: sessionMessages, title },
+            });
+            sidebarSynced = true;
+        };
 
         const persistStreamProgressLocally = (force = false) => {
             if (chatMapKey === DRAFT_SESSION_KEY || !streamStillOwnsDraftSlot()) {
@@ -241,7 +266,7 @@ export function useStreamingResponse({
             if (chatMapKey !== DRAFT_SESSION_KEY && updateSessionMessages) {
                 updateSessionMessages(chatMapKey, sessionMessages, {
                     modelId: modelForRequest.id,
-                    title: sessionMessages[0]?.content as string || 'New chat',
+                    title: deriveChatSessionTitle(sessionMessages[0]?.content) || 'New chat',
                 });
                 sidebarSynced = true;
             }
@@ -285,6 +310,11 @@ export function useStreamingResponse({
                 },
                 options: { model: modelForRequest.id },
                 signal: abortController.signal,
+                onStreamStart: ({ conversationId }) => {
+                    if (conversationId && streamingSessionId === null) {
+                        materializeSidebarEntry(conversationId);
+                    }
+                },
                 onToolStreamEvent: (event: ToolStreamEvent) => {
                     const lastIdx = sessionMessages.length - 1;
                     const hasAssistantRow = lastIdx >= 0 && sessionMessages[lastIdx].role === 'assistant';
@@ -471,18 +501,17 @@ export function useStreamingResponse({
             if (streamingSessionId === null && result.conversationId) {
                 const scopeId = getChatProjectScopeId();
                 setChatForSession(result.conversationId, sessionMessages);
-                if (updateSessionMessages) {
+                if (!sidebarSynced) {
+                    materializeSidebarEntry(result.conversationId);
+                } else if (updateSessionMessages) {
                     updateSessionMessages(result.conversationId, sessionMessages, {
                         modelId: modelForRequest.id,
-                        title: sessionMessages[0]?.content as string || 'New chat',
+                        title: deriveChatSessionTitle(sessionMessages[0]?.content) || 'New chat',
                         codeProjectId: scopeId,
                     });
                 }
-                void addOrMergeSessionToLocalHistory({
-                    id: result.conversationId,
-                    codeProjectId: scopeId,
-                    session: { messages: sessionMessages },
-                });
+            } else if (materializedConversationId && streamingSessionId === null) {
+                setChatForSession(materializedConversationId, sessionMessages);
             }
 
             if (streamingSessionId) {

@@ -130,6 +130,12 @@ interface PublicPageShellProps {
   contentClassName?: string;
   /** Hide footer on minimal pages (e.g. OAuth popup). */
   showFooter?: boolean;
+  /** Hide the sticky public header (e.g. full-bleed landing hero). */
+  hideHeader?: boolean;
+  /** Omit marketing ambient gradients — flat app background only. */
+  hideAmbient?: boolean;
+  /** Optional root wrapper classes (e.g. homepage light/dark surfaces). */
+  rootClassName?: string;
 }
 
 /**
@@ -141,20 +147,26 @@ export function PublicPageShell({
   children,
   contentClassName,
   showFooter = true,
+  hideHeader = false,
+  hideAmbient = false,
+  rootClassName,
 }: PublicPageShellProps) {
   return (
     <div
-      className="relative flex min-h-screen min-h-[100dvh] w-full shrink-0 flex-col overflow-x-hidden text-zinc-100"
-      style={{ backgroundColor: PAGE_BG }}
+      className={cn(
+        "relative flex min-h-screen min-h-[100dvh] w-full shrink-0 flex-col overflow-x-hidden text-zinc-100",
+        rootClassName,
+      )}
+      style={rootClassName ? undefined : { backgroundColor: PAGE_BG }}
     >
-      <PublicAmbientBackground />
+      {hideAmbient ? null : <PublicAmbientBackground />}
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-black focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-[#0b0e14]"
       >
         Skip to main content
       </a>
-      <PublicHeader />
+      {hideHeader ? null : <PublicHeader />}
       <div
         id="main-content"
         role="main"

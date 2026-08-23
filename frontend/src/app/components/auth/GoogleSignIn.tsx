@@ -43,7 +43,7 @@ export const GoogleSignIn = ({
         const apiRoot = await resolveAuthApiRootUrlAsync();
         const url = buildGoogleAuthUrl(apiRoot);
         if (!url || url.includes('undefined')) {
-            console.error('[GoogleSignIn] Missing auth API root (expected Nest on Tilt port 28000)');
+            console.error('[GoogleSignIn] Auth API root is not configured. Set NEXT_PUBLIC_AIGENIUS_API_ROOT_URL in your environment.');
             return;
         }
         if (typeof window !== 'undefined' && window.aigeniusDesktop?.startOAuthSignIn) {

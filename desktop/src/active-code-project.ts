@@ -1,3 +1,5 @@
+import { invalidateChatRuntimeContextCache } from './chat-runtime-context-cache';
+
 /** Active code project root for default local_rag_query path_prefix (main process). */
 let activeProjectRootPath: string | null = null;
 let activeProjectId: string | null = null;
@@ -9,10 +11,12 @@ export function setActiveCodeProjectIndex(payload: {
   if (!payload) {
     activeProjectRootPath = null;
     activeProjectId = null;
+    invalidateChatRuntimeContextCache();
     return;
   }
   activeProjectId = payload.projectId;
   activeProjectRootPath = payload.rootPath;
+  invalidateChatRuntimeContextCache();
 }
 
 export function getActiveCodeProjectRootPath(): string | null {
