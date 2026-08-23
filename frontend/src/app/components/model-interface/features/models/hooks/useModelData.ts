@@ -226,15 +226,8 @@ export function useModelData() {
                     defaultModel = list.find((m: any) => m.id === lastModelId);
                 }
                 if (!defaultModel && list) {
-                    // For first-time users, prioritize ChatGPT-4o
-                    defaultModel = list.find((m: any) => m.id === 'openai/chatgpt-4o-latest');
-                }
-                if (!defaultModel && list) {
-                    // Fallback to any GPT-4o model
-                    defaultModel = list.find((m: any) =>
-                        (m.id && m.id.toLowerCase().includes('gpt-4o')) ||
-                        (m.name && m.name.toLowerCase().includes('gpt-4o'))
-                    );
+                    // Use the first featured model as the default for first-time users
+                    defaultModel = list.find((m: any) => m.featured === true);
                 }
                 if (!defaultModel && list && list.length > 0) {
                     defaultModel = list[0];
