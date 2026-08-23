@@ -14,10 +14,15 @@ import {
     clearWalletTopUpReturnState,
     clearPendingPaymentStorage,
     readWalletTopUpReturnState,
+    resolveWalletPaymentReference,
     resolveWalletPaymentReturnTarget,
     saveWalletTopUpResultState,
 } from '@/lib/wallet-payment-return';
-import { reconcilePaymentWithBackend, type WalletPaymentVerification } from '@/lib/wallet-pending-payment-poll';
+import {
+    markPendingWalletCheckoutStarted,
+    reconcilePaymentWithBackend,
+    type WalletPaymentVerification,
+} from '@/lib/wallet-pending-payment-poll';
 import { LandingAmbientBackground } from '@/app/components/ui';
 import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
 import { cn } from '@/lib/utils';
@@ -159,13 +164,6 @@ class PaymentFailedError extends Error {
     }
 }
 
-function resolvePaymentReference(searchParams: URLSearchParams): string | null {
-    const reference = searchParams.get('reference')
-        || searchParams.get('trxref')
-        || searchParams.get('transaction_reference');
-    return reference?.trim() || null;
-}
-
 function resolveMissingReferenceMessage(): string {
     return 'The payment provider did not return a transaction reference.';
 }
@@ -224,7 +222,10 @@ export default function PaymentCallbackClient() {
         async function verifyAndReturn() {
             syncAuthSessionCookiesFromStorage();
 
-            const reference = resolvePaymentReference(searchParams);
+            const reference = resolveWalletPaymentReference(searchParams);
+            if (reference) {
+                markPendingWalletCheckoutStarted(reference);
+            }
             const returnState = readWalletTopUpReturnState();
             const returnTo = resolveWalletPaymentReturnTarget(
                 searchParams.get('returnTo') || returnState?.returnTo,
@@ -251,6 +252,19 @@ export default function PaymentCallbackClient() {
             // verify APIs — layout/getUserDetails or verify would trigger /login redirect.
             if (shouldDeferVerifyToApp) {
                 if (!reference) {
+                    if (isDesktopHandoff) {
+                        console.log(
+                            'PaymentCallback: Desktop handoff without reference — app will confirm payment.',
+                        );
+                        if (mounted) {
+                            setStatus('confirming');
+                            toast.success(
+                                'Payment received. Return to AIGenius to see your updated balance.',
+                            );
+                        }
+                        return;
+                    }
+
                     saveWalletTopUpResultState({
                         status: 'failed',
                         reference: null,

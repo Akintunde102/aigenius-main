@@ -20,6 +20,45 @@ const ChatBoxStyles: React.FC = () => (
         .chat-composer--wallet-muted .chat-composer-textarea::placeholder {
             opacity: 0.72;
         }
+        .chat-composer-textarea {
+            color: var(--app-ink-900);
+        }
+        .chat-composer-textarea::placeholder {
+            color: var(--chat-muted-fg);
+        }
+        .chat-composer-send--enabled {
+            background-color: var(--chat-accent);
+        }
+        .chat-composer-send--enabled:hover {
+            background-color: var(--chat-accent-hover);
+        }
+        .chat-composer-send--disabled {
+            cursor: not-allowed;
+            background-color: var(--chat-accent-muted);
+            color: var(--chat-muted-fg);
+        }
+        .chat-composer-stop {
+            background-color: color-mix(in srgb, var(--app-ink-900) 52%, transparent);
+            color: #fff;
+        }
+        .chat-composer-stop:hover {
+            background-color: color-mix(in srgb, var(--app-ink-900) 68%, transparent);
+        }
+        :global(.dark) .chat-composer-stop {
+            background-color: color-mix(in srgb, #fff 16%, transparent);
+            color: #e2e8f0;
+        }
+        :global(.dark) .chat-composer-stop:hover {
+            background-color: color-mix(in srgb, #fff 24%, transparent);
+        }
+        .blinking-caret {
+            caret-color: var(--chat-accent);
+            animation: caret-blink 1s steps(1) infinite;
+        }
+        @keyframes caret-blink {
+            0%, 100% { caret-color: var(--chat-accent); }
+            50% { caret-color: transparent; }
+        }
     `}</style>
 );
 

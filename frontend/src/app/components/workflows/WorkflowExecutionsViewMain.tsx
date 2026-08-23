@@ -23,6 +23,7 @@ import toast from "react-hot-toast";
 import { refreshAccessToken } from "@/lib/api/auth-client";
 import useTokenHandler from "@/lib/hooks/useTokenHandler";
 import { Button } from "@/app/components/ui/button";
+import { FEATURE_FLAGS } from "@/lib/config/features";
 import IntegrationsModal from "@/app/components/ChatHistorySidebar/IntegrationsModal";
 import WalletModal from "@/app/components/ChatHistorySidebar/WalletModal";
 import { getUserDetails } from "@/lib/calls/get-logged-user-details";
@@ -440,17 +441,19 @@ export function WorkflowExecutionsViewMain() {
                 <span className="hidden rounded border border-slate-200/90 bg-slate-100/80 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-500 dark:border-slate-700/80 dark:bg-slate-900/60 dark:text-slate-400 sm:inline-flex">
                   Read only
                 </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 shrink-0 rounded-md border-slate-200/90 bg-slate-100/80 px-2 text-[11px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-200/80 hover:text-slate-900 dark:border-slate-600/90 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white sm:px-2.5"
-                  onClick={() => setIntegrationsOpen(true)}
-                  title="Manage integrations"
-                >
-                  <Plug className="h-3 w-3 sm:mr-1" aria-hidden />
-                  <span className="sr-only sm:not-sr-only sm:inline">Integrations</span>
-                </Button>
+                {FEATURE_FLAGS.INTEGRATIONS ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 shrink-0 rounded-md border-slate-200/90 bg-slate-100/80 px-2 text-[11px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-200/80 hover:text-slate-900 dark:border-slate-600/90 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white sm:px-2.5"
+                    onClick={() => setIntegrationsOpen(true)}
+                    title="Manage integrations"
+                  >
+                    <Plug className="h-3 w-3 sm:mr-1" aria-hidden />
+                    <span className="sr-only sm:not-sr-only sm:inline">Integrations</span>
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   variant="outline"
@@ -709,7 +712,7 @@ export function WorkflowExecutionsViewMain() {
           </div>
         </div>
       </div>
-      {integrationsOpen ? (
+      {FEATURE_FLAGS.INTEGRATIONS && integrationsOpen ? (
         <IntegrationsModal onClose={() => setIntegrationsOpen(false)} />
       ) : null}
       {showWalletModal ? (

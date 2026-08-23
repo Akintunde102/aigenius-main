@@ -35,6 +35,7 @@ const upstream = readUpstreamFromPackageEnv();
 const env = {
   ...process.env,
   NEXT_PUBLIC_NOBOX_API_ROOT_URL: 'http://127.0.0.1:8001',
+  NEXT_PUBLIC_MINI_SERVER_PORT: '8001',
 };
 
 if (upstream) {

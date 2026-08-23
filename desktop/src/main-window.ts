@@ -117,6 +117,7 @@ export function createWindow(relativePath?: string): BrowserWindow {
     ...mainShellBrowserWindowOptions(),
     width: 1280,
     height: 800,
+    show: false,
     ...(icon ? { icon } : {}),
     webPreferences: {
       preload: preloadPath,
@@ -139,6 +140,12 @@ export function createWindow(relativePath?: string): BrowserWindow {
     setLastFocusedMainShellWindow(win);
   });
   attachChatCompletionWindowFocusHandlers(win);
+
+  win.once('ready-to-show', () => {
+    if (!win.isDestroyed()) {
+      win.show();
+    }
+  });
 
   if (!app.isPackaged) {
     win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {

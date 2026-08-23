@@ -19,6 +19,11 @@ export const FEATURE_FLAGS = {
   VOICE_DICTATION:
     process.env.NEXT_PUBLIC_ENABLE_VOICE_DICTATION === "true",
 
+  /**
+   * Gmail/LinkedIn connect UI, OAuth callbacks, and workflow integration pickers.
+   * Off by default — set NEXT_PUBLIC_ENABLE_INTEGRATIONS=true to show.
+   * Backend must also set ENABLE_INTEGRATIONS=true for API routes and chat tools.
+   */
   INTEGRATIONS: process.env.NEXT_PUBLIC_ENABLE_INTEGRATIONS === "true",
 
   WORKFLOWS:

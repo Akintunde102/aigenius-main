@@ -36,6 +36,9 @@ const Login = () => {
           sessionStorage.removeItem("desktop_callback");
           window.location.href = `${callback}${callback.includes('?') ? '&' : '?'}token=${token}`;
         }
+      } else {
+        // Plain web sign-in — drop any leftover desktop handoff from a prior session.
+        sessionStorage.removeItem("desktop_callback");
       }
     }
   }, []);

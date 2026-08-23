@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { BotMessageSquare, Mic, Wallet } from "lucide-react";
 import { BrandLogo } from "@/app/components/BrandLogo";
-import { GoogleSignIn } from "@/app/components/auth/GoogleSignIn";
+import { GoogleSignIn, type DesktopAuthFlowPhase } from "@/app/components/auth/GoogleSignIn";
 import { DesktopSessionRestoringView } from "@/app/components/DesktopSessionRestoringView";
 import { LandingAmbientBackground } from "@/app/components/ui";
 import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
@@ -51,6 +51,7 @@ export default function DesktopLoginPage() {
   const [storedFirstName, setStoredFirstName] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authFlow, setAuthFlow] = useState<DesktopAuthFlowPhase>("idle");
 
   useEffect(() => {
     try {
@@ -112,10 +113,23 @@ export default function DesktopLoginPage() {
     })();
   }, [pathname]);
 
-  if (!showLogin) {
+  if (!showLogin || authFlow !== "idle") {
+    const restoringMessage =
+      authFlow === "awaiting-browser"
+        ? "Complete sign-in in your browser…"
+        : authFlow === "completing"
+          ? "Signing you in…"
+          : "Opening AIGenius…";
+    const restoringDetail =
+      authFlow === "awaiting-browser"
+        ? "Finish Google sign-in in the tab that opened, then return here."
+        : authFlow === "completing"
+          ? "Setting up your session and opening your chats…"
+          : "Verifying your saved session…";
+
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0c0d0f]">
-        <DesktopSessionRestoringView />
+        <DesktopSessionRestoringView message={restoringMessage} detail={restoringDetail} />
       </div>
     );
   }
@@ -176,6 +190,7 @@ export default function DesktopLoginPage() {
                   <motion.div variants={reduce ? undefined : fadeUp} transition={{ duration: 0.5, ease: EASE }}>
                     <GoogleSignIn
                       variant="login"
+                      onDesktopAuthFlowChange={setAuthFlow}
                       className="!h-14 !w-full !rounded-xl !border-zinc-500 !bg-white !text-base !font-semibold !text-zinc-900 !shadow-lg !shadow-cyan-950/30 hover:!bg-zinc-100 focus-visible:!ring-2 focus-visible:!ring-cyan-500 focus-visible:!ring-offset-2 focus-visible:!ring-offset-zinc-950"
                     />
                   </motion.div>
@@ -198,15 +213,19 @@ export default function DesktopLoginPage() {
                         return;
                       }
                       setAuthError(null);
+                      setAuthFlow("awaiting-browser");
                       const res = await window.aigeniusDesktop.startWebSignIn();
                       if (!res?.token) {
+                        setAuthFlow("idle");
                         setAuthError(
                           "Browser sign-in did not complete. Finish Google sign-in in your browser, then try again.",
                         );
                         return;
                       }
+                      setAuthFlow("completing");
                       const ok = await completeDesktopOAuthSession(res.token);
                       if (!ok) {
+                        setAuthFlow("idle");
                         setAuthError(
                           "Sign-in succeeded in the browser but the desktop app could not start your session. Check that the API is running and try again.",
                         );
@@ -255,16 +274,46 @@ export default function DesktopLoginPage() {
                   <span className="mx-2 text-zinc-600" aria-hidden>
                     ·
                   </span>
-                  <Link
-                    prefetch
-                    href="/login"
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!window.aigeniusDesktop?.startWebSignIn) {
+                        window.location.href = "/login";
+                        return;
+                      }
+                      setAuthError(null);
+                      setAuthFlow("awaiting-browser");
+                      const res = await window.aigeniusDesktop.startWebSignIn();
+                      if (!res?.token) {
+                        setAuthFlow("idle");
+                        setAuthError(
+                          "Browser sign-in did not complete. Finish sign-in in your browser, then try again.",
+                        );
+                        return;
+                      }
+                      setAuthFlow("completing");
+                      const ok = await completeDesktopOAuthSession(res.token);
+                      if (!ok) {
+                        setAuthFlow("idle");
+                        setAuthError(
+                          "Sign-in succeeded in the browser but the desktop app could not start your session. Check that the API is running and try again.",
+                        );
+                        return;
+                      }
+                      syncAuthSessionCookiesFromStorage();
+                      const target = resolveAuthenticatedDesktopShellRedirect(
+                        pathname,
+                        window.location.search,
+                      );
+                      window.location.replace(target);
+                    }}
                     className={cn(
                       "font-medium text-cyan-300 underline decoration-cyan-500/40 underline-offset-4 transition hover:text-cyan-200",
                       FOCUS_RING,
                     )}
                   >
                     Web sign-in
-                  </Link>
+                  </button>
                 </motion.p>
 
                 <motion.div

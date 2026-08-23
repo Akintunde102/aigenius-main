@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { Button } from "@/app/components/ui/button";
 import Image from "next/image";
 import { AUTH_CONFIG } from "@/lib/config/auth";
@@ -12,6 +13,8 @@ import {
     resolveAuthApiRootUrlAsync,
 } from "@/lib/utils/resolve-auth-api-root";
 
+export type DesktopAuthFlowPhase = "idle" | "awaiting-browser" | "completing";
+
 interface GoogleSignInProps {
     variant?: 'login' | 'signup';
     className?: string;
@@ -20,13 +23,22 @@ interface GoogleSignInProps {
      * / ghost buttons stay readable on white.
      */
     lightSurface?: boolean;
+    /** Desktop shell: show a full-page loading state while OAuth finishes. */
+    onDesktopAuthFlowChange?: (phase: DesktopAuthFlowPhase) => void;
 }
 
 export const GoogleSignIn = ({
     variant = 'login',
     className = '',
     lightSurface = false,
+    onDesktopAuthFlowChange,
 }: GoogleSignInProps) => {
+    const [isDesktopSigningIn, setIsDesktopSigningIn] = useState(false);
+
+    const setDesktopAuthFlow = (phase: DesktopAuthFlowPhase) => {
+        onDesktopAuthFlowChange?.(phase);
+    };
+
     const handleGoogleSignIn = async () => {
         const apiRoot = await resolveAuthApiRootUrlAsync();
         const url = buildGoogleAuthUrl(apiRoot);
@@ -35,12 +47,17 @@ export const GoogleSignIn = ({
             return;
         }
         if (typeof window !== 'undefined' && window.aigeniusDesktop?.startOAuthSignIn) {
+            setIsDesktopSigningIn(true);
+            setDesktopAuthFlow('awaiting-browser');
             try {
                 const res = await window.aigeniusDesktop.startOAuthSignIn({ provider: 'google' });
                 if (res?.token) {
+                    setDesktopAuthFlow('completing');
                     const ok = await completeDesktopOAuthSession(res.token);
                     if (!ok) {
                         console.error('[GoogleSignIn] OAuth token exchange failed');
+                        setDesktopAuthFlow('idle');
+                        setIsDesktopSigningIn(false);
                         return;
                     }
                     syncAuthSessionCookiesFromStorage();
@@ -49,9 +66,14 @@ export const GoogleSignIn = ({
                         window.location.search,
                     );
                     window.location.replace(target);
+                    return;
                 }
+                setDesktopAuthFlow('idle');
+                setIsDesktopSigningIn(false);
             } catch (error) {
                 console.error('[GoogleSignIn] Desktop OAuth failed', error);
+                setDesktopAuthFlow('idle');
+                setIsDesktopSigningIn(false);
             }
             return;
         }
@@ -91,6 +113,7 @@ export const GoogleSignIn = ({
         <div className="flex flex-col gap-3 w-full">
             <Button
                 onClick={handleGoogleSignIn}
+                disabled={isDesktopSigningIn}
                 variant="outline"
                 className={`w-full h-12 font-medium border-primary/20 hover:border-primary/40 hover:scale-[1.02] transition-all duration-200 ${className}`}
             >

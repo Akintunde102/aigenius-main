@@ -1,9 +1,10 @@
 import fs from 'fs';
 import path from 'path';
-import { PaddleOcrService, V6_SMALL_MODEL, type ModelPathOptions } from 'ppu-paddle-ocr';
+import type { ModelPathOptions, PaddleOcrService } from 'ppu-paddle-ocr';
 
 let _service: PaddleOcrService | null = null;
 let _modelsDir = '';
+let _paddleModule: typeof import('ppu-paddle-ocr') | null | undefined;
 
 const PADDLE_FILES = {
   detection: 'PP-OCRv6_small_det.ort',
@@ -11,7 +12,27 @@ const PADDLE_FILES = {
   charactersDictionary: 'ppocrv6_dict.txt',
 } as const;
 
-function resolvePaddleModelPaths(modelsDir: string): ModelPathOptions {
+async function loadPaddleModule(): Promise<typeof import('ppu-paddle-ocr') | null> {
+  if (_paddleModule !== undefined) {
+    return _paddleModule;
+  }
+  try {
+    _paddleModule = await import('ppu-paddle-ocr');
+    return _paddleModule;
+  } catch (err) {
+    console.warn(
+      '[ocr-extractor] ppu-paddle-ocr unavailable; OCR disabled.',
+      err instanceof Error ? err.message : err,
+    );
+    _paddleModule = null;
+    return null;
+  }
+}
+
+function resolvePaddleModelPaths(
+  modelsDir: string,
+  fallbackModel: ModelPathOptions,
+): ModelPathOptions {
   const detection = path.join(modelsDir, PADDLE_FILES.detection);
   const recognition = path.join(modelsDir, PADDLE_FILES.recognition);
   const charactersDictionary = path.join(modelsDir, PADDLE_FILES.charactersDictionary);
@@ -24,19 +45,25 @@ function resolvePaddleModelPaths(modelsDir: string): ModelPathOptions {
     return { detection, recognition, charactersDictionary };
   }
 
-  return V6_SMALL_MODEL;
+  return fallbackModel;
 }
 
 /** Must be called before first extraction; idempotent. */
 export async function initOcr(modelsDir: string): Promise<void> {
   if (_service?.isInitialized()) return;
+
+  const paddle = await loadPaddleModule();
+  if (!paddle) return;
+
   _modelsDir = modelsDir;
 
   if (!fs.existsSync(modelsDir)) {
     fs.mkdirSync(modelsDir, { recursive: true });
   }
 
-  _service = new PaddleOcrService({ model: resolvePaddleModelPaths(modelsDir) });
+  _service = new paddle.PaddleOcrService({
+    model: resolvePaddleModelPaths(modelsDir, paddle.V6_SMALL_MODEL),
+  });
   await _service.initialize();
 }
 
@@ -50,7 +77,11 @@ export async function extractOcrFromBuffer(
   modelsDir: string,
 ): Promise<{ content: string; tags: string[] }> {
   await initOcr(modelsDir);
-  const result = await _service!.recognize(toArrayBuffer(imageBuffer));
+  if (!_service) {
+    return { content: '', tags: ['image'] };
+  }
+
+  const result = await _service.recognize(toArrayBuffer(imageBuffer));
   return { content: result.text.trim(), tags: ['image', 'ocr'] };
 }
 

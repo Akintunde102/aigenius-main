@@ -107,6 +107,7 @@ import {
 } from './main-backend-lifecycle';
 import { createWindow, getWindowIcon, resolveWindowIconPath } from './main-window';
 import { registerMainIpcHandlers } from './main-ipc-handlers';
+import { registerSecondaryBrowserWindowPolicy } from './secondary-browser-window';
 
 function normalizeRendererFilesystemPath(filePath: string): string {
   let normalizedPath = filePath;
@@ -129,6 +130,7 @@ if (!gotLock) {
   app.quit();
 } else {
   configureDesktopNotificationBranding();
+  registerSecondaryBrowserWindowPolicy(app);
 
   if (DESKTOP_BRIDGE_DEBUG) {
     console.info('[aigenius-desktop][bridge-debug] main: got single-instance lock');
