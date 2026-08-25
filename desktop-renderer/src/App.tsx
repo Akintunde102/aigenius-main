@@ -18,6 +18,7 @@ import ReactQueryProvider from '@/lib/providers/ReactQueryProvider';
 import { ThemeProvider } from '@/lib/providers/ThemeProvider';
 import { ChatAuthGate } from './ChatAuthGate';
 
+import './fonts/desktop-fonts.css';
 import '@/app/styles/globals.scss';
 import '@/app/styles/x-forms.scss';
 import '@/app/styles/animations.scss';

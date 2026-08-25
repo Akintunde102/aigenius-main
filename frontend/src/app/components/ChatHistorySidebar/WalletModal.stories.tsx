@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import WalletModal from './WalletModal';
 
 const meta: Meta<typeof WalletModal> = {

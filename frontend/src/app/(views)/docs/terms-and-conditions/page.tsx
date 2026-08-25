@@ -180,7 +180,7 @@ export default function TermsAndConditionsPage() {
       <DocSection id="contact" title="13) Contact">
         <div className="space-y-2 text-stone-700">
           <p className="font-semibold text-stone-900">Nobox Labs Limited</p>
-          <p>Website: <DocLink href="https://aigenius.chat" external>https://aigenius.chat</DocLink></p>
+          <p>Website: <DocLink href="https://aigenius.noboxlabs.xyz" external>https://aigenius.noboxlabs.xyz</DocLink></p>
           <p>Email: <DocLink href="mailto:nobox.hq@gmail.com">nobox.hq@gmail.com</DocLink></p>
           <p className="mt-4 text-sm text-stone-600">
             For questions about these Terms or to request a copy of our DPA, contact us using the information above.

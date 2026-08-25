@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { WorkflowToolIcon as WorkflowToolIcon } from './WorkflowToolIcon';
 
 const meta: Meta<typeof WorkflowToolIcon> = {

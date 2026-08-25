@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { Button } from "@/app/components/ui/button";
 import Image from "next/image";
 import { AUTH_CONFIG } from "@/lib/config/auth";
@@ -12,6 +13,8 @@ import {
     resolveAuthApiRootUrlAsync,
 } from "@/lib/utils/resolve-auth-api-root";
 
+export type DesktopAuthFlowPhase = "idle" | "awaiting-browser" | "completing";
+
 interface GoogleSignInProps {
     variant?: 'login' | 'signup';
     className?: string;
@@ -20,27 +23,43 @@ interface GoogleSignInProps {
      * / ghost buttons stay readable on white.
      */
     lightSurface?: boolean;
+    /** Desktop shell: show a full-page loading state while OAuth finishes. */
+    onDesktopAuthFlowChange?: (phase: DesktopAuthFlowPhase) => void;
 }
 
 export const GoogleSignIn = ({
     variant = 'login',
     className = '',
     lightSurface = false,
+    onDesktopAuthFlowChange,
 }: GoogleSignInProps) => {
+    const [isDesktopSigningIn, setIsDesktopSigningIn] = useState(false);
+
+    const setDesktopAuthFlow = (phase: DesktopAuthFlowPhase) => {
+        onDesktopAuthFlowChange?.(phase);
+    };
+
     const handleGoogleSignIn = async () => {
         const apiRoot = await resolveAuthApiRootUrlAsync();
         const url = buildGoogleAuthUrl(apiRoot);
+        console.log('[GoogleSignIn Debug] resolved apiRoot:', apiRoot);
+        console.log('[GoogleSignIn Debug] resolved final auth url:', url);
         if (!url || url.includes('undefined')) {
             console.error('[GoogleSignIn] Auth API root is not configured. Set NEXT_PUBLIC_AIGENIUS_API_ROOT_URL in your environment.');
             return;
         }
         if (typeof window !== 'undefined' && window.aigeniusDesktop?.startOAuthSignIn) {
+            setIsDesktopSigningIn(true);
+            setDesktopAuthFlow('awaiting-browser');
             try {
                 const res = await window.aigeniusDesktop.startOAuthSignIn({ provider: 'google' });
                 if (res?.token) {
+                    setDesktopAuthFlow('completing');
                     const ok = await completeDesktopOAuthSession(res.token);
                     if (!ok) {
                         console.error('[GoogleSignIn] OAuth token exchange failed');
+                        setDesktopAuthFlow('idle');
+                        setIsDesktopSigningIn(false);
                         return;
                     }
                     syncAuthSessionCookiesFromStorage();
@@ -49,9 +68,14 @@ export const GoogleSignIn = ({
                         window.location.search,
                     );
                     window.location.replace(target);
+                    return;
                 }
+                setDesktopAuthFlow('idle');
+                setIsDesktopSigningIn(false);
             } catch (error) {
                 console.error('[GoogleSignIn] Desktop OAuth failed', error);
+                setDesktopAuthFlow('idle');
+                setIsDesktopSigningIn(false);
             }
             return;
         }
@@ -91,6 +115,7 @@ export const GoogleSignIn = ({
         <div className="flex flex-col gap-3 w-full">
             <Button
                 onClick={handleGoogleSignIn}
+                disabled={isDesktopSigningIn}
                 variant="outline"
                 className={`w-full h-12 font-medium border-primary/20 hover:border-primary/40 hover:scale-[1.02] transition-all duration-200 ${className}`}
             >
@@ -106,17 +131,13 @@ export const GoogleSignIn = ({
             </Button>
 
             {AUTH_CONFIG.ENABLE_DEV_LOGIN && (
-                <Button
+                <button
+                    type="button"
                     onClick={handleDevLogin}
-                    variant="ghost"
-                    className={
-                        lightSurface
-                            ? "w-full text-xs text-slate-500 hover:text-slate-800 transition-colors bg-slate-100/50 hover:bg-slate-100 py-1.5 rounded-lg border border-dashed border-slate-300"
-                            : "w-full text-xs text-slate-400 hover:text-white transition-colors bg-slate-800/40 hover:bg-slate-800/80 py-1.5 rounded-lg border border-dashed border-slate-700/60"
-                    }
+                    className="secondary-btn"
                 >
                     Developer Login (Bypass)
-                </Button>
+                </button>
             )}
         </div>
     );

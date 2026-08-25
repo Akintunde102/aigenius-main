@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { StructuredMessage as StructuredMessage } from './ImageMessage';
 
 const meta: Meta<typeof StructuredMessage> = {

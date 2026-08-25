@@ -9,7 +9,7 @@
  */
 
 export const serverPort = parseInt(process.env.PORT ?? '28001', 10);
-export const serverHostname = process.env.HOST ?? 'localhost';
+export const serverHostname = process.env.HOST ?? '127.0.0.1';
 export const upstreamApiUrl = process.env.AIGENIUS_UPSTREAM_API_URL ?? 'http://localhost:8000';
 
 /** Required for `/search/*` when mounted with bearer middleware. */

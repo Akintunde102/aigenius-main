@@ -44,12 +44,12 @@
         --auth-sidebar: 0 0% 6%;
         --auth-sidebar-foreground: 0 0% 98%;
 
-        --shadow-elegant: 0 10px 40px -10px hsl(0 0% 0% / 0.5);
-        --shadow-subtle: 0 1px 3px 0 hsl(0 0% 0% / 0.3);
-        --shadow-glow: 0 0 25px -5px hsl(250 84% 54% / 0.25);
+        --shadow-elegant: 0 10px 40px -10px hsla(0, 0%, 0%, 0.5);
+        --shadow-subtle: 0 1px 3px 0 hsla(0, 0%, 0%, 0.3);
+        --shadow-glow: 0 0 25px -5px hsla(250, 84%, 54%, 0.25);
 
-        --glass-bg: hsl(0 0% 100% / 0.75);
-        --glass-border: hsl(0 0% 0% / 0.08);
+        --glass-bg: hsla(0, 0%, 100%, 0.75);
+        --glass-border: hsla(0, 0%, 0%, 0.08);
 
         --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -101,8 +101,8 @@
         --input: 217.2 32.6% 17.5%;
         --ring: 212.7 26.8% 83.9%;
 
-        --glass-bg: hsl(222.2 84% 4.9% / 0.75);
-        --glass-border: hsl(217.2 32.6% 17.5% / 0.6);
+        --glass-bg: hsla(222.2, 84%, 4.9%, 0.75);
+        --glass-border: hsla(217.2, 32.6%, 17.5%, 0.6);
 
         /* ── Sidebar dark overrides ──────────────────────────────────────────── */
         --sidebar-bg: #141416;

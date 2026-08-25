@@ -67,8 +67,8 @@ module.exports = {
         },
       },
       boxShadow: {
-        'elegant': '0 10px 40px -10px hsl(0 0% 0% / 0.5)',
-        'subtle': '0 1px 3px 0 hsl(0 0% 0% / 0.3)',
+        'elegant': '0 10px 40px -10px rgba(0, 0, 0, 0.5)',
+        'subtle': '0 1px 3px 0 rgba(0, 0, 0, 0.3)',
         'glow': 'var(--shadow-glow)',
         'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.25)',
       },

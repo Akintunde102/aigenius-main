@@ -1,5 +1,4 @@
 import { BrowserWindow, shell } from 'electron';
-import path from 'path';
 import { normalizeLoopbackToShellOrigin } from './loopback-frontend-url';
 import { resolveFrontendPort } from './frontend-port';
 import { DEV_LOOPBACK_HOST, loopbackHttpUrl } from './loopback-host';
@@ -7,6 +6,9 @@ import { showExternalLinkApprovalDialog } from './external-link-approval-dialog'
 import { isNoboxAuthBackendFlowUrl, isOauthSignInUrl } from './oauth-allowlist';
 import { isHostedPaymentUrl } from './payment-allowlist';
 import { MINI_SERVER_PORT } from './mini-server-port';
+import {
+  showAuxiliaryWindowWhenReady,
+} from './secondary-browser-window';
 import { DESKTOP_UI_SCHEME } from './desktop-ui-mode';
 import { isShellBootDataUrl } from './shell-boot-page';
 
@@ -178,23 +180,10 @@ function openExternalInSystemBrowserAfterApproval(parent: BrowserWindow, url: st
   })();
 }
 
-function oauthChildWindowOptions(parent: BrowserWindow): Electron.BrowserWindowConstructorOptions {
-  const bounds = parent.getBounds();
-  return {
-    parent,
-    modal: false,
-    width: Math.min(560, Math.max(480, bounds.width - 80)),
-    height: Math.min(720, Math.max(600, bounds.height - 80)),
-    show: false,
-    autoHideMenuBar: true,
-    title: 'Sign in',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-    },
-  };
+
+function loadAllowedShellUrlInParent(parent: BrowserWindow, url: string): void {
+  const target = normalizeLoopbackToShellOrigin(url, String(FRONTEND_PORT));
+  void parent.loadURL(target);
 }
 
 /**
@@ -295,19 +284,10 @@ export function attachMainShellNavigationGuards(win: BrowserWindow): void {
 
   webContents.setWindowOpenHandler(({ url }) => {
     if (isUrlAllowedInMainShell(url)) {
-      return {
-        action: 'allow',
-        overrideBrowserWindowOptions: {
-          parent: win,
-          autoHideMenuBar: true,
-          webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
-            contextIsolation: true,
-            nodeIntegration: false,
-            sandbox: true,
-          },
-        },
-      };
+      if (isTopLevelShellWindow(win)) {
+        loadAllowedShellUrlInParent(win, url);
+      }
+      return { action: 'deny' };
     }
 
     if (isHostedPaymentUrl(url)) {
@@ -316,17 +296,20 @@ export function attachMainShellNavigationGuards(win: BrowserWindow): void {
     }
 
     if (isOauthSignInUrl(url)) {
-      return {
-        action: 'allow',
-        overrideBrowserWindowOptions: oauthChildWindowOptions(win),
-      };
+      if (isTopLevelShellWindow(win)) {
+        openOauthInSystemBrowser(win, url);
+      }
+      return { action: 'deny' };
     }
 
     blockAndEscalate(url);
     return { action: 'deny' };
   });
 
-  webContents.on('did-create-window', (childWindow) => {
+  webContents.on('did-create-window', (childWindow, { options }) => {
+    if (options.parent) {
+      showAuxiliaryWindowWhenReady(childWindow);
+    }
     attachMainShellNavigationGuards(childWindow);
   });
 }

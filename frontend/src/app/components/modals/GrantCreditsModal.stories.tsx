@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import GrantCreditsModal from './GrantCreditsModal';
 
 const meta: Meta<typeof GrantCreditsModal> = {

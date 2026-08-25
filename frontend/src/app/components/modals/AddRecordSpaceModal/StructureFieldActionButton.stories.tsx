@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { StructureFieldActionButton as StructureFieldActionButton } from './StructureFieldActionButton';
 
 const meta: Meta<typeof StructureFieldActionButton> = {

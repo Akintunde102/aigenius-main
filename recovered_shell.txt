@@ -1,0 +1,67 @@
+Created At: 2026-08-24T20:24:48+01:00
+Completed At: 2026-08-24T20:24:49+01:00
+File Path: `file:///Users/clinton/Development/Nobox/aigenius-platform/client/frontend/src/app/components/PublicPageShell.tsx`
+Total Lines: 58
+Total Bytes: 1810
+Showing lines 1 to 58
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: import Link from "next/link";
+2: import { cn } from "@/lib/utils";
+3: import { PublicHeader, ThemeInitializer } from "@/app/components/PublicPageShellClient";
+4: import "./home.css"; // Ensure home.css is imported
+5: 
+6: function PublicFooter() {
+7:   const year = new Date().getFullYear();
+8:   return (
+9:     <footer className="footer">
+10:       <span>&#169; {year} Nobox Labs Limited</span>
+11:       <nav className="footer-links" aria-label="Legal">
+12:         <Link prefetch href="/docs/privacy-policy">Privacy Policy</Link>
+13:         <Link prefetch href="/docs/terms-and-conditions">Terms of Service</Link>
+14:       </nav>
+15:     </footer>
+16:   );
+17: }
+18: 
+19: interface PublicPageShellProps {
+20:   children: React.ReactNode;
+21:   contentClassName?: string;
+22:   showFooter?: boolean;
+23:   hideHeader?: boolean;
+24:   hideAmbient?: boolean;
+25:   rootClassName?: string;
+26: }
+27: 
+28: export function PublicPageShell({
+29:   children,
+30:   contentClassName,
+31:   showFooter = true,
+32:   hideHeader = false,
+33:   hideAmbient = false,
+34:   rootClassName,
+35: }: PublicPageShellProps) {
+36:   return (
+37:     <div className={cn("home-root scrollable", rootClassName)}>
+38:       <ThemeInitializer />
+39:       <div className="page">
+40:         <a
+41:           href="#main-content"
+42:           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-black focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-[#0b0e14]"
+43:         >
+44:           Skip to main content
+45:         </a>
+46:         {hideHeader ? null : <PublicHeader />}
+47:         <main
+48:           id="main-content"
+49:           className={cn("flex w-full flex-1 flex-col relative z-10", contentClassName)}
+50:         >
+51:           {children}
+52:         </main>
+53:         {showFooter ? <PublicFooter /> : null}
+54:       </div>
+55:     </div>
+56:   );
+57: }
+58: 
+The above content shows the entire, complete file contents of the requested file.
+

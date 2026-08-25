@@ -63,8 +63,8 @@ export type ResolveUpstreamApiUrlOptions = {
  *
  * Resolution order:
  * 1. `AIGENIUS_UPSTREAM_API_URL`
- * 2. `desktop/package.env`
- * 3. `http://127.0.0.1:{AIGENIUS_API_PORT|DEV_API_PORT}` (Tilt)
+ * 2. `http://127.0.0.1:{AIGENIUS_API_PORT|DEV_API_PORT}` (Tilt dev — wins over `package.env`)
+ * 3. `desktop/package.env`
  * 4. Packaged `package-runtime.json`
  * 5. Legacy default `http://localhost:8000`
  */
@@ -74,17 +74,17 @@ export function resolveUpstreamApiUrl(options: ResolveUpstreamApiUrlOptions = {}
     return fromEnv;
   }
 
+  // const fromDevPort = upstreamFromDevApiPort();
+  // if (fromDevPort) {
+  //   return fromDevPort;
+  // }
+
   const desktopRoot =
     options.desktopRoot ?? path.join(__dirname, '..');
 
   const fromPackageEnv = readPackageEnvUpstream(desktopRoot)?.trim();
   if (fromPackageEnv) {
     return fromPackageEnv;
-  }
-
-  const fromDevPort = upstreamFromDevApiPort();
-  if (fromDevPort) {
-    return fromDevPort;
   }
 
   if (options.packagedResourcesPath) {

@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { TextMessage as TextMessage } from './TextMessage';
 
 const meta: Meta<typeof TextMessage> = {

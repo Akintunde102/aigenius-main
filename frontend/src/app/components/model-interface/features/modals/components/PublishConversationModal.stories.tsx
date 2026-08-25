@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { PublishConversationModal as PublishConversationModal } from './PublishConversationModal';
 
 const meta: Meta<typeof PublishConversationModal> = {

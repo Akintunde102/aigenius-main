@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { AttachmentPreview as AttachmentPreview } from './AttachmentPreview';
 
 const meta: Meta<typeof AttachmentPreview> = {

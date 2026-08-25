@@ -14,15 +14,22 @@ import {
     clearWalletTopUpReturnState,
     clearPendingPaymentStorage,
     readWalletTopUpReturnState,
+    resolveWalletPaymentReference,
     resolveWalletPaymentReturnTarget,
     saveWalletTopUpResultState,
 } from '@/lib/wallet-payment-return';
-import { reconcilePaymentWithBackend, type WalletPaymentVerification } from '@/lib/wallet-pending-payment-poll';
+import {
+    markPendingWalletCheckoutStarted,
+    reconcilePaymentWithBackend,
+    type WalletPaymentVerification,
+} from '@/lib/wallet-pending-payment-poll';
 import { LandingAmbientBackground } from '@/app/components/ui';
 import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
 import { cn } from '@/lib/utils';
 
 type VerifyPaymentResponse = WalletPaymentVerification;
+
+type StatusTone = 'loading' | 'success' | 'confirming' | 'failed';
 
 type ServerCallEnvelope<T> = {
     dataReturned: T;
@@ -30,63 +37,23 @@ type ServerCallEnvelope<T> = {
 
 const VERIFY_TRIGGER_KEY_PREFIX = 'aigenius:payment-verify-triggered:';
 
-type StatusTone = 'loading' | 'success' | 'confirming' | 'failed';
-
-const TONE_GLOW: Record<StatusTone, string> = {
-    loading: 'from-cyan-500/[0.14] via-transparent to-emerald-500/[0.10]',
-    success: 'from-emerald-500/[0.14] via-transparent to-cyan-500/[0.10]',
-    confirming: 'from-amber-500/[0.14] via-transparent to-cyan-500/[0.10]',
-    failed: 'from-red-500/[0.14] via-transparent to-cyan-500/[0.10]',
-};
-
-const TONE_HAIRLINE: Record<StatusTone, string> = {
-    loading: 'via-cyan-400/60',
-    success: 'via-emerald-400/60',
-    confirming: 'via-amber-400/60',
-    failed: 'via-red-400/60',
-};
-
-const PRIMARY_BUTTON =
-    'inline-flex items-center justify-center rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 active:scale-[0.99]';
-
 function StatusCard({ tone, children }: { tone: StatusTone; children: React.ReactNode }) {
     return (
-        <div className="relative mx-auto w-full max-w-md">
-            <div
-                aria-hidden
-                className={cn('absolute -inset-6 rounded-[2rem] bg-gradient-to-r blur-2xl', TONE_GLOW[tone])}
-            />
-            <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-950 px-8 py-10 text-center shadow-2xl shadow-black/50">
-                <div
-                    aria-hidden
-                    className={cn(
-                        'absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent to-transparent',
-                        TONE_HAIRLINE[tone],
-                    )}
-                />
-                <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.04] to-transparent"
-                />
-                <div className="relative">{children}</div>
-            </div>
+        <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            textAlign: "center"
+        }}>
+            {children}
         </div>
     );
 }
 
 function StatusShell({ children }: { children: React.ReactNode }) {
-    const reduce = useReducedMotion();
     return (
-        <div className="relative flex w-full flex-1 flex-col items-center justify-center px-5 py-16 sm:px-8">
-            <LandingAmbientBackground />
-            <motion.div
-                initial={reduce ? undefined : { opacity: 0, y: 16 }}
-                animate={reduce ? undefined : { opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className="relative z-10 w-full"
-            >
-                {children}
-            </motion.div>
+        <div className="content-centered">
+            {children}
         </div>
     );
 }
@@ -98,43 +65,46 @@ function StatusIcon({
     tone: StatusTone;
     children: React.ReactNode;
 }) {
-    const toneClass =
-        tone === 'success'
-            ? 'bg-emerald-500/10 text-emerald-400 shadow-[0_0_40px_-8px_rgba(16,185,129,0.35)]'
-            : tone === 'confirming'
-              ? 'bg-amber-500/10 text-amber-400 shadow-[0_0_40px_-8px_rgba(245,158,11,0.3)]'
-              : tone === 'failed'
-                ? 'bg-red-500/10 text-red-400 shadow-[0_0_40px_-8px_rgba(248,113,113,0.3)]'
-                : 'bg-cyan-500/10 text-cyan-400';
+    const toneColors: Record<StatusTone, { border: string; bg: string; color: string }> = {
+        loading: { border: "rgba(6, 182, 212, 0.2)", bg: "rgba(6, 182, 212, 0.1)", color: "#06b6d4" },
+        success: { border: "rgba(16, 185, 129, 0.2)", bg: "rgba(16, 185, 129, 0.1)", color: "#10b981" },
+        confirming: { border: "rgba(245, 158, 11, 0.2)", bg: "rgba(245, 158, 11, 0.1)", color: "#f59e0b" },
+        failed: { border: "rgba(244, 63, 94, 0.2)", bg: "rgba(244, 63, 94, 0.1)", color: "#f43f5e" }
+    };
+    const colors = toneColors[tone];
 
     return (
-        <div className="relative mx-auto mb-6 flex h-16 w-16 items-center justify-center">
-            {tone === 'success' ? (
-                <div className="absolute inset-0 animate-ping rounded-full bg-emerald-500/20" aria-hidden />
-            ) : null}
-            <div
-                className={cn(
-                    'relative flex h-16 w-16 items-center justify-center rounded-full',
-                    toneClass,
-                )}
-            >
-                {children}
-            </div>
+        <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "3.5rem",
+            height: "3.5rem",
+            borderRadius: "1rem",
+            border: `1px solid ${colors.border}`,
+            background: colors.bg,
+            color: colors.color,
+            marginBottom: "1.5rem"
+        }}>
+            {children}
         </div>
     );
 }
+
+const PRIMARY_BUTTON =
+    'mt-8 inline-flex items-center justify-center rounded-xl bg-[#18181b] px-6 py-3 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99] border-none cursor-pointer';
 
 export function PaymentCallbackLoadingView() {
     return (
         <StatusShell>
             <StatusCard tone="loading">
                 <StatusIcon tone="loading">
-                    <Loader2 className="h-8 w-8 animate-spin" aria-hidden />
+                    <Loader2 size={32} className="animate-spin" aria-hidden />
                 </StatusIcon>
-                <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                <h1 className="headline">
                     Processing payment
                 </h1>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                <p className="subtext">
                     Verifying your transaction with your payment provider…
                 </p>
             </StatusCard>
@@ -157,13 +127,6 @@ class PaymentFailedError extends Error {
         super(message);
         this.name = 'PaymentFailedError';
     }
-}
-
-function resolvePaymentReference(searchParams: URLSearchParams): string | null {
-    const reference = searchParams.get('reference')
-        || searchParams.get('trxref')
-        || searchParams.get('transaction_reference');
-    return reference?.trim() || null;
 }
 
 function resolveMissingReferenceMessage(): string {
@@ -224,7 +187,10 @@ export default function PaymentCallbackClient() {
         async function verifyAndReturn() {
             syncAuthSessionCookiesFromStorage();
 
-            const reference = resolvePaymentReference(searchParams);
+            const reference = resolveWalletPaymentReference(searchParams);
+            if (reference) {
+                markPendingWalletCheckoutStarted(reference);
+            }
             const returnState = readWalletTopUpReturnState();
             const returnTo = resolveWalletPaymentReturnTarget(
                 searchParams.get('returnTo') || returnState?.returnTo,
@@ -251,6 +217,19 @@ export default function PaymentCallbackClient() {
             // verify APIs — layout/getUserDetails or verify would trigger /login redirect.
             if (shouldDeferVerifyToApp) {
                 if (!reference) {
+                    if (isDesktopHandoff) {
+                        console.log(
+                            'PaymentCallback: Desktop handoff without reference — app will confirm payment.',
+                        );
+                        if (mounted) {
+                            setStatus('confirming');
+                            toast.success(
+                                'Payment received. Return to AIGenius to see your updated balance.',
+                            );
+                        }
+                        return;
+                    }
+
                     saveWalletTopUpResultState({
                         status: 'failed',
                         reference: null,
@@ -476,18 +455,18 @@ export default function PaymentCallbackClient() {
             <StatusShell>
                 <StatusCard tone="success">
                     <StatusIcon tone="success">
-                        <CheckCircle2 className="h-8 w-8" aria-hidden />
+                        <CheckCircle2 size={32} aria-hidden />
                     </StatusIcon>
-                    <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                    <h1 className="headline">
                         Payment successful
                     </h1>
-                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                    <p className="subtext">
                         {searchParams.get('desktop') === '1'
                             ? 'Return to the app — your wallet will update automatically.'
                             : 'Your wallet has been verified and updated.'}
                     </p>
                     {searchParams.get('desktop') !== '1' ? (
-                        <p className="mt-4 text-sm text-zinc-500">Returning you to your wallet…</p>
+                        <p className="subtext" style={{ marginTop: '0.5rem' }}>Returning you to your wallet…</p>
                     ) : null}
                 </StatusCard>
             </StatusShell>
@@ -505,12 +484,12 @@ export default function PaymentCallbackClient() {
             <StatusShell>
                 <StatusCard tone="confirming">
                     <StatusIcon tone="confirming">
-                        <AlertTriangle className="h-8 w-8" aria-hidden />
+                        <AlertTriangle size={32} aria-hidden />
                     </StatusIcon>
-                    <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                    <h1 className="headline">
                         Confirming payment
                     </h1>
-                    <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+                    <p className="subtext">
                         {isDesktopHandoff
                             ? 'We could not verify your payment in this browser yet. Return to the app — it will confirm your payment and update your wallet automatically.'
                             : 'We could not verify your payment yet. You can wait here or return to your wallet — your balance will update automatically once payment is confirmed.'}
@@ -524,7 +503,7 @@ export default function PaymentCallbackClient() {
                             }
                             window.location.replace(returnTo);
                         }}
-                        className={cn('mt-8', PRIMARY_BUTTON, FOCUS_RING)}
+                        className={PRIMARY_BUTTON}
                     >
                         {isDesktopHandoff ? 'Close this tab' : 'Return to wallet'}
                     </button>
@@ -537,12 +516,12 @@ export default function PaymentCallbackClient() {
         <StatusShell>
             <StatusCard tone="failed">
                 <StatusIcon tone="failed">
-                    <XCircle className="h-8 w-8" aria-hidden />
+                    <XCircle size={32} aria-hidden />
                 </StatusIcon>
-                <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                <h1 className="headline">
                     Payment failed
                 </h1>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                <p className="subtext">
                     There was an issue processing your payment.
                 </p>
                 <button
@@ -550,7 +529,7 @@ export default function PaymentCallbackClient() {
                     onClick={() => {
                         window.location.href = '/';
                     }}
-                    className={cn('mt-8', PRIMARY_BUTTON, FOCUS_RING)}
+                    className={PRIMARY_BUTTON}
                 >
                     Return to app
                 </button>

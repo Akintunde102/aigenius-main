@@ -34,6 +34,7 @@ import { useBrowserDetection } from "./shared/hooks";
 import AddToWallet from "../modals/AddToWallet";
 import { WelcomeSignupCreditsModal } from "../modals/WelcomeSignupCreditsModal";
 import useTokenHandler from "@/lib/hooks/useTokenHandler";
+import { usePendingWalletPayment } from "@/lib/hooks/usePendingWalletPayment";
 import { useWalletTopUpReturn } from "@/lib/hooks/useWalletTopUpReturn";
 import { useWalletManagement } from "./features/chat/hooks";
 import { useKeyboardShortcuts } from "./shared/hooks";
@@ -42,7 +43,6 @@ import { ERROR_MESSAGES } from "./features/chat/hooks/chatOperations.constants";
 import { clearAuthSession } from "@/lib/utils/auth-session";
 import type { ChatContainerHandle } from "./features/chat/components/ChatContainer";
 import { buildConversationMessageSignature } from "@/lib/utils/conversationScrollMemory";
-import { useModelInterfacePersonality } from "./hooks/useModelInterfacePersonality";
 import { useModelInterfaceAttachments } from "./hooks/useModelInterfaceAttachments";
 import { AttachmentSourcePickerModal } from "./features/file-upload/components/AttachmentSourcePickerModal";
 import { AttachmentLibraryModal } from "./features/file-upload/components/AttachmentLibraryModal";
@@ -60,6 +60,7 @@ import { chatCanvasSurfaceStyle } from "./chatSurfaceStyle";
 import { workflowShellBgStyle } from "@/app/components/workflows/workflow-info";
 import { FEATURE_FLAGS } from "@/lib/config/features";
 import { openWorkflow } from "@/lib/utils/open-workflow";
+import toast from "react-hot-toast";
 import { ChatShellLoadingSkeleton } from "@/app/components/ChatShellLoadingSkeleton";
 import { useModelInterfaceSidebarActions } from "./hooks/useModelInterfaceSidebarActions";
 import { useModelInterfaceLifecycle } from "./hooks/useModelInterfaceLifecycle";
@@ -141,6 +142,12 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     setSelectedPersonalityName,
     selectedPersonalityIconUrl,
     setSelectedPersonalityIconUrl,
+    selectedPersonalityId,
+    setSelectedPersonalityId,
+    selectedSystemPrompt,
+    setSelectedSystemPrompt,
+    applySessionPersonalityState,
+    clearConversationPersonality,
   } = personalityState;
   const { input, setInput, composerSessionKey, commitComposerDraftForKey, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, assistantResponse, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, persistSessionMessages, isPassiveSyncBlocked, showTyping, setShowTyping, showScrollToBottom, queuedMessages, handleQueueMessage, removeQueuedMessage } = chatState;
   const { loading, setLoading, error, setError, streaming, setStreaming, streamingEnabled, setStreamingEnabled, imagePreview, setImagePreview, uploading, setUploading, uploadProgress, setUploadProgress, dragActive, setDragActive, showCosts, showNaira, showSaved, setShowSaved, setTotalSpent, optimizationMessage } = uiState;
@@ -193,22 +200,12 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     refreshWalletFromBackend,
   });
 
-  const {
-    selectedPersonalityId,
-    setSelectedPersonalityId,
-    selectedSystemPrompt,
-    setSelectedSystemPrompt,
-    applySessionPersonalityState,
-    clearConversationPersonality,
-  } = useModelInterfacePersonality({
-    currentSessionId,
-    chatHistory,
-    personalities,
-    setSelectedPersonalityName,
-    setSelectedPersonalityIconUrl,
-    setChatHistory,
-    setChatForSession,
-  });
+  usePendingWalletPayment(
+    (amountInNaira, newWalletBalance) => {
+      toast.success("Payment verified. Your wallet has been updated.");
+      void handlePaymentSuccess(amountInNaira, newWalletBalance);
+    },
+  );
 
   const {
     uploadedFiles,

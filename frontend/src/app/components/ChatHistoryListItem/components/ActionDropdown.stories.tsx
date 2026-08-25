@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { ActionDropdown as ActionDropdown } from './ActionDropdown';
 
 const meta: Meta<typeof ActionDropdown> = {

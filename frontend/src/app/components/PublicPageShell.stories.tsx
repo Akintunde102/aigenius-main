@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { PAGE_BG as PAGE_BG } from './PublicPageShell';
 
 const meta: Meta<typeof PAGE_BG> = {

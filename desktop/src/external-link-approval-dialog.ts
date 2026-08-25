@@ -2,6 +2,7 @@ import { BrowserWindow, ipcMain, app } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { approvalDialogWindowChrome } from './approval-dialog-window-chrome';
+import { auxiliaryBrowserWindowOptions, showAuxiliaryWindowWhenReady } from './secondary-browser-window';
 
 export type ExternalLinkApprovalPayload = {
   url: string;
@@ -34,25 +35,21 @@ export function showExternalLinkApprovalDialog(
   return new Promise((resolve) => {
     let settled = false;
 
-    const win = new BrowserWindow({
+    const win = new BrowserWindow(auxiliaryBrowserWindowOptions(parent, {
       ...approvalDialogWindowChrome(),
-      parent: parent ?? undefined,
-      modal: Boolean(parent),
       title: 'Open link',
       width: 520,
       height: preferredHeight,
       minWidth: 400,
       minHeight: 240,
-      show: false,
       backgroundColor: '#0f1114',
-      autoHideMenuBar: true,
       webPreferences: {
         preload: path.join(__dirname, 'external-link-approval-preload.js'),
         contextIsolation: true,
         sandbox: true,
         nodeIntegration: false,
       },
-    });
+    }));
 
     const settle = (value: boolean) => {
       if (settled) {
@@ -98,7 +95,7 @@ export function showExternalLinkApprovalDialog(
 
     void win.loadFile(htmlPath).then(() => {
       win.center();
-      win.show();
+      showAuxiliaryWindowWhenReady(win);
     });
   });
 }

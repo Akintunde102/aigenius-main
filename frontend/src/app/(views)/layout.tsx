@@ -31,10 +31,17 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get("token");
       if (token) {
-        const desktopCallback = sessionStorage.getItem("desktop_callback");
+        // Only hand off to the desktop loopback when this redirect is explicitly for the shell.
+        // A stale `desktop_callback` from an earlier "Sign in with Browser" attempt must not
+        // steal a normal web OAuth `?token=` landing on `/`.
+        const isDesktopHandoff = urlParams.get("callback_client") === "desktop";
+        const desktopCallback = isDesktopHandoff
+          ? sessionStorage.getItem("desktop_callback")
+          : null;
         if (desktopCallback) {
           sessionStorage.removeItem("desktop_callback");
-          window.location.href = `${desktopCallback}?token=${token}`;
+          const joiner = desktopCallback.includes("?") ? "&" : "?";
+          window.location.href = `${desktopCallback}${joiner}token=${encodeURIComponent(token)}`;
           return;
         }
         return;

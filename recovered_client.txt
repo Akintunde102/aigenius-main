@@ -1,0 +1,79 @@
+Created At: 2026-08-24T20:25:28+01:00
+Completed At: 2026-08-24T20:25:28+01:00
+File Path: `file:///Users/clinton/Development/Nobox/aigenius-platform/client/frontend/src/app/components/PublicPageShellClient.tsx`
+Total Lines: 70
+Total Bytes: 2434
+Showing lines 1 to 70
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: "use client";
+2: 
+3: import Link from "next/link";
+4: import { usePathname, useRouter } from "next/navigation";
+5: import { useEffect } from "react";
+6: import { prefetchPublicRoutes } from "@/lib/public-route-prefetch";
+7: import { scheduleChatShellPrefetch } from "@/lib/chat-shell-prefetch";
+8: import { hasAuthSession } from "@/lib/utils/auth-session";
+9: 
+10: function PrefetchPublicNavRoutes() {
+11:   const router = useRouter();
+12:   useEffect(() => {
+13:     prefetchPublicRoutes(router);
+14:     if (hasAuthSession()) {
+15:       scheduleChatShellPrefetch(router);
+16:     }
+17:   }, [router]);
+18:   return null;
+19: }
+20: 
+21: export function ThemeInitializer() {
+22:   useEffect(() => {
+23:     const html = document.documentElement;
+24:     const stored = localStorage.getItem("aigenius-theme");
+25:     if (stored === "light" || stored === "dark") {
+26:       html.setAttribute("data-theme", stored);
+27:     } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+28:       html.setAttribute("data-theme", "light");
+29:     } else {
+30:       html.setAttribute("data-theme", "dark");
+31:     }
+32:   }, []);
+33:   return null;
+34: }
+35: 
+36: export function PublicHeader() {
+37:   const toggleTheme = () => {
+38:     const html = document.documentElement;
+39:     const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+40:     html.setAttribute("data-theme", next);
+41:     localStorage.setItem("aigenius-theme", next);
+42:   };
+43: 
+44:   return (
+45:     <>
+46:       <PrefetchPublicNavRoutes />
+47:       <nav className="nav">
+48:         <Link href="/" className="nav-logo">
+49:           <span className="nav-logo-mark">
+50:             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden={true}>
+51:               <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+52:             </svg>
+53:           </span>
+54:           <span className="nav-logo-text">AIGenius</span>
+55:         </Link>
+56: 
+57:         <div className="nav-links">
+58:           <Link prefetch href="/docs">About</Link>
+59:           <Link prefetch href="/login" className="nav-signin">Sign in</Link>
+60:           <button type="button" className="theme-toggle" aria-label="Toggle theme" onClick={toggleTheme}>
+61:             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" aria-hidden={true}>
+62:               <circle cx="12" cy="12" r="9" /><line x1="12" y1="3" x2="12" y2="21" />
+63:             </svg>
+64:           </button>
+65:         </div>
+66:       </nav>
+67:     </>
+68:   );
+69: }
+70: 
+The above content shows the entire, complete file contents of the requested file.
+

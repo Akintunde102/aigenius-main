@@ -11,6 +11,7 @@ import {
   disconnectLinkedIn,
 } from '@/lib/calls/integrations';
 import { isIntegrationCallbackOriginTrusted } from '@/lib/oauth-callback-origin';
+import { FEATURE_FLAGS } from '@/lib/config/features';
 import { FiMail, FiX, FiInfo, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { SiLinkedin } from 'react-icons/si';
 
@@ -22,6 +23,10 @@ const GMAIL_CONNECT_RESULT_KEY = 'gmail_connect_result';
 const LINKEDIN_CONNECT_RESULT_KEY = 'linkedin_connect_result';
 
 export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose }) => {
+  if (!FEATURE_FLAGS.INTEGRATIONS) {
+    return null;
+  }
+
   const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
   const [linkedinConnected, setLinkedinConnected] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);

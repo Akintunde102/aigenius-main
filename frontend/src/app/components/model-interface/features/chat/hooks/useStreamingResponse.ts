@@ -26,7 +26,7 @@ import {
 } from './contentProcessing.utils';
 import { addOrMergeSessionToLocalHistory } from '@/lib/utils/modelChatConversationUtils';
 import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interface/conversation/streamTranscriptGuard';
-import { getDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
+import { getDraftConversationEpoch, setActiveRouteConversationTarget } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { resolveRequestConversationId } from './requestConversationId.utils';
 import { notifyDesktopChatCompletionIfBackground } from '@/lib/utils/desktop-chat-completion-notify';
 import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
@@ -48,9 +48,11 @@ export function useStreamingResponse({
     updateSessionMessages,
     handleStreamResult,
     handleSendError,
+
     selectedPersonalityName,
     selectedPersonalityIconUrl,
     isAudioModeRef,
+    onDraftMaterialized,
 }: UseStreamingResponseProps) {
     const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
 
@@ -114,11 +116,12 @@ export function useStreamingResponse({
         const streamingMsg = createChatMessage(
             'assistant',
             processedContent,
-            selectedModel.id,
-            selectedModel.name || selectedModel.id,
+            selectedModel?.id || '',
+            selectedModel?.name || selectedModel?.id || '',
             undefined,
             undefined,
             undefined,
+
             selectedPersonalityName,
             selectedPersonalityIconUrl,
             undefined,
@@ -139,7 +142,8 @@ export function useStreamingResponse({
         }
 
         return streamingMsg;
-    }, [selectedModel, selectedPersonalityName, selectedPersonalityIconUrl, setChatForSession]);
+    }, [selectedModel?.id, selectedModel?.name, selectedPersonalityName, selectedPersonalityIconUrl, setChatForSession]);
+
 
     const updateStreamingMessage = useCallback((
         processedContent: ProcessedContent,
@@ -174,7 +178,7 @@ export function useStreamingResponse({
         // null for new chats — used for guard comparisons and API conversationId.
         const streamingSessionId = resolveRequestConversationId(requestOverrides, currentSessionId);
         // Always a string — used as the chatMap slot key.
-        const chatMapKey = streamingSessionId ?? DRAFT_SESSION_KEY;
+        let chatMapKey = streamingSessionId ?? DRAFT_SESSION_KEY;
 
         const existingController = abortControllersRef.current.get(chatMapKey);
         if (existingController) {
@@ -228,7 +232,10 @@ export function useStreamingResponse({
             const scopeId = getChatProjectScopeId();
             const title = deriveChatSessionTitle(sessionMessages[0]?.content);
             if (streamingSessionId === null) {
+                chatMapKey = conversationId;
+                setActiveRouteConversationTarget(conversationId);
                 setChatForSession(conversationId, sessionMessages);
+                onDraftMaterialized?.(conversationId);
             }
             updateSessionMessages?.(conversationId, sessionMessages, {
                 modelId: modelForRequest.id,
@@ -331,6 +338,7 @@ export function useStreamingResponse({
                             undefined,
                             undefined,
                             undefined,
+
                             selectedPersonalityName,
                             selectedPersonalityIconUrl,
                             undefined,

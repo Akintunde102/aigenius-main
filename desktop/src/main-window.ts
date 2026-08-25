@@ -185,6 +185,12 @@ export function createWindow(relativePathOrOptions?: string | CreateWindowOption
   attachChatCompletionWindowFocusHandlers(win);
   attachShellPageReadyHandler(win);
 
+  win.once('ready-to-show', () => {
+    if (!win.isDestroyed()) {
+      win.show();
+    }
+  });
+
   if (!app.isPackaged) {
     win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
       console.error(

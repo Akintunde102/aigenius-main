@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import InputNumber from './number';
 
 const meta: Meta<typeof InputNumber> = {

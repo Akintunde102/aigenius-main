@@ -62,6 +62,7 @@ import {
 } from './main-backend-lifecycle';
 import { createWindow, getWindowIcon, navigateMainShellToApp, resolveWindowIconPath } from './main-window';
 import { registerMainIpcHandlers } from './main-ipc-handlers';
+import { registerSecondaryBrowserWindowPolicy } from './secondary-browser-window';
 import { installDesktopUiProtocolHandler } from './desktop-ui-protocol';
 
 function showInotifyWarningAsync(): void {
@@ -95,6 +96,7 @@ if (!gotLock) {
   app.quit();
 } else {
   configureDesktopNotificationBranding();
+  registerSecondaryBrowserWindowPolicy(app);
 
   if (DESKTOP_BRIDGE_DEBUG) {
     console.info('[aigenius-desktop][bridge-debug] main: got single-instance lock');

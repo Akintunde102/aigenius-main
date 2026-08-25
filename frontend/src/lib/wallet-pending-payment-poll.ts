@@ -4,6 +4,7 @@ import {
   clearPendingPaymentStorage,
   WALLET_PENDING_PAYMENT_KEY,
 } from '@/lib/wallet-payment-return';
+import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
 import { serverCall } from '@/servercall/init';
 import { serverCalls } from '@/servercall/store';
 
@@ -89,6 +90,7 @@ export function subscribePendingWalletPaymentPoll(
   };
 }
 
+
 export function readPendingPaymentFromStorage(): PendingPaymentRecord | null {
   if (typeof window === 'undefined') return null;
 
@@ -115,6 +117,23 @@ export function readPendingPaymentFromStorage(): PendingPaymentRecord | null {
 
 export function hasPendingWalletPayment(): boolean {
   return readPendingPaymentFromStorage() !== null;
+}
+
+/**
+ * Payaza web defers verify until the callback page marks checkout started.
+ * Desktop opens Payaza in the system browser — that flag lives in browser storage,
+ * not the Electron app, so treat desktop as ready once checkout was opened.
+ */
+function isPayazaWalletCheckoutReadyForVerify(
+  pending: PendingPaymentRecord | null,
+): boolean {
+  if (!pending || pending.provider !== 'payaza') {
+    return true;
+  }
+  if (pending.checkoutStarted === true) {
+    return true;
+  }
+  return isAigeniusDesktopRuntime();
 }
 
 export function markPendingWalletCheckoutStarted(reference: string): void {
@@ -205,7 +224,7 @@ async function resolvePendingPayment(
   amountInNaira: string,
 ): Promise<'success' | 'failed' | 'pending'> {
   const pending = readPendingPaymentFromStorage();
-  const allowProviderVerify = pending?.provider !== 'payaza' || pending?.checkoutStarted === true;
+  const allowProviderVerify = isPayazaWalletCheckoutReadyForVerify(pending);
   const verification = await reconcilePaymentWithBackend(reference, { allowProviderVerify });
 
   if (!verification?.status) {
@@ -240,15 +259,24 @@ export function startPendingWalletPaymentPoll(
   const generation = ++pollGeneration;
 
   void (async () => {
-    const immediate = await resolvePendingPayment(reference, amountInNaira);
-    if (generation !== pollGeneration || activeReference !== reference) return;
+    const pending = readPendingPaymentFromStorage();
+    const isPayazaAwaitingCheckout =
+      pending?.provider === 'payaza'
+      && !isPayazaWalletCheckoutReadyForVerify(pending);
 
-    if (immediate === 'success' || immediate === 'failed') {
-      if (activeReference === reference) {
-        activeReference = null;
+    if (!isPayazaAwaitingCheckout) {
+      const immediate = await resolvePendingPayment(reference, amountInNaira);
+      if (generation !== pollGeneration || activeReference !== reference) return;
+
+      if (immediate === 'success' || immediate === 'failed') {
+        if (activeReference === reference) {
+          activeReference = null;
+        }
+        return;
       }
-      return;
     }
+
+    if (generation !== pollGeneration || activeReference !== reference) return;
 
     while (generation === pollGeneration && activeReference === reference) {
       const pending = readPendingPaymentFromStorage();

@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { ThinkingDisplay as ThinkingDisplay } from './ThinkingDisplay';
 
 const meta: Meta<typeof ThinkingDisplay> = {

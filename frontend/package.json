@@ -91,7 +91,6 @@
     "nobox-client": "^1.14.0",
     "node-localstorage": "^3.0.5",
     "onnxruntime-web": "1.22.0",
-    "payaza-web-sdk": "^1.0.8",
     "postcss": "8.4.23",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

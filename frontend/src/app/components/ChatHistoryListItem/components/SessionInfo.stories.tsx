@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { SessionInfo as SessionInfo } from './SessionInfo';
 
 const meta: Meta<typeof SessionInfo> = {

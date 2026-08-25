@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { useState } from 'react';
 import { ModelSelectionFiltersNew } from './ModelSelectionFiltersNew';
 import type { ModelOrderBy, ModelOrderDir } from '@/app/components/model-interface/shared/utils';

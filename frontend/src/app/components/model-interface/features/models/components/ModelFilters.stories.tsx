@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { ModelFilters as ModelFilters } from './ModelFilters';
 
 const meta: Meta<typeof ModelFilters> = {

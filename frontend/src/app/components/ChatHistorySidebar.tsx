@@ -10,6 +10,7 @@ import { CodeProjectInfoModal } from "./ChatHistorySidebar/CodeProjectInfoModal"
 import { useCodeProjects } from "@/lib/hooks/useCodeProjects";
 import { applyChatProjectScopeFromSession, resolveSidebarActiveProjectId } from "@/lib/code-projects/apply-chat-project-scope";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
+import { FEATURE_FLAGS } from "@/lib/config/features";
 import WalletModal from "./ChatHistorySidebar/WalletModal";
 import IntegrationsModal from "./ChatHistorySidebar/IntegrationsModal";
 import ToolPermissionsModal from "./ChatHistorySidebar/ToolPermissionsModal";
@@ -279,7 +280,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
 
     const modals = (
         <>
-            {showIntegrationsModal && (
+            {FEATURE_FLAGS.INTEGRATIONS && showIntegrationsModal && (
                 <IntegrationsModal onClose={() => setShowIntegrationsModal(false)} />
             )}
 
@@ -376,7 +377,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 onOpenMyFiles={() => setShowMyFilesModal(true)}
                 onOpenWorkflows={onOpenWorkflows}
                 onOpenNotifications={onOpenNotifications}
-                onIntegrations={() => setShowIntegrationsModal(true)}
+                onIntegrations={FEATURE_FLAGS.INTEGRATIONS ? () => setShowIntegrationsModal(true) : undefined}
                 onOpenToolPermissions={() => setShowToolPermissionsModal(true)}
                 onGiveCredits={isMaster ? () => setShowGrantCreditsModal(true) : undefined}
                 onLogout={onLogout}
