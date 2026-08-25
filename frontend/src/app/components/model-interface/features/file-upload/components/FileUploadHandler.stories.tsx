@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { FileUploadHandler as FileUploadHandler } from './FileUploadHandler';
 
 const meta: Meta<typeof FileUploadHandler> = {

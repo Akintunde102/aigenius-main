@@ -6,6 +6,7 @@ import {
 } from "@/lib/calls/get-logged-user-details";
 import {
   buildPaymentCallbackUrl,
+  appendWalletPaymentReferenceToCallbackUrl,
   clearPendingPaymentStorage,
   consumeWalletTopUpResultState,
   openWalletPaymentCheckout,
@@ -338,6 +339,11 @@ const AddToWallet = ({
         }
 
         if (paymentResult.status === "failed") {
+          const pending = readPendingPaymentFromStorage();
+          if (pending?.reference) {
+            resumePendingWalletPaymentPoll();
+            return;
+          }
           toast.error(
             paymentResult.message || "Payment verification failed. Please try again.",
           );
@@ -429,6 +435,7 @@ const AddToWallet = ({
         }
 
         if (reference) {
+          const isDesktop = isAigeniusDesktopRuntime();
           localStorage.setItem(
             WALLET_PENDING_PAYMENT_KEY,
             JSON.stringify({
@@ -436,17 +443,24 @@ const AddToWallet = ({
               amountInNaira: credits,
               createdAt: Date.now(),
               provider: "payaza",
-              checkoutStarted: true,
+              // Web: defer verify until Payaza redirects back. Desktop: checkout runs in
+              // the system browser, so the app must poll with checkout considered started.
+              checkoutStarted: isDesktop,
             }),
           );
-          void startPolling(reference, credits);
+          if (isDesktop) {
+            void startPolling(reference, credits);
+          }
         }
 
         setUpdating(false);
+        const redirectUrl = reference
+          ? appendWalletPaymentReferenceToCallbackUrl(paymentCallbackUrl, reference)
+          : paymentCallbackUrl;
         openPayazaHostedWalletCheckout({
           publicKey,
           checkout,
-          redirectUrl: paymentCallbackUrl,
+          redirectUrl,
         });
         if (isAigeniusDesktopRuntime()) {
           toast(
@@ -729,7 +743,8 @@ const AddToWallet = ({
           >
             Minimum top-up: {minTopUpCredits.toLocaleString()} credits ({formatUsdAmount(creditsToUsd(minTopUpCredits))})
           </span>
-          {isPayazaWalletProvider()
+          {process.env.NODE_ENV === "development"
+            && isPayazaWalletProvider()
             && process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY?.includes("PKTEST") ? (
             <p
               className="text-[10px] mt-1 text-center leading-relaxed"

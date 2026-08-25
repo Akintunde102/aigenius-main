@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { ShareUploadAccess as ShareUploadAccess } from './ShareUploadAccess';
 
 const meta: Meta<typeof ShareUploadAccess> = {

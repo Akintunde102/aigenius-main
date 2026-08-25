@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import SidebarLogo from './SidebarLogo';
 
 const meta: Meta<typeof SidebarLogo> = {

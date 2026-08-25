@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+
 import { generateRandomProjectName } from './random-project-name';
 
 describe('generateRandomProjectName', () => {

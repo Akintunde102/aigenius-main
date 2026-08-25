@@ -11,6 +11,36 @@ const ELECTRON_NODE_ENV_KEYS = new Set([
   'ELECTRON_FORCE_IS_PACKAGED',
 ]);
 
+/** Spawning via the Electron binary on macOS registers a second generic Dock icon. */
+function resolveNodeSpawnBinary(): string {
+  if (process.platform !== 'darwin') {
+    return process.execPath;
+  }
+
+  const fromEnv = process.env.AIGENIUS_NODE_BINARY?.trim();
+  const candidates = [
+    fromEnv,
+    '/opt/homebrew/bin/node',
+    '/usr/local/bin/node',
+    '/usr/bin/node',
+  ].filter((value): value is string => Boolean(value));
+
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  console.warn(
+    '[aigenius-desktop] System Node.js not found; falling back to Electron binary for child process (may show a second Dock icon on macOS). Install Node or set AIGENIUS_NODE_BINARY.',
+  );
+  return process.execPath;
+}
+
 /** Utility processes must not inherit Electron-as-Node flags (causes "bad option: --type=utility"). */
 export function sanitizeUtilityProcessEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   const out: Record<string, string> = {};
@@ -57,7 +87,10 @@ function spawnAsNode(
   opts: { cwd: string; env: NodeJS.ProcessEnv; logPath?: string },
 ): ChildProcess {
   const env = { ...opts.env };
-  env.ELECTRON_RUN_AS_NODE = '1';
+  const binary = resolveNodeSpawnBinary();
+  if (binary === process.execPath) {
+    env.ELECTRON_RUN_AS_NODE = '1';
+  }
 
   let stdioConfig: 'inherit' | ['ignore', 'pipe', 'pipe'] = 'inherit';
   let outStream: fs.WriteStream | null = null;
@@ -73,7 +106,7 @@ function spawnAsNode(
     }
   }
 
-  const child = spawn(process.execPath, [scriptPath], {
+  const child = spawn(binary, [scriptPath], {
     cwd: opts.cwd,
     env,
     stdio: stdioConfig,
@@ -144,11 +177,17 @@ export function spawnDesktopChild(
     try {
       return forkUtilityProcess(scriptPath, opts);
     } catch (err) {
-      console.warn(
-        `[aigenius-desktop] utilityProcess.fork failed for ${opts.serviceName}; falling back to spawn:`,
+      console.error(
+        `[aigenius-desktop] utilityProcess.fork failed for ${opts.serviceName}:`,
         err,
       );
     }
+  }
+
+  if (process.platform === 'darwin') {
+    console.warn(
+      `[aigenius-desktop] Starting ${opts.serviceName} via Node spawn on macOS (utility process unavailable).`,
+    );
   }
 
   return spawnAsNode(scriptPath, opts);

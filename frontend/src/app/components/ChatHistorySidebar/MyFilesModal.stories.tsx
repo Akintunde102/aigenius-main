@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import MyFilesModal from './MyFilesModal';
 
 const meta: Meta<typeof MyFilesModal> = {

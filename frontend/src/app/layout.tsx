@@ -41,7 +41,7 @@ const Euclid = localFont({
 });
 
 export const metadata = {
-  metadataBase: new URL("https://aigenius.chat"),
+  metadataBase: new URL("https://aigenius.noboxlabs.xyz"),
   title: {
     default: "AIGenius — Chat with every AI model, in one workspace",
     template: "%s | AIGenius",
@@ -59,7 +59,7 @@ export const metadata = {
     "AI desktop app",
     "Nobox",
   ],
-  authors: [{ name: "Nobox Labs Limited", url: "https://aigenius.chat" }],
+  authors: [{ name: "Nobox Labs Limited", url: "https://aigenius.noboxlabs.xyz" }],
   creator: "Nobox Labs Limited",
   publisher: "Nobox Labs Limited",
   alternates: {
@@ -68,7 +68,7 @@ export const metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://aigenius.chat",
+    url: "https://aigenius.noboxlabs.xyz",
     title: "AIGenius — Chat with every AI model, in one workspace",
     description:
       "Switch between GPT-4o, Claude 3.5, Gemini 1.5, DeepSeek and more without juggling tabs or subscriptions. Bring files, voice, and code projects. Pay only for what you use.",
@@ -112,23 +112,23 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "Organization",
-      "@id": "https://aigenius.chat/#organization",
+      "@id": "https://aigenius.noboxlabs.xyz/#organization",
       name: "Nobox Labs Limited",
-      url: "https://aigenius.chat",
-      logo: "https://aigenius.chat/logo.png",
+      url: "https://aigenius.noboxlabs.xyz",
+      logo: "https://aigenius.noboxlabs.xyz/logo.png",
       sameAs: ["https://github.com/Akintunde102"],
     },
     {
       "@type": "WebSite",
-      "@id": "https://aigenius.chat/#website",
-      url: "https://aigenius.chat",
+      "@id": "https://aigenius.noboxlabs.xyz/#website",
+      url: "https://aigenius.noboxlabs.xyz",
       name: "AIGenius",
-      publisher: { "@id": "https://aigenius.chat/#organization" },
+      publisher: { "@id": "https://aigenius.noboxlabs.xyz/#organization" },
       description: "Every top AI model in one workspace.",
     },
     {
       "@type": "SoftwareApplication",
-      "@id": "https://aigenius.chat/#software",
+      "@id": "https://aigenius.noboxlabs.xyz/#software",
       name: "AIGenius",
       applicationCategory: "ProductivityApplication",
       operatingSystem: "Web, macOS, Windows, Linux",

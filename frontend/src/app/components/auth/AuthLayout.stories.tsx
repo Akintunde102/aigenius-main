@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { AuthLayout as AuthLayout } from './AuthLayout';
 
 const meta: Meta<typeof AuthLayout> = {

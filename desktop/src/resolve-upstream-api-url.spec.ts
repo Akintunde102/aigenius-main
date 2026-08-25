@@ -31,6 +31,16 @@ describe('resolveUpstreamApiUrl', () => {
     expect(resolveUpstreamApiUrl({ desktopRoot: dir })).toBe('http://127.0.0.1:28000');
   });
 
+  it('prefers Tilt dev port over desktop/package.env', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aigenius-upstream-'));
+    fs.writeFileSync(
+      path.join(dir, 'package.env'),
+      'AIGENIUS_UPSTREAM_API_URL=https://api.example.com\n',
+    );
+    process.env.AIGENIUS_API_PORT = '28000';
+    expect(resolveUpstreamApiUrl({ desktopRoot: dir })).toBe('http://127.0.0.1:28000');
+  });
+
   it('builds URL from AIGENIUS_API_PORT (Tilt)', () => {
     process.env.AIGENIUS_API_PORT = '28000';
     expect(resolveUpstreamApiUrl({ desktopRoot: '/nonexistent' })).toBe('http://127.0.0.1:28000');

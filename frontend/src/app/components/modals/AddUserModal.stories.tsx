@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { AddUserModal as AddUserModal } from './AddUserModal';
 
 const meta: Meta<typeof AddUserModal> = {

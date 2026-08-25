@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { BooleanField as BooleanField } from './BooleanInputField';
 
 const meta: Meta<typeof BooleanField> = {

@@ -30,6 +30,7 @@ import { clearWorkflowShellBootstrapCache } from "./workflowsApi";
 import IntegrationsModal from "@/app/components/ChatHistorySidebar/IntegrationsModal";
 import WalletModal from "@/app/components/ChatHistorySidebar/WalletModal";
 import { scheduleWorkflowShellPrefetch } from "@/lib/workflow-shell-prefetch";
+import { FEATURE_FLAGS } from "@/lib/config/features";
 import { WorkflowAddToolsModal } from "./WorkflowAddToolsModal";
 import { WorkflowStepConfigModal } from "./WorkflowStepConfigModal";
 import { useWorkflowsStudioCanvas } from "./useWorkflowsStudioCanvas";
@@ -666,7 +667,7 @@ export default function WorkflowsStudio() {
         execution={configStepExecution}
       />
 
-      {integrationsOpen ? (
+      {FEATURE_FLAGS.INTEGRATIONS && integrationsOpen ? (
         <IntegrationsModal onClose={() => setIntegrationsOpen(false)} />
       ) : null}
 

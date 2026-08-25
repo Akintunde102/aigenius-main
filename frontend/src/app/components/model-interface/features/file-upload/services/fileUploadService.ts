@@ -1,6 +1,7 @@
 import { AxiosProgressEvent, isCancel } from "axios";
 import { authHttp } from "@/lib/api/auth-client";
-import { sendUpload, sendUploadStream } from "@/app/components/file/constants";
+import { gatewayUploadStreamUrl } from "@/lib/api/gateway-upload-paths";
+import { resolveGatewayApiRootUrl } from "@/lib/api/resolve-gateway-api-root";
 import { ChatMessage } from '@/app/components/model-interface/shared/types';
 import { createChatMessage } from '../../chat/hooks';
 import { logApiError } from '@/lib/logger';
@@ -83,7 +84,8 @@ export const customUpload = async ({
         if (conversationId && /^[0-9a-f-]{36}$/i.test(conversationId.trim())) {
             params.set("conversationId", conversationId.trim());
         }
-        const link = `${sendUploadStream}?${params.toString()}`;
+        const apiRoot = await resolveGatewayApiRootUrl();
+        const link = `${gatewayUploadStreamUrl(apiRoot)}?${params.toString()}`;
 
         const response = await authHttp.post(
             link,

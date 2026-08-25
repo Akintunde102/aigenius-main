@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs';
 import { approvalDialogWindowChrome } from './approval-dialog-window-chrome';
+import { auxiliaryBrowserWindowOptions, showAuxiliaryWindowWhenReady } from './secondary-browser-window';
 
 export type ShellApprovalPayload = {
   command: string;
@@ -63,25 +64,21 @@ export function showShellApprovalDialog(
   return new Promise((resolve, reject) => {
     let settled = false;
 
-    const win = new BrowserWindow({
+    const win = new BrowserWindow(auxiliaryBrowserWindowOptions(parent, {
       ...approvalDialogWindowChrome(),
-      parent: parent ?? undefined,
-      modal: Boolean(parent),
       title: 'Local terminal',
       width: 520,
       height: preferredHeight,
       minWidth: 400,
       minHeight: 280,
-      show: false,
       backgroundColor: '#0f1114',
-      autoHideMenuBar: true,
       webPreferences: {
         preload: preloadPath,
         contextIsolation: true,
         sandbox: true,
         nodeIntegration: false,
       },
-    });
+    }));
 
     const settle = (value: boolean) => {
       if (settled) {
@@ -142,9 +139,8 @@ export function showShellApprovalDialog(
       .loadFile(htmlPath)
       .then(() => {
         win.center();
-        win.show();
+        showAuxiliaryWindowWhenReady(win);
         try {
-          win.focus();
           win.moveTop();
         } catch {
           /* focus/moveTop unsupported or flaky on some compositors */

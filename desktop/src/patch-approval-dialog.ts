@@ -4,6 +4,7 @@ import os from 'os';
 import fs from 'fs';
 import type { PatchOp } from './local-apply-patch-types';
 import { approvalDialogWindowChrome } from './approval-dialog-window-chrome';
+import { auxiliaryBrowserWindowOptions, showAuxiliaryWindowWhenReady } from './secondary-browser-window';
 import type { BlastRadiusSummary } from './patch-blast-radius-gate';
 
 function patchApprovalHtmlPath(): string {
@@ -105,25 +106,21 @@ export function showPatchApprovalDialog(
   return new Promise((resolve) => {
     let settled = false;
 
-    const win = new BrowserWindow({
+    const win = new BrowserWindow(auxiliaryBrowserWindowOptions(parent, {
       ...approvalDialogWindowChrome(),
-      parent: parent ?? undefined,
-      modal: Boolean(parent),
       title: windowTitle,
       width: 520,
       height: preferredHeight,
       minWidth: 400,
       minHeight: 320,
-      show: false,
       backgroundColor: '#0f1114',
-      autoHideMenuBar: true,
       webPreferences: {
         preload: path.join(__dirname, 'patch-approval-preload.js'),
         contextIsolation: true,
         sandbox: true,
         nodeIntegration: false,
       },
-    });
+    }));
 
     const settle = (value: boolean) => {
       if (settled) {
@@ -169,7 +166,7 @@ export function showPatchApprovalDialog(
 
     void win.loadFile(htmlPath).then(() => {
       win.center();
-      win.show();
+      showAuxiliaryWindowWhenReady(win);
     });
   });
 }

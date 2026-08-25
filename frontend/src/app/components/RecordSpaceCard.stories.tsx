@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { RecordSpaceCard as RecordSpaceCard } from './RecordSpaceCard';
 
 const meta: Meta<typeof RecordSpaceCard> = {

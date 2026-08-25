@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { PlainTextMessageContent as PlainTextMessageContent } from './PlainTextMessageContent';
 
 const meta: Meta<typeof PlainTextMessageContent> = {

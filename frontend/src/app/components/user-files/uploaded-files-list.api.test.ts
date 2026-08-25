@@ -8,8 +8,12 @@ jest.mock("@/lib/api/auth-client", () => ({
   },
 }));
 
-jest.mock("@/app/components/file/constants", () => ({
-  getUploadedFiles: jest.fn(() => "/uploaded-files"),
+jest.mock("@/lib/api/resolve-gateway-api-root", () => ({
+  resolveGatewayApiBaseCandidates: jest.fn(async () => ["https://api.example.com"]),
+}));
+
+jest.mock("@/lib/api/gateway-upload-paths", () => ({
+  gatewayUploadFilesListUrl: jest.fn(() => "/uploaded-files"),
 }));
 
 const authGet = authHttp.get as jest.MockedFunction<typeof authHttp.get>;

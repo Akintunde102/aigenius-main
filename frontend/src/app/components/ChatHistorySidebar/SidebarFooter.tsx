@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { useTheme } from "@/lib/providers/ThemeProvider";
 import type { ColorMode } from "@/lib/color-mode";
 import { useToolPermissions } from "@/lib/hooks/useToolPermissions";
+import { FEATURE_FLAGS } from "@/lib/config/features";
 
 /** Fixed slot so mixed Feather icons (diagonal link vs square folder) align in the menu column. */
 const MENU_ICON_SLOT =
@@ -319,7 +320,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                     </button>
                                 )}
 
-                                {onOpenWorkflows && (
+                                {FEATURE_FLAGS.WORKFLOWS && onOpenWorkflows && (
                                     <button
                                         type="button"
                                         className={MENU_ROW_BASE}
@@ -336,7 +337,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                     </button>
                                 )}
 
-                                {onOpenNotifications && (
+                                {FEATURE_FLAGS.WORKFLOWS && onOpenNotifications && (
                                     <button
                                         type="button"
                                         className={MENU_ROW_BASE}
@@ -353,7 +354,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                     </button>
                                 )}
 
-                                {onIntegrations && (
+                                {FEATURE_FLAGS.INTEGRATIONS && onIntegrations && (
                                     <button
                                         type="button"
                                         className={MENU_ROW_BASE}

@@ -29,7 +29,7 @@ export default function PrivacyPolicyPage() {
       <p className="text-stone-700 leading-[1.7]">
         This Privacy Policy explains how Nobox Labs Limited (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) collects, uses, and shares
         information when you visit or use <strong className="text-stone-900">AIGenius</strong>, our pay-as-you-go AI chat platform available at{" "}
-        <DocLink href="https://aigenius.chat" external>https://aigenius.chat</DocLink>,
+        <DocLink href="https://aigenius.noboxlabs.xyz" external>https://aigenius.noboxlabs.xyz</DocLink>,
         including the website, web console, API, and related services (collectively, the &quot;Services&quot;).
       </p>
 
@@ -165,7 +165,7 @@ export default function PrivacyPolicyPage() {
       <DocSection id="contact" title="16) Contact">
         <div className="space-y-2 text-stone-700">
           <p className="font-semibold text-stone-900">Nobox Labs Limited</p>
-          <p>Website: <DocLink href="https://aigenius.chat" external>https://aigenius.chat</DocLink></p>
+          <p>Website: <DocLink href="https://aigenius.noboxlabs.xyz" external>https://aigenius.noboxlabs.xyz</DocLink></p>
           <p>Email: <DocLink href="mailto:nobox.hq@gmail.com">nobox.hq@gmail.com</DocLink></p>
         </div>
       </DocSection>

@@ -27,10 +27,12 @@ const ModelInterface = dynamic(importModelInterfaceWithRetry, {
 interface AuthenticatedChatPageProps {
   /** @deprecated Use the URL-aware version. This prop is kept for backwards compatibility only. */
   initialConversationId?: string | null;
+  serverHasSession?: boolean;
 }
 
 export default function AuthenticatedChatPage({
   initialConversationId = null,
+  serverHasSession = false,
 }: AuthenticatedChatPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,6 +53,7 @@ export default function AuthenticatedChatPage({
   const [authReady, setAuthReady] = useState(false);
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(true);
+  const [tokenExchangeError, setTokenExchangeError] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
@@ -67,10 +70,14 @@ export default function AuthenticatedChatPage({
     }
 
     setLoading(true);
+    setTokenExchangeError(null);
     const getAuthConnectionToken = async () => {
       try {
         const ok = await exchangeOAuthAccessTokenForSession(tokenInUrl);
         if (!ok) {
+          setTokenExchangeError(
+            "Sign-in succeeded but this browser could not start your session. Check the API URL in .env.local and try again from /login.",
+          );
           setLoading(false);
           setAuthReady(true);
           return;
@@ -95,6 +102,9 @@ export default function AuthenticatedChatPage({
         window.location.replace(redirectPathRef.current);
       } catch (error) {
         console.error("Error getting auth connection token:", error);
+        setTokenExchangeError(
+          "Sign-in succeeded but this browser could not start your session. Check the API URL in .env.local and try again from /login.",
+        );
         setLoading(false);
         setAuthReady(true);
       }
@@ -116,8 +126,22 @@ export default function AuthenticatedChatPage({
     prefetchPublicRoutes(router);
   }, [token, router]);
 
-  if (tokenInUrl || (routeConversationId && (!authReady || loading))) {
+  if (tokenInUrl || ((!authReady || loading) && (routeConversationId || serverHasSession))) {
     return <ChatShellLoadingSkeleton />;
+  }
+
+  if (tokenExchangeError) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center px-6 text-center">
+        <p className="max-w-md text-sm text-rose-300">{tokenExchangeError}</p>
+        <a
+          href="/login"
+          className="mt-4 text-sm font-medium text-cyan-300 underline underline-offset-4 hover:text-cyan-200"
+        >
+          Back to sign in
+        </a>
+      </div>
+    );
   }
 
   if (token) {

@@ -1,4 +1,4 @@
-﻿import { useCallback, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { ChatMessage } from '@/app/components/model-interface/shared/types';
 import { OpenRouterMessage } from '@/nobox-client/functions/access-model';
 import { ChatCompletionRequestOverrides, UseNonStreamingResponseProps, AccessModelFn } from './chatOperations.types';
@@ -6,7 +6,7 @@ import { DRAFT_SESSION_KEY } from './chatOperations.constants';
 import { createChatMessage, processBackendContent, generateMessageId } from './contentProcessing.utils';
 import { addOrMergeSessionToLocalHistory } from '@/lib/utils/modelChatConversationUtils';
 import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interface/conversation/streamTranscriptGuard';
-import { getDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
+import { getDraftConversationEpoch, setActiveRouteConversationTarget } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { resolveRequestConversationId } from './requestConversationId.utils';
 import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
 import { notifyDesktopChatCompletionIfBackground } from '@/lib/utils/desktop-chat-completion-notify';
@@ -103,7 +103,7 @@ export function useNonStreamingResponse({
                 || requestOverrides?.draftEpoch === undefined
                 || requestOverrides.draftEpoch === getDraftConversationEpoch();
             const ownsView = sameDraftGeneration
-                && shouldApplyStreamToOpenTranscript(requestSessionId, activeViewSessionIdRef.current);
+                && shouldApplyStreamToOpenTranscript(requestSessionId, activeViewSessionIdRef.current, result.conversationId);
 
             const processedContent = processBackendContent(result.content);
 
@@ -135,6 +135,7 @@ export function useNonStreamingResponse({
                 })), assistantMsg];
 
             if (requestSessionId === null && result.conversationId) {
+                setActiveRouteConversationTarget(result.conversationId);
                 const scopeId = getChatProjectScopeId();
                 // Always persist draft completions under the real id so they are visible
                 // in history even when the user has already moved to another chat.
@@ -170,7 +171,7 @@ export function useNonStreamingResponse({
 
                 if (requestSessionId && updateSessionMessages) {
                     updateSessionMessages(requestSessionId, fullMessages, {
-                        modelId: selectedModel.id,
+                        modelId: modelForRequest.id,
                         title: deriveChatSessionTitle(fullMessages[0]?.content),
                     });
                 }
@@ -186,7 +187,7 @@ export function useNonStreamingResponse({
 
             void notifyDesktopChatCompletionIfBackground({
                 body: contentToDisplayText(processedContent),
-                modelName: selectedModel.name || selectedModel.id,
+                modelName: modelForRequest.name || modelForRequest.id,
             });
 
             if (!ownsView) {

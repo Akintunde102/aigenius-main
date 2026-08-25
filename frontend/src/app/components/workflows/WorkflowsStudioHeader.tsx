@@ -13,6 +13,7 @@ import {
   Square,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
+import { FEATURE_FLAGS } from "@/lib/config/features";
 import { cn } from "@/lib/utils";
 import {
   type WorkflowDraft,
@@ -216,17 +217,19 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
             </span>
             <span className="sr-only">{headerMenuOpen ? "Close workflow header menu" : "Open workflow header menu"}</span>
           </button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 shrink-0 rounded-md border-slate-200/90 bg-slate-100/80 px-2 text-[11px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-200/80 hover:text-slate-900 dark:border-slate-600/90 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white sm:px-2.5"
-            onClick={() => setIntegrationsOpen(true)}
-            title="Manage integrations (e.g. Gmail)"
-          >
-            <Plug className="h-3 w-3 sm:mr-1" aria-hidden />
-            <span className="sr-only sm:not-sr-only sm:inline">Integrations</span>
-          </Button>
+          {FEATURE_FLAGS.INTEGRATIONS ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 shrink-0 rounded-md border-slate-200/90 bg-slate-100/80 px-2 text-[11px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-200/80 hover:text-slate-900 dark:border-slate-600/90 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white sm:px-2.5"
+              onClick={() => setIntegrationsOpen(true)}
+              title="Manage integrations (e.g. Gmail)"
+            >
+              <Plug className="h-3 w-3 sm:mr-1" aria-hidden />
+              <span className="sr-only sm:not-sr-only sm:inline">Integrations</span>
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"

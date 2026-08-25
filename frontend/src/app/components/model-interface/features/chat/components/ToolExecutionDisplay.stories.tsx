@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { ToolExecutionDisplay as ToolExecutionDisplay } from './ToolExecutionDisplay';
 
 const meta: Meta<typeof ToolExecutionDisplay> = {

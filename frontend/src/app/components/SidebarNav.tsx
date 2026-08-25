@@ -4,6 +4,7 @@ import { LuUploadCloud } from "react-icons/lu";
 import { Bot, Sparkles } from "lucide-react";
 import SidebarLink from "./SidebarLink";
 import { clearAuthSession } from "@/lib/utils/auth-session";
+import { FEATURE_FLAGS } from "@/lib/config/features";
 
 const Spacer = () => <div className="border-t mt-5 pt-5"></div>;
 
@@ -89,14 +90,18 @@ const SidebarNav = ({ pathname, onLinkClick }: { pathname: string, onLinkClick: 
             onClick={onLinkClick}
         />
         <Spacer />
-        <SidebarLink
-            href="/workflows"
-            icon={<Sparkles size={20} />}
-            label="Workflows"
-            active={pathname === "/workflows"}
-            onClick={onLinkClick}
-        />
-        <Spacer />
+        {FEATURE_FLAGS.WORKFLOWS && (
+            <>
+                <SidebarLink
+                    href="/workflows"
+                    icon={<Sparkles size={20} />}
+                    label="Workflows"
+                    active={pathname === "/workflows"}
+                    onClick={onLinkClick}
+                />
+                <Spacer />
+            </>
+        )}
         <SidebarLink
             href="/model-interface"
             icon={<Bot size={20} />}

@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { WorkflowStepConfigModal as WorkflowStepConfigModal } from './WorkflowStepConfigModal';
 
 const meta: Meta<typeof WorkflowStepConfigModal> = {
