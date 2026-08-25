@@ -13,13 +13,24 @@ export function DesktopSessionRestoringView({
   detail?: string;
 }) {
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center bg-[#0c0d0f] px-6 text-center text-zinc-100">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-400">
-        <Loader2 className="h-7 w-7 animate-spin" aria-hidden />
+    <div className="content-centered">
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "3.5rem",
+        height: "3.5rem",
+        borderRadius: "1rem",
+        border: "1px solid rgba(6, 182, 212, 0.2)",
+        background: "rgba(6, 182, 212, 0.1)",
+        color: "#06b6d4",
+        marginBottom: "1.5rem"
+      }}>
+        <Loader2 size={32} className="animate-spin" aria-hidden />
       </div>
-      <p className="mt-5 text-sm font-medium text-zinc-300">{message}</p>
+      <h1 className="headline" style={{ fontSize: "1.5rem" }}>{message}</h1>
       {detail ? (
-        <p className="mt-2 max-w-xs text-xs leading-relaxed text-zinc-500">{detail}</p>
+        <p className="subtext">{detail}</p>
       ) : null}
     </div>
   );

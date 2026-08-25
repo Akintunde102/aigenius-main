@@ -1,38 +1,16 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 import { BotMessageSquare, Mic, Wallet } from "lucide-react";
 import { BrandLogo } from "@/app/components/BrandLogo";
-import { GoogleSignIn, type DesktopAuthFlowPhase } from "@/app/components/auth/GoogleSignIn";
-import { DesktopSessionRestoringView } from "@/app/components/DesktopSessionRestoringView";
-import { LandingAmbientBackground } from "@/app/components/ui";
-import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
-import { ensureGatewayAuthReady } from "@/lib/api/auth-client";
-import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-details";
+import { DesktopAuthFlowPhase } from "@/app/components/auth/GoogleSignIn";
+import { PublicPageShell } from "@/app/components/PublicPageShell";
 import { completeDesktopOAuthSession } from "@/lib/utils/complete-desktop-oauth-session";
-import { canUseDesktopStoredRefreshToken, readDesktopStoredRefreshToken } from "@/lib/utils/desktop-auth-refresh";
-import { cn } from "@/lib/utils";
-import {
-  hasAuthSession,
-  syncAuthSessionCookiesFromStorage,
-} from "@/lib/utils/auth-session";
-import { DESKTOP_SHELL_ENTRY_QUERY_PARAM } from "@/lib/utils/desktop-runtime";
+import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-details";
+import { syncAuthSessionCookiesFromStorage } from "@/lib/utils/auth-session";
 import { resolveAuthenticatedDesktopShellRedirect } from "@/lib/utils/safe-internal-next-path";
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0 },
-};
-
-const container = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
-};
-
-const EASE = [0.22, 1, 0.36, 1] as const;
 
 const TRUST_ITEMS = [
   { icon: BotMessageSquare, label: "Every top model" },
@@ -40,16 +18,9 @@ const TRUST_ITEMS = [
   { icon: Wallet, label: "Pay as you go" },
 ] as const;
 
-/**
- * Desktop-oriented sign-in. Public route: no redirect to web `/login` when the Electron bridge is absent
- * (e.g. opening the URL in a normal browser).
- */
 export default function DesktopLoginPage() {
   const pathname = usePathname();
-  const reduce = useReducedMotion();
-  const didSessionRedirectRef = useRef(false);
   const [storedFirstName, setStoredFirstName] = useState<string | null>(null);
-  const [showLogin, setShowLogin] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authFlow, setAuthFlow] = useState<DesktopAuthFlowPhase>("idle");
 
@@ -57,325 +28,101 @@ export default function DesktopLoginPage() {
     try {
       const snap = getStoredUserDetailsSnapshot<Record<string, unknown>>();
       const raw = snap?.firstName;
-      const trimmed =
-        typeof raw === "string" ? raw.trim() : "";
-      setStoredFirstName(trimmed.length > 0 ? trimmed : null);
-    } catch {
-      setStoredFirstName(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (!params.has(DESKTOP_SHELL_ENTRY_QUERY_PARAM)) {
-        return;
+      if (typeof raw === "string" && raw.trim().length > 0) {
+        setStoredFirstName(raw.trim());
       }
-      params.delete(DESKTOP_SHELL_ENTRY_QUERY_PARAM);
-      const q = params.toString();
-      const path = `${window.location.pathname}${q ? `?${q}` : ""}${window.location.hash}`;
-      window.history.replaceState(null, "", path);
     } catch {
-      /* ignore */
+      // ignore
     }
   }, []);
 
-  useLayoutEffect(() => {
-    if (didSessionRedirectRef.current) {
+  const handleBrowserSignIn = async () => {
+    if (!window.aigeniusDesktop?.startWebSignIn) return;
+    setAuthError(null);
+    setAuthFlow("awaiting-browser");
+    const res = await window.aigeniusDesktop.startWebSignIn();
+    if (!res?.token) {
+      setAuthFlow("idle");
+      setAuthError("Browser sign-in did not complete. Finish sign-in in your browser, then try again.");
       return;
     }
-
-    void (async () => {
-      const hasSession = hasAuthSession();
-      const desktopRefreshToken = canUseDesktopStoredRefreshToken()
-        ? await readDesktopStoredRefreshToken()
-        : undefined;
-
-      if (!hasSession && !desktopRefreshToken) {
-        setShowLogin(true);
-        return;
-      }
-
-      const token = await ensureGatewayAuthReady();
-      if (!token) {
-        setShowLogin(true);
-        return;
-      }
-
-      didSessionRedirectRef.current = true;
-      syncAuthSessionCookiesFromStorage();
-      const target = resolveAuthenticatedDesktopShellRedirect(
-        pathname,
-        window.location.search,
-      );
-      /** Full navigation so the next request includes synced cookies (middleware is cookie-only). */
-      window.location.assign(target);
-    })();
-  }, [pathname]);
-
-  if (!showLogin || authFlow !== "idle") {
-    const restoringMessage =
-      authFlow === "awaiting-browser"
-        ? "Complete sign-in in your browser…"
-        : authFlow === "completing"
-          ? "Signing you in…"
-          : "Opening AIGenius…";
-    const restoringDetail =
-      authFlow === "awaiting-browser"
-        ? "Finish Google sign-in in the tab that opened, then return here."
-        : authFlow === "completing"
-          ? "Setting up your session and opening your chats…"
-          : "Verifying your saved session…";
-
-    return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0c0d0f]">
-        <DesktopSessionRestoringView message={restoringMessage} detail={restoringDetail} />
-      </div>
-    );
-  }
-
-  const headline = storedFirstName
-    ? `Welcome back, ${storedFirstName}`
-    : "Welcome to AIGenius";
+    setAuthFlow("completing");
+    const ok = await completeDesktopOAuthSession(res.token);
+    if (!ok) {
+      setAuthFlow("idle");
+      setAuthError("Sign-in succeeded in the browser but the desktop app could not start your session. Check that the API is running and try again.");
+      return;
+    }
+    syncAuthSessionCookiesFromStorage();
+    const target = resolveAuthenticatedDesktopShellRedirect(pathname, window.location.search);
+    window.location.replace(target);
+  };
 
   return (
-    <div className="relative flex min-h-dvh flex-1 flex-col overflow-hidden bg-[#05070d] text-zinc-100">
-      <LandingAmbientBackground />
+    <PublicPageShell hideHeader showFooter={false} contentClassName="justify-center">
+      <div className="content-centered">
+        <h1 className="headline">Welcome back</h1>
+        <p className="subtext">
+          {storedFirstName ? `Sign in as ${storedFirstName}` : "Sign in to your desktop workspace"}
+        </p>
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 pb-10 pt-8 sm:px-8 sm:pb-14 sm:pt-12">
-        <div className="mx-auto flex w-full max-w-lg flex-col items-center text-center">
-          <BrandLogo size="compact" asStatic />
-          <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
-            Desktop
-          </p>
+        <div style={{ width: "100%", maxWidth: "320px", marginTop: "1.5rem" }}>
+          {authFlow === "awaiting-browser" || authFlow === "completing" ? (
+            <div style={{ padding: "1rem", textAlign: "center", fontSize: "0.875rem", color: "#71717a" }}>
+              Please complete sign in within your browser...
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleBrowserSignIn}
+              style={{
+                display: "flex",
+                width: "100%",
+                height: "3rem",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.75rem",
+                borderRadius: "0.75rem",
+                background: "#f5f5f0",
+                color: "#0e0d0c",
+                fontWeight: 600,
+                fontSize: "0.9375rem",
+                cursor: "pointer",
+                border: "none",
+                transition: "background 0.1s ease"
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.background = "#e5e5e0")}
+              onMouseOut={(e) => (e.currentTarget.style.background = "#f5f5f0")}
+            >
+              Sign in with Browser
+            </button>
+          )}
+
+          {authError && (
+            <div style={{ marginTop: "1rem", fontSize: "0.875rem", color: "#f43f5e", textAlign: "center" }}>
+              {authError}
+            </div>
+          )}
         </div>
 
-        <main className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col justify-center py-10 sm:py-14">
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={reduce ? undefined : container}
-          >
-            <motion.div
-              variants={reduce ? undefined : fadeUp}
-              transition={{ duration: 0.5, ease: EASE }}
-              className="mb-8 space-y-3 text-center sm:mb-10"
-            >
-              <h1 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                {headline}
-              </h1>
-              <p className="mx-auto max-w-md text-pretty text-sm leading-relaxed text-zinc-400 sm:text-base">
-                Sign in with Google to use AIGenius on this computer. Your session stays in secure
-                storage and app cookies—just like the browser.
-              </p>
-            </motion.div>
-
-            <div className="relative">
-              <div
-                aria-hidden
-                className="absolute -inset-6 rounded-[2rem] bg-gradient-to-r from-cyan-500/[0.12] via-transparent to-emerald-500/[0.12] blur-2xl"
-              />
-
-              <section className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-950 p-8 shadow-2xl shadow-black/50 sm:p-10">
-                <div
-                  aria-hidden
-                  className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent"
-                />
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.04] to-transparent"
-                />
-
-                <div className="relative space-y-4">
-                  <motion.div variants={reduce ? undefined : fadeUp} transition={{ duration: 0.5, ease: EASE }}>
-                    <GoogleSignIn
-                      variant="login"
-                      onDesktopAuthFlowChange={setAuthFlow}
-                      className="!h-14 !w-full !rounded-xl !border-zinc-500 !bg-white !text-base !font-semibold !text-zinc-900 !shadow-lg !shadow-cyan-950/30 hover:!bg-zinc-100 focus-visible:!ring-2 focus-visible:!ring-cyan-500 focus-visible:!ring-offset-2 focus-visible:!ring-offset-zinc-950"
-                    />
-                  </motion.div>
-
-                  <motion.div variants={reduce ? undefined : fadeUp} transition={{ duration: 0.5, ease: EASE }} className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t border-white/[0.08]" />
-                    </div>
-                    <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
-                      <span className="bg-zinc-950 px-3 font-medium text-zinc-500">Alternative</span>
-                    </div>
-                  </motion.div>
-
-                  <motion.button
-                    variants={reduce ? undefined : fadeUp}
-                    transition={{ duration: 0.5, ease: EASE }}
-                    type="button"
-                    onClick={async () => {
-                      if (!window.aigeniusDesktop?.startWebSignIn) {
-                        return;
-                      }
-                      setAuthError(null);
-                      setAuthFlow("awaiting-browser");
-                      const res = await window.aigeniusDesktop.startWebSignIn();
-                      if (!res?.token) {
-                        setAuthFlow("idle");
-                        setAuthError(
-                          "Browser sign-in did not complete. Finish Google sign-in in your browser, then try again.",
-                        );
-                        return;
-                      }
-                      setAuthFlow("completing");
-                      const ok = await completeDesktopOAuthSession(res.token);
-                      if (!ok) {
-                        setAuthFlow("idle");
-                        setAuthError(
-                          "Sign-in succeeded in the browser but the desktop app could not start your session. Check that the API is running and try again.",
-                        );
-                        return;
-                      }
-                      syncAuthSessionCookiesFromStorage();
-                      const target = resolveAuthenticatedDesktopShellRedirect(
-                        pathname,
-                        window.location.search,
-                      );
-                      window.location.replace(target);
-                    }}
-                    className={cn(
-                      "flex h-14 w-full items-center justify-center gap-3 rounded-xl border border-white/[0.12] bg-white/[0.03] text-base font-medium text-zinc-100 backdrop-blur transition hover:border-cyan-400/40 hover:bg-white/[0.06] active:scale-[0.99]",
-                      FOCUS_RING
-                    )}
-                  >
-                    <svg className="h-5 w-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                    </svg>
-                    Sign in with Browser
-                  </motion.button>
-                </div>
-
-                {authError ? (
-                  <p className="relative mt-4 text-center text-sm text-rose-300" role="alert">
-                    {authError}
-                  </p>
-                ) : null}
-
-                <motion.p
-                  variants={reduce ? undefined : fadeUp}
-                  transition={{ duration: 0.5, ease: EASE }}
-                  className="relative mt-8 text-center text-sm text-zinc-500"
-                >
-                  <Link
-                    prefetch
-                    href="/desktop-welcome"
-                    className={cn(
-                      "font-medium text-zinc-400 underline decoration-zinc-600 underline-offset-2 transition hover:text-zinc-200",
-                      FOCUS_RING,
-                    )}
-                  >
-                    Desktop welcome
-                  </Link>
-                  <span className="mx-2 text-zinc-600" aria-hidden>
-                    ·
-                  </span>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!window.aigeniusDesktop?.startWebSignIn) {
-                        window.location.href = "/login";
-                        return;
-                      }
-                      setAuthError(null);
-                      setAuthFlow("awaiting-browser");
-                      const res = await window.aigeniusDesktop.startWebSignIn();
-                      if (!res?.token) {
-                        setAuthFlow("idle");
-                        setAuthError(
-                          "Browser sign-in did not complete. Finish sign-in in your browser, then try again.",
-                        );
-                        return;
-                      }
-                      setAuthFlow("completing");
-                      const ok = await completeDesktopOAuthSession(res.token);
-                      if (!ok) {
-                        setAuthFlow("idle");
-                        setAuthError(
-                          "Sign-in succeeded in the browser but the desktop app could not start your session. Check that the API is running and try again.",
-                        );
-                        return;
-                      }
-                      syncAuthSessionCookiesFromStorage();
-                      const target = resolveAuthenticatedDesktopShellRedirect(
-                        pathname,
-                        window.location.search,
-                      );
-                      window.location.replace(target);
-                    }}
-                    className={cn(
-                      "font-medium text-cyan-300 underline decoration-cyan-500/40 underline-offset-4 transition hover:text-cyan-200",
-                      FOCUS_RING,
-                    )}
-                  >
-                    Web sign-in
-                  </button>
-                </motion.p>
-
-                <motion.div
-                  variants={reduce ? undefined : fadeUp}
-                  transition={{ duration: 0.5, ease: EASE }}
-                  className="relative mt-8 border-t border-white/[0.08] pt-6 text-center text-[13px] text-zinc-500"
-                >
-                  <Link
-                    prefetch
-                    href="/signup"
-                    className={cn(
-                      "font-medium text-zinc-300 underline decoration-zinc-600 underline-offset-2 transition hover:text-white",
-                      FOCUS_RING,
-                    )}
-                  >
-                    Create an account
-                  </Link>
-                  <span className="mx-2 text-zinc-600" aria-hidden>
-                    ·
-                  </span>
-                  <Link
-                    prefetch
-                    href="/docs/privacy-policy"
-                    className={cn(
-                      "font-medium text-zinc-400 underline decoration-zinc-600 underline-offset-2 transition hover:text-zinc-200",
-                      FOCUS_RING,
-                    )}
-                  >
-                    Privacy
-                  </Link>
-                  <span className="mx-2 text-zinc-600" aria-hidden>
-                    ·
-                  </span>
-                  <Link
-                    prefetch
-                    href="/docs/terms-and-conditions"
-                    className={cn(
-                      "font-medium text-zinc-400 underline decoration-zinc-600 underline-offset-2 transition hover:text-zinc-200",
-                      FOCUS_RING,
-                    )}
-                  >
-                    Terms
-                  </Link>
-                </motion.div>
-              </section>
-            </div>
-
-            <motion.ul
-              variants={reduce ? undefined : fadeUp}
-              transition={{ duration: 0.5, ease: EASE }}
-              className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-zinc-500"
-            >
-              {TRUST_ITEMS.map(({ icon: Icon, label }) => (
-                <li key={label} className="flex items-center gap-1.5">
-                  <Icon className="h-3.5 w-3.5 text-cyan-400/70" aria-hidden />
-                  <span>{label}</span>
-                </li>
-              ))}
-            </motion.ul>
-          </motion.div>
-        </main>
+        <ul style={{
+          marginTop: "3.5rem",
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          gap: "1.5rem",
+          listStyle: "none",
+          fontSize: "0.75rem",
+          color: "#71717a"
+        }}>
+          {TRUST_ITEMS.map(({ icon: Icon, label }) => (
+            <li key={label} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Icon style={{ width: "1rem", height: "1rem", color: "#52525b" }} aria-hidden />
+              <span>{label}</span>
+            </li>
+          ))}
+        </ul>
       </div>
-    </div>
+    </PublicPageShell>
   );
 }

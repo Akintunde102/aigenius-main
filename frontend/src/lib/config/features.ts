@@ -24,9 +24,7 @@ export const FEATURE_FLAGS = {
    * Off by default — set NEXT_PUBLIC_ENABLE_INTEGRATIONS=true to show.
    * Backend must also set ENABLE_INTEGRATIONS=true for API routes and chat tools.
    */
-  INTEGRATIONS: process.env.NEXT_PUBLIC_ENABLE_INTEGRATIONS === "true",
+  INTEGRATIONS: false,
 
-  WORKFLOWS:
-    process.env.NEXT_PUBLIC_ENABLE_WORKFLOWS === "true" ||
-    (isDevBuild() && process.env.NEXT_PUBLIC_ENABLE_WORKFLOWS !== "false"),
+  WORKFLOWS: false,
 } as const;

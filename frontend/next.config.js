@@ -112,10 +112,10 @@ const nextConfig = {
             'https://api.paystack.co',
             payazaApiOrigin,
             payazaCheckoutOrigin,
-            'https://api.aigenius.chat',
+            'https://api.aigenius.noboxlabs.xyz',
             'https://aigenius-backend-production.up.railway.app',
             'https://cdn.jsdelivr.net',
-            'wss://api.aigenius.chat',
+            'wss://api.aigenius.noboxlabs.xyz',
             'wss://ai-genius-copy-production.up.railway.app',
             vercelAnalyticsOrigin,
         ].join(' ');
@@ -141,12 +141,12 @@ const nextConfig = {
             'https://api.paystack.co',
             payazaApiOrigin,
             payazaCheckoutOrigin,
-            'https://api.aigenius.chat',
+            'https://api.aigenius.noboxlabs.xyz',
             'https://aigenius-backend-production.up.railway.app',
             'ws://localhost:3001',
             'ws://localhost:8000',
             'https://cdn.jsdelivr.net',
-            'wss://api.aigenius.chat',
+            'wss://api.aigenius.noboxlabs.xyz',
             vercelAnalyticsOrigin,
         ].join(' ');
 

@@ -58,7 +58,7 @@ export function createApplicationMenu(opts: {
     {
       label: 'AIGenius',
       submenu: [
-        { label: 'About', click: () => void shell.openExternal('https://aigenius.chat') },
+        { label: 'About', click: () => void shell.openExternal('https://aigenius.noboxlabs.xyz') },
         { type: 'separator' },
         { label: 'Settings', enabled: false },
         { type: 'separator' },

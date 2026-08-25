@@ -42,6 +42,8 @@ export const GoogleSignIn = ({
     const handleGoogleSignIn = async () => {
         const apiRoot = await resolveAuthApiRootUrlAsync();
         const url = buildGoogleAuthUrl(apiRoot);
+        console.log('[GoogleSignIn Debug] resolved apiRoot:', apiRoot);
+        console.log('[GoogleSignIn Debug] resolved final auth url:', url);
         if (!url || url.includes('undefined')) {
             console.error('[GoogleSignIn] Auth API root is not configured. Set NEXT_PUBLIC_AIGENIUS_API_ROOT_URL in your environment.');
             return;
@@ -129,17 +131,13 @@ export const GoogleSignIn = ({
             </Button>
 
             {AUTH_CONFIG.ENABLE_DEV_LOGIN && (
-                <Button
+                <button
+                    type="button"
                     onClick={handleDevLogin}
-                    variant="ghost"
-                    className={
-                        lightSurface
-                            ? "w-full text-xs text-slate-500 hover:text-slate-800 transition-colors bg-slate-100/50 hover:bg-slate-100 py-1.5 rounded-lg border border-dashed border-slate-300"
-                            : "w-full text-xs text-slate-400 hover:text-white transition-colors bg-slate-800/40 hover:bg-slate-800/80 py-1.5 rounded-lg border border-dashed border-slate-700/60"
-                    }
+                    className="secondary-btn"
                 >
                     Developer Login (Bypass)
-                </Button>
+                </button>
             )}
         </div>
     );

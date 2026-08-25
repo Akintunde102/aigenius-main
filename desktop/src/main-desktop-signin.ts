@@ -9,7 +9,9 @@ import { resolveUpstreamApiUrl as resolveDesktopUpstreamApiUrl } from './resolve
 import { resolveFrontendPort } from './frontend-port';
 
 const FRONTEND_PORT = resolveFrontendPort();
-const WEBSITE_LOGIN_URL = loopbackHttpUrl(FRONTEND_PORT, '/login');
+const WEBSITE_LOGIN_URL = app.isPackaged
+  ? 'https://aigenius.noboxlabs.xyz/login'
+  : loopbackHttpUrl(FRONTEND_PORT, '/login');
 
 function resolveUpstreamApiUrl(): string {
   return resolveDesktopUpstreamApiUrl({
