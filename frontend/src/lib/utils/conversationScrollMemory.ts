@@ -83,7 +83,11 @@ export function localMessagesMatchServerPrefix(
   const localVisible = getVisibleMessages(localMessages);
   const serverVisible = getVisibleMessages(serverMessages);
 
-  if (localVisible.length === 0 || serverVisible.length < localVisible.length) {
+  if (localVisible.length === 0) {
+    return true;
+  }
+
+  if (serverVisible.length < localVisible.length) {
     return false;
   }
 
@@ -110,6 +114,10 @@ export function shouldAcceptRemoteConversationSync(
   localMessages: ChatMessage[],
   serverMessages: ChatMessage[],
 ): boolean {
+  if (localMessages.length === 0) {
+    return true;
+  }
+
   const serverVisibleCount = countVisibleMessages(serverMessages);
   if (serverVisibleCount === 0) {
     return false;

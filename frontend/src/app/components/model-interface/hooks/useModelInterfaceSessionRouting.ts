@@ -11,8 +11,8 @@ import {
 
 /** Minimal Next.js app router surface used by session routing. */
 type AppNavigationRouter = {
-  push: (href: string) => void;
-  replace: (href: string) => void;
+  push: (href: string, options?: { scroll?: boolean }) => void;
+  replace: (href: string, options?: { scroll?: boolean }) => void;
 };
 import { getConversationById } from "@/lib/calls/model-chat-conversation";
 import { applyChatProjectScopeFromSession } from "@/lib/code-projects/apply-chat-project-scope";
@@ -213,13 +213,14 @@ export function useModelInterfaceSessionRouting({
 
     pendingScrollRestoreSessionIdRef.current = currentSessionId;
     setActiveRouteConversationId(currentSessionId);
+    setActiveRouteConversationTarget(currentSessionId);
 
     if (
       window.location.pathname === "/" &&
       lastAutoRoutedSessionIdRef.current !== currentSessionId
     ) {
       lastAutoRoutedSessionIdRef.current = currentSessionId;
-      window.history.replaceState(null, "", `/chat/${currentSessionId}`);
+      router.replace(`/chat/${currentSessionId}`, { scroll: false });
     }
   }, [currentSessionId]);
 
@@ -381,7 +382,7 @@ export function useModelInterfaceSessionRouting({
         // Use replace to avoid adding to browser history
         router.replace("/");
         // Also update the active route state immediately
-        window.history.replaceState(null, "", "/");
+        router.replace("/", { scroll: false });
       }
     },
     [
@@ -453,6 +454,13 @@ export function useModelInterfaceSessionRouting({
 
   useEffect(() => {
     if (activeRouteConversationId === null) {
+      if (
+        currentSessionId &&
+        (lastAutoRoutedSessionIdRef.current === currentSessionId || isSessionInFlight?.(currentSessionId))
+      ) {
+        return;
+      }
+
       const pathIsRoot =
         typeof window === "undefined" || window.location.pathname === "/";
       const action = reduceNullRouteOrchestration({

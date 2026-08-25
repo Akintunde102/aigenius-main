@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const BASE_URL = "https://aigenius.chat";
+const BASE_URL = "https://aigenius.noboxlabs.xyz";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();

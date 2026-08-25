@@ -89,6 +89,8 @@ export interface UseChatOperationsRefinedProps {
     setChatHistory?: React.Dispatch<React.SetStateAction<ChatSession[]>>;
     chatHistory?: ChatSession[];
     updateSessionMessages?: (sessionId: string, messages: ChatMessage[], sessionData?: Partial<ChatSession>) => void;
+    onDraftMaterialized?: (id: string) => void;
+
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;
     selectedPersonalityId?: string;
@@ -140,7 +142,7 @@ export interface UseChatOperationsReturn {
 
 // Props for streaming response handler
 export interface UseStreamingResponseProps {
-    selectedModel: Model;
+    selectedModel: Model | null;
     setChatForSession: SetChatForSession;
     setStreamingForSession: SetBooleanForSession;
     setLoadingForSession: SetBooleanForSession;
@@ -158,6 +160,8 @@ export interface UseStreamingResponseProps {
     ) => void;
     handleSendError: (error: unknown) => void;
     onPrefetchConversationRoute?: (conversationId: string) => void;
+    onDraftMaterialized?: (id: string) => void;
+
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;
     isAudioModeRef?: React.MutableRefObject<boolean>;
@@ -180,7 +184,7 @@ export interface ChatCompletionRequestOverrides {
 
 // Props for non-streaming response handler
 export interface UseNonStreamingResponseProps {
-    selectedModel: Model;
+    selectedModel: Model | null;
     setChatForSession: SetChatForSession;
     currentSessionId?: string | null;
     activeViewSessionId?: string | null;
@@ -192,6 +196,8 @@ export interface UseNonStreamingResponseProps {
     setWallet: React.Dispatch<React.SetStateAction<number | null>>;
     wallet: number | null;
     logMetrics: (usage?: UsageInfo, cost?: number) => void;
+    onDraftMaterialized?: (id: string) => void;
+
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;
 }

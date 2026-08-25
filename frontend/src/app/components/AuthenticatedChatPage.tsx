@@ -27,10 +27,12 @@ const ModelInterface = dynamic(importModelInterfaceWithRetry, {
 interface AuthenticatedChatPageProps {
   /** @deprecated Use the URL-aware version. This prop is kept for backwards compatibility only. */
   initialConversationId?: string | null;
+  serverHasSession?: boolean;
 }
 
 export default function AuthenticatedChatPage({
   initialConversationId = null,
+  serverHasSession = false,
 }: AuthenticatedChatPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -124,7 +126,7 @@ export default function AuthenticatedChatPage({
     prefetchPublicRoutes(router);
   }, [token, router]);
 
-  if (tokenInUrl || (routeConversationId && (!authReady || loading))) {
+  if (tokenInUrl || ((!authReady || loading) && (routeConversationId || serverHasSession))) {
     return <ChatShellLoadingSkeleton />;
   }
 

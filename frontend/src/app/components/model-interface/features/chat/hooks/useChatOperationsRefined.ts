@@ -25,6 +25,7 @@ import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interf
 import {
     getDraftConversationEpoch,
     resolveViewSessionId,
+    setActiveRouteConversationTarget,
 } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { enforceOutgoingChatProjectScope } from '@/lib/code-projects/apply-chat-project-scope';
 import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
@@ -132,8 +133,10 @@ export function useChatOperationsRefined({
         updateWalletFromResponse
     } = useWalletManagement({ setError, setWallet, skipVisibilityRefetch: true });
 
+    const currentMaterializedIdRef = useRef<string | null>(null);
+
     const { handleStreamingResponse, abortRequest: abortStreamingRequest } = useStreamingResponse({
-        selectedModel: selectedModel!,
+        selectedModel,
         setChatForSession,
         setStreamingForSession,
         setLoadingForSession,
@@ -142,6 +145,20 @@ export function useChatOperationsRefined({
         activeViewSessionId,
         updateSessionMessages,
         isAudioModeRef,
+        onDraftMaterialized: (realId) => {
+            currentMaterializedIdRef.current = realId;
+            setActiveRouteConversationTarget(realId);
+            const draftGen = sessionSendGenerationRef.current.get(DRAFT_SESSION_KEY) ?? 0;
+            sessionSendGenerationRef.current.set(realId, draftGen);
+            setStreamingForSession(realId, true);
+            setLoadingForSession(realId, true);
+            setStreamingForSession(DRAFT_SESSION_KEY, false);
+            setLoadingForSession(DRAFT_SESSION_KEY, false);
+            setChatForSession(DRAFT_SESSION_KEY, []);
+            migrateDraftComposerToSession(realId);
+            onDraftSessionMaterialized?.(realId);
+            setCurrentSessionId?.(realId);
+        },
         handleStreamResult: (result, streamingSessionId, draftEpoch, sendGeneration) => {
             // streamingSessionId is null for new chats, string for existing sessions.
             updateWalletFromResponse(result.wallet);
@@ -157,14 +174,21 @@ export function useChatOperationsRefined({
             const ownsView = sameDraftGeneration && shouldApplyStreamToOpenTranscript(
                 streamingSessionId,
                 activeViewSessionIdRef.current,
+                result.conversationId,
             );
 
             const chatMapKey = streamingSessionId ?? DRAFT_SESSION_KEY;
             const ownsSendGeneration = sendGeneration !== undefined
-                ? sessionSendGenerationRef.current.get(chatMapKey) === sendGeneration
+                ? (sessionSendGenerationRef.current.get(chatMapKey) === sendGeneration ||
+                   (result.conversationId && sessionSendGenerationRef.current.get(result.conversationId) === sendGeneration))
                 : sameDraftGeneration;
             if (ownsSendGeneration) {
                 setStreamingForSession(chatMapKey, false);
+                setLoadingForSession(chatMapKey, false);
+                if (result.conversationId) {
+                    setStreamingForSession(result.conversationId, false);
+                    setLoadingForSession(result.conversationId, false);
+                }
             }
             if (ownsView) {
                 setTimeout(() => {
@@ -223,7 +247,7 @@ export function useChatOperationsRefined({
     });
 
     const { handleNonStreamingResponse, abortRequest: abortNonStreamingRequest } = useNonStreamingResponse({
-        selectedModel: selectedModel!,
+        selectedModel,
         setChatForSession,
         currentSessionId,
         activeViewSessionId,
@@ -251,6 +275,7 @@ export function useChatOperationsRefined({
         chatSnapshot?: ChatMessage[],
         sendOptions?: HandleSendQueueOptions,
     ): Promise<boolean> => {
+        currentMaterializedIdRef.current = null;
         const modelForSend = sendOptions?.modelOverride ?? selectedModel;
         const shouldStream = enableStreaming !== undefined ? enableStreaming : streamingEnabled;
         const inputToSend = resolveInputToSend(content, input);
@@ -394,10 +419,16 @@ export function useChatOperationsRefined({
         } finally {
             console.log('[useChatOperationsRefined] handleSend finished', { sessionId: sendingSessionId });
             // Only clear in-flight indicators when no newer send has started on this slot.
-            if (sessionSendGenerationRef.current.get(sendingSessionId) === sendGeneration) {
-                setLoadingForSession(sendingSessionId, false);
-                setStreamingForSession(sendingSessionId, false);
+            const sessionsToClear = new Set<string>([sendingSessionId]);
+            if (currentMaterializedIdRef.current) {
+                sessionsToClear.add(currentMaterializedIdRef.current);
             }
+            sessionsToClear.forEach((sid) => {
+                if (sessionSendGenerationRef.current.get(sid) === sendGeneration) {
+                    setLoadingForSession(sid, false);
+                    setStreamingForSession(sid, false);
+                }
+            });
 
             // Optimization: Only clear the live typing bubble if the stream finished successfully.
             // If it crashed, we leave the partial text visible so the user doesn't lose context
@@ -414,7 +445,11 @@ export function useChatOperationsRefined({
             const sameDraftGeneration = draftEpochAtSend === undefined
                 || draftEpochAtSend === getDraftConversationEpoch();
             return sameDraftGeneration
-                && shouldApplyStreamToOpenTranscript(sendingViewId, activeViewSessionIdRef.current);
+                && shouldApplyStreamToOpenTranscript(
+                    sendingViewId,
+                    activeViewSessionIdRef.current,
+                    currentMaterializedIdRef.current,
+                );
         }
     }, [
         selectedModel, input, project, wallet, currentSessionId, routeConversationId, viewSessionId,
@@ -431,6 +466,12 @@ export function useChatOperationsRefined({
         abortNonStreamingRequest(sid);
         setLoadingForSession(sid, false);
         setStreamingForSession(sid, false);
+        if (currentMaterializedIdRef.current) {
+            abortStreamingRequest(currentMaterializedIdRef.current);
+            abortNonStreamingRequest(currentMaterializedIdRef.current);
+            setLoadingForSession(currentMaterializedIdRef.current, false);
+            setStreamingForSession(currentMaterializedIdRef.current, false);
+        }
         setAssistantResponse('');
     }, [abortStreamingRequest, abortNonStreamingRequest, currentSessionId, routeConversationId, setLoadingForSession, setStreamingForSession]);
 

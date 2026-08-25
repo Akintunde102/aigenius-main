@@ -74,10 +74,10 @@ export function resolveUpstreamApiUrl(options: ResolveUpstreamApiUrlOptions = {}
     return fromEnv;
   }
 
-  const fromDevPort = upstreamFromDevApiPort();
-  if (fromDevPort) {
-    return fromDevPort;
-  }
+  // const fromDevPort = upstreamFromDevApiPort();
+  // if (fromDevPort) {
+  //   return fromDevPort;
+  // }
 
   const desktopRoot =
     options.desktopRoot ?? path.join(__dirname, '..');
