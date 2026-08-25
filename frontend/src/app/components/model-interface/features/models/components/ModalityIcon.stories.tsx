@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { ModalityIcon as ModalityIcon } from './ModalityIcon';
 
 const meta: Meta<typeof ModalityIcon> = {

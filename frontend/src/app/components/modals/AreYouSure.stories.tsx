@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { AreYouSure as AreYouSure } from './AreYouSure';
 
 const meta: Meta<typeof AreYouSure> = {

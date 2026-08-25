@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { ModelListSidebarOptimized as ModelListSidebarOptimized } from './ModelListSidebarOptimized';
 
 const meta: Meta<typeof ModelListSidebarOptimized> = {

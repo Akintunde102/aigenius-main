@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { findResultLinkFromArgs as findResultLinkFromArgs } from './WorkflowSchemaForm';
 
 const meta: Meta<typeof findResultLinkFromArgs> = {

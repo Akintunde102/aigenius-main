@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import Gallery from './Gallery';
 
 const meta: Meta<typeof Gallery> = {

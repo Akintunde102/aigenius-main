@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { EmptyRecordSpaceView as EmptyRecordSpaceView } from './EmptyRecordSpaceView';
 
 const meta: Meta<typeof EmptyRecordSpaceView> = {

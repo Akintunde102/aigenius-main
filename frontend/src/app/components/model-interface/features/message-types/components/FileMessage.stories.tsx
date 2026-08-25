@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { FileMessage as FileMessage } from './FileMessage';
 
 const meta: Meta<typeof FileMessage> = {

@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { AuthNav as AuthNav } from './AuthNav';
 
 const meta: Meta<typeof AuthNav> = {

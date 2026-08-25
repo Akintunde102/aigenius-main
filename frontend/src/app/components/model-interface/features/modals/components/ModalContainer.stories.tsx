@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { ModalContainer as ModalContainer } from './ModalContainer';
 
 const meta: Meta<typeof ModalContainer> = {

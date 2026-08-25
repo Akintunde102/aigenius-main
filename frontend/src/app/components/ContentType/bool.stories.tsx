@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import BooleanIcon from './bool';
 
 const meta: Meta<typeof BooleanIcon> = {

@@ -53,7 +53,7 @@ export default function DesktopWelcomePage() {
   }, [pathname]);
 
   return (
-    <PublicPageShell hideHeader hideFooter contentClassName="justify-center">
+    <PublicPageShell hideHeader showFooter={false} contentClassName="justify-center">
       <div className="content-centered">
         <h1 className="headline">Welcome</h1>
         <p className="subtext">

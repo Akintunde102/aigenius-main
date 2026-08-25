@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { MMenu as MMenu } from './MMenu';
 
 const meta: Meta<typeof MMenu> = {
