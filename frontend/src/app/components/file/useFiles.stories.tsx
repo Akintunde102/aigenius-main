@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { useFiles as useFiles } from './useFiles';
 
 const meta: Meta<typeof useFiles> = {

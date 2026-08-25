@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { ModelSelectionCard as ModelSelectionCard } from './ModelSelectionCard';
 
 const meta: Meta<typeof ModelSelectionCard> = {

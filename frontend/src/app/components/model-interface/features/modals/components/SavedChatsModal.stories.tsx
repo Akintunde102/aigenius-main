@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { SavedChatsModal as SavedChatsModal } from './SavedChatsModal';
 
 const meta: Meta<typeof SavedChatsModal> = {

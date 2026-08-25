@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { StructureInputs as StructureInputs } from './StructureInputs';
 
 const meta: Meta<typeof StructureInputs> = {

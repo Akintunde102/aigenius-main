@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { PersonalityModal as PersonalityModal } from './PersonalityModal';
 
 const meta: Meta<typeof PersonalityModal> = {

@@ -77,7 +77,7 @@ describe('FilePreviewModal', () => {
         });
 
         // Initially shows loading spinner or nothing because url is empty during fetch
-        expect(screen.getByText('test.png')).toBeTruthy();
+        expect(screen.getByText('test.png')).toBeInDocument();
 
         // Wait for the bridge to resolve
         await waitFor(() => {
@@ -114,13 +114,13 @@ describe('FilePreviewModal', () => {
             });
         });
 
-        expect(screen.getByText('my-folder')).toBeTruthy();
+        expect(screen.getByText('my-folder')).toBeInDocument();
 
         // Wait for folder contents to render
         await waitFor(() => {
-            expect(screen.getByText('file1.js')).toBeTruthy();
-            expect(screen.getByText('subfolder')).toBeTruthy();
-            expect(screen.getByText('1.0 KB')).toBeTruthy();
+            expect(screen.getByText('file1.js')).toBeInDocument();
+            expect(screen.getByText('subfolder')).toBeInDocument();
+            expect(screen.getByText('1.0 KB')).toBeInDocument();
         });
 
         expect(mockRunLocalDesktopTool).toHaveBeenCalledWith({
@@ -151,7 +151,7 @@ describe('FilePreviewModal', () => {
         });
 
         await waitFor(() => {
-            expect(screen.getByText('This folder is empty')).toBeTruthy();
+            expect(screen.getByText('This folder is empty')).toBeInDocument();
         });
     });
 
@@ -191,7 +191,7 @@ describe('FilePreviewModal', () => {
         });
 
         await waitFor(() => {
-            expect(screen.getByText('index.ts')).toBeTruthy();
+            expect(screen.getByText('index.ts')).toBeInDocument();
         });
 
         // 2. Click on the file
@@ -237,7 +237,7 @@ describe('FilePreviewModal', () => {
         });
 
         await waitFor(() => {
-            expect(screen.getByText('pic.png')).toBeTruthy();
+            expect(screen.getByText('pic.png')).toBeInDocument();
         });
 
         // Click image file

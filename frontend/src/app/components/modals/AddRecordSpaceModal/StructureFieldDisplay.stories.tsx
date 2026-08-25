@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { StructureFieldDisplay as StructureFieldDisplay } from './StructureFieldDisplay';
 
 const meta: Meta<typeof StructureFieldDisplay> = {

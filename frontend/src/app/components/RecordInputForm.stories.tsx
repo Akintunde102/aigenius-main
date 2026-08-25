@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { RecordInputForm as RecordInputForm } from './RecordInputForm';
 
 const meta: Meta<typeof RecordInputForm> = {

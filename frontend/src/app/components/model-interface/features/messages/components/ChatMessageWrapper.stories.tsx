@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { ChatMessageWrapper as ChatMessageWrapper } from './ChatMessageWrapper';
 
 const meta: Meta<typeof ChatMessageWrapper> = {

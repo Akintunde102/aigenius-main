@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import GmailCallbackPage from './page';
 
 const meta: Meta<typeof GmailCallbackPage> = {

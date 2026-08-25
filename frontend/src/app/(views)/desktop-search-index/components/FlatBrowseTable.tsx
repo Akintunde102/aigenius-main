@@ -256,7 +256,7 @@ export function FlatBrowseTable(props: FlatBrowseTableProps) {
 
   return (
     <table className="min-w-full divide-y divide-zinc-800/95 text-left text-sm">
-      <thead className="sticky top-0 z-[2] bg-[#17171a]/98 shadow-[0_1px_0_0_rgb(63_63_70_/_0.9)] backdrop-blur-sm">
+      <thead className="sticky top-0 z-[2] bg-[#17171a]/98 shadow-[0_1px_0_0_rgba(63,63,70,0.9)] backdrop-blur-sm">
         <tr className="text-zinc-400">{columnHeaderCellsFlat()}</tr>
       </thead>
       <tbody className="divide-y divide-zinc-800/70">
