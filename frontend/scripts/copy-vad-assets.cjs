@@ -35,6 +35,13 @@ function findVadDist() {
   return null;
 }
 
+const ORT_ALLOWLIST = new Set([
+  'ort.mjs',
+  'ort.wasm.mjs',
+  'ort-wasm-simd-threaded.mjs',
+  'ort-wasm-simd-threaded.wasm',
+]);
+
 function findOrtDist(vadDist) {
   for (const nm of moduleRoots()) {
     const p = path.join(nm, 'onnxruntime-web', 'dist');
@@ -57,7 +64,7 @@ function main() {
   fs.mkdirSync(outDir, { recursive: true });
   fs.mkdirSync(ortOut, { recursive: true });
 
-  const vadFiles = ['vad.worklet.bundle.min.js', 'silero_vad_legacy.onnx', 'silero_vad_v5.onnx'];
+  const vadFiles = ['vad.worklet.bundle.min.js', 'silero_vad_v5.onnx'];
   for (const f of vadFiles) {
     copyFile(path.join(vadDist, f), path.join(outDir, f));
   }
@@ -69,9 +76,8 @@ function main() {
   }
 
   for (const f of fs.readdirSync(ortDist)) {
-    if (f.endsWith('.wasm') || f.endsWith('.mjs')) {
-      copyFile(path.join(ortDist, f), path.join(ortOut, f));
-    }
+    if (!ORT_ALLOWLIST.has(f)) continue;
+    copyFile(path.join(ortDist, f), path.join(ortOut, f));
   }
 
   console.log('[copy-vad-assets] copied VAD + ORT assets to public/vad (from', path.relative(root, vadDist), ')');

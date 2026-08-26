@@ -7,6 +7,7 @@ import { createTtsRoutes } from './routes/tts.routes.js';
 import { createSttRoutes } from './routes/stt.routes.js';
 import { createOllamaRoutes } from './routes/ollama.routes.js';
 import { createToolsRoutes } from './routes/tools.routes.js';
+import { createVoicePackRoutes } from './routes/voice-pack.routes.js';
 
 export function createApp(): Hono {
   const app = new Hono();
@@ -35,6 +36,7 @@ export function createApp(): Hono {
   app.route('/stt', createSttRoutes());
   app.route('/ollama', createOllamaRoutes());
   app.route('/tools', createToolsRoutes());
+  app.route('/voice/pack', createVoicePackRoutes());
 
   app.get('/health', (c) => c.json({ ok: true, service: 'aigenius-desktop-server' }));
 

@@ -181,6 +181,9 @@ export function createWindow(relativePathOrOptions?: string | CreateWindowOption
 
   win.on('focus', () => {
     setLastFocusedMainShellWindow(win);
+    if (!win.isDestroyed()) {
+      win.webContents.send('main-window-focus');
+    }
   });
   attachChatCompletionWindowFocusHandlers(win);
   attachShellPageReadyHandler(win);

@@ -16,6 +16,11 @@ const pkgPath = path.join(desktopRoot, 'package.json');
 const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 const mode = resolveDesktopUiMode();
 
+function shouldBundlePythonVenv() {
+  const raw = process.env.AIGENIUS_BUNDLE_PYTHON_VENV?.trim().toLowerCase();
+  return raw === '1' || raw === 'true' || raw === 'yes';
+}
+
 const shared = [
   {
     from: 'dist-resources/desktop-server',
@@ -26,14 +31,17 @@ const shared = [
     to: 'aigenius-desktop-ui',
   },
   {
-    from: 'dist-resources/python-venv',
-    to: 'python-venv',
-  },
-  {
     from: 'dist-resources/package-runtime.json',
     to: 'package-runtime.json',
   },
 ];
+
+if (shouldBundlePythonVenv()) {
+  shared.splice(2, 0, {
+    from: 'dist-resources/python-venv',
+    to: 'python-venv',
+  });
+}
 
 const uiResources =
   mode === 'next'

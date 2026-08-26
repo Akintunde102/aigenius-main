@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { ensureModelsDownloaded } from '../../models-downloader.js';
 import type { ModelPathOptions, PaddleOcrService } from 'ppu-paddle-ocr';
 
 let _service: PaddleOcrService | null = null;
@@ -57,9 +58,7 @@ export async function initOcr(modelsDir: string): Promise<void> {
 
   _modelsDir = modelsDir;
 
-  if (!fs.existsSync(modelsDir)) {
-    fs.mkdirSync(modelsDir, { recursive: true });
-  }
+  await ensureModelsDownloaded(modelsDir);
 
   _service = new paddle.PaddleOcrService({
     model: resolvePaddleModelPaths(modelsDir, paddle.V6_SMALL_MODEL),

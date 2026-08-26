@@ -3,6 +3,11 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import {
+  applyResolvedColorMode,
+  LEGACY_THEME_STORAGE_KEY,
+  COLOR_MODE_STORAGE_KEY,
+} from "@/lib/color-mode";
 import "./home.css";
 
 export default function HomePage() {
@@ -10,17 +15,6 @@ export default function HomePage() {
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Theme logic — matches home.html exactly
-    const html = document.documentElement;
-    const stored = localStorage.getItem("aigenius-theme");
-    if (stored === "light" || stored === "dark") {
-      html.setAttribute("data-theme", stored);
-    } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
-      html.setAttribute("data-theme", "light");
-    } else {
-      html.setAttribute("data-theme", "dark");
-    }
-
     // Dropdown outside click
     const handleClickOutside = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
@@ -46,8 +40,13 @@ export default function HomePage() {
   const toggleTheme = () => {
     const html = document.documentElement;
     const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    html.setAttribute("data-theme", next);
-    localStorage.setItem("aigenius-theme", next);
+    try {
+      localStorage.setItem(LEGACY_THEME_STORAGE_KEY, next);
+      localStorage.setItem(COLOR_MODE_STORAGE_KEY, next);
+    } catch {
+      /* ignore */
+    }
+    applyResolvedColorMode(next);
   };
 
   return (

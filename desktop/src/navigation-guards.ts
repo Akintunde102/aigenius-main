@@ -197,11 +197,11 @@ function openOauthInSystemBrowser(_parent: BrowserWindow, url: string): void {
   void shell.openExternal(url);
 }
 
-function openHostedPaymentInSystemBrowser(parent: BrowserWindow, url: string): void {
+function openHostedPaymentInSystemBrowser(_parent: BrowserWindow, url: string): void {
   if (!isHttpOrHttpsUrl(url) || !isHostedPaymentUrl(url)) {
     return;
   }
-  openExternalInSystemBrowserAfterApproval(parent, url);
+  void shell.openExternal(url);
 }
 
 function isTopLevelShellWindow(win: BrowserWindow): boolean {
@@ -291,7 +291,9 @@ export function attachMainShellNavigationGuards(win: BrowserWindow): void {
     }
 
     if (isHostedPaymentUrl(url)) {
-      blockAndEscalate(url);
+      if (isTopLevelShellWindow(win)) {
+        openHostedPaymentInSystemBrowser(win, url);
+      }
       return { action: 'deny' };
     }
 
