@@ -1,15 +1,22 @@
-import Script from 'next/script';
-import { COLOR_MODE_STORAGE_KEY } from '@/lib/color-mode';
+import {
+  COLOR_MODE_BOOTSTRAP_CRITICAL_CSS,
+  COLOR_MODE_BOOTSTRAP_SCRIPT,
+} from '@/lib/color-mode';
 
 /**
- * Runs before interactive paint so `html.dark` matches localStorage and avoids a light flash.
+ * Runs synchronously in <head> before paint so `html.dark` / `data-theme` match storage.
  */
 export function ColorModeBootstrapScript() {
-  const snippet = `(function(){try{var k=${JSON.stringify(COLOR_MODE_STORAGE_KEY)};var s=localStorage.getItem(k);if(s==='dark'||((!s||s==='system')&&window.matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();`;
-
   return (
-    <Script id="color-mode-bootstrap" strategy="beforeInteractive">
-      {snippet}
-    </Script>
+    <>
+      <style
+        id="color-mode-bootstrap-critical"
+        dangerouslySetInnerHTML={{ __html: COLOR_MODE_BOOTSTRAP_CRITICAL_CSS }}
+      />
+      <script
+        id="color-mode-bootstrap"
+        dangerouslySetInnerHTML={{ __html: COLOR_MODE_BOOTSTRAP_SCRIPT }}
+      />
+    </>
   );
 }

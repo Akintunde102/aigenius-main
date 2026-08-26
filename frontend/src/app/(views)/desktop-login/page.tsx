@@ -1,16 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
-import Link from "next/link";
 import { BotMessageSquare, Mic, Wallet } from "lucide-react";
-import { BrandLogo } from "@/app/components/BrandLogo";
-import { DesktopAuthFlowPhase } from "@/app/components/auth/GoogleSignIn";
+import { GoogleSignIn } from "@/app/components/auth/GoogleSignIn";
 import { PublicPageShell } from "@/app/components/PublicPageShell";
-import { completeDesktopOAuthSession } from "@/lib/utils/complete-desktop-oauth-session";
+import { DesktopSessionRestoringView } from "@/app/components/DesktopSessionRestoringView";
 import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-details";
-import { syncAuthSessionCookiesFromStorage } from "@/lib/utils/auth-session";
-import { resolveAuthenticatedDesktopShellRedirect } from "@/lib/utils/safe-internal-next-path";
+import { useDesktopAuthFlow } from "@/lib/hooks/use-desktop-auth-flow";
 
 const TRUST_ITEMS = [
   { icon: BotMessageSquare, label: "Every top model" },
@@ -19,10 +15,14 @@ const TRUST_ITEMS = [
 ] as const;
 
 export default function DesktopLoginPage() {
-  const pathname = usePathname();
   const [storedFirstName, setStoredFirstName] = useState<string | null>(null);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [authFlow, setAuthFlow] = useState<DesktopAuthFlowPhase>("idle");
+  const {
+    authFlow,
+    authError,
+    setAuthError,
+    setAuthFlowWithPersist,
+    finishOAuthToken,
+  } = useDesktopAuthFlow();
 
   useEffect(() => {
     try {
@@ -39,24 +39,17 @@ export default function DesktopLoginPage() {
   const handleBrowserSignIn = async () => {
     if (!window.aigeniusDesktop?.startWebSignIn) return;
     setAuthError(null);
-    setAuthFlow("awaiting-browser");
+    setAuthFlowWithPersist("awaiting-browser");
     const res = await window.aigeniusDesktop.startWebSignIn();
     if (!res?.token) {
-      setAuthFlow("idle");
+      setAuthFlowWithPersist("idle");
       setAuthError("Browser sign-in did not complete. Finish sign-in in your browser, then try again.");
       return;
     }
-    setAuthFlow("completing");
-    const ok = await completeDesktopOAuthSession(res.token);
-    if (!ok) {
-      setAuthFlow("idle");
-      setAuthError("Sign-in succeeded in the browser but the desktop app could not start your session. Check that the API is running and try again.");
-      return;
-    }
-    syncAuthSessionCookiesFromStorage();
-    const target = resolveAuthenticatedDesktopShellRedirect(pathname, window.location.search);
-    window.location.replace(target);
+    await finishOAuthToken(res.token);
   };
+
+  const authLoading = authFlow !== "idle";
 
   return (
     <PublicPageShell hideHeader showFooter={false} contentClassName="justify-center">
@@ -66,15 +59,25 @@ export default function DesktopLoginPage() {
           {storedFirstName ? `Sign in as ${storedFirstName}` : "Sign in to your desktop workspace"}
         </p>
 
-        <div style={{ width: "100%", maxWidth: "320px", marginTop: "1.5rem" }}>
-          {authFlow === "awaiting-browser" || authFlow === "completing" ? (
-            <div style={{ padding: "1rem", textAlign: "center", fontSize: "0.875rem", color: "#71717a" }}>
-              Please complete sign in within your browser...
-            </div>
-          ) : (
+        <div style={{ width: "100%", maxWidth: "320px", marginTop: "1.5rem", position: "relative" }}>
+          <div
+            className="flex flex-col gap-3"
+            style={
+              authLoading
+                ? { position: "absolute", width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none" }
+                : undefined
+            }
+            aria-hidden={authLoading}
+          >
+            <GoogleSignIn
+              variant="login"
+              onDesktopAuthFlowChange={setAuthFlowWithPersist}
+              onDesktopOAuthToken={finishOAuthToken}
+            />
             <button
               type="button"
               onClick={handleBrowserSignIn}
+              disabled={authLoading}
               style={{
                 display: "flex",
                 width: "100%",
@@ -87,16 +90,35 @@ export default function DesktopLoginPage() {
                 color: "#0e0d0c",
                 fontWeight: 600,
                 fontSize: "0.9375rem",
-                cursor: "pointer",
+                cursor: authLoading ? "default" : "pointer",
                 border: "none",
                 transition: "background 0.1s ease"
               }}
-              onMouseOver={(e) => (e.currentTarget.style.background = "#e5e5e0")}
-              onMouseOut={(e) => (e.currentTarget.style.background = "#f5f5f0")}
+              onMouseOver={(e) => {
+                if (!authLoading) e.currentTarget.style.background = "#e5e5e0";
+              }}
+              onMouseOut={(e) => {
+                if (!authLoading) e.currentTarget.style.background = "#f5f5f0";
+              }}
             >
               Sign in with Browser
             </button>
-          )}
+          </div>
+
+          {authLoading ? (
+            <DesktopSessionRestoringView
+              message={
+                authFlow === "completing"
+                  ? "Signing you in…"
+                  : "Complete sign-in in your browser"
+              }
+              detail={
+                authFlow === "completing"
+                  ? "Setting up your workspace…"
+                  : "Return here when you are done — we will finish automatically."
+              }
+            />
+          ) : null}
 
           {authError && (
             <div style={{ marginTop: "1rem", fontSize: "0.875rem", color: "#f43f5e", textAlign: "center" }}>

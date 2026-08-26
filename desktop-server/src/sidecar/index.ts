@@ -1,8 +1,9 @@
-import { spawn, ChildProcess, spawnSync } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 import { defaultTtsVoice } from '../config/voice-env.js';
+import { resolvePythonCommand } from '../voice/resolve-python-path.js';
 import dotenv from 'dotenv';
 
 // Load environment variables from .env file before starting the sidecar
@@ -123,25 +124,7 @@ class VoiceSidecar {
   }
 
   private resolvePythonCommand(): { command: string; argsPrefix: string[] } | null {
-    const tryRun = (command: string, checkArgs: string[]): boolean => {
-      try {
-        return spawnSync(command, checkArgs, { stdio: 'ignore' }).status === 0;
-      } catch {
-        return false;
-      }
-    };
-
-    const custom = process.env.PYTHON_PATH?.trim();
-    if (custom && tryRun(custom, ['--version'])) {
-      return { command: custom, argsPrefix: [] };
-    }
-
-    if (tryRun('python', ['--version'])) return { command: 'python', argsPrefix: [] };
-    if (process.platform === 'win32' && tryRun('py', ['-3', '--version'])) {
-      return { command: 'py', argsPrefix: ['-3'] };
-    }
-    if (tryRun('python3', ['--version'])) return { command: 'python3', argsPrefix: [] };
-    return null;
+    return resolvePythonCommand();
   }
 
   async start(): Promise<void> {
