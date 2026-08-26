@@ -8,6 +8,10 @@ import { syncAuthSessionCookiesFromStorage } from "@/lib/utils/auth-session";
 import { resolveAuthenticatedDesktopShellRedirect } from "@/lib/utils/safe-internal-next-path";
 import { resolveDesktopGoogleOAuthUrl } from "@/lib/utils/desktop-google-auth-url";
 import {
+    isAigeniusDesktopRuntime,
+    waitForAigeniusDesktopBridge,
+} from "@/lib/utils/desktop-runtime";
+import {
     buildDevLoginUrl,
     buildGoogleAuthUrl,
     resolveAuthApiRootUrlAsync,
@@ -25,6 +29,8 @@ interface GoogleSignInProps {
     lightSurface?: boolean;
     /** Desktop shell: show a full-page loading state while OAuth finishes. */
     onDesktopAuthFlowChange?: (phase: DesktopAuthFlowPhase) => void;
+    /** Desktop shell: parent handles token exchange (deduped with IPC push). */
+    onDesktopOAuthToken?: (token: string) => void | Promise<void>;
 }
 
 export const GoogleSignIn = ({
@@ -32,6 +38,7 @@ export const GoogleSignIn = ({
     className = '',
     lightSurface = false,
     onDesktopAuthFlowChange,
+    onDesktopOAuthToken,
 }: GoogleSignInProps) => {
     const [isDesktopSigningIn, setIsDesktopSigningIn] = useState(false);
 
@@ -40,20 +47,36 @@ export const GoogleSignIn = ({
     };
 
     const handleGoogleSignIn = async () => {
+        const likelyDesktop =
+            typeof window !== 'undefined'
+            && (isAigeniusDesktopRuntime() || window.aigeniusDesktop?.startOAuthSignIn);
+
+        if (likelyDesktop) {
+            setIsDesktopSigningIn(true);
+            setDesktopAuthFlow('awaiting-browser');
+            await waitForAigeniusDesktopBridge(10_000);
+        }
+
         const apiRoot = await resolveAuthApiRootUrlAsync();
         const url = buildGoogleAuthUrl(apiRoot);
         console.log('[GoogleSignIn Debug] resolved apiRoot:', apiRoot);
         console.log('[GoogleSignIn Debug] resolved final auth url:', url);
         if (!url || url.includes('undefined')) {
             console.error('[GoogleSignIn] Auth API root is not configured. Set NEXT_PUBLIC_AIGENIUS_API_ROOT_URL in your environment.');
+            if (likelyDesktop) {
+                setDesktopAuthFlow('idle');
+                setIsDesktopSigningIn(false);
+            }
             return;
         }
         if (typeof window !== 'undefined' && window.aigeniusDesktop?.startOAuthSignIn) {
-            setIsDesktopSigningIn(true);
-            setDesktopAuthFlow('awaiting-browser');
             try {
                 const res = await window.aigeniusDesktop.startOAuthSignIn({ provider: 'google' });
                 if (res?.token) {
+                    if (onDesktopOAuthToken) {
+                        await onDesktopOAuthToken(res.token);
+                        return;
+                    }
                     setDesktopAuthFlow('completing');
                     const ok = await completeDesktopOAuthSession(res.token);
                     if (!ok) {
@@ -78,6 +101,10 @@ export const GoogleSignIn = ({
                 setIsDesktopSigningIn(false);
             }
             return;
+        }
+        if (likelyDesktop) {
+            setDesktopAuthFlow('idle');
+            setIsDesktopSigningIn(false);
         }
         try {
             const desktopCallback = sessionStorage.getItem('desktop_callback');

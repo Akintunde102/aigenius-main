@@ -4,7 +4,7 @@
  * the URL to the main shell so verification runs inside the app—not the system browser.
  */
 
-const PAYMENT_HOST_SUFFIXES = ['paystack.com', 'paystack.co'] as const;
+const PAYMENT_HOST_SUFFIXES = ['paystack.com', 'paystack.co', 'payaza.africa'] as const;
 
 function hostnameMatchesSuffix(hostname: string, suffix: string): boolean {
   const h = hostname.toLowerCase();
@@ -15,7 +15,7 @@ function hostnameMatchesSuffix(hostname: string, suffix: string): boolean {
   return h === s || h.endsWith(`.${s}`);
 }
 
-/** True when this URL is a third-party hosted checkout (Paystack) that should stay in Electron. */
+/** True when this URL is a third-party hosted wallet checkout (Paystack, Payaza, etc.). */
 export function isHostedPaymentUrl(urlString: string): boolean {
   if (urlString === 'about:blank' || urlString.startsWith('about:blank?')) {
     return false;

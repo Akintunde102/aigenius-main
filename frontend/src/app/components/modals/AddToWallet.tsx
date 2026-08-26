@@ -21,7 +21,7 @@ import {
   subscribePendingWalletPaymentPoll,
 } from "@/lib/wallet-pending-payment-poll";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
-import { openPayazaHostedWalletCheckout, type PayazaCheckoutConfig } from "@/lib/payaza-checkout";
+import { openPayazaHostedWalletCheckout, resolvePayazaCheckoutPublicKey, type PayazaCheckoutConfig } from "@/lib/payaza-checkout";
 import { isPayazaWalletProvider } from "@/lib/wallet-payment-provider";
 import {
   creditsToUsd,
@@ -81,6 +81,7 @@ type WalletInitResponse = {
       authorization_url?: string;
       access_code?: string;
       reference?: string;
+      publicKey?: string;
       provider?: "payaza";
       checkout?: PayazaCheckoutConfig;
     };
@@ -110,6 +111,7 @@ const AddToWallet = ({
   const [firstName, setFirstName] = useState<string>("");
   const [lastName, setLastName] = useState<string>("");
   const [minTopUpCredits, setMinTopUpCredits] = useState(MIN_TOP_UP_CREDITS_FALLBACK);
+  const [pendingCheckoutUrl, setPendingCheckoutUrl] = useState<string | null>(null);
 
   // Fetch wallet on mount and after update
   const fetchWallet = async () => {
@@ -191,9 +193,11 @@ const AddToWallet = ({
 
   const pendingPaymentCallbacks = React.useMemo(() => ({
     onSuccess: async (amountInNaira: string, newWalletBalance: number | null) => {
+      setPendingCheckoutUrl(null);
       await applySuccessfulTopUp(amountInNaira, newWalletBalance);
     },
     onFailed: () => {
+      setPendingCheckoutUrl(null);
       submitInFlightRef.current = false;
       setConfirmingPayment(false);
       setUpdating(false);
@@ -428,7 +432,7 @@ const AddToWallet = ({
       if (provider === "payaza") {
         const checkout = payload.data?.checkout
           ?? (payload as { checkout?: PayazaCheckoutConfig }).checkout;
-        const publicKey = process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY?.trim();
+        const publicKey = resolvePayazaCheckoutPublicKey(payload.data?.publicKey);
 
         if (!checkout || !publicKey) {
           throw new Error("Payaza checkout configuration is incomplete");
@@ -457,15 +461,16 @@ const AddToWallet = ({
         const redirectUrl = reference
           ? appendWalletPaymentReferenceToCallbackUrl(paymentCallbackUrl, reference)
           : paymentCallbackUrl;
-        openPayazaHostedWalletCheckout({
+        const checkoutUrl = openPayazaHostedWalletCheckout({
           publicKey,
           checkout,
           redirectUrl,
         });
         if (isAigeniusDesktopRuntime()) {
+          setPendingCheckoutUrl(checkoutUrl);
           toast(
-            "Complete payment in your browser. Your wallet will update automatically in the app.",
-            { icon: "🌐", duration: 6000 },
+            "Opening Payaza checkout in your browser…",
+            { icon: "🌐", duration: 5000 },
           );
         }
         return;
@@ -494,11 +499,12 @@ const AddToWallet = ({
           void startPolling(reference, credits);
         }
         setUpdating(false);
-        openWalletPaymentCheckout(data.authorization_url);
+        const checkoutUrl = openWalletPaymentCheckout(data.authorization_url);
         if (isAigeniusDesktopRuntime()) {
+          setPendingCheckoutUrl(checkoutUrl);
           toast(
-            "Complete payment in your browser. Your wallet will update automatically in the app.",
-            { icon: "🌐", duration: 6000 },
+            "Opening Paystack checkout in your browser…",
+            { icon: "🌐", duration: 5000 },
           );
         }
         return;
@@ -763,6 +769,31 @@ const AddToWallet = ({
                 : "Please wait, preparing checkout…"}
             </div>
           )}
+          {pendingCheckoutUrl && isAigeniusDesktopRuntime() ? (
+            <div
+              className="mt-3 rounded-xl border p-3"
+              style={{
+                borderColor: "var(--modal-border)",
+                background: "var(--modal-surface, rgba(255,255,255,0.03))",
+              }}
+            >
+              <p
+                className="text-xs leading-relaxed"
+                style={{ color: "var(--modal-muted-fg)" }}
+              >
+                Complete payment in your browser. Your wallet will update automatically when you return to the app.
+              </p>
+              <button
+                type="button"
+                className="mt-3 w-full rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-600"
+                onClick={() => {
+                  openWalletPaymentCheckout(pendingCheckoutUrl);
+                }}
+              >
+                Open payment page
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
       <style jsx>{`

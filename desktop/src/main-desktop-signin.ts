@@ -9,6 +9,7 @@ import { resolveUpstreamApiUrl as resolveDesktopUpstreamApiUrl } from './resolve
 import { resolveFrontendPort } from './frontend-port';
 
 const FRONTEND_PORT = resolveFrontendPort();
+const DESKTOP_OAUTH_SIGNIN_COMPLETE_CHAN = 'desktop-oauth-signin-complete';
 const WEBSITE_LOGIN_URL = app.isPackaged
   ? 'https://aigenius.noboxlabs.xyz/login'
   : loopbackHttpUrl(FRONTEND_PORT, '/login');
@@ -117,6 +118,12 @@ export function runDesktopBrowserSignIn(
             if (win.isMinimized()) win.restore();
             win.show();
             win.focus();
+          }
+
+          try {
+            event.sender.send(DESKTOP_OAUTH_SIGNIN_COMPLETE_CHAN, { token: accessToken });
+          } catch (err) {
+            console.warn('[aigenius-desktop] OAuth complete push failed', err);
           }
 
           resolve({ token: accessToken });

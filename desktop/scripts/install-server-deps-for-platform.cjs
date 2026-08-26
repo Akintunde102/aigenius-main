@@ -68,7 +68,16 @@ execSync(`npm install --omit=dev --os=${platform} --cpu=${arch} --workspaces=fal
   },
 });
 
-const electronVersion = '33.2.1';
+const electronVersion = (() => {
+  try {
+    const desktopPkg = JSON.parse(
+      fs.readFileSync(path.join(desktopRoot, 'package.json'), 'utf8'),
+    );
+    return desktopPkg.build?.electronVersion || desktopPkg.devDependencies?.electron?.replace(/^\^/, '') || '43.4.1';
+  } catch {
+    return '43.4.1';
+  }
+})();
 console.info(
   `install-server-deps: electron-rebuild native modules for Electron ${electronVersion} (${platform}-${arch})`,
 );

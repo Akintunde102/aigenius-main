@@ -30,11 +30,30 @@ const Login = () => {
           return;
         }
 
-        // If already logged in, hand off the short-lived auth JWT (not the API key).
+        // If already logged in, request a desktop handoff code so the desktop gets both an access and refresh token.
         const token = storage(storageConstants.NOBOX_TOKEN).getString();
         if (token) {
           sessionStorage.removeItem("desktop_callback");
-          window.location.href = `${callback}${callback.includes('?') ? '&' : '?'}token=${token}`;
+          const authApiRoot = resolveAuthApiRootUrl();
+          fetch(`${authApiRoot}/auth/_/desktop/handoff-code`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          .then(res => res.json())
+          .then(data => {
+             if (data?.code) {
+                window.location.href = `${callback}${callback.includes('?') ? '&' : '?'}code=${data.code}`;
+             } else {
+                window.location.href = `${callback}${callback.includes('?') ? '&' : '?'}token=${token}`;
+             }
+          })
+          .catch(() => {
+             window.location.href = `${callback}${callback.includes('?') ? '&' : '?'}token=${token}`;
+          });
+          return;
         }
       } else {
         // Plain web sign-in — drop any leftover desktop handoff from a prior session.

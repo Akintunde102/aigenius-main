@@ -50,5 +50,7 @@ playwright-report/
 storybook-static
 /public/monaco-editor
 /public/vad
+/public/downloads/*
+!/public/downloads/.gitkeep
 build_output.log
 

@@ -205,7 +205,8 @@
   transform: translateY(0) scale(1);
 }
 
-.home-root .dropdown button {
+.home-root .dropdown button,
+.home-root .dropdown a {
   display: flex;
   align-items: center;
   gap: 0.625rem;
@@ -220,9 +221,11 @@
   cursor: pointer;
   transition: background 0.12s;
   text-align: left;
+  text-decoration: none;
 }
 
-.home-root .dropdown button:hover { background: rgba(255,255,255,0.07); }
+.home-root .dropdown button:hover,
+.home-root .dropdown a:hover { background: rgba(255,255,255,0.07); }
 
 .home-root .dd-icon {
   width: 1.375rem;

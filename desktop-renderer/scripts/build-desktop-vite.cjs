@@ -6,6 +6,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const { readPortsFile, DEFAULTS } = require('../../../scripts/dev-ports.cjs');
+const { loadDesktopBuildEnv } = require('./load-desktop-build-env.cjs');
 
 function readUpstreamFromPackageEnv() {
   const fromEnv = process.env.AIGENIUS_UPSTREAM_API_URL?.trim();
@@ -40,6 +41,8 @@ const apiPort = ports.api ?? DEFAULTS.api;
 const miniServerRoot = `http://127.0.0.1:${sidecarPort}`;
 const apiRoot = upstream || `http://localhost:${apiPort}`;
 
+const walletEnv = loadDesktopBuildEnv();
+
 const env = {
   ...process.env,
   NODE_ENV: 'production',
@@ -47,6 +50,7 @@ const env = {
   NEXT_PUBLIC_MINI_SERVER_PORT: String(sidecarPort),
   NEXT_PUBLIC_DESKTOP_SIDECAR_PORT: String(sidecarPort),
   NEXT_PUBLIC_DESKTOP_UPSTREAM_API_URL: apiRoot,
+  ...walletEnv,
 };
 
 if (!upstream) {

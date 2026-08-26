@@ -5,6 +5,11 @@ const path = require('path');
 
 const { resolveServerNodeModules } = require('./resolve-server-node-modules.cjs');
 
+function shouldBundlePythonVenv() {
+  const raw = process.env.AIGENIUS_BUNDLE_PYTHON_VENV?.trim().toLowerCase();
+  return raw === '1' || raw === 'true' || raw === 'yes';
+}
+
 function resolvePythonVenvDir(desktopRoot) {
   const platform = process.env.AIGENIUS_PACKAGE_PLATFORM?.trim() || process.platform;
   const arch = process.env.AIGENIUS_PACKAGE_ARCH?.trim() || process.arch;
@@ -151,9 +156,14 @@ if (fs.existsSync(reqTts)) {
   fs.copyFileSync(reqTts, path.join(outServer, 'requirements-tts.txt'));
 }
 
-const pythonVenvSrc = resolvePythonVenvDir(desktopRoot);
-fs.cpSync(pythonVenvSrc, outPythonVenv, { recursive: true });
+const pythonVenvSrc = shouldBundlePythonVenv() ? resolvePythonVenvDir(desktopRoot) : null;
+if (pythonVenvSrc) {
+  fs.cpSync(pythonVenvSrc, outPythonVenv, { recursive: true });
+} else {
+  console.info('[prepare-desktop-resources] Skipping bundled python-venv (lite build).');
+}
 
+const voicePackUrl = process.env.AIGENIUS_VOICE_PACK_URL?.trim() || null;
 const upstreamApiUrl = resolveUpstreamApiUrlForPackage(desktopRoot);
 if (upstreamApiUrl === 'http://localhost:8000') {
   console.warn(
@@ -164,11 +174,11 @@ if (upstreamApiUrl === 'http://localhost:8000') {
 }
 fs.writeFileSync(
   path.join(outRoot, 'package-runtime.json'),
-  `${JSON.stringify({ upstreamApiUrl, desktopUiMode }, null, 2)}\n`,
+  `${JSON.stringify({ upstreamApiUrl, desktopUiMode, voicePackUrl }, null, 2)}\n`,
 );
 
 console.info(
-  `Prepared desktop/dist-resources (${uiBundleName} + desktop-server, node_modules from ${nodeMods}, python-venv from ${pythonVenvSrc}, upstream ${upstreamApiUrl}, ui ${desktopUiMode})`,
+  `Prepared desktop/dist-resources (${uiBundleName} + desktop-server, node_modules from ${nodeMods}, python-venv ${pythonVenvSrc ? `from ${pythonVenvSrc}` : 'skipped'}, upstream ${upstreamApiUrl}, ui ${desktopUiMode})`,
 );
 
 function resolveUpstreamApiUrlForPackage(desktopRoot) {

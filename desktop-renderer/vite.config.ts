@@ -1,6 +1,11 @@
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { defineConfig } from 'vite';
+
+const require = createRequire(import.meta.url);
+const { loadDesktopBuildEnv } = require('./scripts/load-desktop-build-env.cjs');
+const desktopBuildEnv = loadDesktopBuildEnv();
 
 const repoRoot = path.resolve(__dirname, '..');
 const frontendRoot = path.join(repoRoot, 'frontend');
@@ -118,6 +123,23 @@ export default defineConfig({
     ),
     'process.env.NEXT_PUBLIC_E2E_WALLET_BYPASS_SECRET': JSON.stringify(
       process.env.NEXT_PUBLIC_E2E_WALLET_BYPASS_SECRET ?? '',
+    ),
+    'process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY': JSON.stringify(
+      process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY ?? desktopBuildEnv.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY,
+    ),
+    'process.env.NEXT_PUBLIC_PAYAZA_CHECKOUT_BUSINESS_NAME': JSON.stringify(
+      process.env.NEXT_PUBLIC_PAYAZA_CHECKOUT_BUSINESS_NAME
+        ?? desktopBuildEnv.NEXT_PUBLIC_PAYAZA_CHECKOUT_BUSINESS_NAME,
+    ),
+    'process.env.NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER': JSON.stringify(
+      process.env.NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER
+        ?? desktopBuildEnv.NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER,
+    ),
+    'process.env.NEXT_PUBLIC_PAYSTACK_KEY': JSON.stringify(
+      process.env.NEXT_PUBLIC_PAYSTACK_KEY ?? desktopBuildEnv.NEXT_PUBLIC_PAYSTACK_KEY,
+    ),
+    'process.env.NEXT_PUBLIC_APP_ORIGIN': JSON.stringify(
+      process.env.NEXT_PUBLIC_APP_ORIGIN ?? desktopBuildEnv.NEXT_PUBLIC_APP_ORIGIN,
     ),
   },
 });
