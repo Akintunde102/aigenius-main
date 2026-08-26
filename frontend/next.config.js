@@ -248,6 +248,8 @@ const nextConfig = {
             process.env.NEXT_PUBLIC_PAYAZA_CHECKOUT_BUSINESS_NAME
             || process.env.PAYAZA_CHECKOUT_BUSINESS_NAME
             || '',
+        NEXT_PUBLIC_MAC_DESKTOP_DOWNLOAD_URL:
+            process.env.NEXT_PUBLIC_MAC_DESKTOP_DOWNLOAD_URL || '',
     },
 
     // Output configuration for better production builds

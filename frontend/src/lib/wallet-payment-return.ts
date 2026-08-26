@@ -71,19 +71,21 @@ export function resolveWalletPaymentReference(
 }
 
 /**
- * Opens Paystack hosted checkout.
+ * Opens Paystack/Payaza hosted checkout.
  * - Web: navigates the current tab.
- * - Desktop: approval modal → system browser (wallet updates via background polling).
+ * - Desktop: opens the system browser (wallet updates via background polling).
+ * @returns the checkout URL that was opened (for desktop fallback UI).
  */
-export function openWalletPaymentCheckout(authorizationUrl: string): void {
-  if (typeof window === 'undefined') return;
+export function openWalletPaymentCheckout(authorizationUrl: string): string {
+  if (typeof window === 'undefined') return authorizationUrl;
 
   if (window.aigeniusDesktop?.isDesktop && typeof window.aigeniusDesktop.openExternal === 'function') {
     window.aigeniusDesktop.openExternal(authorizationUrl);
-    return;
+    return authorizationUrl;
   }
 
   window.location.assign(authorizationUrl);
+  return authorizationUrl;
 }
 
 export function appendWalletTopUpReturnMarker(returnPath: string): string {

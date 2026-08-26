@@ -281,8 +281,21 @@ export function miniServerChildEnv(
     dbPath: string;
     modelsDir: string;
     token: string;
+    packagedResourcesPath?: string;
   },
 ): NodeJS.ProcessEnv {
+  const bundledPythonVenv =
+    opts.packagedResourcesPath &&
+    fs.existsSync(path.join(opts.packagedResourcesPath, 'python-venv'))
+      ? path.join(opts.packagedResourcesPath, 'python-venv')
+      : undefined;
+
+  const packageRuntimePath =
+    opts.packagedResourcesPath &&
+    fs.existsSync(path.join(opts.packagedResourcesPath, 'package-runtime.json'))
+      ? path.join(opts.packagedResourcesPath, 'package-runtime.json')
+      : undefined;
+
   return {
     ...base,
     PORT: opts.miniPort,
@@ -297,8 +310,12 @@ export function miniServerChildEnv(
     AIGENIUS_INDEXER_IPC_PORT: INDEXER_IPC_PORT,
     AIGENIUS_SECRET_TOKEN: opts.token,
     AIGENIUS_UPSTREAM_API_URL: resolveUpstreamApiUrl(),
+    ...(bundledPythonVenv ? { AIGENIUS_BUNDLED_PYTHON_VENV: bundledPythonVenv } : {}),
+    ...(packageRuntimePath ? { AIGENIUS_PACKAGE_RUNTIME_PATH: packageRuntimePath } : {}),
     /** Off by default in the desktop shell — set AIGENIUS_ENABLE_STT=1 to restore local Whisper. */
     AIGENIUS_ENABLE_STT: process.env.AIGENIUS_ENABLE_STT ?? '0',
+    /** Off by default — local PocketTTS is not used in production desktop builds. */
+    AIGENIUS_ENABLE_TTS: process.env.AIGENIUS_ENABLE_TTS ?? '0',
     /** Active code project only unless explicitly re-enabled. */
     AIGENIUS_HOMEDIR_INDEX: process.env.AIGENIUS_HOMEDIR_INDEX ?? '0',
   };
@@ -309,7 +326,7 @@ export async function startBackendProcesses(): Promise<void> {
   const serverEntry = desktopServerEntry();
   const userDataPath = app.getPath('userData');
   const dbPath = path.join(userDataPath, 'search-index.sqlite');
-  const modelsDir = path.join(__dirname, 'models');
+  const modelsDir = path.join(userDataPath, 'models');
 
   const logsDir = app.getPath('logs');
   if (!fs.existsSync(logsDir)) {
@@ -330,6 +347,7 @@ export async function startBackendProcesses(): Promise<void> {
           dbPath,
           modelsDir,
           token,
+          packagedResourcesPath: app.isPackaged ? process.resourcesPath : undefined,
         }),
         logPath: path.join(logsDir, 'mini-server.log'),
       }),

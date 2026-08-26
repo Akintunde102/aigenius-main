@@ -73,13 +73,31 @@ export function buildPayazaHostedCheckoutUrl(
     return `${PAYAZA_HOSTED_CHECKOUT_BASE_URL}?${queryWithoutRedirect}&redirect_url=${redirect}`;
 }
 
+/**
+ * Prefer the merchant key returned by the API (matches connectionMode + server env).
+ * Fall back to NEXT_PUBLIC_PAYAZA_PUBLIC_KEY for older backends / local dev.
+ */
+export function resolvePayazaCheckoutPublicKey(
+    apiPublicKey: string | null | undefined,
+    envPublicKey: string | undefined = process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY,
+): string {
+    const fromApi = apiPublicKey?.trim();
+    if (fromApi) {
+        return fromApi;
+    }
+    return envPublicKey?.trim() || '';
+}
+
 export type OpenPayazaHostedWalletCheckoutOptions = BuildPayazaHostedCheckoutUrlOptions;
 
 /**
  * Opens Payaza hosted checkout in the browser (same-tab on web, system browser on desktop).
+ * @returns the checkout URL that was opened.
  */
 export function openPayazaHostedWalletCheckout(
     options: OpenPayazaHostedWalletCheckoutOptions,
-): void {
-    openWalletPaymentCheckout(buildPayazaHostedCheckoutUrl(options));
+): string {
+    const checkoutUrl = buildPayazaHostedCheckoutUrl(options);
+    openWalletPaymentCheckout(checkoutUrl);
+    return checkoutUrl;
 }

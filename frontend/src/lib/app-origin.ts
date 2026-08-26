@@ -1,17 +1,37 @@
+import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
+
+const DEFAULT_DESKTOP_APP_ORIGIN = 'https://aigenius.noboxlabs.xyz';
+
+function normalizeOrigin(origin: string): string {
+  return origin.trim().replace(/\/$/, '');
+}
+
+function isHttpOrigin(origin: string): boolean {
+  return origin.startsWith('http://') || origin.startsWith('https://');
+}
+
 /**
- * Public origin used for Paystack return URLs and other browser redirects.
- * Prefer NEXT_PUBLIC_APP_ORIGIN when set (production / desktop build); fall back to the current page.
+ * Public origin used for Paystack/Payaza return URLs and other browser redirects.
+ * Desktop shells using `aigenius://` must redirect to the hosted web app, not the custom protocol.
  */
 export function getAppPublicOrigin(): string {
-  if (typeof window === 'undefined') {
-    const configured = process.env.NEXT_PUBLIC_APP_ORIGIN?.trim();
-    return configured ? configured.replace(/\/$/, '') : '';
-  }
-
   const configured = process.env.NEXT_PUBLIC_APP_ORIGIN?.trim();
   if (configured) {
-    return configured.replace(/\/$/, '');
+    return normalizeOrigin(configured);
   }
 
-  return window.location.origin;
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  const currentOrigin = window.location.origin;
+  if (isHttpOrigin(currentOrigin)) {
+    return normalizeOrigin(currentOrigin);
+  }
+
+  if (isAigeniusDesktopRuntime() || currentOrigin.startsWith('aigenius://')) {
+    return DEFAULT_DESKTOP_APP_ORIGIN;
+  }
+
+  return normalizeOrigin(currentOrigin);
 }

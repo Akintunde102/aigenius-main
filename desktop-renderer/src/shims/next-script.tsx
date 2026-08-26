@@ -7,16 +7,28 @@ type ScriptProps = {
   children?: string;
 };
 
+function runInlineScriptOnce(id: string, source: string): void {
+  if (typeof document === 'undefined' || document.getElementById(id)) {
+    return;
+  }
+  const el = document.createElement('script');
+  el.id = id;
+  el.text = source;
+  document.head.appendChild(el);
+}
+
 export default function Script({
   id,
   src,
   strategy = 'afterInteractive',
   children,
 }: ScriptProps) {
+  if (strategy === 'beforeInteractive' && children && id) {
+    runInlineScriptOnce(id, children);
+    return null;
+  }
+
   useEffect(() => {
-    if (strategy === 'beforeInteractive') {
-      return;
-    }
     if (src) {
       const el = document.createElement('script');
       el.src = src;
@@ -30,16 +42,9 @@ export default function Script({
       };
     }
     if (children && id) {
-      const existing = document.getElementById(id);
-      if (existing) {
-        return;
-      }
-      const el = document.createElement('script');
-      el.id = id;
-      el.text = children;
-      document.body.appendChild(el);
+      runInlineScriptOnce(id, children);
       return () => {
-        el.remove();
+        document.getElementById(id)?.remove();
       };
     }
     return undefined;

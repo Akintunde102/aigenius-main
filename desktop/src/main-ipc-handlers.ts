@@ -36,6 +36,7 @@ import {
 import { runDesktopBrowserSignIn } from './main-desktop-signin';
 import { resolveUpstreamApiUrl } from './main-backend-lifecycle';
 import { createWindow } from './main-window';
+import { isHostedPaymentUrl } from './payment-allowlist';
 
 function normalizeRendererFilesystemPath(filePath: string): string {
   let normalizedPath = filePath;
@@ -54,6 +55,10 @@ export function registerMainIpcHandlers(): void {
       return;
     }
     if (deliverOpenExternalOrAuthUrl(e.sender, url)) {
+      return;
+    }
+    if (isHostedPaymentUrl(url)) {
+      void shell.openExternal(url);
       return;
     }
     const win = BrowserWindow.fromWebContents(e.sender);

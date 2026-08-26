@@ -4,8 +4,10 @@ import path from 'path';
 import os from 'os';
 import { registerSearchModule } from './search/index.js';
 import { resolveSearchWorkerCountFromEnv } from './search/indexer/resolve-worker-count.js';
+import { ensureModelsDownloaded } from './search/models-downloader.js';
 import { isSttEnabled } from './config/voice-env.js';
 import { startVoiceSidecar } from './sidecar/index.js';
+import { ensureVoicePackDownloaded } from './voice/voice-pack.js';
 import { Server } from 'socket.io';
 import { createApp } from './app.js';
 import { serverHostname, serverPort, upstreamApiUrl } from './config/server-env.js';
@@ -64,6 +66,11 @@ function initSearchModule(): void {
       process.env.AIGENIUS_MODELS_DIR ??
       path.join(process.cwd(), 'dist', 'search', 'models');
 
+    // Ensure models are downloaded (lazy-load) before indexing can start.
+    ensureModelsDownloaded(modelsDir).catch(err => {
+      console.error('[aigenius-desktop-server] Background models download failed:', err);
+    });
+
     registerSearchModule({
       projectRoot,
       watchPaths,
@@ -97,6 +104,14 @@ async function bootstrapAfterListen(): Promise<void> {
   if (process.env.AIGENIUS_ENABLE_TTS !== '0') {
     console.info('[aigenius-desktop-server] Initialising PocketTTS sidecar...');
     try {
+      if (!process.env.AIGENIUS_BUNDLED_PYTHON_VENV?.trim()) {
+        await ensureVoicePackDownloaded().catch((err) => {
+          console.warn(
+            '[aigenius-desktop-server] Voice pack not installed (download skipped or failed):',
+            err instanceof Error ? err.message : err,
+          );
+        });
+      }
       await startVoiceSidecar();
       console.info(
         `[aigenius-desktop-server] PocketTTS sidecar ready (STT ${isSttEnabled() ? 'enabled' : 'disabled via AIGENIUS_ENABLE_STT=0'}).`,

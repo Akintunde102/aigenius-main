@@ -8,22 +8,11 @@
     />
     <link rel="icon" href="/logo.png" />
     <title>AIGenius</title>
-    <script>
-      (function () {
-        try {
-          var k = 'aigenius-color-mode';
-          var s = localStorage.getItem(k);
-          if (
-            s === 'dark' ||
-            ((!s || s === 'system') &&
-              window.matchMedia('(prefers-color-scheme: dark)').matches)
-          ) {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
-        } catch (e) {}
-      })();
+    <style id="color-mode-bootstrap-critical">
+      html.dark,html.dark body,html[data-theme=dark],html[data-theme=dark] body{background-color:#0b0b0e;color:#e8eaef;color-scheme:dark}
+    </style>
+    <script id="color-mode-bootstrap">
+      (function(){try{var ck="aigenius-color-mode";var lk="aigenius-theme";var cm=localStorage.getItem(ck);var lt=localStorage.getItem(lk);var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved='light';if(cm==='dark'||cm==='light'){resolved=cm;}else if(lt==='dark'||lt==='light'){resolved=lt;}else{resolved=prefersDark?'dark':'light';}var r=document.documentElement;r.setAttribute('data-theme',resolved);r.style.colorScheme=resolved;if(resolved==='dark'){r.classList.add('dark');}else{r.classList.remove('dark');}}catch(e){}})();
     </script>
   </head>
   <body>

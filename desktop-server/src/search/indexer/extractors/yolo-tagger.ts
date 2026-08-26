@@ -12,6 +12,7 @@
 
 import * as ort from 'onnxruntime-node';
 import sharp from 'sharp';
+import { ensureModelsDownloaded } from '../../models-downloader.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -56,9 +57,11 @@ async function loadSession(modelsDir: string): Promise<ort.InferenceSession> {
 
   const modelPath = path.join(modelsDir, 'yolox_nano.onnx');
   if (!fs.existsSync(modelPath)) {
-    throw new Error(
-      `YOLOX model not found at "${modelPath}". Run: npm run download-models`,
-    );
+    console.warn(`[yolo-tagger] YOLOX model missing at "${modelPath}". Attempting download...`);
+    await ensureModelsDownloaded(modelsDir);
+    if (!fs.existsSync(modelPath)) {
+      throw new Error(`YOLOX model failed to download at "${modelPath}".`);
+    }
   }
 
   // Log the model's actual I/O names once so you can verify MODEL_INPUT_NAME

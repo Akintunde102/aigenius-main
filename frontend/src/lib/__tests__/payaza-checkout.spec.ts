@@ -1,6 +1,7 @@
 import {
     buildPayazaHostedCheckoutUrl,
     PAYAZA_HOSTED_CHECKOUT_BASE_URL,
+    resolvePayazaCheckoutPublicKey,
     type PayazaCheckoutConfig,
 } from '../payaza-checkout';
 
@@ -45,5 +46,17 @@ describe('buildPayazaHostedCheckoutUrl', () => {
 
         expect(url).toContain('biller_name=AIGenius');
         expect(url.indexOf('biller_name=')).toBeLessThan(url.indexOf('redirect_url='));
+    });
+});
+
+describe('resolvePayazaCheckoutPublicKey', () => {
+    it('prefers the API public key over the baked env key', () => {
+        expect(resolvePayazaCheckoutPublicKey('PZ78-PKLIVE-from-api', 'PZ78-PKTEST-env')).toBe(
+            'PZ78-PKLIVE-from-api',
+        );
+    });
+
+    it('falls back to env when the API omits publicKey', () => {
+        expect(resolvePayazaCheckoutPublicKey(undefined, 'PZ78-PKTEST-env')).toBe('PZ78-PKTEST-env');
     });
 });

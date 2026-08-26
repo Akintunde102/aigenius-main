@@ -181,6 +181,10 @@ export type AigeniusDesktopBridgeSurface = {
   openExternal?: (url: string) => void;
   /** Fires when the Electron main window regains OS focus (e.g. after system-browser payment). */
   onMainWindowFocus?: (handler: () => void) => () => void;
+  /** Fires when loopback OAuth completes (even if the original click handler was interrupted). */
+  onOAuthSignInComplete?: (handler: (payload: { token: string }) => void) => () => void;
+  startOAuthSignIn?: (options?: { provider?: 'google' }) => Promise<{ token: string } | null>;
+  startWebSignIn?: () => Promise<{ token: string } | null>;
   runLocalDesktopTool?: (
     payload: { tool: string; arguments: Record<string, unknown> },
     options?: { onShellStreamChunk?: (chunk: { stream: string; text: string }) => void },

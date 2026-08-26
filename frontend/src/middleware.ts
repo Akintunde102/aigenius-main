@@ -8,6 +8,7 @@ const PUBLIC_PATH_PREFIXES = [
     '/published-conversations',
     '/payment-callback',
     '/integrations',
+    '/downloads',
 ];
 
 const PUBLIC_PATHS = new Set([
@@ -44,8 +45,8 @@ function isPublicPath(pathname: string): boolean {
         return true;
     }
 
-    // Static asset extensions (images, fonts, json)
-    if (/\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|woff|woff2|ttf|eot)$/i.test(pathname)) {
+    // Static asset extensions (images, fonts, installers)
+    if (/\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|woff|woff2|ttf|eot|dmg)$/i.test(pathname)) {
         return true;
     }
 
@@ -115,6 +116,6 @@ export function middleware(request: NextRequest) {
 export const config = {
     matcher: [
         '/_next/static/:path*',
-        '/((?!_next/static|_next/image|favicon\\.ico|logo\\.png|assets|images|vad|stream-status|monaco-editor|public|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|woff|woff2|ttf|eot)$).*)',
+        '/((?!_next/static|_next/image|favicon\\.ico|logo\\.png|assets|images|vad|stream-status|monaco-editor|public|api|downloads|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|woff|woff2|ttf|eot|dmg)$).*)',
     ],
 };

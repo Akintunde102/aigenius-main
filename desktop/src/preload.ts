@@ -62,6 +62,7 @@ type RunLocalOptions = {
 const shellChrome = mainShellRendererChrome(process.platform);
 
 const DESKTOP_QUEUE_CHAT_SCREENSHOT_CHAN = 'aigenius-desktop-queue-chat-screenshot';
+const DESKTOP_OAUTH_SIGNIN_COMPLETE_CHAN = 'desktop-oauth-signin-complete';
 
 if (process.env.NODE_ENV !== 'production') {
   console.debug('[AIGenius Bridge] Exposing bridge to main world at:', new Date().toISOString());
@@ -338,6 +339,22 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     ipcRenderer.on(DESKTOP_QUEUE_CHAT_SCREENSHOT_CHAN, fn);
     return () => {
       ipcRenderer.removeListener(DESKTOP_QUEUE_CHAT_SCREENSHOT_CHAN, fn);
+    };
+  },
+  onOAuthSignInComplete: (handler: (payload: { token: string }) => void) => {
+    const fn = (_event: unknown, raw: unknown): void => {
+      if (!raw || typeof raw !== 'object') {
+        return;
+      }
+      const token = (raw as { token?: unknown }).token;
+      if (typeof token !== 'string' || token.trim().length === 0) {
+        return;
+      }
+      handler({ token });
+    };
+    ipcRenderer.on(DESKTOP_OAUTH_SIGNIN_COMPLETE_CHAN, fn);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_OAUTH_SIGNIN_COMPLETE_CHAN, fn);
     };
   },
 });
