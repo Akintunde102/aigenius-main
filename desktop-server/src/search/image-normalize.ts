@@ -2,11 +2,11 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { randomBytes } from 'crypto';
-import sharp from 'sharp';
 import {
   imageExtensionFromPath,
   needsImageDecode,
 } from './image-extensions.js';
+import { loadSharp } from './sharp-loader.js';
 
 export type PreparedImage = {
   filePath: string;
@@ -29,6 +29,7 @@ export async function prepareImageForAnalysis(filePath: string): Promise<Prepare
   );
 
   try {
+    const sharp = await loadSharp();
     await sharp(filePath).png().toFile(tmpPath);
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);

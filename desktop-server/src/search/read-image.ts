@@ -2,7 +2,6 @@ import fs from 'fs/promises';
 import path from 'path';
 import type Database from 'better-sqlite3';
 import { getFileIndexRow } from './db/queries.js';
-import { routeExtraction } from './indexer/extractors/router.js';
 import { fetchImageToTempFile } from './fetch-image-url.js';
 import { imageExtensionFromPath, isImageExtension, formatSupportedImageExtensions } from './image-extensions.js';
 
@@ -120,6 +119,8 @@ async function liveExtraction(
   source: ReadImageSource,
   url?: string,
 ): Promise<ReadImageResult> {
+  // Lazy-load image pipelines (sharp, ONNX) so HTTP /health can start first.
+  const { routeExtraction } = await import('./indexer/extractors/router.js');
   const extracted = await routeExtraction(filePath, modelsDir, false);
   const errors: string[] = [];
   if (extracted.error) errors.push(extracted.error);

@@ -25,5 +25,6 @@ export {
     isRequestCancellationError,
     isRequestCancellationMessage,
     isWalletRelatedChatError,
+    isAuthRelatedChatError,
     toUserFacingChatErrorMessage,
 } from './errorHandling.utils';

@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
+    "@vscode/ripgrep": "^1.18.0",
     "better-sqlite3": "^13.0.3",
     "chokidar": "^3.6.0",
     "dotenv": "^17.4.2",
@@ -31,7 +32,7 @@
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^5.4.296",
     "ppu-paddle-ocr": "^6.3.0",
-    "sharp": "^0.33.4",
+    "sharp": "^0.34.5",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.3",
     "tree-sitter-cpp": "^0.23.4",

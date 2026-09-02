@@ -35,10 +35,10 @@ function readUpstreamFromPackageEnv() {
 }
 
 const upstream = readUpstreamFromPackageEnv();
-const ports = readPortsFile() || DEFAULTS;
-const sidecarPort = ports.sidecar ?? DEFAULTS.sidecar;
-const apiPort = ports.api ?? DEFAULTS.api;
-const miniServerRoot = `http://127.0.0.1:${sidecarPort}`;
+const apiPort = (readPortsFile() || DEFAULTS).api ?? DEFAULTS.api;
+/** Packaged Electron mini-server always listens on 8001 — not Tilt `sidecar` (28001). */
+const PACKAGED_MINI_SERVER_PORT = 8001;
+const miniServerRoot = `http://127.0.0.1:${PACKAGED_MINI_SERVER_PORT}`;
 const apiRoot = upstream || `http://localhost:${apiPort}`;
 
 const walletEnv = loadDesktopBuildEnv();
@@ -47,8 +47,8 @@ const env = {
   ...process.env,
   NODE_ENV: 'production',
   NEXT_PUBLIC_NOBOX_API_ROOT_URL: miniServerRoot,
-  NEXT_PUBLIC_MINI_SERVER_PORT: String(sidecarPort),
-  NEXT_PUBLIC_DESKTOP_SIDECAR_PORT: String(sidecarPort),
+  NEXT_PUBLIC_MINI_SERVER_PORT: String(PACKAGED_MINI_SERVER_PORT),
+  NEXT_PUBLIC_DESKTOP_SIDECAR_PORT: String(PACKAGED_MINI_SERVER_PORT),
   NEXT_PUBLIC_DESKTOP_UPSTREAM_API_URL: apiRoot,
   ...walletEnv,
 };

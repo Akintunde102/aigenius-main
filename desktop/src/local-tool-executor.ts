@@ -338,9 +338,32 @@ export async function runLocalDesktopTool(
       }
     }
     case 'local_go_to_definition': {
-      return runGoToDefinition(
-        applyEditorDefaultsToToolArgs(rawArgs, { path: true, line: true, character: true }),
-      );
+      const args = applyEditorDefaultsToToolArgs(rawArgs, { path: true, line: true, character: true });
+      const filePath = typeof args.path === 'string' ? args.path.trim() : '';
+      const line = typeof args.line === 'number' ? args.line : 1;
+      const character = typeof args.character === 'number' ? args.character : 1;
+      if (!filePath) return { ok: false, error: 'path is required (absolute file path)' };
+
+      try {
+        const params = new URLSearchParams({
+          path: filePath,
+          line: String(line),
+          character: String(character),
+        });
+        const res = await sidecarFetch(`${SERVER_URL}/search/go-to-definition?${params}`, {
+          headers: sidecarAuthHeaders(),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.result === 'string') {
+            return { ok: true, result: data.result };
+          }
+        }
+      } catch {
+        /* fall through to optional LSP */
+      }
+
+      return runGoToDefinition(args);
     }
     case 'local_grep': {
       const sidecarGrep = await executeSidecarTool('local_grep', rawArgs);

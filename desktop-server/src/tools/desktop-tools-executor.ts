@@ -3,6 +3,14 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
+import {
+  bundledGrep,
+  formatBundledGrepResult,
+  type BundledGrepOutputMode,
+} from '../search/bundled-grep.js';
+import { resolveGoToDefinition } from '../search/go-to-definition.js';
+import { selectGrepEngine } from './resolve-ripgrep.js';
+import { blockInteractiveShellCommand } from './shell-interactive-block.js';
 
 const MAX_GIT_OUT = 256 * 1024;
 const MAX_READ_CHARS = 520 * 1024;
@@ -13,6 +21,26 @@ const MAX_SHELL_OUT = 512 * 1024;
 export type ToolExecuteResult =
   | { ok: true; result: string; rawData?: unknown }
   | { ok: false; error: string };
+
+function isMissingBinaryError(message: string): boolean {
+  return /ENOENT|not found/i.test(message);
+}
+
+function gitUnavailableResult(): ToolExecuteResult {
+  return {
+    ok: false,
+    error:
+      'Git is not available on this device. You can still browse, read, and search project files in AIGenius.',
+  };
+}
+
+function resolveGitCwd(args: Record<string, unknown>): string {
+  const raw = typeof args.cwd === 'string' ? args.cwd.trim() : '';
+  if (raw) return path.resolve(raw);
+  const fromEnv = process.env.AIGENIUS_PROJECT_ROOT?.trim();
+  if (fromEnv) return path.resolve(fromEnv);
+  return process.cwd();
+}
 
 function runProcess(
   cmd: string,
@@ -59,49 +87,83 @@ async function executeGrep(args: Record<string, unknown>): Promise<ToolExecuteRe
   }
 
   const root = path.resolve(searchPath);
-  const rgArgs = ['--no-heading', '--line-number', '--color=never', pattern, root];
   const glob = typeof args.glob === 'string' ? args.glob.trim() : '';
-  if (glob) rgArgs.splice(4, 0, '--glob', glob);
-
-  const out = await runProcess('rg', rgArgs, { maxOut: MAX_RG_OUT });
-  if (!out.ok) return out;
-  if (out.code !== 0 && out.code !== 1) {
-    return { ok: false, error: out.stderr || `rg exited ${out.code}` };
-  }
-  const lines = out.stdout ? out.stdout.split('\n').filter(Boolean) : [];
   const headLimit = typeof args.head_limit === 'number' ? Math.min(Math.max(1, args.head_limit), 200) : 50;
   const offset = typeof args.offset === 'number' ? Math.max(0, args.offset) : 0;
-  const sliced = lines.slice(offset, offset + headLimit);
-  const body = sliced.length
-    ? sliced.map((l) => `- ${l}`).join('\n')
-    : `No matches for \`${pattern}\` under ${root}`;
-  return { ok: true, result: `# Grep: \`${pattern}\`\n\n${body}` };
+  const outputMode = (args.output_mode === 'files_with_matches' || args.output_mode === 'count'
+    ? args.output_mode
+    : 'content') as BundledGrepOutputMode;
+
+  const rgArgs = ['--no-heading', '--line-number', '--color=never', pattern, root];
+  if (glob) rgArgs.splice(4, 0, '--glob', glob);
+
+  const grepEngine = selectGrepEngine();
+  if (grepEngine.executable) {
+    const out = await runProcess(grepEngine.executable, rgArgs, { maxOut: MAX_RG_OUT });
+    if (out.ok && (out.code === 0 || out.code === 1)) {
+      const lines = out.stdout ? out.stdout.split('\n').filter(Boolean) : [];
+      const sliced = lines.slice(offset, offset + headLimit);
+      const body = sliced.length
+        ? sliced.map((l) => `- ${l}`).join('\n')
+        : `No matches for \`${pattern}\` under ${root}`;
+      const engineNote =
+        grepEngine.engine === 'bundled-ripgrep'
+          ? '*Search engine: bundled ripgrep*'
+          : '*Search engine: system ripgrep*';
+      return { ok: true, result: `# Grep: \`${pattern}\`\n\n${engineNote}\n\n${body}` };
+    }
+    if (out.ok && out.code !== 0 && out.code !== 1) {
+      return { ok: false, error: out.stderr || `rg exited ${out.code}` };
+    }
+    if (!out.ok && !/ENOENT|not found/i.test(out.error)) {
+      return out;
+    }
+  }
+
+  const fallback = bundledGrep({
+    pattern,
+    root,
+    glob: glob || undefined,
+    headLimit,
+    offset,
+    outputMode,
+    caseInsensitive: args.case_insensitive === true,
+  });
+  const header = `# Grep: \`${pattern}\` under ${root}`;
+  const body = formatBundledGrepResult(header, fallback, outputMode);
+  return { ok: true, result: body };
 }
 
 async function executeGitStatus(args: Record<string, unknown>): Promise<ToolExecuteResult> {
-  const cwd =
-    typeof args.cwd === 'string' && args.cwd.trim()
-      ? path.resolve(args.cwd.trim())
-      : process.cwd();
+  const cwd = resolveGitCwd(args);
   const res = await runProcess('git', ['status', '--short', '--branch'], { cwd });
-  if (!res.ok) return res;
+  if (!res.ok) {
+    return isMissingBinaryError(res.error) ? gitUnavailableResult() : res;
+  }
   if (res.code !== 0) return { ok: false, error: res.stderr || `git exited ${res.code}` };
   return { ok: true, result: res.stdout || '(clean working tree)' };
 }
 
 async function executeGitDiff(args: Record<string, unknown>): Promise<ToolExecuteResult> {
-  const cwd =
-    typeof args.cwd === 'string' && args.cwd.trim()
-      ? path.resolve(args.cwd.trim())
-      : process.cwd();
+  const cwd = resolveGitCwd(args);
   const gitArgs = ['diff'];
   if (args.staged === true) gitArgs.push('--cached');
   const filePath = typeof args.path === 'string' ? args.path.trim() : '';
   if (filePath) gitArgs.push('--', filePath);
   const res = await runProcess('git', gitArgs, { cwd });
-  if (!res.ok) return res;
+  if (!res.ok) {
+    return isMissingBinaryError(res.error) ? gitUnavailableResult() : res;
+  }
   if (res.code !== 0) return { ok: false, error: res.stderr || `git exited ${res.code}` };
   return { ok: true, result: res.stdout || '(no diff)' };
+}
+
+async function executeGoToDefinition(args: Record<string, unknown>): Promise<ToolExecuteResult> {
+  const filePath = typeof args.path === 'string' ? args.path.trim() : '';
+  if (!filePath) return { ok: false, error: 'path is required (absolute file path)' };
+  const line = typeof args.line === 'number' ? Math.trunc(args.line) : 1;
+  const character = typeof args.character === 'number' ? Math.trunc(args.character) : 1;
+  return resolveGoToDefinition(filePath, line, character);
 }
 
 async function executeReadFile(args: Record<string, unknown>): Promise<ToolExecuteResult> {
@@ -154,6 +216,11 @@ async function executeShell(args: Record<string, unknown>): Promise<ToolExecuteR
   const command = commandInput.replace(/\r\n?/g, '\n');
   if (command.length > MAX_CMD_LEN) {
     return { ok: false, error: `Command too long (max ${MAX_CMD_LEN} characters)` };
+  }
+
+  const interactiveBlock = blockInteractiveShellCommand(command);
+  if (interactiveBlock) {
+    return { ok: false, error: interactiveBlock };
   }
 
   const cwdRaw = typeof args.cwd === 'string' && args.cwd.trim() ? args.cwd : os.homedir();
@@ -267,6 +334,7 @@ const HANDLERS: Record<string, (args: Record<string, unknown>) => Promise<ToolEx
   local_grep: executeGrep,
   local_git_status: executeGitStatus,
   local_git_diff: executeGitDiff,
+  local_go_to_definition: executeGoToDefinition,
   local_read_file: executeReadFile,
   read_file: executeReadFile,
   local_shell: executeShell,

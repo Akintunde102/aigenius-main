@@ -408,9 +408,19 @@ export async function refreshAccessToken(): Promise<string> {
     }
 
     refreshPromise = (async () => {
-        const refreshToken = usesDesktopRefresh
+        let refreshToken = usesDesktopRefresh
             ? await readDesktopStoredRefreshToken()
             : undefined;
+
+        if (usesDesktopRefresh && !refreshToken) {
+            if (
+                (isDesktopShellFromBuild() || isLikelyElectronRenderer())
+                && !isAigeniusDesktopRuntime()
+            ) {
+                await waitForAigeniusDesktopBridge(8000);
+                refreshToken = await readDesktopStoredRefreshToken();
+            }
+        }
 
         if (usesDesktopRefresh && !refreshToken) {
             handleSessionExpired();
@@ -540,7 +550,13 @@ export async function authorizedFetch(input: RequestInfo | URL, init: RequestIni
         return firstResponse;
     }
 
-    const refreshedToken = await refreshAccessToken();
+    let refreshedToken: string;
+    try {
+        refreshedToken = await refreshAccessToken();
+    } catch {
+        // Token was rejected (401) and refresh could not recover — surface auth failure to callers.
+        return firstResponse;
+    }
     const retryHeaders = new Headers(init.headers || {});
     retryHeaders.set(REQUESTED_WITH_HEADER, REQUESTED_WITH_VALUE);
     retryHeaders.set('Authorization', `Bearer ${refreshedToken}`);
