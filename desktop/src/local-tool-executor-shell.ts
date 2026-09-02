@@ -18,6 +18,7 @@ import {
   sidecarAuthHeaders,
 } from './local-tool-executor-helpers';
 import { executeSidecarTool, sidecarToolsEnabled } from './sidecar-tools';
+import { blockInteractiveShellCommand } from './shell-interactive-block';
 
 const MAX_CMD_LEN = 64_000;
 const MAX_SHELL_OUT = 512 * 1024;
@@ -113,6 +114,11 @@ export async function runShell(
   const command = commandInput.replace(/\r\n?/g, '\n');
   if (command.length > MAX_CMD_LEN) {
     return { ok: false, error: `Command too long (max ${MAX_CMD_LEN} characters)` };
+  }
+
+  const interactiveBlock = blockInteractiveShellCommand(command);
+  if (interactiveBlock) {
+    return { ok: false, error: interactiveBlock };
   }
 
   const cwdRaw = typeof args.cwd === 'string' && args.cwd.trim() ? args.cwd : os.homedir();

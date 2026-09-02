@@ -88,8 +88,9 @@ Re-index **replaces** prior symbols, chunks, imports, and embeddings for that pa
 | `local_symbol_outline` | `symbol_index` or file regex |
 | `local_list_symbols` | Project-wide symbol listing |
 | `local_import_blast_radius` | `computeBlastRadius` + markdown report |
-| `local_go_to_definition` | `typescript-language-server` (LSP) |
-| `local_find_references` | ripgrep |
+| `local_go_to_definition` | Built-in TypeScript analysis (`ts-morph`); optional LSP when installed |
+| `local_grep` | Bundled `@vscode/ripgrep` → system `rg` → built-in file walk (no user install) |
+| `local_find_references` | Symbol index first; then bundled/system ripgrep; built-in search fallback |
 | `apply_hunk` | Patch + edit session + re-index touched files |
 
 **Editor defaults:** When the user has a file open in `FilePreviewModal`, main process stores `MainActiveEditor`; `applyEditorDefaultsToToolArgs` fills missing `path`, `line`, `character`, `symbol` for navigation tools.
@@ -100,6 +101,9 @@ On desktop chat, `buildRuntimeContextAppendix` adds:
 
 - **Active code project** — name, root path, optional rules; reminds model to scope `path_prefix` to project root.
 - **Open in editor** — path, cursor, selection; notes that desktop tools default from this context.
+- **Local tool capabilities** — grep engine (bundled/system/built-in), git availability, go-to-definition engine; includes policy to prefer bundled tools and never install git/rg/LSP for the user.
+
+`GET /tools/capabilities` on the mini-server returns the same snapshot for diagnostics.
 
 See `chat-runtime-context.appendix.spec.ts` snapshot for the exact block shape.
 

@@ -4,6 +4,7 @@
   "private": true,
   "description": "AIGenius Electron shell (Linux, macOS, Windows)",
   "dependencies": {
+    "@vscode/ripgrep": "^1.18.0",
     "better-sqlite3": "^13.0.3",
     "mammoth": "^1.12.0",
     "pdf-parse": "^1.1.4",
@@ -14,11 +15,11 @@
   "main": "dist/main.js",
   "scripts": {
     "postinstall": "exit 0",
-    "rebuild:better-sqlite3": "electron-rebuild -v 43.4.1 -f -m ../desktop-server -o better-sqlite3",
     "test": "cross-env NODE_ENV=test jest --config jest.config.cjs",
     "test:tools:scenarios": "cross-env NODE_ENV=test jest --config jest.config.cjs --testPathPattern=local-desktop-tools\\.scenarios",
     "test:tools:all": "cross-env NODE_ENV=test jest --config jest.config.cjs --testPathPattern=\"local-desktop-tools|local-tool-executor|tool-formatter|read-file\"",
     "compile": "npm run sync-brand-icon && node scripts/compile-tsc.cjs",
+    "sync-brand-icon": "node scripts/sync-brand-icon.cjs",
     "ensure:server-deps": "node scripts/ensure-server-deps.cjs",
     "build:server": "npm run ensure:server-deps && cd ../desktop-server && npm run build",
     "build:desktop:ui": "node scripts/build-desktop-ui.cjs",
@@ -27,6 +28,8 @@
     "sync:package-resources": "node scripts/sync-package-extra-resources.cjs",
     "install:server-deps": "node scripts/install-server-deps-for-platform.cjs",
     "install:server-deps:win32": "node scripts/install-server-deps-for-platform.cjs win32 x64",
+    "install:server-deps:win32-arm64": "node scripts/install-server-deps-for-platform.cjs win32 arm64",
+    "install:server-deps:linux-arm64": "node scripts/install-server-deps-for-platform.cjs linux arm64",
     "install:python-venv": "node scripts/prepare-python-venv.cjs",
     "build:voice-pack": "npm run install:python-venv && node scripts/build-voice-pack.cjs",
     "prepackage:core": "node scripts/ensure-electron-dist.cjs && npm run compile && npm run build:server && npm run build:desktop:ui && npm run install:server-deps && node scripts/prune-binaries.cjs && npm run prepare:resources && npm run sync:package-resources",
@@ -35,7 +38,9 @@
     "prepackage:mac": "npm run prepackage",
     "prepackage:mac:full": "npm run install:python-venv && cross-env AIGENIUS_BUNDLE_PYTHON_VENV=1 npm run prepackage:core",
     "prepackage:win": "npm run compile && npm run install:server-deps:win32 && npm run build:server && npm run build:desktop:ui && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 node scripts/prune-binaries.cjs && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 npm run prepare:resources && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 npm run sync:package-resources",
+    "prepackage:win:arm64": "npm run compile && npm run install:server-deps:win32-arm64 && npm run build:server && npm run build:desktop:ui && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=arm64 node scripts/prune-binaries.cjs && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=arm64 npm run prepare:resources && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=arm64 npm run sync:package-resources",
     "prepackage:win:full": "cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 npm run install:python-venv && cross-env AIGENIUS_PACKAGE_PLATFORM=win32 AIGENIUS_PACKAGE_ARCH=x64 AIGENIUS_BUNDLE_PYTHON_VENV=1 npm run prepackage:win",
+    "prepackage:linux:arm64": "npm run compile && npm run install:server-deps:linux-arm64 && npm run build:server && npm run build:desktop:ui && cross-env AIGENIUS_PACKAGE_PLATFORM=linux AIGENIUS_PACKAGE_ARCH=arm64 node scripts/prune-binaries.cjs && cross-env AIGENIUS_PACKAGE_PLATFORM=linux AIGENIUS_PACKAGE_ARCH=arm64 npm run prepare:resources && cross-env AIGENIUS_PACKAGE_PLATFORM=linux AIGENIUS_PACKAGE_ARCH=arm64 npm run sync:package-resources",
     "package": "electron-builder --linux deb flatpak",
     "package:deb": "electron-builder --linux deb",
     "package:deb:full": "npm run prepackage && electron-builder --linux deb",
@@ -44,9 +49,15 @@
     "package:mac:dir": "electron-builder --mac dir -c.electronDist=../node_modules/electron/dist",
     "package:mac:full": "npm run prepackage:mac:full && electron-builder --mac -c.electronDist=../node_modules/electron/dist && npm run sync:web-download",
     "package:mac:lite": "npm run prepackage:mac && electron-builder --mac -c.electronDist=../node_modules/electron/dist && npm run sync:web-download",
-    "package:win": "electron-builder --win --x64",
-    "package:win:dir": "electron-builder --win dir",
-    "package:win:full": "npm run prepackage:win:full && electron-builder --win --x64",
+    "package:win": "electron-builder --win --x64 --config.npmRebuild=false",
+    "package:win:dir": "electron-builder --win dir --x64 --config.npmRebuild=false",
+    "package:win:arm64:dir": "electron-builder --win dir --arm64 --config.npmRebuild=false",
+    "package:win:arm64": "npm run prepackage:win:arm64 && npm run package:win:arm64:dir",
+    "package:win:arm64:full": "npm run prepackage:win:arm64 && electron-builder --win --arm64 --config.npmRebuild=false",
+    "package:win:lite": "npm run prepackage:win && electron-builder --win --x64 --config.npmRebuild=false",
+    "package:win:full": "npm run prepackage:win:full && electron-builder --win --x64 --config.npmRebuild=false",
+    "package:linux:arm64:dir": "electron-builder --linux dir --arm64 --config.npmRebuild=false",
+    "package:linux:arm64": "npm run prepackage:linux:arm64 && npm run package:linux:arm64:dir",
     "dev:frontend": "cd ../frontend && npm run dev",
     "predev:electron:only": "node ../../scripts/ensure-frontend-ready.cjs",
     "dev:electron:only": "cross-env ELECTRON_DISABLE_SANDBOX=1 electron .",
@@ -59,7 +70,7 @@
     "profile:ipc": "node scripts/profile-ipc-benchmark.cjs",
     "profile:ipc:tilt": "node scripts/profile-ipc-benchmark.cjs --external-mini-server",
     "download-models": "node scripts/download-search-models.cjs",
-    "dev": "npm run rebuild:better-sqlite3 && npm run build:server && npm run compile && npm run dev:electron:only"
+    "dev": "npm run build:server && npm run compile && npm run dev:electron:only"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.6.1",
@@ -71,9 +82,12 @@
     "electron": "^43.4.1",
     "electron-builder": "^25.1.8",
     "jest": "^29.7.0",
-    "node-abi": "^4.33.0",
+    "node-abi": "^4.35.0",
     "ts-jest": "^29.2.5",
     "typescript": "^5.6.3"
+  },
+  "overrides": {
+    "node-abi": "latest"
   },
   "build": {
     "appId": "chat.aigenius.desktop",
@@ -93,7 +107,8 @@
       "dist/search/**",
       "node_modules/better-sqlite3/**",
       "node_modules/onnxruntime-node/**",
-      "node_modules/sharp/**"
+      "node_modules/sharp/**",
+      "node_modules/@vscode/ripgrep/**"
     ],
     "extraResources": [
       {

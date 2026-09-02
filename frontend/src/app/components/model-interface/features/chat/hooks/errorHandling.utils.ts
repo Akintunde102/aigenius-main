@@ -2,7 +2,11 @@ import type { Dispatch, SetStateAction } from 'react';
 import { ChatMessage } from '@/app/components/model-interface/shared/types';
 import { GatewayFetchError } from '@/nobox-client/functions/access-model';
 import { clearUserDetailsCache } from '@/lib/calls/user-details-cache';
+import { handleSessionExpired, isAuthorizationFailure } from '@/lib/api/auth-client';
 import { CHAT_CONFIG, ERROR_MESSAGES } from './chatOperations.constants';
+
+const MISSING_JWT_MESSAGE = 'JWT token not found';
+const SESSION_EXPIRED_MESSAGE = 'Session expired — please sign in again';
 
 function isInsufficientFundsText(message: string | undefined): boolean {
     if (!message) return false;
@@ -74,6 +78,20 @@ export function isRequestCancellationMessage(message: string): boolean {
     return message === ERROR_MESSAGES.REQUEST_CANCELLED;
 }
 
+/** True when a send/stream failure is due to missing or expired auth (not a model/provider error). */
+export function isAuthRelatedChatError(error: unknown): boolean {
+    if (error instanceof GatewayFetchError && error.statusCode === 401) {
+        return true;
+    }
+
+    const message = (error as { message?: string })?.message;
+    if (message === SESSION_EXPIRED_MESSAGE || message === MISSING_JWT_MESSAGE) {
+        return true;
+    }
+
+    return isAuthorizationFailure(error);
+}
+
 /** True when the banner message is about credits/wallet — safe to auto-clear after top-up. */
 export function isWalletRelatedChatError(message: string): boolean {
     if (!message.trim()) {
@@ -102,6 +120,10 @@ export function toUserFacingChatErrorMessage(error: unknown): string {
     const { isInsufficient } = resolveInsufficientFundsFromUnknown(error);
     if (isInsufficient) {
         return ERROR_MESSAGES.REQUEST_ABORTED_LOW_BALANCE;
+    }
+
+    if (isAuthRelatedChatError(error)) {
+        return ERROR_MESSAGES.SESSION_EXPIRED;
     }
 
     return ERROR_MESSAGES.GENERIC_CHAT_ERROR;
@@ -137,6 +159,12 @@ export function handleSendError(
         }
         options?.onInsufficientFunds?.();
         setError(ERROR_MESSAGES.REQUEST_ABORTED_LOW_BALANCE);
+        return;
+    }
+
+    if (isAuthRelatedChatError(error)) {
+        setError(ERROR_MESSAGES.SESSION_EXPIRED);
+        handleSessionExpired();
         return;
     }
 

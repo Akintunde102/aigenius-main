@@ -82,6 +82,7 @@ const CHAT_RUNTIME_CONTEXT_CACHE_TTL_MS = 45_000;
 type CachedDesktopIpcRuntime = {
   desktopHost: unknown;
   retrievalMemoryCatalog: unknown;
+  localToolCapabilities?: unknown;
   structuralDigest?: string;
   expiresAt: number;
 };
@@ -166,6 +167,27 @@ type AigeniusDesktopBridge = {
     retrievalMemoryCatalog: {
       generatedAtIso: string;
       entries: Array<{ slug: string; name: string; description: string; tags: string[] }>;
+    };
+    localToolCapabilities?: {
+      reportedAtIso: string;
+      policy: string;
+      grep: {
+        engine: 'bundled-ripgrep' | 'system-ripgrep' | 'builtin';
+        bundledRipgrep: boolean;
+        systemRipgrep: boolean;
+        builtinFallback: boolean;
+        recommended: 'bundled-ripgrep' | 'system-ripgrep' | 'builtin';
+      };
+      goToDefinition: {
+        engine: 'tsmorph';
+        languageServerOptional: boolean;
+        recommended: 'tsmorph';
+      };
+      git: {
+        available: boolean;
+        engine: 'system-git' | 'unavailable';
+        recommended: 'system-git' | null;
+      };
     };
   }>;
   pickProjectDirectory?: () => Promise<{ path: string } | null>;
@@ -296,6 +318,21 @@ function createOllamaStreamChunkParser(
   };
 }
 
+/**
+ * Production gateway validation rejects unknown runtimeContext keys until
+ * ChatRuntimeContextDto.localToolCapabilities is deployed. Strip so chat works pre-deploy.
+ * Remove after API ships the DTO (desktop still collects capabilities via IPC for future use).
+ */
+function omitLocalToolCapabilitiesForGateway(
+  runtimeContext: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!('localToolCapabilities' in runtimeContext)) {
+    return runtimeContext;
+  }
+  const { localToolCapabilities: _caps, ...rest } = runtimeContext;
+  return rest;
+}
+
 async function mergeRuntimeContextIntoRequestBody(
   requestBody: Record<string, unknown>,
   desktopChat: boolean,
@@ -358,7 +395,7 @@ async function mergeRuntimeContextIntoRequestBody(
     if (!resolved.projectScopeId) {
       const { retrievalMemoryCatalog: _rm, activeCodeProject: _acp, activeEditor: _ae, ...rest } =
         runtimeContext;
-      requestBody.runtimeContext = rest;
+      requestBody.runtimeContext = omitLocalToolCapabilitiesForGateway(rest);
       return;
     }
 
@@ -392,11 +429,11 @@ async function mergeRuntimeContextIntoRequestBody(
         : activeProjectPayload;
     const activeEditor = activeEditorForRuntime();
 
-    requestBody.runtimeContext = {
+    requestBody.runtimeContext = omitLocalToolCapabilitiesForGateway({
       ...runtimeContext,
       ...(activeCodeProject ? { activeCodeProject } : {}),
       ...(activeEditor ? { activeEditor } : {}),
-    };
+    });
   }
 
   if (
@@ -420,6 +457,9 @@ async function mergeRuntimeContextIntoRequestBody(
         ...(cachedDesktopIpcRuntime.retrievalMemoryCatalog
           ? { retrievalMemoryCatalog: cachedDesktopIpcRuntime.retrievalMemoryCatalog }
           : {}),
+        ...(cachedDesktopIpcRuntime.localToolCapabilities
+          ? { localToolCapabilities: cachedDesktopIpcRuntime.localToolCapabilities }
+          : {}),
       });
       applyProjectScopeToRequest(
         ctx,
@@ -436,6 +476,10 @@ async function mergeRuntimeContextIntoRequestBody(
         && typeof extra.retrievalMemoryCatalog === 'object'
         ? extra.retrievalMemoryCatalog
         : undefined;
+      const caps = extra?.localToolCapabilities
+        && typeof extra.localToolCapabilities === 'object'
+        ? extra.localToolCapabilities
+        : undefined;
       const digest =
         typeof (extra as any)?.structuralDigest === 'string' && (extra as any).structuralDigest.trim()
           ? (extra as any).structuralDigest.trim()
@@ -444,6 +488,7 @@ async function mergeRuntimeContextIntoRequestBody(
         cachedDesktopIpcRuntime = {
           desktopHost: dh,
           retrievalMemoryCatalog: cat,
+          ...(caps ? { localToolCapabilities: caps } : {}),
           ...(digest ? { structuralDigest: digest } : {}),
           expiresAt: now + CHAT_RUNTIME_CONTEXT_CACHE_TTL_MS,
         };
@@ -453,6 +498,7 @@ async function mergeRuntimeContextIntoRequestBody(
         ...base,
         ...(dh ? { desktopHost: dh } : {}),
         ...(cat ? { retrievalMemoryCatalog: cat } : {}),
+        ...(caps ? { localToolCapabilities: caps } : {}),
       });
       applyProjectScopeToRequest(
         ctx,

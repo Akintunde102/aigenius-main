@@ -89,6 +89,16 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/', request.url));
     }
 
+    const hasSession =
+        Boolean(request.cookies.get('nobox_client_token')?.value) ||
+        Boolean(request.cookies.get('nobox_token')?.value);
+
+    const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/desktop-login' || pathname === '/desktop-welcome';
+
+    if (hasSession && isAuthPage) {
+        return NextResponse.redirect(new URL('/', request.url));
+    }
+
     if (isPublicPath(pathname)) {
         return NextResponse.next();
     }
@@ -96,10 +106,6 @@ export function middleware(request: NextRequest) {
     if (search.includes('token=')) {
         return NextResponse.next();
     }
-
-    const hasSession =
-        Boolean(request.cookies.get('nobox_client_token')?.value) ||
-        Boolean(request.cookies.get('nobox_token')?.value);
 
     if (hasSession) {
         return NextResponse.next();

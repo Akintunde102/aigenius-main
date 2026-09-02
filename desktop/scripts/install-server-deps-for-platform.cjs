@@ -26,6 +26,21 @@ if (!fs.existsSync(serverPkg)) {
   process.exit(1);
 }
 
+function sharpPlatformPackageName(targetPlatform, targetArch) {
+  if (targetPlatform === 'darwin') {
+    return targetArch === 'arm64' ? 'sharp-darwin-arm64' : 'sharp-darwin-x64';
+  }
+  if (targetPlatform === 'win32') {
+    return targetArch === 'arm64' ? 'sharp-win32-arm64' : 'sharp-win32-x64';
+  }
+  if (targetPlatform === 'linux') {
+    return targetArch === 'arm64' ? 'sharp-linux-arm64' : 'sharp-linux-x64';
+  }
+  return null;
+}
+
+const sharpPkg = sharpPlatformPackageName(platform, arch);
+const readyStamp = path.join(packRoot, '.pack-deps-ready');
 const markers = [
   path.join(nodeModulesDir, '@hono', 'node-server'),
   path.join(nodeModulesDir, 'hono'),
@@ -35,10 +50,12 @@ const markers = [
   path.join(nodeModulesDir, 'ppu-paddle-ocr'),
   path.join(nodeModulesDir, 'ts-morph'),
   path.join(nodeModulesDir, 'web-tree-sitter'),
+  path.join(nodeModulesDir, '@vscode', 'ripgrep'),
+  ...(sharpPkg ? [path.join(nodeModulesDir, '@img', sharpPkg)] : []),
 ];
 
 function packDepsValid() {
-  return markers.every((marker) => fs.existsSync(marker));
+  return fs.existsSync(readyStamp) && markers.every((marker) => fs.existsSync(marker));
 }
 
 if (packDepsValid()) {
@@ -57,35 +74,47 @@ console.info(
   `install-server-deps: npm install --omit=dev --os=${platform} --cpu=${arch} → ${packRoot}`,
 );
 
-execSync(`npm install --omit=dev --os=${platform} --cpu=${arch} --workspaces=false`, {
-  cwd: packRoot,
-  stdio: 'inherit',
-  env: {
-    ...process.env,
-    npm_config_platform: platform,
-    npm_config_arch: arch,
-    npm_config_workspaces: 'false',
-  },
-});
-
-const electronVersion = (() => {
-  try {
-    const desktopPkg = JSON.parse(
-      fs.readFileSync(path.join(desktopRoot, 'package.json'), 'utf8'),
-    );
-    return desktopPkg.build?.electronVersion || desktopPkg.devDependencies?.electron?.replace(/^\^/, '') || '43.4.1';
-  } catch {
-    return '43.4.1';
-  }
-})();
-console.info(
-  `install-server-deps: electron-rebuild native modules for Electron ${electronVersion} (${platform}-${arch})`,
-);
-
 execSync(
-  `npx electron-rebuild -v ${electronVersion} -f -m "${packRoot}" -w better-sqlite3,sharp,onnxruntime-node --platform ${platform} --arch ${arch}`,
-  { cwd: desktopRoot, stdio: 'inherit' },
+  `npm install --omit=dev --include=optional --os=${platform} --cpu=${arch} --workspaces=false`,
+  {
+    cwd: packRoot,
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      npm_config_platform: platform,
+      npm_config_arch: arch,
+      npm_config_workspaces: 'false',
+    },
+  },
 );
+
+// electron-rebuild removed because modern native deps (better-sqlite3, onnxruntime) use N-API
+// and provide cross-platform prebuilds that are ABI stable without recompilation.
+
+if (sharpPkg) {
+  const sharpPlatformDir = path.join(nodeModulesDir, '@img', sharpPkg);
+  if (!fs.existsSync(sharpPlatformDir)) {
+    const sharpPkgJson = path.join(nodeModulesDir, 'sharp', 'package.json');
+    const sharpVersion = fs.existsSync(sharpPkgJson)
+      ? JSON.parse(fs.readFileSync(sharpPkgJson, 'utf8')).version
+      : null;
+    if (!sharpVersion) {
+      console.error('install-server-deps: sharp is installed but package.json is missing');
+      process.exit(1);
+    }
+    console.info(`install-server-deps: installing @img/${sharpPkg}@${sharpVersion}`);
+    execSync(`npm install @img/${sharpPkg}@${sharpVersion} --os=${platform} --cpu=${arch} --force`, {
+      cwd: packRoot,
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        npm_config_platform: platform,
+        npm_config_arch: arch,
+        npm_config_workspaces: 'false',
+      },
+    });
+  }
+}
 
 if (!fs.existsSync(nodeModulesDir)) {
   console.error('install-server-deps: node_modules missing after install');
@@ -98,5 +127,10 @@ for (const marker of markers) {
     process.exit(1);
   }
 }
+
+fs.writeFileSync(
+  readyStamp,
+  JSON.stringify({ platform, arch, electronVersion: 'native-prebuilds', builtAt: new Date().toISOString() }, null, 2),
+);
 
 console.info(`install-server-deps: OK → ${nodeModulesDir}`);

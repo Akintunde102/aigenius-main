@@ -1,5 +1,6 @@
 import os from 'os';
 import { getRetrievalMemoryService } from './local-retrieval-memory';
+import { getLocalToolCapabilities } from './tool-capabilities';
 /** Resolved once when the main process loads this module (Electron app startup). */
 export const USER_HOME_DIR_AT_STARTUP = os.homedir();
 
@@ -18,6 +19,7 @@ export async function getChatRuntimeContextForIpc(): Promise<{
     userHomeDir: string;
   };
   retrievalMemoryCatalog: { generatedAtIso: string; entries: RetrievalMemoryCatalogEntryIpc[] };
+  localToolCapabilities: ReturnType<typeof getLocalToolCapabilities>;
 }> {
   const desktopHost = {
     platform: process.platform,
@@ -41,5 +43,6 @@ export async function getChatRuntimeContextForIpc(): Promise<{
       generatedAtIso: new Date().toISOString(),
       entries,
     },
+    localToolCapabilities: getLocalToolCapabilities(),
   };
 }
