@@ -112,25 +112,23 @@ export default function HomePage() {
                     </button>
                   </li>
                   <li role="none">
-                    <button type="button" role="menuitem">
+                    <a href="https://pub-77b8636a163e4485850be3c560433232.r2.dev/AIGenius%20Setup%200.1.0.exe" download role="menuitem">
                       <span className="dd-icon">
                         <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden={true}>
                           <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
                         </svg>
                       </span>
                       Windows
-                      <span className="soon">Soon</span>
-                    </button>
+                    </a>
                   </li>
                   <hr className="dropdown-divider" role="separator" />
                   <li role="none">
-                    <button type="button" role="menuitem">
+                    <a href="https://pub-77b8636a163e4485850be3c560433232.r2.dev/aigenius-desktop_0.1.0_arm64.deb" download role="menuitem">
                       <span className="dd-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden={true}><polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" /></svg>
                       </span>
                       Linux
-                      <span className="soon">Soon</span>
-                    </button>
+                    </a>
                   </li>
                 </ul>
               </div>
