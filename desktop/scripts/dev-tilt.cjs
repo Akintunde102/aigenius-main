@@ -160,7 +160,6 @@ function markSetupDone() {
 }
 
 function runHeavySetup() {
-  runSync('rebuild:better-sqlite3', ['run', 'rebuild:better-sqlite3']);
   runSync('build:server', ['run', 'build:server']);
   markSetupDone();
 }

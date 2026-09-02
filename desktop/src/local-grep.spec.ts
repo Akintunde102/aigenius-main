@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import path from 'path';
 import {
   buildRipgrepArgv,
   normalizeGrepArgs,
@@ -172,7 +173,7 @@ describe('local-grep', () => {
         '--color=never',
         '-g',
         '**/*.{png,jpg,jpeg,webp}',
-        'C:\\Pictures',
+        path.resolve('C:\\Pictures'),
       ]);
     });
   });

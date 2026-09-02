@@ -31,6 +31,27 @@ declare global {
           generatedAtIso: string;
           entries: Array<{ slug: string; name: string; description: string; tags: string[] }>;
         };
+        localToolCapabilities?: {
+          reportedAtIso: string;
+          policy: string;
+          grep: {
+            engine: 'bundled-ripgrep' | 'system-ripgrep' | 'builtin';
+            bundledRipgrep: boolean;
+            systemRipgrep: boolean;
+            builtinFallback: boolean;
+            recommended: 'bundled-ripgrep' | 'system-ripgrep' | 'builtin';
+          };
+          goToDefinition: {
+            engine: 'tsmorph';
+            languageServerOptional: boolean;
+            recommended: 'tsmorph';
+          };
+          git: {
+            available: boolean;
+            engine: 'system-git' | 'unavailable';
+            recommended: 'system-git' | null;
+          };
+        };
         structuralDigest?: string;
       }>;
       syncToolPermissionPreferences?: (prefs: {

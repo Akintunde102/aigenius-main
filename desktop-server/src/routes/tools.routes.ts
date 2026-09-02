@@ -29,5 +29,12 @@ export function createToolsRoutes(): Hono {
     }),
   );
 
+  r.get('/capabilities', (c) =>
+    handleRoute(c, '[tools] GET /tools/capabilities', async () => {
+      const { getLocalToolCapabilities } = await import('../tools/tool-capabilities.js');
+      return c.json(getLocalToolCapabilities());
+    }),
+  );
+
   return r;
 }

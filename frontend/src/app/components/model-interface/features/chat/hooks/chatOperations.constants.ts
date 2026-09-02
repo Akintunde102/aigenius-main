@@ -31,6 +31,8 @@ export const ERROR_MESSAGES = {
     REQUEST_ABORTED_LOW_BALANCE:
         "Your request could not finish — your balance was too low for this response. Add credits to continue.",
     REQUEST_CANCELLED: "Request was cancelled.",
+    /** Shown when the session is missing or expired — user should sign in again. */
+    SESSION_EXPIRED: "Your session has expired. Please sign in again.",
     /** Generic fallback for unexpected chat/API failures — never show raw provider text. */
     GENERIC_CHAT_ERROR: "Something went wrong. Please try again.",
     MODEL_RESPONSE_FAILED: "Something went wrong. Please try again.",

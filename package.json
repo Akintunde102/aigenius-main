@@ -11,6 +11,10 @@
     "nohoist": [
       "**/electron",
       "**/electron/**",
+      "**/@electron/rebuild",
+      "**/@electron/rebuild/**",
+      "**/node-abi",
+      "**/node-abi/**",
       "**/better-sqlite3",
       "**/better-sqlite3/**",
       "**/onnxruntime-node",
@@ -45,7 +49,11 @@
   },
   "resolutions": {
     "sass": "1.69.5",
-    "@editorjs/embed": "2.7.2"
+    "@editorjs/embed": "2.7.2",
+    "node-abi": "4.35.0"
+  },
+  "overrides": {
+    "node-abi": "^4.35.0"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
   "dependencies": {
