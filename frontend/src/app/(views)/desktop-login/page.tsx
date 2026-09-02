@@ -7,6 +7,7 @@ import { PublicPageShell } from "@/app/components/PublicPageShell";
 import { DesktopSessionRestoringView } from "@/app/components/DesktopSessionRestoringView";
 import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-details";
 import { useDesktopAuthFlow } from "@/lib/hooks/use-desktop-auth-flow";
+import { useDesktopSessionRestore } from "@/lib/hooks/use-desktop-session-restore";
 
 const TRUST_ITEMS = [
   { icon: BotMessageSquare, label: "Every top model" },
@@ -15,6 +16,7 @@ const TRUST_ITEMS = [
 ] as const;
 
 export default function DesktopLoginPage() {
+  const { restoring: restoringSession } = useDesktopSessionRestore();
   const [storedFirstName, setStoredFirstName] = useState<string | null>(null);
   const {
     authFlow,
@@ -49,7 +51,15 @@ export default function DesktopLoginPage() {
     await finishOAuthToken(res.token);
   };
 
-  const authLoading = authFlow !== "idle";
+  const authLoading = authFlow !== "idle" || restoringSession;
+
+  if (restoringSession) {
+    return (
+      <PublicPageShell hideHeader showFooter={false} contentClassName="justify-center">
+        <DesktopSessionRestoringView />
+      </PublicPageShell>
+    );
+  }
 
   return (
     <PublicPageShell hideHeader showFooter={false} contentClassName="justify-center">

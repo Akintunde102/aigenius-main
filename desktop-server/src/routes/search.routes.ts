@@ -48,6 +48,7 @@ import {
   buildStructuralDigest,
   formatCallersReport,
 } from '../search/db/queries-graph.js';
+import { resolveGoToDefinition } from '../search/go-to-definition.js';
 import { withToolTimeout } from '../search/utils/tool-timeout.js';
 import { getGraphCoverageStats } from '../search/db/queries.js';
 import { getDb } from '../search/db/connection.js';
@@ -354,6 +355,18 @@ export function createSearchRoutes(): Hono {
       const { db } = resolveReadDb({ filePath });
       touchFileAccess(db, [filePath]);
       return c.json(findSymbolReferences(db, filePath, name));
+    }),
+  );
+
+  r.get('/go-to-definition', (c) =>
+    handleRoute(c, '[search] GET /search/go-to-definition', async () => {
+      const filePath = c.req.query('path') ?? '';
+      const line = Number(c.req.query('line') ?? 1);
+      const character = Number(c.req.query('character') ?? 1);
+      if (!filePath) return clientError(c, 'path required', 400);
+      const result = await resolveGoToDefinition(filePath, line, character);
+      if (!result.ok) return clientError(c, result.error, 404);
+      return c.json({ result: result.result, outline: result.result });
     }),
   );
 

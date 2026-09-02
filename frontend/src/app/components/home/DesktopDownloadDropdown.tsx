@@ -6,9 +6,9 @@ import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
 import { cn } from "@/lib/utils";
 
 const PLATFORMS = [
-  { id: "macos", label: "macOS", status: "Coming soon for macOS" },
-  { id: "windows", label: "Windows", status: "Coming soon for Windows" },
-  { id: "linux", label: "Linux", status: "Coming soon for Linux" },
+  { id: "macos", label: "macOS", href: null },
+  { id: "windows", label: "Windows", href: "https://pub-77b8636a163e4485850be3c560433232.r2.dev/AIGenius%20Setup%200.1.0.exe" },
+  { id: "linux", label: "Linux", href: "https://pub-77b8636a163e4485850be3c560433232.r2.dev/aigenius-desktop_0.1.0_arm64.deb" },
 ] as const;
 
 /**
@@ -20,7 +20,7 @@ export function DesktopDownloadDropdown({ className }: { className?: string }) {
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuItemsRef = useRef<(HTMLButtonElement | null)[]>([]);
+  const menuItemsRef = useRef<(HTMLElement | null)[]>([]);
 
   const buttonId = useId();
   const menuId = useId();
@@ -138,36 +138,52 @@ export function DesktopDownloadDropdown({ className }: { className?: string }) {
           onKeyDown={handleMenuKeyDown}
           className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-900 py-1 shadow-xl shadow-black/35 dark:border-white/10 dark:bg-[#121214] sm:left-auto sm:right-0 sm:min-w-[12.5rem]"
         >
-          {PLATFORMS.map((platform, idx) => (
-            <li key={platform.id} role="none">
-              <button
-                ref={(el) => {
-                  menuItemsRef.current[idx] = el;
-                }}
-                type="button"
-                role="menuitem"
-                tabIndex={focusedIndex === idx ? 0 : -1}
-                aria-label={`${platform.label} (${platform.status})`}
-                onClick={() => {
-                  setOpen(false);
-                  setFocusedIndex(-1);
-                  buttonRef.current?.focus();
-                }}
-                className={cn(
-                  "flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-white/[0.08] focus:bg-white/[0.08] focus:outline-none",
-                  FOCUS_RING,
-                )}
-              >
-                <span>{platform.label}</span>
-                <span
-                  aria-hidden="true"
-                  className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400"
+          {PLATFORMS.map((platform, idx) => {
+            const Component = platform.href ? "a" : "button";
+            return (
+              <li key={platform.id} role="none">
+                <Component
+                  href={platform.href || undefined}
+                  download={platform.href ? true : undefined}
+                  target={platform.href ? "_blank" : undefined}
+                  rel={platform.href ? "noopener noreferrer" : undefined}
+                  ref={(el: any) => {
+                    menuItemsRef.current[idx] = el;
+                  }}
+                  type={!platform.href ? "button" : undefined}
+                  role="menuitem"
+                  tabIndex={focusedIndex === idx ? 0 : -1}
+                  aria-label={platform.href ? `Download for ${platform.label}` : `${platform.label} (Coming soon)`}
+                  onClick={() => {
+                    if (!platform.href) {
+                      setOpen(false);
+                      setFocusedIndex(-1);
+                      buttonRef.current?.focus();
+                    } else {
+                      setOpen(false);
+                    }
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm text-zinc-200 transition focus:outline-none",
+                    platform.href
+                      ? "hover:bg-white/[0.08] focus:bg-white/[0.08] cursor-pointer"
+                      : "opacity-60 cursor-default hover:bg-transparent",
+                    FOCUS_RING,
+                  )}
                 >
-                  Soon
-                </span>
-              </button>
-            </li>
-          ))}
+                  <span>{platform.label}</span>
+                  {!platform.href && (
+                    <span
+                      aria-hidden="true"
+                      className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400"
+                    >
+                      Soon
+                    </span>
+                  )}
+                </Component>
+              </li>
+            );
+          })}
         </ul>
       ) : null}
     </div>

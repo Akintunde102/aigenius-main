@@ -46,7 +46,7 @@ export function MessageActionsMenu({
   onOpenChange,
 }: MessageActionsMenuProps) {
   const [open, setOpen] = useState(false);
-  const [menuVerticalDirection, setMenuVerticalDirection] = useState<"up" | "down">("up");
+  const [menuVerticalDirection, setMenuVerticalDirection] = useState<"up" | "down">("down");
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const interactionLocked = loading || streaming;
@@ -62,13 +62,13 @@ export function MessageActionsMenu({
     const canOpenUp = spaceAbove >= menuRect.height;
     const canOpenDown = spaceBelow >= menuRect.height;
 
-    if (canOpenUp && !canOpenDown) {
-      setMenuVerticalDirection("up");
+    if (canOpenDown && !canOpenUp) {
+      setMenuVerticalDirection("down");
       return;
     }
 
-    if (canOpenDown && !canOpenUp) {
-      setMenuVerticalDirection("down");
+    if (canOpenUp && !canOpenDown) {
+      setMenuVerticalDirection("up");
       return;
     }
 
@@ -77,7 +77,7 @@ export function MessageActionsMenu({
       return;
     }
 
-    setMenuVerticalDirection("up");
+    setMenuVerticalDirection("down");
   }, []);
 
   useEffect(() => {

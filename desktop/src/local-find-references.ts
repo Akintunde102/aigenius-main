@@ -1,6 +1,8 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import { getActiveCodeProjectRootPath } from './active-code-project';
+import { bundledGrep, formatBundledGrepLines } from './bundled-grep.js';
+import { selectGrepEngine } from './resolve-ripgrep.js';
 
 const MAX_RG_OUT = 200 * 1024;
 const DEFAULT_LIMIT = 40;
@@ -40,7 +42,21 @@ export async function runFindReferences(
       symbol,
       root,
     ];
-    const child = spawn('rg', args, { windowsHide: true });
+    const grepEngine = selectGrepEngine();
+    if (!grepEngine.executable) {
+      const fallback = bundledGrep({
+        pattern: symbol,
+        root,
+        headLimit: limit,
+        outputMode: 'content',
+      });
+      resolve({
+        ok: true,
+        result: `# References: ${symbol}\n\n*Search engine: built-in (no ripgrep required)*\n\n${formatBundledGrepLines(fallback, 'content')}`,
+      });
+      return;
+    }
+    const child = spawn(grepEngine.executable, args, { windowsHide: true });
     let stdout = '';
     let stderr = '';
     child.stdout?.on('data', (d: Buffer) => {
@@ -53,9 +69,15 @@ export async function runFindReferences(
       stderr += d.toString('utf8');
     });
     child.on('error', () => {
+      const fallback = bundledGrep({
+        pattern: symbol,
+        root,
+        headLimit: limit,
+        outputMode: 'content',
+      });
       resolve({
-        ok: false,
-        error: 'ripgrep (rg) not found on PATH — install ripgrep for reference search',
+        ok: true,
+        result: `# References: ${symbol}\n\n*Search engine: built-in (no ripgrep required)*\n\n${formatBundledGrepLines(fallback, 'content')}`,
       });
     });
     child.on('close', (code) => {

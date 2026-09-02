@@ -40,10 +40,20 @@ function resolveGitCwd(rawCwd: unknown): string {
   return getActiveCodeProjectRootPath() ?? process.cwd();
 }
 
+function gitUnavailableResult(): { ok: false; error: string } {
+  return {
+    ok: false,
+    error:
+      'Git is not available on this device. You can still browse, read, and search project files in AIGenius.',
+  };
+}
+
 export async function runGitStatus(rawArgs: Record<string, unknown>) {
   const cwd = resolveGitCwd(rawArgs.cwd);
   const res = await runGit(['status', '--short', '--branch'], cwd);
-  if (!res.ok) return { ok: false as const, error: res.error };
+  if (!res.ok) {
+    return /ENOENT|not found/i.test(res.error) ? gitUnavailableResult() : { ok: false as const, error: res.error };
+  }
   if (res.code !== 0) {
     return { ok: false as const, error: res.stderr || `git exited ${res.code}` };
   }
@@ -61,7 +71,9 @@ export async function runGitDiff(rawArgs: Record<string, unknown>) {
   if (staged) args.push('--cached');
   if (filePath) args.push('--', filePath);
   const res = await runGit(args, cwd);
-  if (!res.ok) return { ok: false as const, error: res.error };
+  if (!res.ok) {
+    return /ENOENT|not found/i.test(res.error) ? gitUnavailableResult() : { ok: false as const, error: res.error };
+  }
   if (res.code !== 0) {
     return { ok: false as const, error: res.stderr || `git exited ${res.code}` };
   }

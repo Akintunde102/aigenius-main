@@ -50,8 +50,7 @@ export function shouldRouteToolViaSidecar(
       return typeof args.path === 'string' && args.path.trim().length > 0;
     case 'local_git_status':
     case 'local_git_diff':
-      // Main process resolves the active code project when cwd is omitted.
-      return typeof args.cwd === 'string' && args.cwd.trim().length > 0;
+      return true;
     case 'local_grep':
       if (args.case_insensitive === true) {
         return false;

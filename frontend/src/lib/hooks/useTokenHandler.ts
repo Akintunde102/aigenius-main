@@ -2,32 +2,59 @@ import { useEffect, useState } from 'react';
 import { storageConstants } from '../constants';
 import { navigateTo } from '../utils/navigate';
 import { storage } from '../utils/store';
-import { hasAuthSession } from '../utils/auth-session';
-import { getAccessToken } from '../api/auth-client';
+import { hasAuthSession, syncAuthSessionCookiesFromStorage } from '../utils/auth-session';
+import { getAccessToken, restoreAccessTokenFromStoredSession } from '../api/auth-client';
 import {
   DESKTOP_SHELL_ENTRY_QUERY_PARAM,
   isAigeniusDesktopRuntime,
+  isDesktopShellFromBuild,
+  isLikelyElectronRenderer,
+  waitForAigeniusDesktopBridge,
 } from '../utils/desktop-runtime';
 
 const DESKTOP_AUTH_ENTRY = `/desktop-login?${DESKTOP_SHELL_ENTRY_QUERY_PARAM}=1`;
 
 const useTokenHandler = () => {
-    const [token, setToken] = useState("");
+    const [token, setToken] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!token) {
-            const noboxToken = storage(storageConstants.NOBOX_CLIENT_TOKEN).getString();
+        let cancelled = false;
 
-            if (!noboxToken && !hasAuthSession() && !getAccessToken()) {
-                const urlParams = new URLSearchParams(window.location.search);
-                const tokenInUrl = urlParams.get("token");
-
-                if (tokenInUrl) {
-                    return;
+        const resolveAuth = async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('token')) {
+                if (!cancelled) {
+                    setToken('');
                 }
+                return;
+            }
 
-                const desktop = isAigeniusDesktopRuntime();
+            let noboxToken = storage(storageConstants.NOBOX_CLIENT_TOKEN).getString();
+            let accessToken = getAccessToken();
+
+            if (!noboxToken && !hasAuthSession() && !accessToken) {
+                const maybeDesktop =
+                    isAigeniusDesktopRuntime()
+                    || isDesktopShellFromBuild()
+                    || isLikelyElectronRenderer();
+
+                if (maybeDesktop) {
+                    await waitForAigeniusDesktopBridge(10_000);
+                    const restored = await restoreAccessTokenFromStoredSession();
+                    if (restored) {
+                        syncAuthSessionCookiesFromStorage();
+                        noboxToken = storage(storageConstants.NOBOX_CLIENT_TOKEN).getString();
+                        accessToken = restored;
+                    }
+                }
+            }
+
+            if (!noboxToken && !hasAuthSession() && !accessToken) {
                 const path = window.location.pathname;
+                const desktop =
+                    isAigeniusDesktopRuntime()
+                    || isDesktopShellFromBuild()
+                    || isLikelyElectronRenderer();
                 const signInUrl =
                   desktop &&
                   path !== '/login' &&
@@ -39,15 +66,25 @@ const useTokenHandler = () => {
                       ? DESKTOP_AUTH_ENTRY
                       : '/login';
                 navigateTo(signInUrl);
+                if (!cancelled) {
+                    setToken('');
+                }
+                return;
             }
 
-            setToken(noboxToken || "");
-        }
+            if (!cancelled) {
+                setToken(noboxToken || accessToken || 'authenticated');
+            }
+        };
 
-    }, [token]);
+        void resolveAuth();
 
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
-    return { token };
+    return { token: token ?? '', authChecking: token === null };
 };
 
 export default useTokenHandler;

@@ -126,9 +126,29 @@ try {
   console.error(err instanceof Error ? err.message : err);
   process.exit(1);
 }
+function sharpPlatformPackageName(targetPlatform, targetArch) {
+  if (targetPlatform === 'darwin') {
+    return targetArch === 'arm64' ? 'sharp-darwin-arm64' : 'sharp-darwin-x64';
+  }
+  if (targetPlatform === 'win32') {
+    return targetArch === 'arm64' ? 'sharp-win32-arm64' : 'sharp-win32-x64';
+  }
+  if (targetPlatform === 'linux') {
+    return targetArch === 'arm64' ? 'sharp-linux-arm64' : 'sharp-linux-x64';
+  }
+  return null;
+}
+
+const packPlatform = process.env.AIGENIUS_PACKAGE_PLATFORM?.trim() || process.platform;
+const packArch = process.env.AIGENIUS_PACKAGE_ARCH?.trim() || process.arch;
+const sharpPkg = sharpPlatformPackageName(packPlatform, packArch);
+
 const requiredModules = [
   ['@hono/node-server', path.join(nodeMods, '@hono', 'node-server')],
   ['ppu-paddle-ocr', path.join(nodeMods, 'ppu-paddle-ocr')],
+  ...(sharpPkg
+    ? [[`@img/${sharpPkg}`, path.join(nodeMods, '@img', sharpPkg)]]
+    : []),
 ];
 for (const [name, modulePath] of requiredModules) {
   if (!fs.existsSync(modulePath)) {

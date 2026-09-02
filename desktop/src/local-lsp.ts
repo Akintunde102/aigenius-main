@@ -68,14 +68,32 @@ class JsonRpcLspSession {
   }
 
   static async start(projectRoot: string): Promise<JsonRpcLspSession> {
-    const proc = spawn('typescript-language-server', ['--stdio'], {
-      cwd: projectRoot,
-      windowsHide: true,
-      stdio: ['pipe', 'pipe', 'pipe'],
+    return new Promise((resolve, reject) => {
+      const proc = spawn('typescript-language-server', ['--stdio'], {
+        cwd: projectRoot,
+        windowsHide: true,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      const fail = (err: Error): void => {
+        try {
+          proc.kill();
+        } catch {
+          /* ignore */
+        }
+        reject(err);
+      };
+
+      proc.once('error', fail);
+
+      proc.once('spawn', () => {
+        const session = new JsonRpcLspSession(proc, projectRoot);
+        session
+          .ensureInitialized()
+          .then(() => resolve(session))
+          .catch(fail);
+      });
     });
-    const session = new JsonRpcLspSession(proc, projectRoot);
-    await session.ensureInitialized();
-    return session;
   }
 
   touch(): void {
@@ -245,7 +263,7 @@ export async function runGoToDefinition(
       return {
         ok: false,
         error:
-          'typescript-language-server not found on PATH. Install it globally (`npm i -g typescript typescript-language-server`) or in the project.',
+          'Advanced TypeScript language-server support is unavailable. Built-in definition lookup failed — try again after adding the project folder to AIGenius.',
       };
     }
     return { ok: false, error: msg };

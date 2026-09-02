@@ -1,5 +1,7 @@
 import { spawn } from 'child_process';
 import path from 'path';
+import { bundledGrep, formatBundledGrepLines, type BundledGrepOutputMode } from './bundled-grep.js';
+import { selectGrepEngine } from './resolve-ripgrep.js';
 
 const MAX_RG_OUT = 200 * 1024;
 const DEFAULT_HEAD_LIMIT = 50;
@@ -241,8 +243,12 @@ export function buildRipgrepArgv(args: NormalizedGrepArgs): string[] {
 function runRipgrep(
   argv: string[],
 ): Promise<{ ok: true; stdout: string; stderr: string; truncated: boolean } | { ok: false; error: string }> {
+  const grepEngine = selectGrepEngine();
+  if (!grepEngine.executable) {
+    return Promise.resolve({ ok: false, error: 'BUNDLED_GREP_FALLBACK' });
+  }
   return new Promise((resolve) => {
-    const child = spawn('rg', argv, { windowsHide: true });
+    const child = spawn(grepEngine.executable!, argv, { windowsHide: true });
     let stdout = '';
     let stderr = '';
     let truncated = false;
@@ -259,7 +265,7 @@ function runRipgrep(
     child.on('error', () => {
       resolve({
         ok: false,
-        error: 'ripgrep (rg) not found on PATH — install ripgrep for lexical search',
+        error: 'BUNDLED_GREP_FALLBACK',
       });
     });
     child.on('close', () => {
@@ -328,7 +334,27 @@ export async function runGrep(
   const args = normalized.args;
   const argv = buildRipgrepArgv(args);
   const out = await runRipgrep(argv);
-  if (!out.ok) return out;
+  if (!out.ok) {
+    if (out.error !== 'BUNDLED_GREP_FALLBACK') {
+      return out;
+    }
+    const fallback = bundledGrep({
+      pattern: args.pattern,
+      root: args.path,
+      glob: args.globs.length > 0 ? args.globs[0] : undefined,
+      headLimit: args.headLimit,
+      offset: args.offset,
+      caseInsensitive: args.caseInsensitive,
+      outputMode: args.outputMode,
+    });
+    const header = formatHeader(args);
+    const body = formatBundledGrepLines(fallback, args.outputMode);
+    const sections = [header, '*Search engine: built-in (no ripgrep required)*'];
+    if (fallback.truncated) sections.push('*Results truncated — narrow the path or glob*');
+    if (args.legacyNote) sections.push(`*Legacy args: ${args.legacyNote}*`);
+    sections.push(body);
+    return { ok: true, result: sections.join('\n\n') };
+  }
 
   const allLines = out.stdout.trim().split('\n').filter(Boolean);
   const sliced = allLines.slice(args.offset, args.offset + args.headLimit);

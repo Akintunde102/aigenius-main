@@ -11,8 +11,8 @@
  */
 
 import * as ort from 'onnxruntime-node';
-import sharp from 'sharp';
 import { ensureModelsDownloaded } from '../../models-downloader.js';
+import { loadSharp } from '../../sharp-loader.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -96,6 +96,7 @@ async function buildInputTensor(filePath: string): Promise<ort.Tensor> {
   const pixelsPerChannel = INPUT_SIZE * INPUT_SIZE;
 
   // Use letterboxing (contain) with 114 padding, and flatten with 114
+  const sharp = await loadSharp();
   const rgbBytes = await sharp(filePath)
     .resize(INPUT_SIZE, INPUT_SIZE, {
       fit: 'contain',

@@ -1,6 +1,15 @@
-import { normalizeWalletForGating, validateWalletBalance, handleSendError, toUserFacingChatErrorMessage, isRequestCancellationMessage, isWalletRelatedChatError } from '../errorHandling.utils';
+import { normalizeWalletForGating, validateWalletBalance, handleSendError, toUserFacingChatErrorMessage, isRequestCancellationMessage, isWalletRelatedChatError, isAuthRelatedChatError } from '../errorHandling.utils';
 import { CHAT_CONFIG, ERROR_MESSAGES } from '../chatOperations.constants';
 import { GatewayFetchError } from '@/nobox-client/functions/access-model';
+
+jest.mock('@/lib/api/auth-client', () => ({
+    handleSessionExpired: jest.fn(),
+    isAuthorizationFailure: jest.requireActual('@/lib/api/auth-client').isAuthorizationFailure,
+}));
+
+import { handleSessionExpired } from '@/lib/api/auth-client';
+
+const mockHandleSessionExpired = handleSessionExpired as jest.MockedFunction<typeof handleSessionExpired>;
 
 describe('normalizeWalletForGating', () => {
     test('returns null for NaN and non-finite values', () => {
@@ -46,9 +55,25 @@ describe('toUserFacingChatErrorMessage', () => {
             ),
         ).toBe(ERROR_MESSAGES.REQUEST_ABORTED_LOW_BALANCE);
     });
+
+    test('maps auth failures to session-expired copy', () => {
+        expect(
+            toUserFacingChatErrorMessage(new GatewayFetchError('Request failed', 401)),
+        ).toBe(ERROR_MESSAGES.SESSION_EXPIRED);
+        expect(
+            toUserFacingChatErrorMessage(new Error('Session expired — please sign in again')),
+        ).toBe(ERROR_MESSAGES.SESSION_EXPIRED);
+        expect(
+            toUserFacingChatErrorMessage(new Error('JWT token not found')),
+        ).toBe(ERROR_MESSAGES.SESSION_EXPIRED);
+    });
 });
 
 describe('handleSendError', () => {
+    beforeEach(() => {
+        mockHandleSessionExpired.mockClear();
+    });
+
     test('never surfaces raw gateway error text', () => {
         const setError = jest.fn();
         handleSendError(
@@ -59,6 +84,28 @@ describe('handleSendError', () => {
             setError,
         );
         expect(setError).toHaveBeenCalledWith(ERROR_MESSAGES.GENERIC_CHAT_ERROR);
+        expect(mockHandleSessionExpired).not.toHaveBeenCalled();
+    });
+
+    test('redirects to sign-in on auth failures instead of showing a generic AI error', () => {
+        const setError = jest.fn();
+        handleSendError(
+            new GatewayFetchError('Request failed', 401),
+            [],
+            false,
+            jest.fn(),
+            setError,
+        );
+        expect(setError).toHaveBeenCalledWith(ERROR_MESSAGES.SESSION_EXPIRED);
+        expect(mockHandleSessionExpired).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('isAuthRelatedChatError', () => {
+    test('detects gateway 401 and session-expired messages', () => {
+        expect(isAuthRelatedChatError(new GatewayFetchError('Request failed', 401))).toBe(true);
+        expect(isAuthRelatedChatError(new Error('Session expired — please sign in again'))).toBe(true);
+        expect(isAuthRelatedChatError(new GatewayFetchError('Request failed', 500))).toBe(false);
     });
 });
 
