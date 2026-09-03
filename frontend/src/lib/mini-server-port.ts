@@ -7,6 +7,11 @@
  * 3. Platform dev default (28001)
  */
 export function resolveMiniServerPort(): number {
+  if (typeof window !== 'undefined' && (window as any).aigeniusDesktop?.miniServerPort) {
+    const p = Number.parseInt((window as any).aigeniusDesktop.miniServerPort, 10);
+    if (Number.isFinite(p) && p > 0) return p;
+  }
+
   const raw =
     process.env.NEXT_PUBLIC_MINI_SERVER_PORT ??
     process.env.NEXT_PUBLIC_DESKTOP_SIDECAR_PORT;

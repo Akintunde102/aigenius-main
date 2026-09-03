@@ -50,6 +50,10 @@ function normalizeRendererFilesystemPath(filePath: string): string {
 }
 
 export function registerMainIpcHandlers(): void {
+  ipcMain.on('get-mini-server-port', (e) => {
+    e.returnValue = MINI_SERVER_PORT;
+  });
+
   ipcMain.on('open-external', (e, url: string) => {
     if (typeof url !== 'string' || (!url.startsWith('https:') && !url.startsWith('http:'))) {
       return;
