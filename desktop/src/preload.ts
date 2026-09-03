@@ -72,6 +72,7 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
   isDesktop: true,
   isSttEnabled: (process.env.AIGENIUS_ENABLE_STT ?? '0') !== '0',
   exposedAtIso: new Date().toISOString(),
+  miniServerPort: ipcRenderer.sendSync('get-mini-server-port'),
   shellChrome,
   getChatRuntimeContext: (): Promise<{
     desktopHost: { platform: string; arch: string; release: string; userHomeDir: string };
