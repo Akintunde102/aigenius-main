@@ -117,7 +117,8 @@ export function DesktopDownloadDropdown({ className }: { className?: string }) {
         }}
         onKeyDown={handleButtonKeyDown}
         className={cn(
-          "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-5 py-3.5 text-sm font-semibold text-zinc-50 shadow-[0_14px_36px_rgba(0,0,0,0.2)] transition hover:bg-zinc-800 active:scale-[0.99] dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 sm:w-auto",
+          "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-orange-500 shadow-[0_14px_36px_rgba(0,0,0,0.2)] transition hover:bg-zinc-800 active:scale-[0.99] dark:bg-white dark:hover:bg-zinc-100 sm:w-auto",
+          "beckon-pulse",
           FOCUS_RING,
         )}
       >
