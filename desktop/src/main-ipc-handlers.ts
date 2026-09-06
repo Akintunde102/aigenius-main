@@ -380,8 +380,8 @@ export function registerMainIpcHandlers(): void {
       clearDesktopRefreshToken();
       return { ok: false as const };
     }
-    storeDesktopRefreshToken(token);
-    return { ok: true as const };
+    const result = storeDesktopRefreshToken(token);
+    return result;
   });
   ipcMain.handle('clear-desktop-auth-secrets', async () => {
     clearDesktopRefreshToken();

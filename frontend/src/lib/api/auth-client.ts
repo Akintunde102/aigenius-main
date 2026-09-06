@@ -1,4 +1,6 @@
 import axios, { AxiosError, AxiosHeaders, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
+import toast from 'react-hot-toast';
+import { createElement } from 'react';
 import { LINKS } from '@/lib/links';
 import { storageConstants } from '@/lib/constants';
 import { storage } from '@/lib/utils/store';
@@ -338,6 +340,7 @@ const PROACTIVE_REFRESH_WITHIN_SEC = 5 * 60;
 const PROACTIVE_CHECK_INTERVAL_MS = 60 * 1000;
 
 let proactiveRefreshTimer: ReturnType<typeof setInterval> | null = null;
+let consecutiveRefreshFailures = 0;
 
 /**
  * Periodically refreshes the access token before it expires so API calls do not hit
@@ -462,6 +465,7 @@ export async function refreshAccessToken(): Promise<string> {
             throw lastError ?? new Error('Refresh response did not include an access token');
         }
 
+        consecutiveRefreshFailures = 0;
         setAccessToken(token);
 
         if (typeof rotatedRefreshToken === 'string' && rotatedRefreshToken.trim().length > 0) {
@@ -472,6 +476,22 @@ export async function refreshAccessToken(): Promise<string> {
     })().catch((error) => {
         if (shouldLogoutOnRefreshFailure(error)) {
             handleSessionExpired();
+        } else {
+            consecutiveRefreshFailures++;
+            if (consecutiveRefreshFailures >= 3) {
+                toast(
+                    createElement('span', null,
+                        "Having trouble connecting — ",
+                        createElement('a', {
+                            onClick: () => {
+                                handleSessionExpired();
+                            },
+                            style: { textDecoration: 'underline', cursor: 'pointer', fontWeight: 'bold' }
+                        }, "tap here to sign in again.")
+                    ),
+                    { id: 'refresh-failure-banner', duration: 10000, icon: '⚠️' }
+                );
+            }
         }
         throw error;
     }).finally(() => {

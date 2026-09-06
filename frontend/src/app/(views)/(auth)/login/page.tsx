@@ -18,6 +18,8 @@ const Login = () => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const callback = params.get("desktop_callback");
+      const pkceChallenge = params.get("pkce_challenge");
+      
       if (callback) {
         sessionStorage.setItem("desktop_callback", callback);
         const apiRoot = params.get("api_root");
@@ -26,7 +28,7 @@ const Login = () => {
         }
 
         if (params.get("auto") === "google") {
-          window.location.href = resolveDesktopGoogleOAuthUrl(callback, resolveAuthApiRootUrl());
+          window.location.href = resolveDesktopGoogleOAuthUrl(callback, resolveAuthApiRootUrl(), pkceChallenge);
           return;
         }
 
@@ -35,24 +37,45 @@ const Login = () => {
         if (token) {
           sessionStorage.removeItem("desktop_callback");
           const authApiRoot = resolveAuthApiRootUrl();
-          fetch(`${authApiRoot}/auth/_/desktop/handoff-code`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          })
-          .then(res => res.json())
-          .then(data => {
-             if (data?.code) {
-                window.location.href = `${callback}${callback.includes('?') ? '&' : '?'}code=${data.code}`;
-             } else {
-                window.location.href = `${callback}${callback.includes('?') ? '&' : '?'}token=${token}`;
-             }
-          })
-          .catch(() => {
-             window.location.href = `${callback}${callback.includes('?') ? '&' : '?'}token=${token}`;
-          });
+          
+          let retryCount = 0;
+          const attemptHandoff = () => {
+             fetch(`${authApiRoot}/auth/_/desktop/handoff-code`, {
+               method: 'POST',
+               headers: {
+                 'Authorization': `Bearer ${token}`,
+                 'Content-Type': 'application/json'
+               },
+               body: JSON.stringify(pkceChallenge ? { pkceChallenge } : {})
+             })
+             .then(async (res) => {
+                if (res.status >= 400 && res.status < 500) {
+                   // Irrecoverable auth error
+                   window.location.href = resolveDesktopGoogleOAuthUrl(callback, authApiRoot, pkceChallenge);
+                   return;
+                }
+                if (!res.ok) {
+                   throw new Error('Network or 5xx error');
+                }
+                const data = await res.json();
+                if (data?.code) {
+                   window.location.href = `${callback}${callback.includes('?') ? '&' : '?'}code=${data.code}`;
+                } else {
+                   throw new Error('No code returned');
+                }
+             })
+             .catch(() => {
+                retryCount++;
+                if (retryCount < 3) {
+                   setTimeout(attemptHandoff, 1000);
+                } else {
+                   // Exhausted retries, fallback to browser auth
+                   window.location.href = resolveDesktopGoogleOAuthUrl(callback, authApiRoot, pkceChallenge);
+                }
+             });
+          };
+          
+          attemptHandoff();
           return;
         }
       } else {

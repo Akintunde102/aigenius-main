@@ -1,4 +1,5 @@
 import { BrowserWindow, shell, app } from 'electron';
+import crypto from 'crypto';
 import http from 'http';
 import net from 'net';
 import path from 'path';
@@ -25,11 +26,14 @@ type DesktopBrowserSignInOptions = {
   autoProvider?: 'google';
 };
 
-export function buildUpstreamGoogleAuthUrl(upstream: string, desktopCallback: string): string {
+export function buildUpstreamGoogleAuthUrl(upstream: string, desktopCallback: string, pkceChallenge?: string): string {
   const params = new URLSearchParams({
     callback_url: desktopCallback,
     callback_client: 'desktop',
   });
+  if (pkceChallenge) {
+    params.append('pkce_challenge', pkceChallenge);
+  }
   return `${upstream.replace(/\/+$/, '')}/auth/_/google?${params.toString()}`;
 }
 
@@ -39,14 +43,17 @@ export function buildUpstreamGoogleAuthUrl(upstream: string, desktopCallback: st
  */
 export function runDesktopBrowserSignIn(
   event: Electron.IpcMainInvokeEvent,
-  options: DesktopBrowserSignInOptions = {},
+  options: DesktopBrowserSignInOptions & { timeoutMs?: number } = {},
 ): Promise<{ token: string } | null> {
+  const timeoutMs = options.timeoutMs || 5 * 60 * 1000;
   return new Promise((resolve) => {
+    const verifier = crypto.randomBytes(32).toString('base64url');
+    const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+
     const server = http.createServer((req, res) => {
       void (async () => {
         const u = new URL(req.url || '', `http://${req.headers.host}`);
         const oauthCode = u.searchParams.get('code');
-        const legacyToken = u.searchParams.get('token');
 
         const finishSuccess = (accessToken: string) => {
           const websiteBase = WEBSITE_LOGIN_URL.replace('/login', '');
@@ -57,47 +64,13 @@ export function runDesktopBrowserSignIn(
                 <title>Sign-in Successful</title>
                 <meta http-equiv="refresh" content="2;url=${websiteBase}/desktop-success">
                 <style>
-                  body {
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    height: 100vh;
-                    margin: 0;
-                    background: #0c0d0f;
-                    color: white;
-                    text-align: center;
-                  }
-                  .container {
-                    max-width: 400px;
-                    padding: 2rem;
-                  }
-                  .icon {
-                    font-size: 4rem;
-                    margin-bottom: 1rem;
-                    color: #10b981;
-                  }
-                  h1 {
-                    font-size: 1.5rem;
-                    margin-bottom: 0.5rem;
-                  }
-                  p {
-                    color: #9ca3af;
-                    line-height: 1.5;
-                  }
-                  .spinner {
-                    margin-top: 2rem;
-                    display: inline-block;
-                    width: 1.5rem;
-                    height: 1.5rem;
-                    border: 3px solid rgba(255,255,255,.1);
-                    border-radius: 50%;
-                    border-top-color: #10b981;
-                    animation: spin 1s ease-in-out infinite;
-                  }
-                  @keyframes spin {
-                    to { transform: rotate(360deg); }
-                  }
+                  body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0c0d0f; color: white; text-align: center; }
+                  .container { max-width: 400px; padding: 2rem; }
+                  .icon { font-size: 4rem; margin-bottom: 1rem; color: #10b981; }
+                  h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+                  p { color: #9ca3af; line-height: 1.5; }
+                  .spinner { margin-top: 2rem; display: inline-block; width: 1.5rem; height: 1.5rem; border: 3px solid rgba(255,255,255,.1); border-radius: 50%; border-top-color: #10b981; animation: spin 1s ease-in-out infinite; }
+                  @keyframes spin { to { transform: rotate(360deg); } }
                 </style>
               </head>
               <body>
@@ -111,6 +84,7 @@ export function runDesktopBrowserSignIn(
               </body>
             </html>
           `);
+          server.closeAllConnections?.();
           server.close();
 
           const win = BrowserWindow.fromWebContents(event.sender);
@@ -130,10 +104,11 @@ export function runDesktopBrowserSignIn(
         };
 
         if (oauthCode) {
-          const exchanged = await exchangeDesktopOAuthCode(resolveUpstreamApiUrl(), oauthCode);
+          const exchanged = await exchangeDesktopOAuthCode(resolveUpstreamApiUrl(), oauthCode, verifier);
           if (!exchanged) {
             res.writeHead(400);
             res.end('OAuth code exchange failed');
+            server.closeAllConnections?.();
             server.close();
             resolve(null);
             return;
@@ -143,19 +118,16 @@ export function runDesktopBrowserSignIn(
           return;
         }
 
-        if (legacyToken) {
-          finishSuccess(legacyToken);
-          return;
-        }
-
         res.writeHead(400);
         res.end('Missing OAuth code');
+        server.closeAllConnections?.();
         server.close();
         resolve(null);
       })().catch((error) => {
         console.error('[aigenius-desktop] OAuth loopback handler failed', error);
         res.writeHead(500);
         res.end('Sign-in failed');
+        server.closeAllConnections?.();
         server.close();
         resolve(null);
       });
@@ -167,13 +139,14 @@ export function runDesktopBrowserSignIn(
       const upstream = resolveUpstreamApiUrl();
 
       if (options.autoProvider === 'google') {
-        void shell.openExternal(buildUpstreamGoogleAuthUrl(upstream, callbackUrl));
+        void shell.openExternal(buildUpstreamGoogleAuthUrl(upstream, callbackUrl, challenge));
         return;
       }
 
       const params = new URLSearchParams({
         desktop_callback: callbackUrl,
         api_root: upstream,
+        pkce_challenge: challenge,
       });
       const authUrl = `${WEBSITE_LOGIN_URL}?${params.toString()}`;
       void shell.openExternal(authUrl);
@@ -186,9 +159,10 @@ export function runDesktopBrowserSignIn(
 
     setTimeout(() => {
       if (server.listening) {
+        server.closeAllConnections?.();
         server.close();
         resolve(null);
       }
-    }, 5 * 60 * 1000);
+    }, timeoutMs);
   });
 }
