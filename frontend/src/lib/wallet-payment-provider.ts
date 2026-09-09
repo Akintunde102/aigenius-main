@@ -1,4 +1,4 @@
-export type WalletPaymentProvider = 'paystack' | 'payaza';
+export type WalletPaymentProvider = 'paystack' | 'payaza' | 'flutterwave';
 
 export function getWalletPaymentProvider(): WalletPaymentProvider {
     const configured = (
@@ -7,9 +7,15 @@ export function getWalletPaymentProvider(): WalletPaymentProvider {
         || 'paystack'
     ).trim().toLowerCase();
 
-    return configured === 'payaza' ? 'payaza' : 'paystack';
+    if (configured === 'payaza') return 'payaza';
+    if (configured === 'flutterwave') return 'flutterwave';
+    return 'paystack';
 }
 
 export function isPayazaWalletProvider(): boolean {
     return getWalletPaymentProvider() === 'payaza';
+}
+
+export function isFlutterwaveWalletProvider(): boolean {
+    return getWalletPaymentProvider() === 'flutterwave';
 }

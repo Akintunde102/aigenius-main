@@ -22,7 +22,8 @@ import {
 } from "@/lib/wallet-pending-payment-poll";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
 import { openPayazaHostedWalletCheckout, resolvePayazaCheckoutPublicKey, type PayazaCheckoutConfig } from "@/lib/payaza-checkout";
-import { isPayazaWalletProvider } from "@/lib/wallet-payment-provider";
+import { openFlutterwaveHostedWalletCheckout } from "@/lib/flutterwave-checkout";
+import { isPayazaWalletProvider, isFlutterwaveWalletProvider } from "@/lib/wallet-payment-provider";
 import {
   creditsToUsd,
   formatUsdAmount,
@@ -76,14 +77,16 @@ type WalletInitResponse = {
   dataReturned: {
     status?: boolean;
     message?: string;
-    provider?: "paystack" | "payaza";
+    provider?: "paystack" | "payaza" | "flutterwave";
     data?: {
       authorization_url?: string;
       access_code?: string;
       reference?: string;
       publicKey?: string;
-      provider?: "payaza";
+      provider?: "payaza" | "flutterwave";
       checkout?: PayazaCheckoutConfig;
+      /** Flutterwave hosted checkout URL */
+      link?: string;
     };
     reference: string;
     transaction_id: string;
@@ -426,9 +429,10 @@ const AddToWallet = ({
       const payload = response.dataReturned;
       const provider = payload.provider
         ?? payload.data?.provider
-        ?? (isPayazaWalletProvider() ? "payaza" : "paystack");
+        ?? (isPayazaWalletProvider() ? "payaza" : isFlutterwaveWalletProvider() ? "flutterwave" : "paystack");
       const reference = payload.reference || payload.data?.reference;
 
+      // ── Payaza ──────────────────────────────────────────────────────────────
       if (provider === "payaza") {
         const checkout = payload.data?.checkout
           ?? (payload as { checkout?: PayazaCheckoutConfig }).checkout;
@@ -447,8 +451,6 @@ const AddToWallet = ({
               amountInNaira: credits,
               createdAt: Date.now(),
               provider: "payaza",
-              // Web: defer verify until Payaza redirects back. Desktop: checkout runs in
-              // the system browser, so the app must poll with checkout considered started.
               checkoutStarted: isDesktop,
             }),
           );
@@ -476,6 +478,51 @@ const AddToWallet = ({
         return;
       }
 
+      // ── Flutterwave ─────────────────────────────────────────────────────────
+      if (provider === "flutterwave") {
+        const checkoutLink = payload.data?.link as string | undefined;
+
+        if (!checkoutLink) {
+          throw new Error("Flutterwave checkout link is missing");
+        }
+
+        if (reference) {
+          const isDesktop = isAigeniusDesktopRuntime();
+          localStorage.setItem(
+            WALLET_PENDING_PAYMENT_KEY,
+            JSON.stringify({
+              reference,
+              amountInNaira: credits,
+              createdAt: Date.now(),
+              provider: "flutterwave",
+              // Flutterwave on desktop: app can't receive the redirect, so poll immediately.
+              checkoutStarted: isDesktop,
+            }),
+          );
+          if (isDesktop) {
+            void startPolling(reference, credits);
+          }
+        }
+
+        setUpdating(false);
+        const redirectUrl = reference
+          ? appendWalletPaymentReferenceToCallbackUrl(paymentCallbackUrl, reference)
+          : paymentCallbackUrl;
+        // Flutterwave's redirect_url was already set server-side when initializing the payment.
+        // We open the link directly — Flutterwave will redirect back after payment.
+        const checkoutUrl = openFlutterwaveHostedWalletCheckout(checkoutLink);
+        void redirectUrl; // acknowledged — used server-side
+        if (isAigeniusDesktopRuntime()) {
+          setPendingCheckoutUrl(checkoutUrl);
+          toast(
+            "Opening Flutterwave checkout in your browser…",
+            { icon: "🌐", duration: 5000 },
+          );
+        }
+        return;
+      }
+
+      // ── Paystack ────────────────────────────────────────────────────────────
       if (!payload.data?.authorization_url) {
         throw new Error("Failed to initialize transaction");
       }

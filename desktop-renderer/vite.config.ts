@@ -131,6 +131,10 @@ export default defineConfig({
       process.env.NEXT_PUBLIC_PAYAZA_CHECKOUT_BUSINESS_NAME
         ?? desktopBuildEnv.NEXT_PUBLIC_PAYAZA_CHECKOUT_BUSINESS_NAME,
     ),
+    'process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY': JSON.stringify(
+      process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY
+        ?? desktopBuildEnv.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
+    ),
     'process.env.NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER': JSON.stringify(
       process.env.NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER
         ?? desktopBuildEnv.NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER,

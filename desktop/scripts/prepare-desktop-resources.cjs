@@ -62,11 +62,17 @@ function prepareNextStandalone({ frontend, outRoot }) {
   if (fs.existsSync(path.join(nestedStandaloneApp, 'server.js'))) {
     fs.cpSync(staticSrc, path.join(nestedStandaloneApp, '.next', 'static'), { recursive: true });
     if (fs.existsSync(publicSrc)) {
-      fs.cpSync(publicSrc, path.join(nestedStandaloneApp, 'public'), { recursive: true });
+      fs.cpSync(publicSrc, path.join(nestedStandaloneApp, 'public'), {
+        recursive: true,
+        filter: (src) => !src.replace(/\\/g, '/').includes('/public/downloads')
+      });
     }
   }
   if (fs.existsSync(publicSrc)) {
-    fs.cpSync(publicSrc, path.join(outNext, 'public'), { recursive: true });
+    fs.cpSync(publicSrc, path.join(outNext, 'public'), {
+      recursive: true,
+      filter: (src) => !src.replace(/\\/g, '/').includes('/public/downloads')
+    });
   }
 
   return 'next-standalone';

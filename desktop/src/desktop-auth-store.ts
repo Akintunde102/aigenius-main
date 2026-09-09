@@ -47,6 +47,18 @@ export function storeDesktopRefreshToken(token: string): { ok: boolean, reason?:
     logAuthError(error, safeStorage.isEncryptionAvailable());
     ok = false;
     reason = error instanceof Error ? error.message : String(error);
+    
+    // CRITICAL: If we failed to write the primary file, but fallback succeeded,
+    // we MUST delete the primary file. Otherwise, readDesktopRefreshToken will 
+    // prefer the old, stale primary file over the fresh fallback file, causing 
+    // a "Token reuse detected" logout on next boot!
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (unlinkErr) {
+      console.warn('[aigenius-desktop] Failed to cleanup stale primary token file', unlinkErr);
+    }
   }
 
   return { ok, reason };
