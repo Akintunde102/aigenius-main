@@ -34,20 +34,24 @@ export function readStoredDesktopApiRoot(): string | null {
 }
 
 /** Google OAuth on the hosted API with a loopback callback for the Electron shell. */
-export function buildDesktopGoogleOAuthUrl(apiRoot: string, desktopCallback: string): string {
+export function buildDesktopGoogleOAuthUrl(apiRoot: string, desktopCallback: string, pkceChallenge?: string | null): string {
   const root = apiRoot.trim().replace(/\/+$/, '');
   const params = new URLSearchParams({
     callback_url: desktopCallback,
     callback_client: 'desktop',
   });
+  if (pkceChallenge) {
+    params.append('pkce_challenge', pkceChallenge);
+  }
   return `${root}/auth/_/google?${params.toString()}`;
 }
 
 export function resolveDesktopGoogleOAuthUrl(
   desktopCallback: string,
   fallbackApiRoot: string,
+  pkceChallenge?: string | null,
 ): string {
   const stored = readStoredDesktopApiRoot();
   const apiRoot = stored || fallbackApiRoot;
-  return buildDesktopGoogleOAuthUrl(apiRoot, desktopCallback);
+  return buildDesktopGoogleOAuthUrl(apiRoot, desktopCallback, pkceChallenge);
 }

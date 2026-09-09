@@ -46,7 +46,7 @@ const markers = [
   path.join(nodeModulesDir, 'hono'),
   path.join(nodeModulesDir, 'better-sqlite3'),
   path.join(nodeModulesDir, 'sharp'),
-  path.join(nodeModulesDir, 'onnxruntime-node'),
+  path.join(nodeModulesDir, 'onnxruntime-node', 'bin', 'napi-v6', platform, arch, 'onnxruntime_binding.node'),
   path.join(nodeModulesDir, 'ppu-paddle-ocr'),
   path.join(nodeModulesDir, 'ts-morph'),
   path.join(nodeModulesDir, 'web-tree-sitter'),
@@ -123,6 +123,23 @@ if (!fs.existsSync(nodeModulesDir)) {
 
 for (const marker of markers) {
   if (!fs.existsSync(marker)) {
+    // Fallback for onnxruntime-node missing binary due to npm cache skipping postinstall
+    if (marker.includes('onnxruntime_binding.node')) {
+      const srcMarker = path.join(serverRoot, '..', 'node_modules', 'onnxruntime-node', 'bin', 'napi-v6', platform, arch, 'onnxruntime_binding.node');
+      const srcDylib = path.join(serverRoot, '..', 'node_modules', 'onnxruntime-node', 'bin', 'napi-v6', platform, arch, 'libonnxruntime.1.24.3.dylib');
+      const dstDir = path.dirname(marker);
+      
+      if (fs.existsSync(srcMarker)) {
+        console.warn(`[install-server-deps] Falling back to workspace onnxruntime binary for ${platform}-${arch}`);
+        fs.mkdirSync(dstDir, { recursive: true });
+        fs.copyFileSync(srcMarker, marker);
+        if (fs.existsSync(srcDylib)) {
+          fs.copyFileSync(srcDylib, path.join(dstDir, 'libonnxruntime.1.24.3.dylib'));
+        }
+        continue;
+      }
+    }
+    
     console.error(`install-server-deps: expected module missing: ${marker}`);
     process.exit(1);
   }

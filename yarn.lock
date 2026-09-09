@@ -1582,7 +1582,7 @@
     minimist "^1.2.6"
     plist "^3.0.5"
 
-"@electron/rebuild@^3.6.1", "@electron/rebuild@3.6.1":
+"@electron/rebuild@3.6.1":
   version "3.6.1"
   resolved "https://registry.npmjs.org/@electron/rebuild/-/rebuild-3.6.1.tgz"
   integrity sha512-f6596ZHpEq/YskUd8emYvOUne89ij8mQgjYFA5ru25QwbrRO+t1SImofdDv7kKOuWCmVOuU5tvfkbgGxIl3E/w==
@@ -2255,6 +2255,11 @@
   dependencies:
     webpack-bundle-analyzer "4.10.1"
 
+"@next/env@13.5.10":
+  version "13.5.10"
+  resolved "https://registry.npmjs.org/@next/env/-/env-13.5.10.tgz"
+  integrity sha512-hTJtmiuQZk9qcz2qdVdNuOUSv5AjRLDvnPJ6b73g97yc9zgC0ybiNz7+/HlDUZHSs5aWup11Dw9cDREyRhJAvw==
+
 "@next/env@13.5.11":
   version "13.5.11"
   resolved "https://registry.npmjs.org/@next/env/-/env-13.5.11.tgz"
@@ -2278,6 +2283,11 @@
   integrity sha512-tVPS/2FKlA3ANCRCYZVT5jdbUKasBU8LG6bYqcNhyORDFTlDYa4cAWQJjZ7msIgLwMQIbL8CAsxrOL8maa/4Lg==
   dependencies:
     glob "7.1.7"
+
+"@next/swc-darwin-arm64@13.5.10":
+  version "13.5.10"
+  resolved "https://registry.npmjs.org/@next/swc-darwin-arm64/-/swc-darwin-arm64-13.5.10.tgz"
+  integrity sha512-Cw2qdH1SMX0e9aievdVOgwG4izM9CK0I0XVGaIz7i/14/bB+szs8OBEYmwPZTJNLw/QClaqEcEBqhSHGjjLRmg==
 
 "@next/swc-darwin-arm64@13.5.9":
   version "13.5.9"
@@ -10878,7 +10888,7 @@ next-tick@^1.1.0:
   resolved "https://registry.npmjs.org/next-tick/-/next-tick-1.1.0.tgz"
   integrity sha512-CXdUiJembsNjuToQvxayPZF9Vqht7hewsvy2sOWafLvi2awflj9mOC6bHIg50orX8IJvWKY9wYQ/zB2kogPslQ==
 
-next@^13.4.3, "next@^14.1.0 || ^15.0.0 || ^16.0.0", "next@>= 13":
+"next@^14.1.0 || ^15.0.0 || ^16.0.0", "next@>= 13":
   version "13.5.11"
   resolved "https://registry.npmjs.org/next/-/next-13.5.11.tgz"
   integrity sha512-WUPJ6WbAX9tdC86kGTu92qkrRdgRqVrY++nwM+shmWQwmyxt4zhZfR59moXSI4N8GDYCBY3lIAqhzjDd4rTC8Q==
@@ -10901,6 +10911,29 @@ next@^13.4.3, "next@^14.1.0 || ^15.0.0 || ^16.0.0", "next@>= 13":
     "@next/swc-win32-ia32-msvc" "13.5.9"
     "@next/swc-win32-x64-msvc" "13.5.9"
 
+next@13.5.10:
+  version "13.5.10"
+  resolved "https://registry.npmjs.org/next/-/next-13.5.10.tgz"
+  integrity sha512-O7le09N1URRINJ7DO+TIai7/asmA6YAfUddqWpio9mvO2z+RbmgcajOScO+aqLaxRqe6wxz+Bf+FJEFALpT+RQ==
+  dependencies:
+    "@next/env" "13.5.10"
+    "@swc/helpers" "0.5.2"
+    busboy "1.6.0"
+    caniuse-lite "^1.0.30001406"
+    postcss "8.4.31"
+    styled-jsx "5.1.1"
+    watchpack "2.4.0"
+  optionalDependencies:
+    "@next/swc-darwin-arm64" "13.5.10"
+    "@next/swc-darwin-x64" "13.5.10"
+    "@next/swc-linux-arm64-gnu" "13.5.10"
+    "@next/swc-linux-arm64-musl" "13.5.10"
+    "@next/swc-linux-x64-gnu" "13.5.10"
+    "@next/swc-linux-x64-musl" "13.5.10"
+    "@next/swc-win32-arm64-msvc" "13.5.10"
+    "@next/swc-win32-ia32-msvc" "13.5.10"
+    "@next/swc-win32-x64-msvc" "13.5.10"
+
 no-case@^3.0.4:
   version "3.0.4"
   resolved "https://registry.npmjs.org/no-case/-/no-case-3.0.4.tgz"
@@ -10922,6 +10955,13 @@ node-abi@^3.45.0:
   integrity sha512-6u9UwL0HlAl21+agMN3YAMXcKByMqwGx+pq+P76vii5f7hTPtKDp08/H9py6DY+cfDw7kQNTGEj/rly3IgbNQA==
   dependencies:
     semver "^7.3.5"
+
+node-abi@^4.35.0:
+  version "4.35.0"
+  resolved "https://registry.npmjs.org/node-abi/-/node-abi-4.35.0.tgz"
+  integrity sha512-ymk4aIzxdPopw2giv8Fs1Ec6vybGkjmyxUwVqhkI4MCy2tVfXdkOGGWieWVjL0THgH+7a8lRdevyupoYj3Js/Q==
+  dependencies:
+    semver "^7.6.3"
 
 node-abort-controller@^3.0.1:
   version "3.1.1"

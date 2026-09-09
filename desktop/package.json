@@ -45,10 +45,10 @@
     "package:deb": "electron-builder --linux deb",
     "package:deb:full": "npm run prepackage && electron-builder --linux deb",
     "package:flatpak": "electron-builder --linux flatpak",
-    "package:mac": "electron-builder --mac -c.electronDist=../node_modules/electron/dist && npm run sync:web-download",
-    "package:mac:dir": "electron-builder --mac dir -c.electronDist=../node_modules/electron/dist",
-    "package:mac:full": "npm run prepackage:mac:full && electron-builder --mac -c.electronDist=../node_modules/electron/dist && npm run sync:web-download",
-    "package:mac:lite": "npm run prepackage:mac && electron-builder --mac -c.electronDist=../node_modules/electron/dist && npm run sync:web-download",
+    "package:mac": "electron-builder --mac --config.npmRebuild=false -c.electronDist=../node_modules/electron/dist && npm run sync:web-download",
+    "package:mac:dir": "electron-builder --mac dir --config.npmRebuild=false -c.electronDist=../node_modules/electron/dist",
+    "package:mac:full": "npm run prepackage:mac:full && electron-builder --mac --config.npmRebuild=false -c.electronDist=../node_modules/electron/dist && npm run sync:web-download",
+    "package:mac:lite": "npm run prepackage:mac && electron-builder --mac --config.npmRebuild=false -c.electronDist=../node_modules/electron/dist && npm run sync:web-download",
     "package:win": "electron-builder --win --x64 --config.npmRebuild=false",
     "package:win:dir": "electron-builder --win dir --x64 --config.npmRebuild=false",
     "package:win:arm64:dir": "electron-builder --win dir --arm64 --config.npmRebuild=false",
@@ -73,7 +73,6 @@
     "dev": "npm run build:server && npm run compile && npm run dev:electron:only"
   },
   "devDependencies": {
-    "@electron/rebuild": "^3.6.1",
     "@types/jest": "^29.5.14",
     "@types/node": "^20.14.0",
     "@types/sharp": "^0.31.1",

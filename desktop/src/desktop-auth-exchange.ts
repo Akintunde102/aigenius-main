@@ -12,16 +12,18 @@ const DESKTOP_NATIVE_HEADERS = {
 export async function exchangeDesktopOAuthCode(
   apiRoot: string,
   code: string,
+  codeVerifier: string,
 ): Promise<DesktopAuthTokenPair | null> {
   const trimmedCode = code.trim();
-  if (!trimmedCode) {
+  const trimmedVerifier = codeVerifier.trim();
+  if (!trimmedCode || !trimmedVerifier) {
     return null;
   }
 
   const response = await fetch(`${apiRoot.replace(/\/+$/, '')}/auth/_/desktop/exchange`, {
     method: 'POST',
     headers: DESKTOP_NATIVE_HEADERS,
-    body: JSON.stringify({ code: trimmedCode }),
+    body: JSON.stringify({ code: trimmedCode, codeVerifier: trimmedVerifier }),
   });
 
   if (!response.ok) {
