@@ -32,6 +32,7 @@ import {
   dialog,
   globalShortcut,
   session,
+  powerMonitor,
 } from 'electron';
 import {
   loadToolPermissionPreferences,
@@ -233,5 +234,10 @@ if (!gotLock) {
 
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
+  });
+
+  powerMonitor.on('resume', () => {
+    const wins = BrowserWindow.getAllWindows();
+    wins.forEach(w => w.webContents.send('system:resume'));
   });
 }

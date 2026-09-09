@@ -47,6 +47,7 @@ export function resolveWalletPaymentReference(
   const fromUrl =
     searchParams.get('reference')
     || searchParams.get('trxref')
+    || searchParams.get('tx_ref')
     || searchParams.get('transaction_reference');
   const trimmed = fromUrl?.trim();
   if (trimmed) {
