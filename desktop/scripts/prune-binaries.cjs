@@ -121,7 +121,7 @@ if (fs.existsSync(onnxBinDir)) {
     for (const sub of subDirsToPrune) {
       const lower = sub.name.toLowerCase();
       const isMac = lower.includes('darwin') || lower.includes('osx') || lower.includes('mac');
-      const isWin = lower.includes('win');
+      const isWin = lower === 'win32' || lower.includes('windows');
       const isLinux = lower.includes('linux') || lower.includes('ubuntu');
       const isArm = lower.includes('arm');
       const isX64 = lower.includes('x64');

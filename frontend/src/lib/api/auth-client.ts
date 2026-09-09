@@ -395,9 +395,10 @@ function applyAuthHeaders<T extends AxiosRequestConfig>(config: T, token?: strin
 }
 
 export async function refreshAccessToken(): Promise<string> {
-    const usesDesktopRefresh = canUseDesktopStoredRefreshToken();
+    let usesDesktopRefresh = canUseDesktopStoredRefreshToken();
+    const mightBeDesktop = isDesktopShellFromBuild() || isLikelyElectronRenderer();
 
-    if (!canUseHttpOnlyRefreshCookie() && !usesDesktopRefresh) {
+    if (!canUseHttpOnlyRefreshCookie() && !usesDesktopRefresh && !mightBeDesktop) {
         const existing = getValidAccessToken();
         if (existing) {
             return existing;
@@ -411,19 +412,24 @@ export async function refreshAccessToken(): Promise<string> {
     }
 
     refreshPromise = (async () => {
+        if (!usesDesktopRefresh && mightBeDesktop && !isAigeniusDesktopRuntime()) {
+            await waitForAigeniusDesktopBridge(8000);
+            usesDesktopRefresh = canUseDesktopStoredRefreshToken();
+        }
+
+        // If after waiting we still don't have desktop refresh and can't use cookies, session is invalid
+        if (!canUseHttpOnlyRefreshCookie() && !usesDesktopRefresh) {
+            const existing = getValidAccessToken();
+            if (existing) {
+                return existing;
+            }
+            handleSessionExpired();
+            throw new Error('Session expired — please sign in again');
+        }
+
         let refreshToken = usesDesktopRefresh
             ? await readDesktopStoredRefreshToken()
             : undefined;
-
-        if (usesDesktopRefresh && !refreshToken) {
-            if (
-                (isDesktopShellFromBuild() || isLikelyElectronRenderer())
-                && !isAigeniusDesktopRuntime()
-            ) {
-                await waitForAigeniusDesktopBridge(8000);
-                refreshToken = await readDesktopStoredRefreshToken();
-            }
-        }
 
         if (usesDesktopRefresh && !refreshToken) {
             handleSessionExpired();
