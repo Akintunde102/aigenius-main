@@ -43,7 +43,7 @@ interface ChatHistorySidebarProps {
     setChatHistory: (sessions: ChatSession[]) => void;
     getChatHistory: () => Promise<ChatSession[]>;
     setTotalSpent: (n: number) => void;
-    setError: (s: string) => void;
+    setError: (s: string | null) => void;
     currentSessionId: string | null;
     /** Conversation shown in the main pane — used for sidebar highlight (may differ from currentSessionId during route sync). */
     activeSessionId?: string | null;
@@ -67,6 +67,7 @@ interface ChatHistorySidebarProps {
     onLogout?: () => void;
     /** Initials for collapsed desktop rail avatar (e.g. from logged-in user). */
     userInitials?: string;
+    getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
 }
 
 const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
@@ -103,6 +104,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     isInitialLoading = false,
     onLogout,
     userInitials = "?",
+    getCachedMessages,
 }) => {
     const [showWalletModal, setShowWalletModal] = React.useState(false);
     const [paymentModalLoading, setPaymentModalLoading] = React.useState(false);
@@ -229,7 +231,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         }
 
         setTotalSpent(0);
-        setError("");
+        setError(null);
 
         if (isMobile && setMobileSidebarOpen) {
             setMobileSidebarOpen(false);
@@ -368,6 +370,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 activeProjectId={sidebarActiveProjectId}
                 onNewChatForProject={handleNewChatForProject}
                 onProjectInfo={setInfoProjectId}
+                getCachedMessages={getCachedMessages}
             />
 
             <SidebarFooter

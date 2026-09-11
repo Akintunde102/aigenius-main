@@ -28,6 +28,8 @@ interface OrphanThreadModalProps {
     markerViewportPos: { x: number; y: number } | null;
     onModelNameClick: () => void;
     onStopGeneration: () => void;
+    imagePreview: string | null;
+    setImagePreview: (url: string | null) => void;
 }
 
 export const OrphanThreadModal: React.FC<OrphanThreadModalProps> = React.memo(({
@@ -53,6 +55,8 @@ export const OrphanThreadModal: React.FC<OrphanThreadModalProps> = React.memo(({
     handlePointerUp,
     markerViewportPos,
     onModelNameClick,
+    imagePreview,
+    setImagePreview,
 }) => {
     const modalRef = React.useRef<HTMLDivElement>(null);
 
@@ -242,8 +246,8 @@ export const OrphanThreadModal: React.FC<OrphanThreadModalProps> = React.memo(({
                                 showCosts={showCosts}
                                 showNaira={showNaira}
                                 loading={false} // Managed by streaming
-                                imagePreview={null}
-                                setImagePreview={() => {}}
+                                imagePreview={imagePreview}
+                                setImagePreview={setImagePreview}
                                 onDeleteMessage={() => {}}
                                 onSaveMessage={onSaveMessage}
                                 onReplayMessage={() => {}}

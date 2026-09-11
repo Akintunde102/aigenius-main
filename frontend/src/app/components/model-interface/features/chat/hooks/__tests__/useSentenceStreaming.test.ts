@@ -13,6 +13,20 @@
 import { renderHook, act } from '@testing-library/react';
 import { useSentenceStreaming } from '../useSentenceStreaming';
 
+jest.mock('@/lib/utils/desktop-runtime', () => ({
+    isAigeniusDesktopRuntime: () => false,
+}));
+
+jest.mock('../audio.constants', () => {
+    const actual = jest.requireActual('../audio.constants') as { AUDIO_CONSTANTS: Record<string, unknown> };
+    return {
+        AUDIO_CONSTANTS: {
+            ...actual.AUDIO_CONSTANTS,
+            BROWSER_TTS_ENGINE: 'cloud',
+        },
+    };
+});
+
 // ─── Socket mock ─────────────────────────────────────────────────────────────
 
 const makeSocket = (connected = true) => ({

@@ -36,11 +36,19 @@ export type RagQueryResult = {
 export function ragQuery(
   db: Database.Database,
   contentQuery = '',
-  pathQuery = '',
+  pathQueryOrTopK: string | number = '',
   topK = 8,
   pathPrefix = '',
   extensions?: string[],
 ): RagQueryResult {
+  // Older callers used (db, query, topK). A numeric 3rd arg is still topK.
+  let pathQuery = '';
+  if (typeof pathQueryOrTopK === 'number') {
+    topK = pathQueryOrTopK;
+  } else {
+    pathQuery = pathQueryOrTopK ?? '';
+  }
+
   const norm = pathPrefix ? path.normalize(pathPrefix) : '';
 
   const normalizedExtensions = Array.isArray(extensions)
@@ -62,7 +70,7 @@ export function ragQuery(
 
   if (safeContentQuery && pathQuery) {
     // Scenario A: Both are provided (OR union logic)
-    const ftsMatch = `content:(${safeContentQuery}) OR tags:(${safeContentQuery})`;
+    const ftsMatch = `name:(${safeContentQuery}) OR content:(${safeContentQuery}) OR tags:(${safeContentQuery})`;
 
     const stmt = db.prepare<unknown[], { path: string; name: string; mtime: number; score: number; excerpt: string }>(`
       SELECT path, name, mtime, MAX(score) AS score, excerpt
@@ -121,7 +129,7 @@ export function ragQuery(
     rows = runFtsQueryTwiceAfterRebuild(db, () => stmt.all(...params));
   } else if (safeContentQuery) {
     // Scenario B: Only content_query is provided
-    const ftsMatch = `content:(${safeContentQuery}) OR tags:(${safeContentQuery})`;
+    const ftsMatch = `name:(${safeContentQuery}) OR content:(${safeContentQuery}) OR tags:(${safeContentQuery})`;
 
     const stmt = db.prepare<unknown[], { path: string; name: string; mtime: number; rank: number; excerpt: string }>(`
       SELECT

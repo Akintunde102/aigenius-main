@@ -9,9 +9,15 @@ export type DirectoryListingItem = {
 export type ParsedDirectoryListing = {
   directoryPath: string;
   entryCount: number;
+  totalEntries: number;
   hitLimit: boolean;
+  summaryOnly: boolean;
+  scanCapped: boolean;
+  fileTypes?: string;
   shellCommand?: string;
   terminalOutput?: string;
+  hadFilters: boolean;
+  permissionDenied: boolean;
   items: DirectoryListingItem[];
 };
 
@@ -106,14 +112,39 @@ function tryParseListingFromRawData(value: unknown): ParsedDirectoryListing | nu
     parsedItems.push(item);
   }
 
+  const aggregation = payload.aggregation && typeof payload.aggregation === 'object'
+    ? payload.aggregation as Record<string, unknown>
+    : null;
+  const totalFromAggregation = typeof aggregation?.totalEntries === 'number'
+    ? aggregation.totalEntries
+    : undefined;
+  const summaryOnly = payload.summaryOnly === true;
+  const fileTypes = formatFileTypesFromAggregation(aggregation);
+
   return {
     directoryPath: typeof payload.path === 'string' ? payload.path : '',
-    entryCount: parsedItems.length,
+    entryCount: summaryOnly ? 0 : parsedItems.length,
+    totalEntries: totalFromAggregation ?? parsedItems.length,
     hitLimit: !!payload.hitLimit,
+    summaryOnly,
+    scanCapped: aggregation?.scanCapped === true,
+    fileTypes,
     shellCommand: typeof payload.shellCommand === 'string' ? payload.shellCommand : undefined,
     terminalOutput: typeof payload.terminalOutput === 'string' ? payload.terminalOutput : undefined,
+    hadFilters: payload.hadFilters === true,
+    permissionDenied: payload.permissionDenied === true,
     items: sortListingItems(parsedItems),
   };
+}
+
+function formatFileTypesFromAggregation(aggregation: Record<string, unknown> | null): string | undefined {
+  const counts = aggregation?.extensionCounts;
+  if (!counts || typeof counts !== 'object') return undefined;
+  const parts = Object.entries(counts as Record<string, unknown>)
+    .filter((entry): entry is [string, number] => typeof entry[1] === 'number')
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([ext, n]) => `${n} ${ext}`);
+  return parts.length > 0 ? parts.join(', ') : undefined;
 }
 
 export function sortListingItems(items: DirectoryListingItem[]): DirectoryListingItem[] {
@@ -180,22 +211,57 @@ export function parseDirectoryListingResult(result: string | undefined): ParsedD
   return parseDirectoryListingMarkdown(result);
 }
 
+function parseCountFromMarkdown(text: string): {
+  shown: number | null;
+  total: number | null;
+  scanCapped: boolean;
+} {
+  const showingMatch = text.match(/\*\*Showing\*\*:\s*(\d+)\s+of\s+(at least\s+)?(\d+)/i);
+  if (showingMatch) {
+    return {
+      shown: Number.parseInt(showingMatch[1], 10),
+      total: Number.parseInt(showingMatch[3], 10),
+      scanCapped: Boolean(showingMatch[2]),
+    };
+  }
+
+  const totalMatch = text.match(/\*\*Total items\*\*:\s*(at least\s+)?(\d+)/i);
+  const entriesMatch = text.match(/\*\*Entries\*\*:\s*(\d+)/i);
+  return {
+    shown: entriesMatch ? Number.parseInt(entriesMatch[1], 10) : null,
+    total: totalMatch
+      ? Number.parseInt(totalMatch[2], 10)
+      : entriesMatch
+        ? Number.parseInt(entriesMatch[1], 10)
+        : null,
+    scanCapped: Boolean(totalMatch?.[1]),
+  };
+}
+
 export function parseDirectoryListingMarkdown(markdown: string): ParsedDirectoryListing | null {
   const text = markdown.replace(/\\n/g, '\n').trim();
   if (!text.includes('Directory listing')) return null;
 
   const directoryMatch = text.match(/\*\*Directory\*\*:\s*(.+)/i);
-  const entriesMatch = text.match(/\*\*Entries\*\*:\s*(\d+)(?:\s*\(limit reached\))?/i);
+  const counts = parseCountFromMarkdown(text);
+  const fileTypesMatch = text.match(/\*\*File types\*\*:\s*(.+)/i);
   const shellMatch = text.match(/\*\*Shell\*\*:\s*`([^`]+)`/);
+  const summaryOnly = /\(summary only\)/i.test(text);
 
   const codeFence = text.match(/```\n([\s\S]*?)\n```/);
   if (codeFence?.[1]?.trim()) {
     return {
       directoryPath: directoryMatch ? parsePathFromMarkdownLink(directoryMatch[1]) : '',
       entryCount: 0,
+      totalEntries: counts.total ?? 0,
       hitLimit: false,
+      summaryOnly: false,
+      scanCapped: counts.scanCapped,
+      fileTypes: fileTypesMatch?.[1]?.trim() || undefined,
       shellCommand: shellMatch?.[1],
       terminalOutput: codeFence[1].trimEnd(),
+      hadFilters: false,
+      permissionDenied: /permission denied/i.test(text),
       items: [],
     };
   }
@@ -209,17 +275,67 @@ export function parseDirectoryListingMarkdown(markdown: string): ParsedDirectory
     if (item) items.push(item);
   }
 
-  if (items.length === 0 && !text.includes('*No entries matched')) {
+  const hasListingHeader =
+    /\*\*Total items\*\*/i.test(text)
+    || /\*\*Showing\*\*/i.test(text)
+    || /\*\*Entries\*\*/i.test(text)
+    || text.includes('*No entries matched')
+    || text.includes('*Directory is empty.')
+    || text.includes('*Permission denied reading this directory.');
+
+  if (items.length === 0 && !hasListingHeader) {
     return null;
   }
 
+  const shown = summaryOnly ? 0 : (counts.shown ?? items.length);
+  const total = counts.total ?? shown;
+
   return {
     directoryPath: directoryMatch ? parsePathFromMarkdownLink(directoryMatch[1]) : '',
-    entryCount: entriesMatch ? Number.parseInt(entriesMatch[1], 10) : items.length,
+    entryCount: shown,
+    totalEntries: total,
     hitLimit: /\(limit reached\)/i.test(text),
+    summaryOnly,
+    scanCapped: counts.scanCapped,
+    fileTypes: fileTypesMatch?.[1]?.trim() || undefined,
     shellCommand: shellMatch?.[1],
+    hadFilters: text.includes('*No entries matched the current pattern'),
+    permissionDenied: /permission denied/i.test(text),
     items: sortListingItems(items),
   };
+}
+
+export function formatDirectoryListingCountLabel(listing: ParsedDirectoryListing): string {
+  const total = listing.totalEntries;
+  const shown = listing.summaryOnly ? 0 : Math.max(listing.items.length, listing.entryCount);
+  const totalLabel = listing.scanCapped ? `at least ${total}` : String(total);
+  if (listing.summaryOnly) {
+    if (listing.scanCapped) {
+      return `at least ${total} ${total === 1 ? 'item' : 'items'}`;
+    }
+    return total === 1 ? '1 item' : `${total} items`;
+  }
+  if (listing.hitLimit || listing.scanCapped || total > shown) {
+    return `${shown} of ${totalLabel}`;
+  }
+  if (shown === 1) return '1 entry';
+  return `${shown} entries`;
+}
+
+export function formatDirectoryListingEmptyMessage(listing: ParsedDirectoryListing): string {
+  if (listing.permissionDenied) {
+    return 'Permission denied reading this directory.';
+  }
+  if (listing.summaryOnly) {
+    return listing.fileTypes ? `File types: ${listing.fileTypes}` : 'Summary only — no file rows.';
+  }
+  if (listing.hadFilters) {
+    return 'No entries matched the current pattern or extensions filter.';
+  }
+  if (listing.totalEntries === 0) {
+    return 'Directory is empty.';
+  }
+  return 'No entries matched (or directory is empty).';
 }
 
 export function fileExtensionLabel(name: string): string {

@@ -1,37 +1,18 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-
-const recognize = jest.fn().mockResolvedValue({ text: 'Hello OCR', confidence: 0.9, lines: [] });
-const initialize = jest.fn().mockResolvedValue(undefined);
-const destroy = jest.fn().mockResolvedValue(undefined);
-const isInitialized = jest.fn().mockReturnValue(false);
-
-jest.mock('ppu-paddle-ocr', () => ({
-  PaddleOcrService: jest.fn().mockImplementation(() => ({
-    initialize,
-    recognize,
-    destroy,
-    isInitialized,
-  })),
-  V6_SMALL_MODEL: {
-    detection: 'https://example.com/det.ort',
-    recognition: 'https://example.com/rec.ort',
-    charactersDictionary: 'https://example.com/dict.txt',
-  },
-}));
-
-import { extractOcr, initOcr, terminateOcr } from './ocr-extractor.js';
+import { paddleOcrMocks } from '../../../__tests__/mocks/ppu-paddle-ocr.mock.js';
+import { extractOcr, terminateOcr } from './ocr-extractor.js';
 
 describe('ocr-extractor (PaddleOCR)', () => {
   let tmpDir = '';
 
   beforeEach(async () => {
     tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'paddle-ocr-'));
-    recognize.mockClear();
-    initialize.mockClear();
-    destroy.mockClear();
-    isInitialized.mockReturnValue(false);
+    paddleOcrMocks.recognize.mockClear();
+    paddleOcrMocks.initialize.mockClear();
+    paddleOcrMocks.destroy.mockClear();
+    paddleOcrMocks.isInitialized.mockReturnValue(false);
     await terminateOcr();
   });
 
@@ -46,8 +27,8 @@ describe('ocr-extractor (PaddleOCR)', () => {
 
     const { content, tags } = await extractOcr(imagePath, tmpDir);
 
-    expect(initialize).toHaveBeenCalledTimes(1);
-    expect(recognize).toHaveBeenCalledTimes(1);
+    expect(paddleOcrMocks.initialize).toHaveBeenCalledTimes(1);
+    expect(paddleOcrMocks.recognize).toHaveBeenCalledTimes(1);
     expect(content).toBe('Hello OCR');
     expect(tags).toEqual(['image', 'ocr']);
   });
@@ -57,11 +38,11 @@ describe('ocr-extractor (PaddleOCR)', () => {
     await fs.promises.writeFile(imagePath, Buffer.from('img'));
 
     await extractOcr(imagePath, tmpDir);
-    isInitialized.mockReturnValue(true);
+    paddleOcrMocks.isInitialized.mockReturnValue(true);
 
     await extractOcr(imagePath, tmpDir);
 
-    expect(initialize).toHaveBeenCalledTimes(1);
-    expect(recognize).toHaveBeenCalledTimes(2);
+    expect(paddleOcrMocks.initialize).toHaveBeenCalledTimes(1);
+    expect(paddleOcrMocks.recognize).toHaveBeenCalledTimes(2);
   });
 });

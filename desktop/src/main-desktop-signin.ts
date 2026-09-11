@@ -18,6 +18,7 @@ const WEBSITE_LOGIN_URL = app.isPackaged
 function resolveUpstreamApiUrl(): string {
   return resolveDesktopUpstreamApiUrl({
     desktopRoot: path.join(__dirname, '..'),
+    packaged: app.isPackaged,
     packagedResourcesPath: app.isPackaged ? process.resourcesPath : undefined,
   });
 }
@@ -25,6 +26,41 @@ function resolveUpstreamApiUrl(): string {
 type DesktopBrowserSignInOptions = {
   autoProvider?: 'google';
 };
+
+type ActiveSignInSession = {
+  server: http.Server;
+  resolve: (value: { token: string } | null) => void;
+  settled: boolean;
+  timeoutId: ReturnType<typeof setTimeout>;
+};
+
+let activeSignInSession: ActiveSignInSession | null = null;
+
+function settleActiveSignInSession(value: { token: string } | null): void {
+  const session = activeSignInSession;
+  if (!session || session.settled) {
+    return;
+  }
+  session.settled = true;
+  clearTimeout(session.timeoutId);
+  try {
+    if (session.server.listening) {
+      session.server.close();
+    }
+  } catch {
+    // ignore close races
+  }
+  session.resolve(value);
+  activeSignInSession = null;
+}
+
+export function cancelDesktopBrowserSignIn(): boolean {
+  if (!activeSignInSession || activeSignInSession.settled) {
+    return false;
+  }
+  settleActiveSignInSession(null);
+  return true;
+}
 
 export function buildUpstreamGoogleAuthUrl(upstream: string, desktopCallback: string, pkceChallenge?: string): string {
   const params = new URLSearchParams({
@@ -46,6 +82,8 @@ export function runDesktopBrowserSignIn(
   options: DesktopBrowserSignInOptions & { timeoutMs?: number } = {},
 ): Promise<{ token: string } | null> {
   const timeoutMs = options.timeoutMs || 5 * 60 * 1000;
+  cancelDesktopBrowserSignIn();
+
   return new Promise((resolve) => {
     const verifier = crypto.randomBytes(32).toString('base64url');
     const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
@@ -84,9 +122,6 @@ export function runDesktopBrowserSignIn(
               </body>
             </html>
           `);
-          server.closeAllConnections?.();
-          server.close();
-
           const win = BrowserWindow.fromWebContents(event.sender);
           if (win) {
             if (win.isMinimized()) win.restore();
@@ -100,7 +135,7 @@ export function runDesktopBrowserSignIn(
             console.warn('[aigenius-desktop] OAuth complete push failed', err);
           }
 
-          resolve({ token: accessToken });
+          settleActiveSignInSession({ token: accessToken });
         };
 
         if (oauthCode) {
@@ -108,9 +143,7 @@ export function runDesktopBrowserSignIn(
           if (!exchanged) {
             res.writeHead(400);
             res.end('OAuth code exchange failed');
-            server.closeAllConnections?.();
-            server.close();
-            resolve(null);
+            settleActiveSignInSession(null);
             return;
           }
           storeDesktopRefreshToken(exchanged.refreshToken);
@@ -120,18 +153,27 @@ export function runDesktopBrowserSignIn(
 
         res.writeHead(400);
         res.end('Missing OAuth code');
-        server.closeAllConnections?.();
-        server.close();
-        resolve(null);
+        settleActiveSignInSession(null);
       })().catch((error) => {
         console.error('[aigenius-desktop] OAuth loopback handler failed', error);
         res.writeHead(500);
         res.end('Sign-in failed');
-        server.closeAllConnections?.();
-        server.close();
-        resolve(null);
+        settleActiveSignInSession(null);
       });
     });
+
+    const timeoutId = setTimeout(() => {
+      if (activeSignInSession?.server === server && server.listening) {
+        settleActiveSignInSession(null);
+      }
+    }, timeoutMs);
+
+    activeSignInSession = {
+      server,
+      resolve,
+      settled: false,
+      timeoutId,
+    };
 
     server.listen(0, DEV_LOOPBACK_HOST, () => {
       const addr = server.address() as net.AddressInfo;
@@ -154,15 +196,7 @@ export function runDesktopBrowserSignIn(
 
     server.on('error', (err) => {
       console.error('[aigenius-desktop] Web sign-in server error:', err);
-      resolve(null);
+      settleActiveSignInSession(null);
     });
-
-    setTimeout(() => {
-      if (server.listening) {
-        server.closeAllConnections?.();
-        server.close();
-        resolve(null);
-      }
-    }, timeoutMs);
   });
 }

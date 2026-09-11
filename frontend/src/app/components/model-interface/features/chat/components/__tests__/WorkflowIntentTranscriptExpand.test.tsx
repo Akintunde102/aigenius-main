@@ -108,7 +108,7 @@ describe('WorkflowIntentTranscriptExpand', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /Sub-agent transcript/i }));
 
-        expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument();
+        expect(await screen.findByText('Something went wrong while generating a response. Please try again.')).toBeInTheDocument();
     });
 
     it('shows empty state when messages array is empty', async () => {

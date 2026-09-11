@@ -1,5 +1,6 @@
 "use client";
 
+import { type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 
 /**
@@ -8,9 +9,11 @@ import { Loader2 } from "lucide-react";
 export function DesktopSessionRestoringView({
   message = "Opening AIGenius…",
   detail = "Verifying your saved session…",
+  action,
 }: {
   message?: string;
   detail?: string;
+  action?: ReactNode;
 }) {
   return (
     <div className="content-centered">
@@ -31,6 +34,9 @@ export function DesktopSessionRestoringView({
       <h1 className="headline" style={{ fontSize: "1.5rem" }}>{message}</h1>
       {detail ? (
         <p className="subtext">{detail}</p>
+      ) : null}
+      {action ? (
+        <div style={{ marginTop: "1.5rem" }}>{action}</div>
       ) : null}
     </div>
   );

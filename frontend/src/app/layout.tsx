@@ -7,6 +7,7 @@ import React from 'react';
 import ReactQueryProvider from "@/lib/providers/ReactQueryProvider";
 import ViewportHeightSetter from './ViewportHeightSetter';
 import DesktopShellChrome from './components/DesktopShellChrome';
+import DesktopToolApprovalHost from './components/DesktopToolApprovalHost';
 import DesktopShellDocumentFlag from './components/DesktopShellDocumentFlag';
 import EarlyDesktopAuthCookieSync from './components/EarlyDesktopAuthCookieSync';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -159,6 +160,7 @@ export default function RootLayout({
         <ScheduleNotificationListener />
         <GlobalToaster />
         <FilePreviewModal />
+        <DesktopToolApprovalHost />
       </ErrorBoundary>
       <div id="modal-root" />
       <ClientAnalytics />

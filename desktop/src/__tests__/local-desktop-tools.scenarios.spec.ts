@@ -75,6 +75,29 @@ jest.mock('child_process', () => ({
   }),
 }));
 
+jest.mock('../utils/read-file/path-resolver', () => {
+  const actual = jest.requireActual('../utils/read-file/path-resolver') as Record<string, unknown>;
+  return {
+    ...actual,
+    resolveDirectoryPath: jest.fn(async (inputPath: string) => ({
+      ok: true as const,
+      resolved: inputPath,
+    })),
+  };
+});
+
+jest.mock('../utils/list-directory-via-shell', () => ({
+  listDirectoryViaShell: jest.fn().mockResolvedValue({
+    items: [
+      { path: '/tmp/project/util.ts', name: 'util.ts', isDir: false, size: 128 },
+      { path: '/tmp/project/lib', name: 'lib', isDir: true },
+    ],
+    shellCommand: 'ls',
+    structured: true,
+  }),
+  formatListDirectoryShellCommand: jest.fn(() => 'ls'),
+}));
+
 jest.mock('../local-grep', () => ({
   runGrep: jest.fn().mockResolvedValue({
     ok: true,
@@ -97,6 +120,7 @@ jest.mock('../local-read-image', () => ({
 }));
 
 jest.mock('electron', () => ({
+  app: { isPackaged: false },
   dialog: { showMessageBox: jest.fn().mockResolvedValue({ response: 1 }) },
   shell: { openPath: jest.fn().mockResolvedValue('') },
 }));
@@ -356,6 +380,18 @@ describe('local desktop tools — full scenario suite', () => {
       if (out.ok) {
         expect(out.result).toContain('Directory listing');
         expect(out.result).toContain('util.ts');
+      }
+    });
+
+    it('local_list_directory filters names with pattern', async () => {
+      const { out } = await runTimedTool('local_list_directory', {
+        path: PROJECT_ROOT,
+        pattern: 'util.*',
+      });
+      expect(out.ok).toBe(true);
+      if (out.ok) {
+        expect(out.result).toContain('util.ts');
+        expect(out.result).not.toContain('**lib**');
       }
     });
 

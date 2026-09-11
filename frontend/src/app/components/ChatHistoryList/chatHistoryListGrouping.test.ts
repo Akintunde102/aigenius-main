@@ -203,7 +203,7 @@ describe("groupSidebarSessionsByProject", () => {
     expect(buckets[1]?.projectId).toBe("proj-active");
   });
 
-  it("pins the active General bucket to the top when it has the open chat", () => {
+  it("keeps General below project folders even when it has the open chat", () => {
     const buckets = groupSidebarSessionsByProject(
       [
         session("general-active", {
@@ -218,7 +218,8 @@ describe("groupSidebarSessionsByProject", () => {
       { activeSessionId: "general-active", activeProjectId: null },
     );
 
-    expect(buckets[0]?.projectId).toBeNull();
-    expect(buckets[0]?.hasActiveSession).toBe(true);
+    expect(buckets[0]?.projectId).toBe("proj-nobox");
+    const general = buckets.find((b) => b.projectId === null);
+    expect(general?.hasActiveSession).toBe(true);
   });
 });

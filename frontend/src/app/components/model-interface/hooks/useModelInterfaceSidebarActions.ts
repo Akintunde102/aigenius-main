@@ -5,13 +5,14 @@ import {
   toggleChatSessionStarred,
 } from "@/lib/utils/modelChatConversationUtils";
 import type { ChatSession, Model } from "../shared/types";
+import { CHAT_UI_ERRORS, type ChatUiError } from "../features/chat/hooks/chatUiError";
 
 type RemoveStrategy = "session" | "conversation";
 
 type Params = {
   currentSessionId: string | null;
   models: Model[];
-  setError: (message: string) => void;
+  setError: (message: string | ChatUiError | null) => void;
   setChatHistory: React.Dispatch<React.SetStateAction<ChatSession[]>>;
   createNewSessionAndSwitchWrapper: (modelId: string) => Promise<void> | void;
   refreshWalletFromBackend?: (() => Promise<unknown>) | null;
@@ -57,7 +58,7 @@ export function useModelInterfaceSidebarActions({
         return true;
       } catch (error) {
         console.error("[ModelInterface] Failed to remove history item", error);
-        setError("Failed to remove conversation");
+        setError(CHAT_UI_ERRORS.conversationRemoveFailed);
         return false;
       }
     },
@@ -93,7 +94,7 @@ export function useModelInterfaceSidebarActions({
         );
       } catch (error) {
         console.error("[ModelInterface] Failed to toggle starred status", error);
-        setError("Failed to update starred status");
+        setError(CHAT_UI_ERRORS.conversationStarFailed);
       }
     },
     [setChatHistory, setError],

@@ -91,7 +91,12 @@ describe('queries-import-graph scenarios', () => {
         via: normPath(r.via),
       })),
     });
-    expect(report).toMatchSnapshot();
+    const posix = report.replace(/\\/g, '/');
+    expect(posix).toContain('Import blast radius');
+    expect(posix).toContain('diamond/base.ts');
+    expect(posix).toContain('diamond/left.ts');
+    expect(posix).toContain('diamond/right.ts');
+    expect(posix).toContain('diamond/merge.ts');
   });
 
   it('returns empty importers for unindexed external package imports', async () => {

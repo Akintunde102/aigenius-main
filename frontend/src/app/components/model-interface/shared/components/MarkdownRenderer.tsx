@@ -41,15 +41,21 @@ export interface MarkdownRendererProps {
 }
 
 const REMARK_PLUGINS = [remarkGfm];
-const REHYPE_PLUGINS = [rehypeRaw, [rehypeSanitize, markdownSanitizeSchema], rehypeHighlight];
+
+/** Avoid console spam when LLM/tool output uses ```plaintext fences or unknown langs. */
+const REHYPE_HIGHLIGHT_OPTIONS = {
+    plainText: ['plaintext', 'text', 'txt', 'plain'],
+    ignoreMissing: true,
+};
+
+const REHYPE_PLUGINS = [
+    rehypeRaw,
+    [rehypeSanitize, markdownSanitizeSchema],
+    [rehypeHighlight, REHYPE_HIGHLIGHT_OPTIONS],
+];
 
 /** Renders LLM message text as GFM Markdown with fenced-code syntax highlighting. */
 export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
-    const trimmed = content.trim();
-    if (!trimmed) {
-        return null;
-    }
-
     const processedContent = useMemo(() => {
         let text = repairLlmMarkdown(content);
         if (isAigeniusDesktopRuntime()) {
@@ -57,6 +63,11 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
         }
         return text;
     }, [content]);
+
+    const trimmed = content.trim();
+    if (!trimmed) {
+        return null;
+    }
 
     return (
         <div

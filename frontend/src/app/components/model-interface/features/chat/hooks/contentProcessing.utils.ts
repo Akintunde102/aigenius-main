@@ -1,5 +1,5 @@
 import { ChatMessage, ToolUsageCharge } from '@/app/components/model-interface/shared/types';
-import { ContentBlock, ProcessedContent } from './chatOperations.types';
+import { ContentBlock, ProcessedContent, StreamContentChunk } from './chatOperations.types';
 import { CONTENT_TYPES } from './chatOperations.constants';
 import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
 
@@ -16,6 +16,41 @@ export function contentToDisplayText(content: ProcessedContent): string {
             ? textPartToPlainString(block.text)
             : CONTENT_TYPES.IMAGE_PLACEHOLDER
     ).join('');
+}
+
+/**
+ * Converts a stream chunk to markdown so event-based rendering (MarkdownRenderer)
+ * can show generated images instead of a text placeholder.
+ */
+export function contentToMarkdownText(content: ProcessedContent): string {
+    if (typeof content === 'string') {
+        return content;
+    }
+
+    return content.map((block) => {
+        if (block.type === CONTENT_TYPES.TEXT) {
+            return textPartToPlainString(block.text);
+        }
+        if (block.type === CONTENT_TYPES.IMAGE_URL && block.image_url?.url) {
+            return `\n![image](${block.image_url.url})\n`;
+        }
+        return '';
+    }).join('');
+}
+
+/**
+ * Normalizes an SSE content chunk into the processed content shape used by mergeContentBlocks.
+ */
+export function processStreamingContent(content: StreamContentChunk): ProcessedContent {
+    if (Array.isArray(content)) {
+        return content.map((block): ContentBlock => ({
+            type: block.type,
+            text: 'text' in block ? block.text : undefined,
+            image_url: 'image_url' in block ? block.image_url : undefined,
+            input_audio: 'input_audio' in block ? block.input_audio : undefined,
+        }));
+    }
+    return content;
 }
 
 /**

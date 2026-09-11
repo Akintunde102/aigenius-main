@@ -31,6 +31,7 @@ const customJestConfig = {
         '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
     },
     moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
+    forceExit: true,
     testPathIgnorePatterns: [
         '<rootDir>/.next/',
         '<rootDir>/node_modules/',

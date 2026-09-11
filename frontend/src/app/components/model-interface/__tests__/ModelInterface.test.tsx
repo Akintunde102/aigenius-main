@@ -12,7 +12,7 @@ jest.mock('@/app/components/MobileSidebarContext', () => ({
     useMobileSidebar: jest.fn(() => ({ mainSidebarVisible: true }))
 }));
 jest.mock('next/navigation', () => ({
-    useRouter: jest.fn(() => ({ push: jest.fn(), replace: jest.fn() }))
+    useRouter: jest.fn(() => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() }))
 }));
 jest.mock('next/dynamic', () => ({
     __esModule: true,
@@ -67,6 +67,35 @@ jest.mock('@/app/components/model-interface/features/file-upload/hooks', () => (
 }));
 jest.mock('@/lib/utils/desktop-runtime', () => ({
     useIsDesktopShell: jest.fn(() => false),
+    isAigeniusDesktopRuntime: jest.fn(() => false),
+    isDesktopShellFromBuild: jest.fn(() => false),
+    isLikelyElectronRenderer: jest.fn(() => false),
+    waitForAigeniusDesktopBridge: jest.fn(() => Promise.resolve(false)),
+}));
+jest.mock('@/app/components/user-files/useUploadedFilesList', () => ({
+    useUploadedFilesList: () => ({
+        files: [],
+        loading: false,
+        error: null,
+        refresh: jest.fn(),
+    }),
+}));
+jest.mock('../hooks/useModelInterfaceAttachments', () => ({
+    useModelInterfaceAttachments: () => ({
+        uploadedFiles: [],
+        setUploadedFiles: jest.fn(),
+        attachmentIndex: [],
+        setAttachmentIndex: jest.fn(),
+        handleFileUpload: jest.fn(),
+        handleCancelUpload: jest.fn(),
+        failedUploads: [],
+        retryFailedUpload: jest.fn(),
+        retryAllFailedUploads: jest.fn(),
+        removeFailedUpload: jest.fn(),
+        handleQueuedFiles: jest.fn(),
+        handleAttachSavedFiles: jest.fn(),
+        openLocalFilePicker: jest.fn(),
+    }),
 }));
 
 const mockChatHistorySidebar = jest.fn((props: any) => <div data-testid="sidebar" />);
@@ -147,12 +176,21 @@ function buildMockModelInterface(overrides: {
             setSelectedPersonalityName: jest.fn(),
             selectedPersonalityIconUrl: '',
             setSelectedPersonalityIconUrl: jest.fn(),
+            selectedPersonalityId: undefined,
+            setSelectedPersonalityId: jest.fn(),
+            selectedSystemPrompt: undefined,
+            setSelectedSystemPrompt: jest.fn(),
+            applySessionPersonalityState: jest.fn(),
+            clearConversationPersonality: jest.fn(),
         },
         chatState: {
             input: '',
             setInput: jest.fn(),
             chat: [],
             setChat: jest.fn(),
+            chatMap: {},
+            composerSessionKey: 'session-1',
+            commitComposerDraftForKey: jest.fn(),
             pendingOrphanReply: null,
             clearPendingOrphanReply: jest.fn(),
             setChatForSession,
@@ -178,11 +216,17 @@ function buildMockModelInterface(overrides: {
             setShowTyping: jest.fn(),
             showScrollToBottom: false,
             setShowScrollToBottom: jest.fn(),
+            updateSessionMessages: jest.fn(),
+            persistSessionMessages: jest.fn(),
+            isPassiveSyncBlocked: jest.fn(() => false),
+            queuedMessages: [],
+            handleQueueMessage: jest.fn(),
+            removeQueuedMessage: jest.fn(),
         },
         uiState: {
             loading: false,
             setLoading: jest.fn(),
-            error: '',
+            error: null,
             setError,
             streaming: false,
             setStreaming: jest.fn(),
@@ -258,6 +302,8 @@ function buildMockModelInterface(overrides: {
             isSessionActive: jest.fn((id: string) => id === 'session-1'),
             startOrphanReply: jest.fn(),
             project: 'projectt',
+            isSessionInFlight: jest.fn(() => false),
+            onClearDraftQueueRef: { current: jest.fn() },
         },
         audioState: {
             isAudioMode: false,
@@ -334,7 +380,7 @@ describe('ModelInterface', () => {
         expect(mockValues.__spies.setCurrentSessionId).toHaveBeenCalledWith(null);
         expect(mockValues.__spies.setChatForSession).toHaveBeenCalledWith('__draft__', []);
         expect(mockValues.__spies.setTotalSpent).toHaveBeenCalledWith(0);
-        expect(mockValues.__spies.setError).toHaveBeenCalledWith('');
+        expect(mockValues.__spies.setError).toHaveBeenCalledWith(null);
         expect(mockValues.__spies.createNewSessionAndSwitch).not.toHaveBeenCalled();
     });
 });

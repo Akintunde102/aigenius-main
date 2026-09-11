@@ -1,4 +1,6 @@
 import type { ChatMessage, ChatSession } from '@/app/components/model-interface/shared/types';
+import { getConversationById } from '@/lib/calls/model-chat-conversation';
+import { normalizeSessionMessages } from '@/lib/utils/messageContentUtils';
 import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
 
 export type TranscriptFormat = 'txt' | 'md' | 'json';
@@ -158,6 +160,53 @@ export function buildConversationTranscriptMessages(messages: ChatMessage[]): Tr
         .filter((message): message is TranscriptMessage => message != null);
 }
 
+function hasExportableTranscript(messages: ChatMessage[]): boolean {
+    return buildConversationTranscriptMessages(messages).length > 0;
+}
+
+export type ResolveConversationTranscriptMessagesOptions = {
+    /** In-memory transcript (e.g. chatMap) when sidebar metadata has stripped message bodies. */
+    getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
+};
+
+/**
+ * Sidebar history keeps titles only; full transcripts live in chatMap or on the server.
+ * Prefer local/cached messages, then fetch by conversation id when needed.
+ */
+export async function resolveConversationTranscriptMessages(
+    session: ChatSession,
+    options?: ResolveConversationTranscriptMessagesOptions,
+): Promise<ChatMessage[]> {
+    const sessionMessages = session.messages ?? [];
+    if (sessionMessages.length > 0 && hasExportableTranscript(sessionMessages)) {
+        return sessionMessages;
+    }
+
+    const sessionId = session.id?.trim();
+    if (sessionId && options?.getCachedMessages) {
+        const cached = options.getCachedMessages(sessionId);
+        if (cached?.length && hasExportableTranscript(cached)) {
+            return cached;
+        }
+    }
+
+    if (!sessionId) {
+        return sessionMessages;
+    }
+
+    const conversation = await getConversationById(sessionId);
+    const loadedMessages = conversation?.session?.messages;
+    if (!loadedMessages?.length) {
+        return sessionMessages;
+    }
+
+    const normalized = normalizeSessionMessages({
+        ...session,
+        messages: loadedMessages,
+    });
+    return (normalized.messages ?? []) as ChatMessage[];
+}
+
 function roleLabel(role: TranscriptMessage['role']): string {
     return role === 'user' ? 'User' : 'Assistant';
 }
@@ -247,13 +296,15 @@ export function downloadTextFile(filename: string, content: string, mimeType: st
     URL.revokeObjectURL(url);
 }
 
-export function downloadConversationTranscript(
+export async function downloadConversationTranscript(
     session: ChatSession,
     title: string,
     format: TranscriptFormat,
     exportedAt = new Date(),
-): void {
-    const content = buildConversationTranscriptContent(title, session.messages ?? [], format, exportedAt);
+    options?: ResolveConversationTranscriptMessagesOptions,
+): Promise<void> {
+    const messages = await resolveConversationTranscriptMessages(session, options);
+    const content = buildConversationTranscriptContent(title, messages, format, exportedAt);
     const filename = buildConversationTranscriptFilename(title, format, session.id, exportedAt);
     downloadTextFile(filename, content, MIME_TYPES[format]);
 }

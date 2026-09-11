@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { CHAT_CONFIG } from "../features/chat/hooks";
 import { isWalletRelatedChatError } from "../features/chat/hooks/errorHandling.utils";
+import type { ChatUiError } from "../features/chat/hooks/chatUiError";
 import { getModelAverageRequestPrice, USD_TO_NGN } from "../shared/utils";
 import { isE2eBrowserWalletBypassEnabled } from "@/lib/e2e-wallet-bypass";
 import type { Model } from "../shared/types";
@@ -8,8 +9,8 @@ import type { Model } from "../shared/types";
 type Params = {
   selectedModel: Model | null;
   wallet: number | null;
-  error: string;
-  setError: (value: string) => void;
+  error: ChatUiError | string | null;
+  setError: (value: string | ChatUiError | null) => void;
 };
 
 export function useModelInterfaceWalletGate({
@@ -62,7 +63,7 @@ export function useModelInterfaceWalletGate({
       error &&
       isWalletRelatedChatError(error)
     ) {
-      setError("");
+      setError(null);
     }
   }, [wallet, error, requiredWalletBalance, setError]);
 

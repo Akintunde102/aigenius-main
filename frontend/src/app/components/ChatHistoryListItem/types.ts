@@ -1,4 +1,4 @@
-import { ChatSession, Model } from '@/app/components/model-interface/shared/types';
+import { ChatSession, Model, ChatMessage } from '@/app/components/model-interface/shared/types';
 
 export interface ChatHistoryActions {
     removeChatHistorySession: (id: string) => Promise<boolean>;
@@ -25,4 +25,6 @@ export interface ChatHistoryListItemProps {
     isDeleting?: boolean;
     isStarring?: boolean;
     isPublishing?: boolean;
+    /** Optional in-memory transcript lookup when sidebar metadata has stripped message bodies. */
+    getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
 }

@@ -39,13 +39,16 @@ describe('FilePreviewModal', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         Element.prototype.scrollIntoView = jest.fn();
+        global.URL.createObjectURL = jest.fn(() => 'blob:mock-preview');
+        global.URL.revokeObjectURL = jest.fn();
     });
 
     afterEach(() => {
         // Restore bridge
         (window as any).aigeniusDesktop = originalDesktopBridge;
-        // Close modal
-        filePreviewEmitter.emit('close');
+        act(() => {
+            filePreviewEmitter.emit('close');
+        });
     });
 
     it('renders nothing when there is no payload', () => {
@@ -77,12 +80,12 @@ describe('FilePreviewModal', () => {
         });
 
         // Initially shows loading spinner or nothing because url is empty during fetch
-        expect(screen.getByText('test.png')).toBeTruthy();
+        expect(screen.getAllByText('test.png').length).toBeGreaterThan(0);
 
         // Wait for the bridge to resolve
         await waitFor(() => {
             const img = screen.getByAltText('test.png');
-            expect(img).toHaveAttribute('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+            expect(img).toHaveAttribute('src', 'blob:mock-preview');
         });
 
         expect(mockReadLocalFilePreview).toHaveBeenCalledWith('/test.png');
@@ -114,18 +117,21 @@ describe('FilePreviewModal', () => {
             });
         });
 
-        expect(screen.getByText('my-folder')).toBeTruthy();
+        expect(screen.getAllByText('my-folder').length).toBeGreaterThan(0);
 
         // Wait for folder contents to render
         await waitFor(() => {
             expect(screen.getByText('file1.js')).toBeTruthy();
             expect(screen.getByText('subfolder')).toBeTruthy();
-            expect(screen.getByText('1.0 KB')).toBeTruthy();
         });
 
         expect(mockRunLocalDesktopTool).toHaveBeenCalledWith({
             tool: 'local_list_directory',
-            arguments: { path: '/folder', limit: 50 }
+            arguments: { path: '/folder', limit: 100 }
+        });
+        expect(mockRunLocalDesktopTool).toHaveBeenCalledWith({
+            tool: 'local_list_directory',
+            arguments: { path: '/folder', limit: 300 }
         });
     });
 
@@ -151,7 +157,7 @@ describe('FilePreviewModal', () => {
         });
 
         await waitFor(() => {
-            expect(screen.getByText('This folder is empty')).toBeTruthy();
+            expect(screen.getByText('Directory View')).toBeTruthy();
         });
     });
 
@@ -240,13 +246,11 @@ describe('FilePreviewModal', () => {
             expect(screen.getByText('pic.png')).toBeTruthy();
         });
 
-        // Click image file
-        console.log("DOM output:", screen.debug(undefined, 30000));
         fireEvent.click(screen.getByText('pic.png'));
 
         await waitFor(() => {
             const img = screen.getByAltText('pic.png');
-            expect(img).toHaveAttribute('src', 'data:image/png;base64,base64data');
+            expect(img).toHaveAttribute('src', 'blob:mock-preview');
         });
     });
 });

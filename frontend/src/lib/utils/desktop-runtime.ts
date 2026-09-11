@@ -185,6 +185,7 @@ export type AigeniusDesktopBridgeSurface = {
   onOAuthSignInComplete?: (handler: (payload: { token: string }) => void) => () => void;
   startOAuthSignIn?: (options?: { provider?: 'google' }) => Promise<{ token: string } | null>;
   startWebSignIn?: () => Promise<{ token: string } | null>;
+  cancelWebSignIn?: () => Promise<{ ok: boolean }>;
   runLocalDesktopTool?: (
     payload: { tool: string; arguments: Record<string, unknown> },
     options?: { onShellStreamChunk?: (chunk: { stream: string; text: string }) => void },
@@ -193,6 +194,12 @@ export type AigeniusDesktopBridgeSurface = {
   setCodeProjectIndex?: (
     payload: { projectId: string; rootPath: string } | null,
   ) => Promise<{ ok: boolean }>;
+  pickProjectDirectory?: () => Promise<{ path: string } | null>;
+  createNamedProjectDirectory?: (payload: { folderName: string }) => Promise<
+    | { ok: true; path: string; created?: boolean }
+    | { ok: true; canceled: true }
+    | { ok: false; error: string }
+  >;
   getLocalSearchIndexState?: () => Promise<{
     reportedAtIso: string;
     mode: 'active_project_warming' | 'active_project_ready' | 'no_active_project';
@@ -311,6 +318,7 @@ export type AigeniusDesktopBridgeSurface = {
   >;
   openFile?: (filePath: string) => Promise<{ ok: boolean; error: string }>;
   revealFileInFolder?: (filePath: string) => Promise<{ ok: boolean; error?: string }>;
+  copyFileToClipboard?: (filePath: string) => Promise<{ ok: boolean; error?: string }>;
   readLocalFilePreview?: (
     filePath: string,
   ) => Promise<
@@ -327,6 +335,15 @@ export type AigeniusDesktopBridgeSurface = {
   onQueueChatScreenshot?: (
     handler: (items: DesktopChatScreenshotPayload[]) => void,
   ) => () => void;
+  /** Main-process local shell / patch approval overlay (in-app, not a separate window). */
+  onToolApprovalRequest?: (
+    handler: (request: {
+      requestId: string;
+      kind: 'shell' | 'patch';
+      payload: Record<string, unknown>;
+    }) => void,
+  ) => () => void;
+  respondToolApproval?: (requestId: string, approved: boolean) => void;
 };
 
 function sameOriginWindowCandidates(): Window[] {

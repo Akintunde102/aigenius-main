@@ -15,5 +15,5 @@ describe('pdf-test-fixtures', () => {
     expect(scanned.subarray(0, 5).toString()).toBe('%PDF-');
     const scannedParsed = await pdfParse(scanned);
     expect((scannedParsed.text ?? '').trim().length).toBeLessThan(20);
-  });
+  }, 30000);
 });

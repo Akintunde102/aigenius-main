@@ -1,6 +1,7 @@
 {
   "platform": "win32",
   "arch": "arm64",
-  "electronVersion": "43.4.1",
-  "builtAt": "2026-09-02T09:03:04.259Z"
+  "depsFingerprint": "6b8e514717be5509",
+  "electronVersion": "native-prebuilds",
+  "builtAt": "2026-09-05T13:04:04.741Z"
 }

@@ -64,7 +64,7 @@ function buildMessages(n: number): ChatMessageType[] {
 }
 
 describe('ChatArea virtualization', () => {
-  it('renders a tall virtual list spacer for many messages', async () => {
+  it('renders messages in document flow for a long transcript', async () => {
     const chat = buildMessages(48);
     const chatEndRef = createRef<HTMLDivElement>();
     const chatAreaRef = createRef<HTMLDivElement>();
@@ -91,11 +91,9 @@ describe('ChatArea virtualization', () => {
     );
 
     await waitFor(() => {
-      const listSpacer = container.querySelector('.chat-area .w-full') as HTMLElement | null;
-      expect(listSpacer).not.toBeNull();
-      const totalPx = Number.parseInt(listSpacer!.style.height.replace('px', ''), 10);
-      expect(Number.isFinite(totalPx)).toBe(true);
-      expect(totalPx).toBeGreaterThan(chat.length * 80);
+      const messageNodes = container.querySelectorAll('[data-chat-message-index]');
+      expect(messageNodes.length).toBeGreaterThan(0);
+      expect(container.querySelector('[data-chat-message-index="0"]')).not.toBeNull();
     });
   });
 

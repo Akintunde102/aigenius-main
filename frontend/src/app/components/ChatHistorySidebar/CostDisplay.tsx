@@ -28,4 +28,6 @@ const CostDisplay: React.FC<CostDisplayProps> = React.memo(({ chatHistory, model
     );
 });
 
+CostDisplay.displayName = 'CostDisplay';
+
 export default CostDisplay;

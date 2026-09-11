@@ -375,7 +375,7 @@ export function useAudioSTT({ input, setInput, onTranscriptionComplete, socket, 
   const toggleSTT = useCallback(async () => {
     if (isAigeniusDesktopRuntime() && !isDesktopSttEnabled()) {
       const { toast } = await import('react-hot-toast');
-      toast.error('Voice dictation is disabled in this build. Set AIGENIUS_ENABLE_STT=1 to restore local Whisper.');
+      toast.error('Voice input is disabled in this build.');
       return;
     }
     if (isRecording) {

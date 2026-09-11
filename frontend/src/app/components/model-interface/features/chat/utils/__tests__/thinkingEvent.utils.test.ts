@@ -28,10 +28,12 @@ describe('thinkingEvent.utils', () => {
         expect(events[2]).toMatchObject({ type: 'thinking', content: 'more thought', loading: true });
     });
 
-    it('applyStreamingTurnUpdate interleaves thinking and text chunks', () => {
+    it('applyStreamingTurnUpdate closes thinking before the next text stream', () => {
         const events = applyStreamingTurnUpdate([], {
             reasoning: 'Thinking first',
         });
+        expect(events[0]).toMatchObject({ type: 'thinking', loading: true });
+
         const next = applyStreamingTurnUpdate(events, {
             textChunk: 'Visible answer',
         });
@@ -40,6 +42,15 @@ describe('thinkingEvent.utils', () => {
             { type: 'thinking', content: 'Thinking first', loading: false, timestamp: expect.any(Number) },
             { type: 'text', content: 'Visible answer' },
         ]);
+        expect(events[0]).toMatchObject({ type: 'thinking', loading: true });
+    });
+
+    it('applyStreamingTurnUpdate does not mutate the previous events array', () => {
+        const first = applyStreamingTurnUpdate([], { textChunk: 'Hello' });
+        const next = applyStreamingTurnUpdate(first, { textChunk: ' world' });
+
+        expect(first).toEqual([{ type: 'text', content: 'Hello' }]);
+        expect(next).toEqual([{ type: 'text', content: 'Hello world' }]);
     });
 
     it('enrichEventsWithLegacyThinking prepends legacy reasoning once', () => {

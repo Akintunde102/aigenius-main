@@ -15,6 +15,9 @@ type AppNavigationRouter = {
   replace: (href: string, options?: { scroll?: boolean }) => void;
 };
 import { getConversationById } from "@/lib/calls/model-chat-conversation";
+import { handleSessionExpired } from "@/lib/api/auth-client";
+import { isAuthRelatedChatError } from "../features/chat/hooks/errorHandling.utils";
+import { CHAT_UI_ERRORS, type ChatUiError } from "../features/chat/hooks/chatUiError";
 import { applyChatProjectScopeFromSession } from "@/lib/code-projects/apply-chat-project-scope";
 import { upsertChatHistorySession } from "@/lib/utils/modelChatConversationUtils";
 import { normalizeSessionMessages } from "@/lib/utils/messageContentUtils";
@@ -54,7 +57,7 @@ type Params = {
   currentChatSignature: string;
   models: Model[];
   setSelectedModel: (model: Model | null) => void;
-  setError: (message: string) => void;
+  setError: (message: string | ChatUiError | null) => void;
   setChatForSession: (
     sessionKey: string,
     messages: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[]),
@@ -177,7 +180,7 @@ export function useModelInterfaceSessionRouting({
     setChatForSession(DRAFT_SESSION_KEY, []);
     setAttachmentIndex([]);
     setTotalSpent(0);
-    setError("");
+    setError(null);
     setLoading(false);
     setStreaming(false);
     setUploading(false);
@@ -522,7 +525,7 @@ export function useModelInterfaceSessionRouting({
         const conversation = await getConversationById(activeRouteConversationId);
         if (cancelled || !conversation?.session) {
           if (!cancelled) {
-            setError("Conversation not found.");
+            setError(CHAT_UI_ERRORS.conversationMissing);
             setActiveRouteConversationId(null);
             if (typeof window !== "undefined") {
               router.replace("/");
@@ -574,9 +577,14 @@ export function useModelInterfaceSessionRouting({
         if (restoredModel) {
           setSelectedModel(restoredModel);
         }
-      } catch {
+      } catch (loadError) {
         if (!cancelled) {
-          setError("Conversation not found.");
+          if (isAuthRelatedChatError(loadError)) {
+            setError(CHAT_UI_ERRORS.sessionExpired);
+            handleSessionExpired();
+          } else {
+            setError(CHAT_UI_ERRORS.conversationLoadFailed);
+          }
           setActiveRouteConversationId(null);
           if (typeof window !== "undefined") {
             router.replace("/");

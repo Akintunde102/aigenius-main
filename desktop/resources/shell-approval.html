@@ -29,11 +29,12 @@
 
       html,
       body {
-        height: 100%;
+        min-height: 100%;
       }
 
       body {
         margin: 0;
+        min-height: 280px;
         font-family: var(--font);
         font-size: 14px;
         line-height: 1.45;
@@ -46,16 +47,18 @@
       }
 
       .chrome {
-        flex: 1;
+        flex: 1 1 auto;
         display: flex;
         flex-direction: column;
-        min-height: 0;
+        min-height: 240px;
         padding: 0;
       }
 
       /* Draggable strip under Window Controls Overlay (Windows/Linux); 0px on macOS inset title bar. */
+      /* Cap height: on Windows, env(titlebar-area-height) can equal the window height and hide Run/Cancel. */
       #titlebar-drag {
-        height: env(titlebar-area-height, 0px);
+        height: min(40px, env(titlebar-area-height, 40px));
+        max-height: 48px;
         width: 100%;
         -webkit-app-region: drag;
         flex-shrink: 0;
@@ -121,6 +124,13 @@
         word-break: break-word;
       }
 
+      h1 {
+        font-size: 1.05rem;
+        font-weight: 650;
+        margin: 0 0 10px;
+        color: var(--text);
+      }
+
       .footer {
         flex-shrink: 0;
         display: flex;
@@ -181,7 +191,8 @@
     <div class="chrome">
       <div id="titlebar-drag" aria-hidden="true"></div>
       <div class="content-scroll">
-        <p class="meta" id="meta"></p>
+        <h1>Allow this command?</h1>
+        <p class="meta" id="meta">Waiting for command details…</p>
         <div class="command-wrap">
           <div class="command-panel">
             <pre class="command" id="command"></pre>
@@ -198,6 +209,10 @@
       if (!api) {
         document.getElementById('meta').textContent = 'UI failed to load.';
         throw new Error('aigeniusShellApproval missing');
+      }
+
+      if (api.platform !== 'darwin') {
+        document.getElementById('titlebar-drag')?.remove();
       }
 
       function esc(s) {

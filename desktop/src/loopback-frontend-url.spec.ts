@@ -3,20 +3,20 @@ import { normalizeLoopbackToShellOrigin } from './loopback-frontend-url';
 describe('normalizeLoopbackToShellOrigin', () => {
   const p = '23001';
 
-  it('rewrites http://127.0.0.1:<frontendPort> to localhost', () => {
-    expect(normalizeLoopbackToShellOrigin('http://127.0.0.1:23001/?token=x', p)).toBe(
-      'http://localhost:23001/?token=x',
+  it('rewrites http://localhost:<frontendPort> to 127.0.0.1', () => {
+    expect(normalizeLoopbackToShellOrigin('http://localhost:23001/?token=x', p)).toBe(
+      'http://127.0.0.1:23001/?token=x',
     );
   });
 
-  it('rewrites http://[::1]:<frontendPort> to localhost', () => {
+  it('rewrites http://[::1]:<frontendPort> to 127.0.0.1', () => {
     expect(normalizeLoopbackToShellOrigin('http://[::1]:23001/chat?token=y', p)).toBe(
-      'http://localhost:23001/chat?token=y',
+      'http://127.0.0.1:23001/chat?token=y',
     );
   });
 
-  it('leaves localhost unchanged', () => {
-    const u = 'http://localhost:23001/desktop-login';
+  it('leaves 127.0.0.1 unchanged', () => {
+    const u = 'http://127.0.0.1:23001/desktop-login';
     expect(normalizeLoopbackToShellOrigin(u, p)).toBe(u);
   });
 

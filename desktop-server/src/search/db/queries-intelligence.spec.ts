@@ -1,16 +1,12 @@
-import Database from 'better-sqlite3';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { getContext, getSymbolLineRange, findEnclosingSymbolAtLine } from './queries-intelligence.js';
 import { upsertFile } from './queries.js';
+import { createTestSearchDb } from '../__tests__/test-db.js';
 
-function makeDb(): Database.Database {
-  const db = new Database(':memory:');
-  for (const file of ['schema.sql', 'schema-chunks.sql', 'schema-import-graph.sql']) {
-    db.exec(fs.readFileSync(path.join(__dirname, file), 'utf8'));
-  }
-  return db;
+function makeDb() {
+  return createTestSearchDb();
 }
 
 describe('getContext project root', () => {
@@ -33,7 +29,7 @@ describe('getContext project root', () => {
     expect(result.type).toBe('project_overview');
     expect(result.projectOverview?.root).toBe(path.normalize(root));
     expect(result.projectOverview?.directory.entries.length).toBeGreaterThan(0);
-    expect(result.projectOverview?.architectureMarkdown).toContain('Project architecture');
+    expect(result.projectOverview?.architectureMarkdown).toContain('Project structural map');
 
     db.close();
     fs.rmSync(root, { recursive: true, force: true });

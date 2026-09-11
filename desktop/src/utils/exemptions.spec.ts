@@ -1,9 +1,8 @@
-import { isIgnored } from './exemptions';
+import { isIgnored, isIgnoredUnderRoot } from './exemptions';
 import path from 'path';
 
 describe('Exemption Logic', () => {
   it('identifies AppData as ignored', () => {
-    // We mock the path behavior or just test the string matching
     expect(isIgnored('C:\\Users\\User\\AppData\\Local\\Temp')).toBe(true);
     expect(isIgnored('c:/users/user/appdata/local/temp')).toBe(true);
   });
@@ -21,5 +20,11 @@ describe('Exemption Logic', () => {
   it('is case-insensitive', () => {
     expect(isIgnored('c:\\users\\APPDATA\\local')).toBe(true);
     expect(isIgnored('C:\\USERS\\appdata\\LOCAL')).toBe(true);
+  });
+
+  it('does not skip children of a listed folder just because an ancestor is AppData', () => {
+    const root = 'C:\\Users\\User\\AppData\\Local\\Temp\\list-dir';
+    expect(isIgnoredUnderRoot(root, path.join(root, 'alpha.txt'))).toBe(false);
+    expect(isIgnoredUnderRoot(root, path.join(root, 'node_modules', 'left-pad'))).toBe(true);
   });
 });

@@ -12,7 +12,7 @@ const frontendRoot = path.join(repoRoot, 'frontend');
 const frontendSrc = path.join(frontendRoot, 'src');
 const shims = path.resolve(__dirname, 'src/shims');
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   root: __dirname,
   publicDir: path.join(frontendRoot, 'public'),
   plugins: [react()],
@@ -40,7 +40,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    sourcemap: true,
+    sourcemap: mode === 'development' || process.env.AIGENIUS_DESKTOP_SOURCEMAPS === '1',
     chunkSizeWarningLimit: 2500,
     rollupOptions: {
       output: {
@@ -146,4 +146,4 @@ export default defineConfig({
       process.env.NEXT_PUBLIC_APP_ORIGIN ?? desktopBuildEnv.NEXT_PUBLIC_APP_ORIGIN,
     ),
   },
-});
+}));

@@ -11,6 +11,7 @@ import {
 import { resolveGoToDefinition } from '../search/go-to-definition.js';
 import { selectGrepEngine } from './resolve-ripgrep.js';
 import { blockInteractiveShellCommand } from './shell-interactive-block.js';
+import { hiddenSpawnOptions } from '../utils/hidden-child-process.js';
 
 const MAX_GIT_OUT = 256 * 1024;
 const MAX_READ_CHARS = 520 * 1024;
@@ -49,10 +50,13 @@ function runProcess(
 ): Promise<{ ok: true; stdout: string; stderr: string; code: number } | { ok: false; error: string }> {
   const maxOut = opts.maxOut ?? MAX_GIT_OUT;
   return new Promise((resolve) => {
-    const child = spawn(cmd, args, {
-      cwd: opts.cwd,
-      windowsHide: true,
-    });
+    const child = spawn(
+      cmd,
+      args,
+      hiddenSpawnOptions({
+        cwd: opts.cwd,
+      }),
+    );
     let stdout = '';
     let stderr = '';
     child.stdout?.on('data', (d: Buffer) => {
@@ -243,12 +247,15 @@ async function executeShell(args: Record<string, unknown>): Promise<ToolExecuteR
   const shellArgs = process.platform === 'win32' ? ['/c', command] : ['-c', command];
 
   return new Promise((resolve) => {
-    const child = spawn(shell, shellArgs, {
-      cwd: cwdResolved,
-      windowsHide: true,
-      env: process.env,
-      windowsVerbatimArguments: process.platform === 'win32',
-    });
+    const child = spawn(
+      shell,
+      shellArgs,
+      hiddenSpawnOptions({
+        cwd: cwdResolved,
+        env: process.env,
+        windowsVerbatimArguments: process.platform === 'win32',
+      }),
+    );
 
     const decOut = new StringDecoder('utf8');
     const decErr = new StringDecoder('utf8');

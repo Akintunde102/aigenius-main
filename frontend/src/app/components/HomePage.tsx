@@ -508,7 +508,7 @@ export default function HomePage() {
             <div className="about-desc-group">
               <p className="about-desc">
                 AIGenius is one workspace for every major AI model — GPT,
-                Claude, Gemini, and more — so you're not paying for separate
+                Claude, Gemini, and more — so you&apos;re not paying for separate
                 subscriptions or switching tabs to compare answers.
               </p>
               <p className="about-desc">

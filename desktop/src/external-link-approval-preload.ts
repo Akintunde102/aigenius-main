@@ -6,8 +6,16 @@ export type ExternalLinkApprovalPayload = {
 
 contextBridge.exposeInMainWorld('aigeniusExternalLinkApproval', {
   bootstrap: (cb: (data: ExternalLinkApprovalPayload) => void) => {
-    ipcRenderer.once('aigenius-external-link-approval-data', (_e, data: ExternalLinkApprovalPayload) => {
+    let delivered = false;
+    const deliver = (data: ExternalLinkApprovalPayload): void => {
+      if (delivered) {
+        return;
+      }
+      delivered = true;
       cb(data);
+    };
+    ipcRenderer.on('aigenius-external-link-approval-data', (_e, data: ExternalLinkApprovalPayload) => {
+      deliver(data);
     });
     ipcRenderer.send('aigenius-external-link-approval-ready');
   },

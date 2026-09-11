@@ -1,11 +1,26 @@
 jest.mock('axios', () => ({
   __esModule: true,
-  default: { get: jest.fn() },
+  default: {
+    get: jest.fn(),
+    create: jest.fn(() => ({
+      get: jest.fn(),
+      post: jest.fn(),
+      interceptors: {
+        request: { use: jest.fn() },
+        response: { use: jest.fn() },
+      },
+    })),
+  },
 }));
 
 jest.mock('@/lib/links', () => ({
   LINKS: {
     noboxAPIRootUrl: 'https://api.example.com',
+    internalPages: {
+      home: '/',
+      login: { github: '/login' },
+      error: { main: '/error' },
+    },
   },
 }));
 

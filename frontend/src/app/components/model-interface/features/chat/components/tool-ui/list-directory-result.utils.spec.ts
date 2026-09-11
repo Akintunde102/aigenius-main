@@ -1,4 +1,6 @@
 import {
+  formatDirectoryListingCountLabel,
+  formatDirectoryListingEmptyMessage,
   formatFileSize,
   formatModifiedDate,
   normalizeMtimeMs,
@@ -66,6 +68,8 @@ describe('parseDirectoryListingMarkdown', () => {
     expect(parsed).not.toBeNull();
     expect(parsed?.directoryPath).toBe('C:\\Users\\Test\\a');
     expect(parsed?.entryCount).toBe(2);
+    expect(parsed?.totalEntries).toBe(2);
+    expect(parsed?.summaryOnly).toBe(false);
     expect(parsed?.items).toHaveLength(2);
     expect(parsed?.items[0]).toMatchObject({ name: 'images', isDir: true });
     expect(parsed?.items[1]).toMatchObject({
@@ -128,5 +132,147 @@ describe('parseDirectoryListingResult', () => {
     });
     const parsed = parseDirectoryListingResult(wrapped);
     expect(parsed?.items[0]?.name).toBe('note.txt');
+  });
+
+  it('parses Total items / Showing headers and truncated listings', () => {
+    const md = `### Directory listing
+
+- **Directory**: [cover_letters](local-file://C%3A%5Ccover_letters)
+- **Total items**: 184 (184 files, 0 subdirectories)
+- **File types**: 92 .docx, 92 .pdf
+- **Showing**: 100 of 184 (limit reached)
+
+1. **Cover_Aluko.pdf**
+   - **Path**: [Cover_Aluko.pdf](local-file://C%3A%5Ccover_letters%5CCover_Aluko.pdf)
+   - **Type**: File
+`;
+    const parsed = parseDirectoryListingMarkdown(md);
+    expect(parsed?.entryCount).toBe(100);
+    expect(parsed?.totalEntries).toBe(184);
+    expect(parsed?.hitLimit).toBe(true);
+    expect(parsed?.scanCapped).toBe(false);
+    expect(parsed?.fileTypes).toBe('92 .docx, 92 .pdf');
+    expect(parsed?.items).toHaveLength(1);
+    expect(formatDirectoryListingCountLabel(parsed!)).toBe('100 of 184');
+  });
+
+  it('parses scan-capped totals as lower bounds', () => {
+    const md = `### Directory listing
+
+- **Directory**: [huge](local-file://C%3A%5Chuge)
+- **Total items**: at least 50000 (at least 49900 files, at least 100 subdirectories)
+- **File types**: at least 40000 .txt, 9900 .log
+- **Showing**: 100 of at least 50000 (limit reached)
+
+1. **a.txt**
+   - **Path**: [a.txt](local-file://C%3A%5Chuge%5Ca.txt)
+   - **Type**: File
+`;
+    const parsed = parseDirectoryListingMarkdown(md);
+    expect(parsed?.totalEntries).toBe(50_000);
+    expect(parsed?.entryCount).toBe(100);
+    expect(parsed?.scanCapped).toBe(true);
+    expect(parsed?.fileTypes).toBe('at least 40000 .txt, 9900 .log');
+    expect(formatDirectoryListingCountLabel(parsed!)).toBe('100 of at least 50000');
+  });
+
+  it('parses summary_only listings with no numbered rows', () => {
+    const md = `### Directory listing
+
+- **Directory**: [cover_letters](local-file://C%3A%5Ccover_letters)
+- **Total items**: 150 (150 files, 0 subdirectories)
+- **File types**: 75 .docx, 75 .pdf
+- **Showing**: 0 of 150 (summary only)
+`;
+    const parsed = parseDirectoryListingMarkdown(md);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.summaryOnly).toBe(true);
+    expect(parsed?.entryCount).toBe(0);
+    expect(parsed?.totalEntries).toBe(150);
+    expect(parsed?.items).toHaveLength(0);
+    expect(formatDirectoryListingCountLabel(parsed!)).toBe('150 items');
+  });
+});
+
+describe('formatDirectoryListingEmptyMessage', () => {
+  it('distinguishes empty folders, zero search hits, and permission errors', () => {
+    expect(
+      formatDirectoryListingEmptyMessage({
+        directoryPath: '/empty',
+        entryCount: 0,
+        totalEntries: 0,
+        hitLimit: false,
+        summaryOnly: false,
+        scanCapped: false,
+        hadFilters: false,
+        permissionDenied: false,
+        items: [],
+      }),
+    ).toBe('Directory is empty.');
+
+    expect(
+      formatDirectoryListingEmptyMessage({
+        directoryPath: '/letters',
+        entryCount: 0,
+        totalEntries: 0,
+        hitLimit: false,
+        summaryOnly: false,
+        scanCapped: false,
+        hadFilters: true,
+        permissionDenied: false,
+        items: [],
+      }),
+    ).toBe('No entries matched the current pattern or extensions filter.');
+
+    expect(
+      formatDirectoryListingEmptyMessage({
+        directoryPath: '/secret',
+        entryCount: 0,
+        totalEntries: 0,
+        hitLimit: false,
+        summaryOnly: false,
+        scanCapped: false,
+        hadFilters: false,
+        permissionDenied: true,
+        items: [],
+      }),
+    ).toBe('Permission denied reading this directory.');
+  });
+});
+
+describe('parseDirectoryListingMarkdown empty states', () => {
+  it('sets hadFilters when the markdown says no entries matched a filter', () => {
+    const md = `### Directory listing
+
+- **Directory**: [letters](local-file://C%3A%5Cletters)
+- **Total items**: 0 (0 files, 0 subdirectories)
+- **Unfiltered items**: 12 (before pattern/extension filters)
+- **Showing**: 0 of 0
+
+*No entries matched the current pattern or extensions filter.*
+`;
+    const parsed = parseDirectoryListingMarkdown(md);
+    expect(parsed?.hadFilters).toBe(true);
+    expect(parsed?.permissionDenied).toBe(false);
+    expect(formatDirectoryListingEmptyMessage(parsed!)).toBe(
+      'No entries matched the current pattern or extensions filter.',
+    );
+  });
+
+  it('sets permissionDenied from the markdown empty line', () => {
+    const md = `### Directory listing
+
+- **Directory**: [secret](local-file://C%3A%5Csecret)
+- **Total items**: 0 (0 files, 0 subdirectories)
+- **Showing**: 0 of 0
+- **Notice**: Permission denied reading C:\\secret
+
+*Permission denied reading this directory.*
+`;
+    const parsed = parseDirectoryListingMarkdown(md);
+    expect(parsed?.permissionDenied).toBe(true);
+    expect(formatDirectoryListingEmptyMessage(parsed!)).toBe(
+      'Permission denied reading this directory.',
+    );
   });
 });

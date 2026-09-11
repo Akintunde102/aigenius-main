@@ -17,7 +17,8 @@ interface ActionDropdownProps {
     onStarClick: (e: React.MouseEvent) => void;
     onDeleteClick: (e: React.MouseEvent) => void;
     onPublishClick?: (e: React.MouseEvent) => void;
-    onDownloadTranscript?: (format: TranscriptFormat) => void;
+    onDownloadTranscript?: (format: TranscriptFormat) => void | Promise<void>;
+    isDownloadingTranscript?: boolean;
 }
 
 export const ActionDropdown: React.FC<ActionDropdownProps> = ({
@@ -30,6 +31,7 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
     onDeleteClick,
     onPublishClick,
     onDownloadTranscript,
+    isDownloadingTranscript = false,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [showDownloadFormats, setShowDownloadFormats] = useState(false);
@@ -78,7 +80,7 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
         setShowDownloadFormats(false);
     };
 
-    const isProcessing = isStarring || isDeleting || isPublishing;
+    const isProcessing = isStarring || isDeleting || isPublishing || isDownloadingTranscript;
 
     return (
         <div className="relative" ref={dropdownRef}>
@@ -155,8 +157,12 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
                                     disabled={isDeleting || isStarring || isPublishing}
                                 >
                                     <span className="flex items-center gap-2">
-                                        <FiDownload size={13} className="shrink-0" />
-                                        <span>Download transcript</span>
+                                        {isDownloadingTranscript ? (
+                                            <FiLoader size={13} className="animate-spin shrink-0" />
+                                        ) : (
+                                            <FiDownload size={13} className="shrink-0" />
+                                        )}
+                                        <span>{isDownloadingTranscript ? 'Preparing…' : 'Download transcript'}</span>
                                     </span>
                                     <FiChevronRight
                                         size={12}

@@ -52,6 +52,7 @@ jest.mock('fs/promises', () => ({
 
 // Mock Electron
 jest.mock('electron', () => ({
+  app: { isPackaged: false },
   dialog: {
     showMessageBox: jest.fn(),
   },
@@ -366,17 +367,17 @@ describe('local_rag_query formatting (TDD RED Phase)', () => {
       expect(out.result).toContain('### Directory listing');
       expect(out.result).toContain('file1.txt');
       expect(out.result).toContain('subdir');
-      expect(out.result).toContain('Shell');
+      expect(out.result).not.toMatch(/\*\*Shell\*\*/);
     }
   });
 
-  it('rejects custom command output that looks like a mis-parsed PowerShell table', async () => {
+  it('ignores a leftover command key on local_list_directory', async () => {
     (listDirectoryViaShell as jest.Mock).mockResolvedValue({
-      shellCommand: 'Get-ChildItem -Force | Select-Object Name',
-      structured: false,
-      parseRejected: true,
-      items: [],
-      terminalOutput: 'Name\n----\napps',
+      shellCommand: "Get-ChildItem -LiteralPath 'C:\\Users\\Test' -Force",
+      structured: true,
+      items: [
+        { name: 'apps', path: 'C:\\Users\\Test\\apps', isDir: true },
+      ],
     });
 
     const out = await runLocalDesktopTool(mockSender, 'local_list_directory', {
@@ -384,11 +385,13 @@ describe('local_rag_query formatting (TDD RED Phase)', () => {
       command: 'Get-ChildItem -Force | Select-Object Name',
     });
 
-    expect(out.ok).toBe(false);
-    if (!out.ok) {
-      expect(out.error).toMatch(/table headers/i);
-      expect(out.error).toMatch(/omit `command`/i);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.result).toContain('apps');
+      expect(out.result).not.toMatch(/command` was ignored/i);
+      expect(out.result).not.toMatch(/Select-Object/i);
     }
+    expect((listDirectoryViaShell as jest.Mock).mock.calls[0][1].command).toBeUndefined();
   });
 });
 

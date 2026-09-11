@@ -1,5 +1,6 @@
 import { ChatMessage, Model, ChatSession, OrphanReplyRequest, ToolUsageCharge, UsageInfo } from '@/app/components/model-interface/shared/types';
 import type { HandleSendQueueOptions } from './messageSendQueue.types';
+import type { SetChatUiError } from './chatUiError';
 import type {
     AccessModelArgs,
     AccessModelResponse,
@@ -79,7 +80,7 @@ export interface UseChatOperationsRefinedProps {
     streaming: boolean;
     setStreamingForSession: SetBooleanForSession;
     setLoadingForSession: SetBooleanForSession;
-    setError: React.Dispatch<React.SetStateAction<string>>;
+    setError: SetChatUiError;
     streamingEnabled: boolean;
     chatEndRef: React.RefObject<HTMLDivElement>;
     refreshChatHistory?: () => Promise<void>;
@@ -204,7 +205,7 @@ export interface UseNonStreamingResponseProps {
 
 // Props for wallet management hook
 export interface UseWalletManagementProps {
-    setError: React.Dispatch<React.SetStateAction<string>>;
+    setError: SetChatUiError;
     setWallet: React.Dispatch<React.SetStateAction<number | null>>;
     /** When true, do not subscribe to document visibility (avoids duplicate refetches if the hook is mounted twice). */
     skipVisibilityRefetch?: boolean;

@@ -65,6 +65,11 @@ import { createWindow, getWindowIcon, navigateMainShellToApp, resolveWindowIconP
 import { registerMainIpcHandlers } from './main-ipc-handlers';
 import { registerSecondaryBrowserWindowPolicy } from './secondary-browser-window';
 import { installDesktopUiProtocolHandler } from './desktop-ui-protocol';
+import { DESKTOP_APP_USER_MODEL_ID } from './desktop-app-identity';
+
+if (process.platform === 'win32') {
+  app.setAppUserModelId(DESKTOP_APP_USER_MODEL_ID);
+}
 
 function showInotifyWarningAsync(): void {
   const limitCheck = checkInotifyLimit();

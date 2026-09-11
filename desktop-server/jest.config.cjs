@@ -7,6 +7,7 @@ module.exports = {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
   /** Map TS `.js` import specifiers to source files (NodeNext / ESM-style imports). */
   moduleNameMapper: {
+    '^.*/models-downloader\\.js$': '<rootDir>/src/__tests__/mocks/models-downloader.mock.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
     '^ppu-paddle-ocr$': '<rootDir>/src/__tests__/mocks/ppu-paddle-ocr.mock.ts',
   },

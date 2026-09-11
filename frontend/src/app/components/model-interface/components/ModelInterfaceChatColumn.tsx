@@ -5,6 +5,7 @@ import {
 } from "../features";
 import type { ChatMessage, ChatSession, Model, PendingOrphanReply } from "../shared/types";
 import type { QueuedComposerMessage } from "../features/chat/hooks/messageSendQueue.types";
+import type { SetChatUiError } from "../features/chat/hooks/chatUiError";
 import type { ChatContainerHandle } from "../features/chat/components/ChatContainer";
 import type { FailedUploadEntry } from "../features/file-upload/hooks/useFileUpload";
 import type { AudioStatus } from "../features/chat/hooks/audioMode.utils";
@@ -92,7 +93,7 @@ type Props = {
   handleStop: () => void;
   /** Desktop collapsed rail: center the main chat column. */
   desktopConversationCentered?: boolean;
-  setError?: (error: string | ((prev: string) => string)) => void;
+  setError?: SetChatUiError;
   setWallet?: (wallet: number | null | ((prev: number | null) => number | null)) => void;
   onInsufficientFunds?: () => void;
   wallet?: number | null;

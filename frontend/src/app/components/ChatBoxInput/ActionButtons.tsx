@@ -69,7 +69,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 <button
                     type="button"
                     className="p-1.5 rounded-full text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Voice Input"
+                    title="Speak"
                     disabled={disabled}
                     onClick={onStartSTT}
                 >

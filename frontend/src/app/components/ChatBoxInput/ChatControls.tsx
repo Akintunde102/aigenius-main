@@ -348,4 +348,6 @@ export const ChatControls: React.FC<ChatControlsProps> = React.memo(({
             </div>
         </div>
     );
-}); 
+});
+
+ChatControls.displayName = 'ChatControls'; 

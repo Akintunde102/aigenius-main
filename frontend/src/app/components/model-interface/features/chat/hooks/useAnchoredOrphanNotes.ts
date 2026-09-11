@@ -13,18 +13,20 @@ import type {
   StickyThreadMarker,
 } from "@/app/components/model-interface/shared/types";
 import { CHAT_CONFIG } from "./chatOperations.constants";
+import type { SetChatUiError } from "./chatUiError";
 import { createChatMessage } from "./contentProcessing.utils";
 import { handleSendError } from "./errorHandling.utils";
+import {
+  applyAccumulatorToLastAssistant,
+  createAssistantStreamAccumulator,
+  ingestAssistantStreamChunk,
+} from "../utils/assistantStream.utils";
 import {
   getStickyMarkerMessageId,
   loadDraftStickyThreadMarkers,
   removeDraftStickyThreadMarker,
   upsertDraftStickyThreadMarker,
 } from "./orphanNoteAnchors";
-import {
-  applyStreamingTurnUpdate,
-  finalizeAllThinkingEvents,
-} from "../utils/thinkingEvent.utils";
 
 type StickyThreadRecord = StickyThreadMarker & {
   messages: ChatMessage[];
@@ -135,7 +137,7 @@ export function useAnchoredOrphanNotes(params: {
   currentSessionId: string | null;
   selectedModel: Model | null;
   models: Model[];
-  setError?: (error: string | ((prev: string) => string)) => void;
+  setError?: SetChatUiError;
   setWallet?: (wallet: number | null | ((prev: number | null) => number | null)) => void;
   onInsufficientFunds?: () => void;
 }) {
@@ -425,6 +427,8 @@ export function useAnchoredOrphanNotes(params: {
 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
+    const markerId = activeMarker.markerId;
+    let streamAcc = createAssistantStreamAccumulator();
 
     try {
       const { accessModelStream } = await getNoboxFunctions({
@@ -464,83 +468,45 @@ export function useAnchoredOrphanNotes(params: {
         options: { model: model.id },
         signal: abortController.signal,
         onData: (chunk, reasoning, reasoningDetails) => {
-          setMarkers((previous) => {
-            const now = Date.now();
-            return previous.map((m) => {
-              if (m.markerId !== activeMarker.markerId) return m;
-              const updatedMessages = [...m.messages];
-              const lastMessage = updatedMessages[updatedMessages.length - 1];
-              if (!lastMessage || lastMessage.role !== "assistant") return m;
-              
-              const textChunk = typeof chunk === "string" ? chunk : "";
-              const nextContent = textChunk
-                ? `${typeof lastMessage.content === "string" ? lastMessage.content : ""}${textChunk}`
-                : lastMessage.content;
-              
-              const nextReasoning = reasoning 
-                ? `${lastMessage.reasoning || ""}${reasoning}`
-                : lastMessage.reasoning;
-
-              const nextReasoningDetails = reasoningDetails?.length
-                ? [{
-                    ...(lastMessage.reasoning_details?.[0] || reasoningDetails[0]),
-                    text: `${lastMessage.reasoning_details?.[0]?.text || ""}${reasoningDetails[0]?.text || ""}`
-                  }]
-                : lastMessage.reasoning_details;
-
-              const nextEvents = applyStreamingTurnUpdate(lastMessage.events ?? [], {
-                textChunk: textChunk || undefined,
-                reasoning,
-                reasoningDetails,
-              });
-
-              updatedMessages[updatedMessages.length - 1] = { 
-                ...lastMessage, 
-                content: nextContent,
-                reasoning: nextReasoning,
-                reasoning_details: nextReasoningDetails,
-                events: nextEvents,
-              };
-              
-              return {
-                ...m,
-                messages: updatedMessages,
-                updatedAt: now,
-              };
-            });
-          });
+          streamAcc = ingestAssistantStreamChunk(streamAcc, chunk, reasoning, reasoningDetails);
+          const snapshot = streamAcc;
+          setMarkers((previous) => previous.map((m) => {
+            if (m.markerId !== markerId) return m;
+            return {
+              ...m,
+              messages: applyAccumulatorToLastAssistant(m.messages, snapshot),
+              updatedAt: Date.now(),
+            };
+          }));
         },
       });
 
-      setMarkers((previous) => previous.map((m) => {
-        if (m.markerId !== activeMarker.markerId) return m;
-        const updatedMessages = [...m.messages];
-        const lastMessage = updatedMessages[updatedMessages.length - 1];
-        if (lastMessage?.role === "assistant" && lastMessage.events?.length) {
-          const events = [...lastMessage.events];
-          finalizeAllThinkingEvents(events);
-          updatedMessages[updatedMessages.length - 1] = { ...lastMessage, events };
-        }
-        return { ...m, messages: updatedMessages };
-      }));
+      const finalizedEvents = streamAcc.events.map((evt) => (
+        evt.type === "thinking" && evt.loading ? { ...evt, loading: false } : evt
+      ));
+      streamAcc = { ...streamAcc, events: finalizedEvents };
 
       const conversationId = streamResult.conversationId ?? activeMarker.conversationId;
-      if (!conversationId) {
-        return;
-      }
 
-      // Finalize marker state locally instead of fetching from DB to avoid race conditions/stale data
-      // Fix #1: Align markerId with conversationId to prevent duplicate dots on reload
       setMarkers((previous) => previous.map((m) => {
-        if (m.markerId !== activeMarker.markerId) return m;
+        if (m.markerId !== markerId) return m;
         return {
           ...m,
-          markerId: conversationId, // Update markerId to match persisted conversationId
-          conversationId,
-          draft: false,
+          messages: applyAccumulatorToLastAssistant(m.messages, streamAcc),
+          ...(conversationId
+            ? {
+                markerId: conversationId,
+                conversationId,
+                draft: false,
+              }
+            : {}),
           updatedAt: Date.now(),
         };
       }));
+
+      if (!conversationId) {
+        return;
+      }
 
       // Cleanup draft from storage
       removeDraftStickyThreadMarker({

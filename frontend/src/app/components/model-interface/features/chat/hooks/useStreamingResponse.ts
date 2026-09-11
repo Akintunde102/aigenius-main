@@ -14,15 +14,16 @@ import {
     AccessModelStreamFn,
     StreamContentChunk,
     ReasoningDetailChunk,
-    ContentBlock,
 } from './chatOperations.types';
 import { DRAFT_SESSION_KEY } from './chatOperations.constants';
 import {
     contentToDisplayText,
+    contentToMarkdownText,
     mergeContentBlocks,
     createChatMessage,
     updateLastAssistantMessage,
     generateMessageId,
+    processStreamingContent,
 } from './contentProcessing.utils';
 import { addOrMergeSessionToLocalHistory } from '@/lib/utils/modelChatConversationUtils';
 import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interface/conversation/streamTranscriptGuard';
@@ -152,18 +153,6 @@ export function useStreamingResponse({
         // Write directly to the stream's session slot — always correct regardless of active view.
         setChatForSession(chatMapKey, prev => updateLastAssistantMessage(prev, processedContent));
     }, [setChatForSession]);
-
-    const processStreamingContent = useCallback((content: StreamContentChunk): ProcessedContent => {
-        if (Array.isArray(content)) {
-            return content.map((block): ContentBlock => ({
-                type: block.type,
-                text: 'text' in block ? block.text : undefined,
-                image_url: 'image_url' in block ? block.image_url : undefined,
-                input_audio: 'input_audio' in block ? block.input_audio : undefined,
-            }));
-        }
-        return content;
-    }, []);
 
     const handleStreamingResponse = useCallback(async (
         accessModelStream: AccessModelStreamFn,
@@ -295,15 +284,20 @@ export function useStreamingResponse({
         };
 
         /** Patch events onto the last assistant message without clobbering other fields. */
-        const patchEventsOnLastMessage = () => {
+        const patchEventsOnLastMessage = (force = false) => {
             const li = sessionMessages.length - 1;
             if (li >= 0 && sessionMessages[li].role === 'assistant') {
                 sessionMessages = [
                     ...sessionMessages.slice(0, li),
                     { ...sessionMessages[li], events: [...events] },
                 ];
-                flushUiUpdate();
+                flushUiUpdate(force);
             }
+        };
+
+        /** Mark thinking complete before the next tool/text event is appended. */
+        const closeThinkingBeforeNextStream = () => {
+            finalizeOpenThinkingEvent(events);
         };
 
         try {
@@ -346,7 +340,7 @@ export function useStreamingResponse({
                             assistantMessageId,
                             assistantTimestamp
                         );
-                        finalizeOpenThinkingEvent(events);
+                        closeThinkingBeforeNextStream();
                         events.push({
                             type: 'tool',
                             tool: event.tool,
@@ -367,7 +361,7 @@ export function useStreamingResponse({
                     }
 
                     if (event.type === 'start') {
-                        finalizeOpenThinkingEvent(events);
+                        closeThinkingBeforeNextStream();
                         events.push({
                             type: 'tool',
                             tool: event.tool,
@@ -415,7 +409,7 @@ export function useStreamingResponse({
                         }
                     }
 
-                    patchEventsOnLastMessage();
+                    patchEventsOnLastMessage(event.type === 'start');
                 },
                 onData: (content: StreamContentChunk, reasoning?: string, reasoningDetails?: ReasoningDetailChunk[]) => {
                     const processedContent = processStreamingContent(content);
@@ -436,9 +430,9 @@ export function useStreamingResponse({
                     // Track this text chunk in the ordered event log.
                     const textStr = typeof processedContent === 'string'
                         ? processedContent
-                        : contentToDisplayText(processedContent);
+                        : contentToMarkdownText(processedContent);
                     if (textStr) {
-                        finalizeOpenThinkingEvent(events);
+                        closeThinkingBeforeNextStream();
                         const lastEvt = events.length > 0 ? events[events.length - 1] : null;
                         if (lastEvt?.type === 'text') {
                             (lastEvt as TextEvent).content += textStr;
@@ -562,7 +556,6 @@ export function useStreamingResponse({
         handleStreamingData,
         createInitialStreamingMessage,
         updateStreamingMessage,
-        processStreamingContent,
         isAudioModeRef,
     ]);
 

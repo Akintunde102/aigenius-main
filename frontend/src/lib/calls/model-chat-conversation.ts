@@ -353,9 +353,28 @@ export const getConversationById = async (conversationId: string): Promise<Model
         return normalizeConversationSessionPayload(conv);
     } catch (error) {
         console.error('Failed to get conversation by ID:', error);
-        return null;
+        if (isMissingConversationLookupError(error)) {
+            return null;
+        }
+        throw error;
     }
 };
+
+function isMissingConversationLookupError(error: unknown): boolean {
+    const status =
+        (error as { response?: { status?: number }; status?: number; statusCode?: number })?.response?.status
+        ?? (error as { statusCode?: number }).statusCode
+        ?? (error as { status?: number }).status;
+    if (status === 404) {
+        return true;
+    }
+    const text = typeof error === 'string'
+        ? error
+        : error instanceof Error
+            ? error.message
+            : '';
+    return /conversation not found/i.test(text) || /not found or access denied/i.test(text);
+}
 
 export const getOrphanThreadsForConversation = async (conversationId: string): Promise<ModelChatConversation[]> => {
     const response = await serverCall({

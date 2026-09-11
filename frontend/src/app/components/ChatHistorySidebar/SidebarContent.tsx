@@ -1,5 +1,6 @@
 import React, { type CSSProperties } from "react";
 import { ChatSession, Model } from '@/app/components/model-interface/shared/types';
+import type { ChatMessage } from '@/app/components/model-interface/shared/types';
 import ChatHistoryList from "../ChatHistoryList";
 
 /** CSS variable name for the sidebar conversation-list background — must match globals.scss. */
@@ -32,6 +33,7 @@ interface SidebarContentProps {
     onNewChatForProject?: (projectId: string | null) => void;
     onSelectProject?: (projectId: string | null) => void;
     onProjectInfo?: (projectId: string) => void;
+    getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
 }
 
 const SidebarContent = React.memo<SidebarContentProps>(({
@@ -57,6 +59,7 @@ const SidebarContent = React.memo<SidebarContentProps>(({
     onNewChatForProject,
     onSelectProject,
     onProjectInfo,
+    getCachedMessages,
 }) => {
     const deferredHistorySearch = React.useDeferredValue(historySearch);
 
@@ -110,6 +113,7 @@ const SidebarContent = React.memo<SidebarContentProps>(({
                         onNewChatForProject={onNewChatForProject}
                         onSelectProject={onSelectProject}
                         onProjectInfo={onProjectInfo}
+                        getCachedMessages={getCachedMessages}
                     />
                 </div>
 

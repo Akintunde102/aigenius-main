@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   shell,
@@ -19,6 +20,7 @@ import { setActiveCodeProjectIndex } from './active-code-project';
 import { refreshProjectArchitectureMemory } from './project-architecture-memory';
 import { setMainActiveEditor } from './active-editor-main';
 import { saveLastCodeProject } from './last-code-project';
+import { runCreateNamedProjectDirectoryRequest } from './create-named-project-folder';
 import {
   clearDesktopRefreshToken,
   readDesktopRefreshToken,
@@ -33,10 +35,13 @@ import {
   captureBrowserWindowPngBase64,
   defaultScreenshotBasename,
 } from './main-chat-screenshot';
-import { runDesktopBrowserSignIn } from './main-desktop-signin';
+import { cancelDesktopBrowserSignIn, runDesktopBrowserSignIn } from './main-desktop-signin';
 import { resolveUpstreamApiUrl } from './main-backend-lifecycle';
 import { createWindow } from './main-window';
 import { isHostedPaymentUrl } from './payment-allowlist';
+import { revealPathInFileManager } from './reveal-path-in-file-manager';
+import { copyItemToOsClipboard } from './copy-item-to-os-clipboard';
+import { pathToFileURL } from 'url';
 
 function normalizeRendererFilesystemPath(filePath: string): string {
   let normalizedPath = filePath;
@@ -93,8 +98,29 @@ export function registerMainIpcHandlers(): void {
       return { ok: false as const, error: 'invalid' };
     }
     const normalizedPath = normalizeRendererFilesystemPath(filePath.trim());
-    shell.showItemInFolder(normalizedPath);
-    return { ok: true as const };
+    return revealPathInFileManager(normalizedPath, {
+      electronFallback: (p) => {
+        shell.showItemInFolder(p);
+      },
+    });
+  });
+
+  ipcMain.handle('copy-file-path', async (_event, filePath: string) => {
+    if (typeof filePath !== 'string' || filePath.trim().length === 0) {
+      return { ok: false as const, error: 'invalid' };
+    }
+    const normalizedPath = normalizeRendererFilesystemPath(filePath.trim());
+    return copyItemToOsClipboard(normalizedPath, {
+      electronWriteFiles: (p) => {
+        if (process.platform !== 'darwin') {
+          throw new Error('native file clipboard is macOS-only here');
+        }
+        clipboard.writeBuffer('public.file-url', Buffer.from(pathToFileURL(p).href));
+      },
+      writeText: (p) => {
+        clipboard.writeText(p);
+      },
+    });
   });
 
   ipcMain.handle('read-local-file-preview', async (_event, filePath: string) => {
@@ -263,6 +289,19 @@ export function registerMainIpcHandlers(): void {
     return { path: result.filePaths[0] };
   });
 
+  ipcMain.handle('create-named-project-directory', async (_event, payload: unknown) => {
+    const folderName =
+      payload && typeof payload === 'object' && 'folderName' in payload
+        ? (payload as { folderName: unknown }).folderName
+        : '';
+    const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+    return runCreateNamedProjectDirectoryRequest({
+      folderName,
+      documentsPath: app.getPath('documents'),
+      showOpenDialog: (options) => dialog.showOpenDialog(win, options),
+    });
+  });
+
   ipcMain.handle('sync-active-editor', (_event, payload: unknown) => {
     if (!payload || typeof payload !== 'object') {
       setMainActiveEditor(null);
@@ -392,6 +431,7 @@ export function registerMainIpcHandlers(): void {
   ipcMain.handle('start-oauth-signin', async (event, options?: { provider?: 'google' }) =>
     runDesktopBrowserSignIn(event, options?.provider === 'google' ? { autoProvider: 'google' } : {}),
   );
+  ipcMain.handle('cancel-web-signin', async () => ({ ok: cancelDesktopBrowserSignIn() }));
 
   ipcMain.handle('shell-new-window', async (_event, relativePath?: string) => {
     const w = createWindow(relativePath);

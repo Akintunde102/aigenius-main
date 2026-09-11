@@ -518,7 +518,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                             </span>
                             {audioTranscription && (
                                 <span style={{ fontSize: '0.68rem', color: '#60a5fa', opacity: 0.8, maxWidth: '14rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    "{audioTranscription}"
+                                    {`"${audioTranscription}"`}
                                 </span>
                             )}
                         </div>
@@ -549,9 +549,9 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                             onPaste={handlePaste}
                             placeholder={
                                 isDictationTranscribing
-                                    ? "Transcribing your voice..."
+                                    ? "Transcribing..."
                                     : isSTTActive
-                                        ? "Listening... Speak now"
+                                        ? "Listening..."
                                         : placeholder
                             }
                             textareaDisabled={isDictationTranscribing}

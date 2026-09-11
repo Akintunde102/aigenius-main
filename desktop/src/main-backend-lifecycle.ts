@@ -15,6 +15,7 @@ import {
 } from './desktop-child-process';
 import { startIndexerUtilityProcess, stopIndexerUtilityProcess } from './indexer-utility-process';
 import { resolveFrontendPort } from './frontend-port';
+import { resolveMiniServerCorsOrigins } from './resolve-mini-server-cors-origins';
 
 export const INDEXER_IPC_PORT = process.env.AIGENIUS_INDEXER_IPC_PORT ?? '18012';
 export const FRONTEND_PORT = resolveFrontendPort();
@@ -51,6 +52,7 @@ export function desktopServerEntry(): string {
 export function resolveUpstreamApiUrl(): string {
   return resolveDesktopUpstreamApiUrl({
     desktopRoot: path.join(__dirname, '..'),
+    packaged: app.isPackaged,
     packagedResourcesPath: app.isPackaged ? process.resourcesPath : undefined,
   });
 }
@@ -309,6 +311,7 @@ export function miniServerChildEnv(
     AIGENIUS_EXTERNAL_INDEXER: process.env.AIGENIUS_EXTERNAL_INDEXER === '0' ? '0' : '1',
     AIGENIUS_INDEXER_IPC_PORT: INDEXER_IPC_PORT,
     AIGENIUS_SECRET_TOKEN: opts.token,
+    AIGENIUS_DESKTOP_CORS_ORIGINS: resolveMiniServerCorsOrigins(FRONTEND_PORT),
     AIGENIUS_UPSTREAM_API_URL: resolveUpstreamApiUrl(),
     ...(bundledPythonVenv ? { AIGENIUS_BUNDLED_PYTHON_VENV: bundledPythonVenv } : {}),
     ...(packageRuntimePath ? { AIGENIUS_PACKAGE_RUNTIME_PATH: packageRuntimePath } : {}),

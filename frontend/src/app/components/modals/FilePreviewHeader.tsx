@@ -1,16 +1,20 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  Check,
   Code2,
+  Copy,
   ExternalLink,
   Eye,
+  FolderOpen,
   Maximize2,
   Minimize2,
   PanelLeft,
   Save,
   X,
 } from 'lucide-react';
+import { getRevealInFolderLabel } from './file-preview-os-actions.utils';
 
 function ToolbarButton({
   onClick,
@@ -65,6 +69,8 @@ export function FilePreviewHeader({
   isSaving,
   canSave,
   onOpenInOS,
+  onRevealInFolder,
+  onCopy,
   isFullscreen = false,
   onToggleFullscreen,
   onClose,
@@ -85,6 +91,8 @@ export function FilePreviewHeader({
   isSaving: boolean;
   canSave: boolean;
   onOpenInOS: () => void;
+  onRevealInFolder: () => void;
+  onCopy: () => Promise<boolean> | boolean;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   onClose: () => void;
@@ -92,6 +100,15 @@ export function FilePreviewHeader({
   isDragging?: boolean;
   onDragHandlePointerDown?: (event: React.PointerEvent<HTMLElement>) => void;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const ok = await onCopy();
+    if (!ok) return;
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <header
       className={`flex h-11 shrink-0 items-center gap-2 border-b px-2 sm:px-3 ${
@@ -137,8 +154,20 @@ export function FilePreviewHeader({
         className="flex items-center gap-0.5 rounded-lg border p-0.5"
         style={{ borderColor: 'var(--modal-border)', background: 'var(--modal-bg)' }}
       >
-        <ToolbarButton onClick={onOpenInOS} title="Open in default app">
+        <ToolbarButton onClick={onOpenInOS} title="Open in default app" disabled={!filePath}>
           <ExternalLink size={15} />
+        </ToolbarButton>
+
+        <ToolbarButton
+          onClick={onRevealInFolder}
+          title={getRevealInFolderLabel()}
+          disabled={!filePath}
+        >
+          <FolderOpen size={15} />
+        </ToolbarButton>
+
+        <ToolbarButton onClick={() => void handleCopy()} title={copied ? 'Copied' : 'Copy'} disabled={!filePath}>
+          {copied ? <Check size={15} className="text-green-500" /> : <Copy size={15} />}
         </ToolbarButton>
 
         {onToggleFullscreen && (

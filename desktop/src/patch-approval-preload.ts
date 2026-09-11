@@ -13,8 +13,16 @@ export type PatchApprovalPayload = {
 
 contextBridge.exposeInMainWorld('aigeniusPatchApproval', {
   bootstrap: (cb: (data: PatchApprovalPayload) => void) => {
-    ipcRenderer.once('aigenius-patch-approval-data', (_e, data: PatchApprovalPayload) => {
+    let delivered = false;
+    const deliver = (data: PatchApprovalPayload): void => {
+      if (delivered) {
+        return;
+      }
+      delivered = true;
       cb(data);
+    };
+    ipcRenderer.on('aigenius-patch-approval-data', (_e, data: PatchApprovalPayload) => {
+      deliver(data);
     });
     ipcRenderer.send('aigenius-patch-approval-ready');
   },

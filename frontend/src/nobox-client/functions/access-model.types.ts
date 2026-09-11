@@ -31,6 +31,11 @@ export type AigeniusDesktopBridge = {
     };
   }>;
   pickProjectDirectory?: () => Promise<{ path: string } | null>;
+  createNamedProjectDirectory?: (payload: { folderName: string }) => Promise<
+    | { ok: true; path: string; created?: boolean }
+    | { ok: true; canceled: true }
+    | { ok: false; error: string }
+  >;
   setCodeProjectIndex?: (payload: { projectId: string; rootPath: string } | null) => Promise<{ ok: boolean }>;
   runLocalDesktopTool?: (
     payload: {

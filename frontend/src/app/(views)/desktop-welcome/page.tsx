@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { BotMessageSquare, Mic, Wallet } from "lucide-react";
+import { BotMessageSquare, FolderOpen, Wallet } from "lucide-react";
 import { PublicPageShell } from "@/app/components/PublicPageShell";
 import { hasAuthSession, syncAuthSessionCookiesFromStorage } from "@/lib/utils/auth-session";
 import { resolveAuthenticatedDesktopShellRedirect } from "@/lib/utils/safe-internal-next-path";
@@ -13,7 +13,7 @@ const DESKTOP_SHELL_ENTRY_QUERY_PARAM = 'desktop';
 
 const TRUST_ITEMS = [
   { icon: BotMessageSquare, label: "Every top model" },
-  { icon: Mic, label: "Voice dictation" },
+  { icon: FolderOpen, label: "Local files" },
   { icon: Wallet, label: "Pay as you go" },
 ] as const;
 

@@ -1,7 +1,4 @@
-import Database from 'better-sqlite3';
-import fs from 'fs';
 import path from 'path';
-import { getDb } from '../db/connection.js';
 import {
   upsertFile,
   deleteFile,
@@ -13,14 +10,15 @@ import {
   browseFolderGroups,
   browseExplorerDirectory,
   getFileIndexRow,
-  ensureBrowseSqlFunctions,
 } from '../db/queries.js';
+import { createTestSearchDb } from '../__tests__/test-db.js';
 
 // Point __dirname at the src/search directory so schema.sql resolves correctly
 jest.mock('../db/connection', () => {
   const Database = jest.requireActual<typeof import('better-sqlite3')>('better-sqlite3');
-  const fs = jest.requireActual<typeof import('fs')>('fs');
-  const path = jest.requireActual<typeof import('path')>('path');
+  const { applySearchTestSchema } = jest.requireActual<typeof import('../__tests__/test-db')>(
+    '../__tests__/test-db',
+  );
 
   let _db: InstanceType<typeof Database> | null = null;
 
@@ -29,10 +27,7 @@ jest.mock('../db/connection', () => {
       if (_db) return _db;
       const db = new Database(':memory:');
       db.pragma('journal_mode = WAL');
-      const schemaFiles = ['schema.sql', 'schema-chunks.sql', 'schema-import-graph.sql'];
-      for (const file of schemaFiles) {
-        db.exec(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'));
-      }
+      applySearchTestSchema(db);
       _db = db;
       return db;
     },
@@ -43,14 +38,10 @@ jest.mock('../db/connection', () => {
 });
 
 describe('search db queries', () => {
-  let db: Database.Database;
+  let db: ReturnType<typeof createTestSearchDb>;
 
   beforeEach(() => {
-    db = new Database(':memory:');
-    for (const file of ['schema.sql', 'schema-chunks.sql', 'schema-import-graph.sql']) {
-      db.exec(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'));
-    }
-    ensureBrowseSqlFunctions(db);
+    db = createTestSearchDb();
   });
 
   const sampleFile = {

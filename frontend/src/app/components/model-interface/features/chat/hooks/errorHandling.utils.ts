@@ -4,6 +4,14 @@ import { GatewayFetchError } from '@/nobox-client/functions/access-model';
 import { clearUserDetailsCache } from '@/lib/calls/user-details-cache';
 import { handleSessionExpired, isAuthorizationFailure } from '@/lib/api/auth-client';
 import { CHAT_CONFIG, ERROR_MESSAGES } from './chatOperations.constants';
+import {
+    CHAT_UI_ERRORS,
+    chatUiErrorFromUnknown,
+    chatUiErrorMessage,
+    isChatUiError,
+    type ChatUiError,
+    type SetChatUiError,
+} from './chatUiError';
 
 const MISSING_JWT_MESSAGE = 'JWT token not found';
 const SESSION_EXPIRED_MESSAGE = 'Session expired — please sign in again';
@@ -75,7 +83,8 @@ export function isRequestCancellationError(error: unknown): boolean {
 }
 
 export function isRequestCancellationMessage(message: string): boolean {
-    return message === ERROR_MESSAGES.REQUEST_CANCELLED;
+    return message === ERROR_MESSAGES.REQUEST_CANCELLED
+        || message === CHAT_UI_ERRORS.cancelled.message;
 }
 
 /** True when a send/stream failure is due to missing or expired auth (not a model/provider error). */
@@ -93,40 +102,51 @@ export function isAuthRelatedChatError(error: unknown): boolean {
 }
 
 /** True when the banner message is about credits/wallet — safe to auto-clear after top-up. */
-export function isWalletRelatedChatError(message: string): boolean {
-    if (!message.trim()) {
+export function isWalletRelatedChatError(error: string | ChatUiError): boolean {
+    if (isChatUiError(error)) {
+        return error.kind === 'wallet';
+    }
+    if (!error.trim()) {
         return false;
     }
     if (
-        message === ERROR_MESSAGES.REQUEST_ABORTED_LOW_BALANCE
-        || message === ERROR_MESSAGES.INSUFFICIENT_FUNDS
-        || message === ERROR_MESSAGES.INSUFFICIENT_WALLET_FUNDS
+        error === ERROR_MESSAGES.REQUEST_ABORTED_LOW_BALANCE
+        || error === ERROR_MESSAGES.INSUFFICIENT_FUNDS
+        || error === ERROR_MESSAGES.INSUFFICIENT_WALLET_FUNDS
+        || error === CHAT_UI_ERRORS.walletLowBalance.message
+        || error === CHAT_UI_ERRORS.walletInsufficient.message
+        || error === CHAT_UI_ERRORS.walletNotLoaded.message
     ) {
         return true;
     }
-    return /^You need at least \d+ credits/i.test(message);
+    return /^You need at least \d+ credits/i.test(error);
+}
+
+/**
+ * Maps any send/stream failure to a safe structured error (never raw provider/server text).
+ */
+export function toUserFacingChatError(error: unknown): ChatUiError {
+    if (isRequestCancellationError(error)) {
+        return CHAT_UI_ERRORS.cancelled;
+    }
+
+    const { isInsufficient } = resolveInsufficientFundsFromUnknown(error);
+    if (isInsufficient) {
+        return CHAT_UI_ERRORS.walletLowBalance;
+    }
+
+    if (isAuthRelatedChatError(error)) {
+        return CHAT_UI_ERRORS.sessionExpired;
+    }
+
+    return chatUiErrorFromUnknown(error);
 }
 
 /**
  * Maps any send/stream failure to a safe user-facing message (never raw provider/server text).
  */
 export function toUserFacingChatErrorMessage(error: unknown): string {
-    const err = error as { message?: string };
-
-    if (isRequestCancellationError(error)) {
-        return ERROR_MESSAGES.REQUEST_CANCELLED;
-    }
-
-    const { isInsufficient } = resolveInsufficientFundsFromUnknown(error);
-    if (isInsufficient) {
-        return ERROR_MESSAGES.REQUEST_ABORTED_LOW_BALANCE;
-    }
-
-    if (isAuthRelatedChatError(error)) {
-        return ERROR_MESSAGES.SESSION_EXPIRED;
-    }
-
-    return ERROR_MESSAGES.GENERIC_CHAT_ERROR;
+    return chatUiErrorMessage(toUserFacingChatError(error));
 }
 
 /**
@@ -137,7 +157,7 @@ export function handleSendError(
     chat: ChatMessage[],
     streaming: boolean,
     setChat: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
-    setError: React.Dispatch<React.SetStateAction<string>>,
+    setError: SetChatUiError,
     options?: HandleSendErrorOptions,
 ): void {
     // Clean up incomplete assistant messages during streaming
@@ -158,17 +178,17 @@ export function handleSendError(
             options.setWallet(wallet);
         }
         options?.onInsufficientFunds?.();
-        setError(ERROR_MESSAGES.REQUEST_ABORTED_LOW_BALANCE);
+        setError(CHAT_UI_ERRORS.walletLowBalance);
         return;
     }
 
     if (isAuthRelatedChatError(error)) {
-        setError(ERROR_MESSAGES.SESSION_EXPIRED);
+        setError(CHAT_UI_ERRORS.sessionExpired);
         handleSessionExpired();
         return;
     }
 
-    setError(toUserFacingChatErrorMessage(error));
+    setError(toUserFacingChatError(error));
 }
 
 /**

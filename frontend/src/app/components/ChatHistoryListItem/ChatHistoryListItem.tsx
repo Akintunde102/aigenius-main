@@ -1,4 +1,5 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
+import toast from 'react-hot-toast';
 import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
 import { downloadConversationTranscript, type TranscriptFormat } from '@/lib/utils/conversationTranscriptExport';
 import { SessionInfo } from './components/SessionInfo';
@@ -24,8 +25,10 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
     isMobile = false,
     isDeleting = false,
     isStarring = false,
-    isPublishing = false
+    isPublishing = false,
+    getCachedMessages,
 }) => {
+    const [isDownloadingTranscript, setIsDownloadingTranscript] = useState(false);
     const handleDeleteClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         onDeleteRequest(session);
@@ -45,9 +48,25 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
         ? session.title.trim()
         : deriveChatSessionTitle(session.messages?.[0]?.content);
 
-    const handleDownloadTranscript = useCallback((format: TranscriptFormat) => {
-        downloadConversationTranscript(session, displayTitle || 'Untitled Chat', format);
-    }, [session, displayTitle]);
+    const handleDownloadTranscript = useCallback(async (format: TranscriptFormat) => {
+        if (isDownloadingTranscript) return;
+
+        setIsDownloadingTranscript(true);
+        try {
+            await downloadConversationTranscript(
+                session,
+                displayTitle || 'Untitled Chat',
+                format,
+                undefined,
+                { getCachedMessages },
+            );
+        } catch (error) {
+            console.error('Failed to download conversation transcript:', error);
+            toast.error('Could not download transcript. Please try again.');
+        } finally {
+            setIsDownloadingTranscript(false);
+        }
+    }, [session, displayTitle, getCachedMessages, isDownloadingTranscript]);
 
     const handleItemClick = () => {
         // We still check isProcessing to prevent double clicks during global actions
@@ -79,6 +98,7 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
                 onDeleteClick={handleDeleteClick}
                 onPublishClick={onPublishRequest ? handlePublishClick : undefined}
                 onDownloadTranscript={handleDownloadTranscript}
+                isDownloadingTranscript={isDownloadingTranscript}
             />
         </li>
     );

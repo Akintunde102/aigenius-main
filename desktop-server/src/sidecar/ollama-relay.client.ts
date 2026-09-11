@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { spawn, ChildProcess, execSync } from 'child_process';
+import { hiddenSpawnOptions, hiddenExecSyncOptions } from '../utils/hidden-child-process.js';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -50,7 +51,10 @@ export class OllamaRelayClient {
         // 1. Try PATH
         try {
             const cmd = process.platform === 'win32' ? 'where ollama' : 'which ollama';
-            const stdout = execSync(cmd, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+            const stdout = execSync(
+              cmd,
+              hiddenExecSyncOptions({ stdio: ['ignore', 'pipe', 'ignore'] }),
+            ).toString().trim();
             if (stdout) {
                 const firstLine = stdout.split('\n')[0].trim();
                 if (fs.existsSync(firstLine)) return firstLine;
@@ -102,10 +106,14 @@ export class OllamaRelayClient {
 
         console.log('[sidecar] Spawning Ollama server from:', binary);
         try {
-            const child = spawn(binary, ['serve'], {
+            const child = spawn(
+              binary,
+              ['serve'],
+              hiddenSpawnOptions({
                 detached: true,
                 stdio: 'ignore',
-            });
+              }),
+            );
             child.unref();
             this.ollamaProcess = child;
 

@@ -63,6 +63,7 @@ const shellChrome = mainShellRendererChrome(process.platform);
 
 const DESKTOP_QUEUE_CHAT_SCREENSHOT_CHAN = 'aigenius-desktop-queue-chat-screenshot';
 const DESKTOP_OAUTH_SIGNIN_COMPLETE_CHAN = 'desktop-oauth-signin-complete';
+const DESKTOP_TOOL_APPROVAL_REQUEST_CHAN = 'aigenius-tool-approval-request';
 
 if (process.env.NODE_ENV !== 'production') {
   console.debug('[AIGenius Bridge] Exposing bridge to main world at:', new Date().toISOString());
@@ -181,6 +182,16 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     ipcRenderer.invoke('shell-new-window', relativePath) as Promise<void>,
   pickProjectDirectory: (): Promise<{ path: string } | null> =>
     ipcRenderer.invoke('pick-project-directory') as Promise<{ path: string } | null>,
+  createNamedProjectDirectory: (payload: { folderName: string }): Promise<
+    | { ok: true; path: string; created: boolean }
+    | { ok: true; canceled: true }
+    | { ok: false; error: string }
+  > =>
+    ipcRenderer.invoke('create-named-project-directory', payload) as Promise<
+      | { ok: true; path: string; created: boolean }
+      | { ok: true; canceled: true }
+      | { ok: false; error: string }
+    >,
   setCodeProjectIndex: (payload: { projectId: string; rootPath: string } | null): Promise<{ ok: boolean }> =>
     ipcRenderer.invoke('set-code-project-index', payload) as Promise<{ ok: boolean }>,
   syncActiveEditor: (payload: {
@@ -330,6 +341,8 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     >,
   startWebSignIn: (): Promise<{ token: string } | null> =>
     ipcRenderer.invoke('web-signin') as Promise<{ token: string } | null>,
+  cancelWebSignIn: (): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke('cancel-web-signin') as Promise<{ ok: boolean }>,
   startOAuthSignIn: (options?: { provider?: 'google' }): Promise<{ token: string } | null> =>
     ipcRenderer.invoke('start-oauth-signin', options) as Promise<{ token: string } | null>,
   getDesktopRefreshToken: (): Promise<string | null> =>
@@ -342,6 +355,8 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     ipcRenderer.invoke('open-file-path', path) as Promise<{ ok: boolean; error: string }>,
   revealFileInFolder: (path: string): Promise<{ ok: boolean; error?: string }> =>
     ipcRenderer.invoke('reveal-file-path', path) as Promise<{ ok: boolean; error?: string }>,
+  copyFileToClipboard: (path: string): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('copy-file-path', path) as Promise<{ ok: boolean; error?: string }>,
   readLocalFilePreview: (
     path: string,
   ): Promise<
@@ -399,6 +414,43 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     return () => {
       ipcRenderer.removeListener(DESKTOP_OAUTH_SIGNIN_COMPLETE_CHAN, fn);
     };
+  },
+  onToolApprovalRequest: (
+    handler: (request: {
+      requestId: string;
+      kind: 'shell' | 'patch';
+      payload: Record<string, unknown>;
+    }) => void,
+  ) => {
+    const fn = (_event: unknown, raw: unknown): void => {
+      if (!raw || typeof raw !== 'object') {
+        return;
+      }
+      const requestId = (raw as { requestId?: unknown }).requestId;
+      const kind = (raw as { kind?: unknown }).kind;
+      const payload = (raw as { payload?: unknown }).payload;
+      if (typeof requestId !== 'string' || !requestId) {
+        return;
+      }
+      if (kind !== 'shell' && kind !== 'patch') {
+        return;
+      }
+      if (!payload || typeof payload !== 'object') {
+        return;
+      }
+      handler({
+        requestId,
+        kind,
+        payload: payload as Record<string, unknown>,
+      });
+    };
+    ipcRenderer.on(DESKTOP_TOOL_APPROVAL_REQUEST_CHAN, fn);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_TOOL_APPROVAL_REQUEST_CHAN, fn);
+    };
+  },
+  respondToolApproval: (requestId: string, approved: boolean): void => {
+    ipcRenderer.send(`aigenius-tool-approval-response:${requestId}`, approved);
   },
 });
 

@@ -2,6 +2,7 @@ import React, { useMemo, useState, useCallback, useRef, useEffect } from "react"
 import { FiInfo, FiPlus } from "react-icons/fi";
 import ChatHistoryListItem from "./ChatHistoryListItem";
 import { ChatSession } from '@/app/components/model-interface/shared/types';
+import type { ChatMessage } from '@/app/components/model-interface/shared/types';
 import { ConfirmationModal } from './ChatHistoryListItem/components/ConfirmationModal';
 import { ChatLoadingIndicator } from "./model-interface/features/chat/components";
 import { groupSidebarSessionsByProject, sortSidebarSessions } from "./ChatHistoryList/chatHistoryListGrouping";
@@ -151,6 +152,7 @@ interface ChatHistoryListProps {
     onNewChatForProject?: (projectId: string | null) => void;
     onSelectProject?: (projectId: string | null) => void;
     onProjectInfo?: (projectId: string) => void;
+    getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
 }
 
 const ChatHistoryList = React.memo<ChatHistoryListProps>(({
@@ -174,6 +176,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
     onNewChatForProject,
     onSelectProject,
     onProjectInfo,
+    getCachedMessages,
 }) => {
     // Centralized Modal State
     const [actionSession, setActionSession] = useState<ChatSession | null>(null);
@@ -384,6 +387,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                     (isProcessing && actionSession?.id === sessionId && showStarModal) ||
                     processingIds.has(sessionId)
                 }
+                getCachedMessages={getCachedMessages}
             />
         );
     };

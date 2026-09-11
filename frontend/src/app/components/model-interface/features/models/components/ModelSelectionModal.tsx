@@ -640,3 +640,5 @@ export const ModelSelectionModal = React.memo(({
 
   return createPortal(modalContent as any, document.getElementById("modal-root") || document.body);
 });
+
+ModelSelectionModal.displayName = 'ModelSelectionModal';

@@ -50,7 +50,7 @@ export function shouldRouteToolViaSidecar(
       return typeof args.path === 'string' && args.path.trim().length > 0;
     case 'local_git_status':
     case 'local_git_diff':
-      return true;
+      return typeof args.cwd === 'string' && args.cwd.trim().length > 0;
     case 'local_grep':
       if (args.case_insensitive === true) {
         return false;

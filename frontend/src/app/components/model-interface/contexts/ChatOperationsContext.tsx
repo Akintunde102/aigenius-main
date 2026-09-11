@@ -11,6 +11,11 @@ import { DRAFT_SESSION_KEY } from '../features/chat/hooks/chatOperations.constan
 import { usePersonalityContext } from './PersonalityContext';
 import { PendingOrphanReply } from '../shared/types';
 import { ChatMessage } from '../shared/types';
+import {
+  normalizeChatUiError,
+  type ChatUiError,
+  type SetChatUiError,
+} from '../features/chat/hooks/chatUiError';
 
 export interface ChatOperationsContextValue {
   input: string;
@@ -19,8 +24,8 @@ export interface ChatOperationsContextValue {
   optimizationMessage: string;
   handleSend: (content?: string, enableStreaming?: boolean, preCreatedMessage?: ChatMessage, chatSnapshot?: ChatMessage[]) => Promise<boolean>;
   handleStop: () => void;
-  error: string;
-  setError: React.Dispatch<React.SetStateAction<string>>;
+  error: ChatUiError | null;
+  setError: SetChatUiError;
   pendingOrphanReply: PendingOrphanReply | null;
   setPendingOrphanReply: React.Dispatch<React.SetStateAction<PendingOrphanReply | null>>;
   clearPendingOrphanReply: () => void;
@@ -45,7 +50,10 @@ export function ChatOperationsProvider({ children }: { children: ReactNode }) {
   const { selectedModel } = useModelContext();
   const { selectedPersonalityName, selectedPersonalityIconUrl } = usePersonalityContext();
 
-  const [error, setError] = useState("");
+  const [error, setErrorState] = useState<ChatUiError | null>(null);
+  const setError = useCallback<SetChatUiError>((value) => {
+    setErrorState(normalizeChatUiError(value));
+  }, []);
   const [pendingOrphanReply, setPendingOrphanReply] = useState<PendingOrphanReply | null>(null);
 
   // We mock a chatEndRef for operations that need it
