@@ -37,7 +37,8 @@ function isLikelyDesktopShellEntry(): boolean {
  */
 export function useDesktopSessionRestore(): { restoring: boolean } {
   const pathname = usePathname();
-  const [restoring, setRestoring] = useState(() => isLikelyDesktopShellEntry());
+  // Start true so SSR matches the client first paint (desktop detection needs window).
+  const [restoring, setRestoring] = useState(true);
 
   useEffect(() => {
     if (!isLikelyDesktopShellEntry()) {

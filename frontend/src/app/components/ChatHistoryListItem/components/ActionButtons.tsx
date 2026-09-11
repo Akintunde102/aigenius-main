@@ -12,7 +12,8 @@ interface ActionButtonsProps {
     onStarClick: (e: React.MouseEvent) => void;
     onDeleteClick: (e: React.MouseEvent) => void;
     onPublishClick?: (e: React.MouseEvent) => void;
-    onDownloadTranscript?: (format: TranscriptFormat) => void;
+    onDownloadTranscript?: (format: TranscriptFormat) => void | Promise<void>;
+    isDownloadingTranscript?: boolean;
 }
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
@@ -25,6 +26,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     onDeleteClick,
     onPublishClick,
     onDownloadTranscript,
+    isDownloadingTranscript = false,
 }) => {
     return (
         <div className="flex shrink-0 items-center gap-0.5">
@@ -54,6 +56,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 onDeleteClick={onDeleteClick}
                 onPublishClick={onPublishClick}
                 onDownloadTranscript={onDownloadTranscript}
+                isDownloadingTranscript={isDownloadingTranscript}
             />
         </div>
     );

@@ -269,3 +269,5 @@ export const ModelSelectionGrid = React.memo(({
     </div>
   );
 });
+
+ModelSelectionGrid.displayName = 'ModelSelectionGrid';

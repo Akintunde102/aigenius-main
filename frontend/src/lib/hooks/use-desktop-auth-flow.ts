@@ -51,12 +51,21 @@ export function useDesktopAuthFlow() {
     }
   }, [pathname, setAuthFlowWithPersist]);
 
+  const cancelBrowserSignIn = useCallback(() => {
+    void window.aigeniusDesktop?.cancelWebSignIn?.();
+    setAuthError(null);
+    setAuthFlowWithPersist("idle");
+  }, [setAuthFlowWithPersist]);
+
   useEffect(() => {
     const bridge = window.aigeniusDesktop;
     if (!bridge?.onOAuthSignInComplete) {
       return;
     }
     return bridge.onOAuthSignInComplete(({ token }: { token: string }) => {
+      if (readDesktopAuthFlowPhase() === "idle") {
+        return;
+      }
       void finishOAuthToken(token);
     });
   }, [finishOAuthToken]);
@@ -80,5 +89,6 @@ export function useDesktopAuthFlow() {
     setAuthError,
     setAuthFlowWithPersist,
     finishOAuthToken,
+    cancelBrowserSignIn,
   };
 }

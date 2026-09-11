@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ExternalLink, FileType2, FolderOpen, RotateCcw } from 'lucide-react';
+import { getRevealInFolderLabel } from './file-preview-os-actions.utils';
 
 export function formatPreviewError(
     error: string,
@@ -14,7 +15,7 @@ export function formatPreviewError(
             detail: fileName
                 ? `${fileName} isn't something we can show in the editor.`
                 : "This file type can't be shown in the preview panel.",
-            hint: 'You can still open it with the default app on your computer, or reveal it in File Explorer.',
+            hint: 'You can still open it with the default app on your computer, or reveal it in your file manager.',
         };
     }
     if (lower.includes('failed to read') || lower.includes('media loading failed')) {
@@ -122,7 +123,7 @@ export function FilePreviewUnavailable({
                             }}
                         >
                             <FolderOpen size={16} />
-                            Show in Explorer
+                            {getRevealInFolderLabel()}
                         </button>
                     </>
                 )}

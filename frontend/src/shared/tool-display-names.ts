@@ -19,6 +19,7 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
     convert_to_pdf_and_upload: 'Convert to PDF',
     web_fetch: 'Fetch web page',
     serper_google_search: 'Google search',
+    serper_google_images: 'Google image search',
     get_wallet_balance: 'Wallet balance',
     workflow_agent: 'Workflow agent',
     call_model: 'Call model (non-streaming)',
@@ -118,6 +119,20 @@ export function getToolActivityHint(
         }
         case 'convert_to_pdf_and_upload':
             return 'Converting and uploading PDF…';
+        case 'serper_google_search': {
+            const q = args.query;
+            if (typeof q === 'string' && q.trim()) {
+                return `Searching: "${q.slice(0, 40)}${q.length > 40 ? '…' : ''}"`;
+            }
+            return 'Searching the web…';
+        }
+        case 'serper_google_images': {
+            const q = args.query;
+            if (typeof q === 'string' && q.trim()) {
+                return `Finding photos: "${q.slice(0, 40)}${q.length > 40 ? '…' : ''}"`;
+            }
+            return 'Finding photos…';
+        }
         case 'web_fetch': {
             const u = args.url;
             if (typeof u === 'string' && u.trim()) {

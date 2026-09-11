@@ -31,10 +31,19 @@ describe('tool-permission-preferences', () => {
     expect(normalizeDesktopToolId('read_local_file')).toBe('local_read_file');
   });
 
-  it('requires approval for shell by default', () => {
+  it('requires shell approval by default when no prefs are loaded', () => {
     applySyncedToolPermissionPreferences({
       autoApproveAll: false,
       requireApprovalByTool: {},
+    });
+    expect(shouldRequireToolApproval('local_shell')).toBe(true);
+    expect(shouldRequireToolApproval('run_command')).toBe(true);
+  });
+
+  it('still shows the shell dialog when the user turns approval on for that tool', () => {
+    applySyncedToolPermissionPreferences({
+      autoApproveAll: false,
+      requireApprovalByTool: { local_shell: true },
     });
     expect(shouldRequireToolApproval('local_shell')).toBe(true);
   });

@@ -18,6 +18,7 @@ import type { MessageEditDraft } from '../../messages/utils/messageEdit.utils';
 import type { FailedUploadEntry } from '@/app/components/model-interface/features/file-upload/hooks/useFileUpload';
 import { FEATURE_FLAGS } from '@/lib/config/features';
 import { ImagePreviewLightbox } from '@/app/components/model-interface/features/message-types/components/ImagePreviewLightbox';
+import type { SetChatUiError } from '@/app/components/model-interface/features/chat/hooks/chatUiError';
 
 interface ChatContainerProps {
     chat: ChatMessage[];
@@ -80,7 +81,7 @@ interface ChatContainerProps {
     /** When true (desktop collapsed sidebar), constrain and center the chat column. */
     desktopConversationCentered?: boolean;
 
-    setError?: (error: string | ((prev: string) => string)) => void;
+    setError?: SetChatUiError;
     setWallet?: (wallet: number | null | ((prev: number | null) => number | null)) => void;
     onInsufficientFunds?: () => void;
     wallet?: number | null;
@@ -546,6 +547,8 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                     handlePointerUp={handlePointerUp}
                     markerViewportPos={markerViewportPos}
                     onModelNameClick={onModelNameClick}
+                    imagePreview={imagePreview}
+                    setImagePreview={setImagePreview}
                 />
             ) : null}
 

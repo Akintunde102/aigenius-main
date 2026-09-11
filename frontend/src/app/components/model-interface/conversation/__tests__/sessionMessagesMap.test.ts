@@ -38,7 +38,7 @@ describe("sessionMessagesMap", () => {
       title: "New",
     });
     expect(next).toHaveLength(1);
-    expect(next[0].messages).toHaveLength(1);
+    expect(next[0].messages).toEqual([]);
     expect(next[0].title).toBe("New");
   });
 

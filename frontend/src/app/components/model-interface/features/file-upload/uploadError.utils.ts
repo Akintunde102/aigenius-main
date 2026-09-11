@@ -1,3 +1,9 @@
-export function isUploadErrorMessage(message: string): boolean {
-    return /^Upload failed:/i.test(message.trim());
+export function isUploadErrorMessage(error: string | { kind?: string } | null | undefined): boolean {
+    if (!error) {
+        return false;
+    }
+    if (typeof error !== 'string') {
+        return error.kind === 'upload';
+    }
+    return /^Upload failed:/i.test(error.trim());
 }

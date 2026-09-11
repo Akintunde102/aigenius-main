@@ -25,6 +25,8 @@ const JUNK_DIR_NAMES = new Set([
 
 const JUNK_FILE_EXTENSIONS = new Set(['.map', '.md', '.markdown', '.ts', '.flow']);
 
+const FORBIDDEN_PACKAGE_PREFIXES = ['tree-sitter', 'web-tree-sitter'];
+
 if (!fs.existsSync(nodeModulesDir)) {
   console.log(`[prune-binaries] No node_modules found at ${nodeModulesDir}, skipping.`);
   process.exit(0);
@@ -52,6 +54,19 @@ function recordRemoval(fullPath) {
   } catch {
     /* ignore */
   }
+}
+
+function expectedRipgrepBinDir(targetPlatform, targetArch) {
+  if (targetPlatform === 'darwin') {
+    return targetArch === 'arm64' ? 'darwin-arm64' : 'darwin-x64';
+  }
+  if (targetPlatform === 'win32') {
+    return targetArch === 'arm64' ? 'win32-arm64' : 'win32-x64';
+  }
+  if (targetPlatform === 'linux') {
+    return targetArch === 'arm64' ? 'linux-arm64' : 'linux-x64';
+  }
+  return null;
 }
 
 function walkAndPrune(dir) {
@@ -85,6 +100,11 @@ function walkAndPrune(dir) {
       shouldDelete = false;
     }
 
+    // Keep license files for OSS redistribution compliance.
+    if (/^license/i.test(entry.name)) {
+      shouldDelete = false;
+    }
+
     if (shouldDelete) {
       try {
         recordRemoval(fullPath);
@@ -98,6 +118,14 @@ function walkAndPrune(dir) {
 
 walkAndPrune(nodeModulesDir);
 
+for (const entry of fs.readdirSync(nodeModulesDir)) {
+  if (FORBIDDEN_PACKAGE_PREFIXES.some((prefix) => entry === prefix || entry.startsWith(`${prefix}-`))) {
+    const fullPath = path.join(nodeModulesDir, entry);
+    console.log(`[prune-binaries] Removing forbidden package: ${entry}`);
+    fs.rmSync(fullPath, { recursive: true, force: true });
+  }
+}
+
 const onnxBinDir = path.join(nodeModulesDir, 'onnxruntime-node', 'bin');
 if (fs.existsSync(onnxBinDir)) {
   const dirs = fs.readdirSync(onnxBinDir);
@@ -105,7 +133,6 @@ if (fs.existsSync(onnxBinDir)) {
     const fullPath = path.join(onnxBinDir, d);
     if (!fs.statSync(fullPath).isDirectory()) continue;
 
-    // In modern onnxruntime-node, platforms are nested inside 'napi-v3' or 'napi-v6'
     let subDirsToPrune = [];
     if (d.startsWith('napi-')) {
       const innerDirs = fs.readdirSync(fullPath);
@@ -121,10 +148,10 @@ if (fs.existsSync(onnxBinDir)) {
     for (const sub of subDirsToPrune) {
       const lower = sub.name.toLowerCase();
       const isMac = lower.includes('darwin') || lower.includes('osx') || lower.includes('mac');
-      const isWin = lower === 'win32' || lower.includes('windows');
+      const isWin = lower.includes('win32') || lower.includes('windows') || lower.startsWith('win');
       const isLinux = lower.includes('linux') || lower.includes('ubuntu');
-      const isArm = lower.includes('arm');
-      const isX64 = lower.includes('x64');
+      const isArm = lower.includes('arm64') || lower.endsWith('-arm');
+      const isX64 = lower.includes('x64') || lower.includes('x86_64');
 
       let shouldDeleteDir = false;
       if (platform === 'darwin' && (isWin || isLinux)) shouldDeleteDir = true;
@@ -172,6 +199,22 @@ if (fs.existsSync(imgDir)) {
     }
     const fullPath = path.join(imgDir, entry);
     console.log(`[prune-binaries] Removing unused sharp platform package: ${entry}`);
+    fs.rmSync(fullPath, { recursive: true, force: true });
+  }
+}
+
+const rgBinRoot = path.join(nodeModulesDir, '@vscode', 'ripgrep', 'bin');
+const keepRgDir = expectedRipgrepBinDir(platform, arch);
+if (keepRgDir && fs.existsSync(rgBinRoot)) {
+  for (const entry of fs.readdirSync(rgBinRoot)) {
+    const fullPath = path.join(rgBinRoot, entry);
+    if (!fs.statSync(fullPath).isDirectory()) {
+      continue;
+    }
+    if (entry === keepRgDir) {
+      continue;
+    }
+    console.log(`[prune-binaries] Removing unused ripgrep platform dir: ${entry}`);
     fs.rmSync(fullPath, { recursive: true, force: true });
   }
 }

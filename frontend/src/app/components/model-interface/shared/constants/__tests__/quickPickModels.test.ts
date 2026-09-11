@@ -13,9 +13,9 @@ import {
 
 describe("quickPickModels", () => {
   const models: Model[] = [
-    { id: "openrouter/free", name: "Free", description: "", context_length: 0 },
-    { id: "openai/gpt-5-mini", name: "GPT-5 Mini", description: "", context_length: 0 },
-    { id: "anthropic/claude-sonnet-4.5", name: "Sonnet", description: "", context_length: 0 },
+    { id: "openrouter/free", name: "Free", description: "", context_length: 0, featured: true },
+    { id: "openai/gpt-5-mini", name: "GPT-5 Mini", description: "", context_length: 0, featured: true },
+    { id: "anthropic/claude-sonnet-4.5", name: "Sonnet", description: "", context_length: 0, featured: true },
     { id: "other/model", name: "Other", description: "", context_length: 0, featured: true },
   ];
 
@@ -30,7 +30,7 @@ describe("quickPickModels", () => {
 
   it("resolveDefaultQuickPickModelIds skips unavailable preferred ids", () => {
     const ids = resolveDefaultQuickPickModelIds([
-      { id: "openrouter/free", name: "Free", description: "", context_length: 0 },
+      { id: "openrouter/free", name: "Free", description: "", context_length: 0, featured: true },
     ]);
     expect(ids).toEqual(["openrouter/free"]);
   });

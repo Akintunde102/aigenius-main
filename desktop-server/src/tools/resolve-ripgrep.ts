@@ -1,8 +1,8 @@
-import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { createNodeRequire } from '../utils/create-node-require.js';
 
-const require = createRequire(import.meta.url);
+const nodeRequire = createNodeRequire();
 
 let cachedBundledPath: string | null | undefined;
 
@@ -12,7 +12,7 @@ export function getBundledRipgrepPath(): string | null {
     return cachedBundledPath;
   }
   try {
-    const mod = require('@vscode/ripgrep') as { rgPath?: string };
+    const mod = nodeRequire('@vscode/ripgrep') as { rgPath?: string };
     const candidate = mod.rgPath?.trim();
     if (candidate && fs.existsSync(candidate)) {
       cachedBundledPath = candidate;

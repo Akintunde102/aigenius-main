@@ -56,7 +56,7 @@ export function BentoDemoChat() {
             <BotMessageSquare className="h-3 w-3 text-white" />
           </div>
           <div className="max-w-[85%] rounded-xl rounded-tl-sm border border-white/[0.07] bg-zinc-900/70 px-3 py-2 text-zinc-300">
-            Here's a 5-bullet summary of the proposal, plus a draft reply you can
+            Here&apos;s a 5-bullet summary of the proposal, plus a draft reply you can
             edit. Key risk: pricing on page 3.
           </div>
         </motion.div>
@@ -209,7 +209,7 @@ export function BentoDemoDesktop() {
         </div>
         <div className="flex items-center gap-2">
           <div className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
-          <span>Voice dictation & audio conversations</span>
+          <span>Audio conversations</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
@@ -247,7 +247,7 @@ export function BentoDemoSchedule() {
         ))}
       </div>
       <p className="mt-3 text-[12px] text-zinc-500">
-        Cron schedules & webhooks when you're ready to go live.
+        Cron schedules & webhooks when you&apos;re ready to go live.
       </p>
     </div>
   );

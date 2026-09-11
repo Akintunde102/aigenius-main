@@ -1,8 +1,13 @@
-import { BrowserWindow, ipcMain, app } from 'electron';
+import { BrowserWindow, app } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { approvalDialogWindowChrome } from './approval-dialog-window-chrome';
-import { auxiliaryBrowserWindowOptions, showAuxiliaryWindowWhenReady } from './secondary-browser-window';
+import { approvalDialogBrowserWindowOptions } from './secondary-browser-window';
+import {
+  approvalDialogPreloadPath,
+  approvalDialogWebPreferences,
+  attachApprovalDialogIpc,
+} from './approval-dialog-host';
 
 export type ExternalLinkApprovalPayload = {
   url: string;
@@ -35,20 +40,16 @@ export function showExternalLinkApprovalDialog(
   return new Promise((resolve) => {
     let settled = false;
 
-    const win = new BrowserWindow(auxiliaryBrowserWindowOptions(parent, {
+    const win = new BrowserWindow(approvalDialogBrowserWindowOptions(parent, {
       ...approvalDialogWindowChrome(),
       title: 'Open link',
       width: 520,
       height: preferredHeight,
       minWidth: 400,
       minHeight: 240,
-      backgroundColor: '#0f1114',
-      webPreferences: {
-        preload: path.join(__dirname, 'external-link-approval-preload.js'),
-        contextIsolation: true,
-        sandbox: true,
-        nodeIntegration: false,
-      },
+      webPreferences: approvalDialogWebPreferences(
+        approvalDialogPreloadPath('external-link-approval-preload.js'),
+      ),
     }));
 
     const settle = (value: boolean) => {
@@ -59,32 +60,19 @@ export function showExternalLinkApprovalDialog(
       resolve(value);
     };
 
-    const cleanup = () => {
-      ipcMain.removeListener('aigenius-external-link-approval-ready', onReady);
-      ipcMain.removeListener('aigenius-external-link-approval-done', onDone);
-    };
-
-    const onReady = (event: Electron.IpcMainEvent) => {
-      if (event.sender !== win.webContents) {
-        return;
-      }
-      ipcMain.removeListener('aigenius-external-link-approval-ready', onReady);
-      event.reply('aigenius-external-link-approval-data', payload);
-    };
-
-    const onDone = (event: Electron.IpcMainEvent, approved: unknown) => {
-      if (event.sender !== win.webContents) {
-        return;
-      }
-      cleanup();
-      settle(approved === true);
-      if (!win.isDestroyed()) {
-        win.close();
-      }
-    };
-
-    ipcMain.on('aigenius-external-link-approval-ready', onReady);
-    ipcMain.on('aigenius-external-link-approval-done', onDone);
+    const cleanup = attachApprovalDialogIpc(
+      win,
+      parent,
+      payload,
+      {
+        data: 'aigenius-external-link-approval-data',
+        ready: 'aigenius-external-link-approval-ready',
+        done: 'aigenius-external-link-approval-done',
+      },
+      (approved) => {
+        settle(approved);
+      },
+    );
 
     win.once('closed', () => {
       cleanup();
@@ -93,9 +81,6 @@ export function showExternalLinkApprovalDialog(
       }
     });
 
-    void win.loadFile(htmlPath).then(() => {
-      win.center();
-      showAuxiliaryWindowWhenReady(win);
-    });
+    void win.loadFile(htmlPath);
   });
 }

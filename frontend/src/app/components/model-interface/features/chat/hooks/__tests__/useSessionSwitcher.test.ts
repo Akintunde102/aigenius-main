@@ -4,6 +4,7 @@
 import React from 'react';
 import { act } from '@testing-library/react';
 import { createRoot, Root } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useSessionSwitcher } from '../useSessionSwitcher';
 import { ChatMessage } from '@/app/components/model-interface/shared/types';
 
@@ -46,9 +47,18 @@ describe('useSessionSwitcher', () => {
             resultRef.current = result;
             return null;
         }
+        const queryClient = new QueryClient({
+            defaultOptions: { queries: { retry: false } },
+        });
         root = createRoot(container);
         act(() => {
-            root.render(React.createElement(Wrapper));
+            root.render(
+                React.createElement(
+                    QueryClientProvider,
+                    { client: queryClient },
+                    React.createElement(Wrapper),
+                ),
+            );
         });
     }
 
@@ -137,9 +147,18 @@ describe('useSessionSwitcher', () => {
             resultRef.current = result;
             return null;
         }
+        const queryClient = new QueryClient({
+            defaultOptions: { queries: { retry: false } },
+        });
         root = createRoot(container);
         act(() => {
-            root.render(React.createElement(WrapperWithId));
+            root.render(
+                React.createElement(
+                    QueryClientProvider,
+                    { client: queryClient },
+                    React.createElement(WrapperWithId),
+                ),
+            );
         });
 
         expect(resultRef.current!.isSessionActive('active-123')).toBe(true);

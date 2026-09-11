@@ -14,6 +14,7 @@ export { usePersistSessionMessages } from './usePersistSessionMessages';
 // Utilities
 export * from './chatOperations.types';
 export * from './chatOperations.constants';
+export * from './chatUiError';
 export { createChatMessage, updateLastAssistantMessage, updateLastMessageWithMetrics } from './contentProcessing.utils';
 export { optimizeMessagesForAPI } from './messageOptimization.utils';
 export {
@@ -26,5 +27,6 @@ export {
     isRequestCancellationMessage,
     isWalletRelatedChatError,
     isAuthRelatedChatError,
+    toUserFacingChatError,
     toUserFacingChatErrorMessage,
 } from './errorHandling.utils';

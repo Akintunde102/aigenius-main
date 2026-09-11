@@ -1,12 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
+import { hiddenSpawnSyncOptions } from '../utils/hidden-child-process.js';
 
 export type PythonLaunch = { command: string; argsPrefix: string[] };
 
 function tryRun(command: string, checkArgs: string[]): boolean {
   try {
-    return spawnSync(command, checkArgs, { stdio: 'ignore' }).status === 0;
+    return spawnSync(command, checkArgs, hiddenSpawnSyncOptions({ stdio: 'ignore' })).status === 0;
   } catch {
     return false;
   }

@@ -24,21 +24,18 @@ import { attachDesktopBridgeDebugLogging, isDesktopDevToolsEnabled } from './mai
 import { FRONTEND_PORT, FRONTEND_URL, repoRootFromDesktopDist } from './main-backend-lifecycle';
 import { createShellBootDataUrl, isShellBootDataUrl } from './shell-boot-page';
 import { desktopUiAppUrl, shouldUseDesktopUiCustomProtocol } from './desktop-ui-mode';
+import { listWindowIconCandidates } from './window-icon-paths';
 
 export function resolveWindowIconPath(): string | undefined {
-  const candidates: string[] = [];
   const repoRoot = repoRootFromDesktopDist();
-
-  if (app.isPackaged) {
-    candidates.push(path.join(__dirname, '..', 'build', 'aigenius_icon_final.png'));
-    candidates.push(path.join(process.resourcesPath, 'aigenius_icon_final.png'));
-    candidates.push(path.join(path.dirname(app.getPath('exe')), 'aigenius_icon_final.png'));
-  } else {
-    candidates.push(path.join(__dirname, '..', 'build', 'aigenius_icon_final.png'));
-    candidates.push(path.join(repoRoot, 'aigenius_icon_final.png'));
-    candidates.push(path.join(repoRoot, 'frontend', 'public', 'logo.png'));
-    candidates.push(path.join(repoRoot, 'frontend', 'src', 'assets', 'Logomark.png'));
-  }
+  const desktopRoot = path.join(__dirname, '..');
+  const candidates = listWindowIconCandidates({
+    isPackaged: app.isPackaged,
+    desktopRoot,
+    repoRoot,
+    resourcesPath: app.isPackaged ? process.resourcesPath : undefined,
+    exeDir: app.isPackaged ? path.dirname(app.getPath('exe')) : undefined,
+  });
 
   for (const p of candidates) {
     if (fs.existsSync(p)) {
@@ -169,6 +166,10 @@ export function createWindow(relativePathOrOptions?: string | CreateWindowOption
       backgroundThrottling: process.env.AIGENIUS_BACKGROUND_THROTTLING !== '0',
     },
   });
+
+  if (icon && !win.isDestroyed()) {
+    win.setIcon(icon);
+  }
 
   win.once('ready-to-show', () => {
     if (!win.isDestroyed()) {

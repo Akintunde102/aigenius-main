@@ -23,6 +23,34 @@ try {
     // fallback if undici is not directly resolvable
 }
 
+if (typeof global.ReadableStream === 'undefined') {
+    try {
+        const { ReadableStream } = require('stream/web');
+        global.ReadableStream = ReadableStream;
+        if (typeof window !== 'undefined' && typeof window.ReadableStream === 'undefined') {
+            window.ReadableStream = ReadableStream;
+        }
+    } catch {
+        // Node without stream/web
+    }
+}
+
+if (typeof global.indexedDB === 'undefined') {
+    global.indexedDB = {
+        open: () => {
+            const request = {
+                result: null,
+                error: null,
+                onsuccess: null,
+                onerror: null,
+                onupgradeneeded: null,
+            };
+            return request;
+        },
+        deleteDatabase: () => ({ onsuccess: null, onerror: null }),
+    };
+}
+
 // Support React act() in Jest (avoids "not configured to support act" warnings)
 if (typeof globalThis.IS_REACT_ACT_ENVIRONMENT === 'undefined') {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -157,6 +185,7 @@ jest.mock('servercall', () => ({
     patch: jest.fn(() => Promise.resolve({ data: { id: 'test-id' } })),
     delete: jest.fn(() => Promise.resolve({ data: {} })),
     createServerCall: jest.fn(() => jest.fn(() => Promise.resolve({ data: {} }))),
+    ServerCallVerbs: { Get: 'get', Post: 'post', Put: 'put', Patch: 'patch', Delete: 'delete' },
 }))
 
 // Mock nobox-client

@@ -48,6 +48,7 @@ import { AttachmentSourcePickerModal } from "./features/file-upload/components/A
 import { AttachmentLibraryModal } from "./features/file-upload/components/AttachmentLibraryModal";
 import { useUploadedFilesList } from "@/app/components/user-files/useUploadedFilesList";
 import { isUploadErrorMessage } from "./features/file-upload/uploadError.utils";
+import { CHAT_UI_ERRORS, chatUiErrorMessage } from "./features/chat/hooks/chatUiError";
 import { useModelInterfaceWalletGate } from "./hooks/useModelInterfaceWalletGate";
 import { useModelInterfaceSessionRouting } from "./hooks/useModelInterfaceSessionRouting";
 import { useIsDesktopShell } from "@/lib/hooks/useIsDesktopShell";
@@ -149,7 +150,12 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     applySessionPersonalityState,
     clearConversationPersonality,
   } = personalityState;
-  const { input, setInput, composerSessionKey, commitComposerDraftForKey, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, assistantResponse, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, persistSessionMessages, isPassiveSyncBlocked, showTyping, setShowTyping, showScrollToBottom, queuedMessages, handleQueueMessage, removeQueuedMessage } = chatState;
+  const { input, setInput, composerSessionKey, commitComposerDraftForKey, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, assistantResponse, chatMap, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, persistSessionMessages, isPassiveSyncBlocked, showTyping, setShowTyping, showScrollToBottom, queuedMessages, handleQueueMessage, removeQueuedMessage } = chatState;
+
+  const getCachedMessages = useCallback(
+    (sessionId: string) => chatMap[sessionId],
+    [chatMap],
+  );
   const { loading, setLoading, error, setError, streaming, setStreaming, streamingEnabled, setStreamingEnabled, imagePreview, setImagePreview, uploading, setUploading, uploadProgress, setUploadProgress, dragActive, setDragActive, showCosts, showNaira, showSaved, setShowSaved, setTotalSpent, optimizationMessage } = uiState;
   const { showModelDetailsModal, setShowModelDetailsModal, showModelSelectionModal, setShowModelSelectionModal } = modalState;
   const { search, setSearch, historySearch, setHistorySearch, orderByCost, setOrderByCost, allModalities, selectedModalities, allOutputModalities, selectedOutputModalities, showWebSearch, setShowWebSearch, showToolsOnly, setShowToolsOnly, pinnedModelIds, favoritesLoaded, orderBy, setOrderBy, orderDir, setOrderDir, selectedProviders, setSelectedProviders, imageFilterOnly, setImageFilterOnly, toggleModality, toggleOutputModality } = filterState;
@@ -195,7 +201,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
   } = useWalletManagement({
     setWallet,
     setError,
-    error: error || "",
+    error: chatUiErrorMessage(error),
     setShowWalletModal,
     refreshWalletFromBackend,
   });
@@ -240,7 +246,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
 
   useEffect(() => {
     if (failedUploads.length === 0 && error && isUploadErrorMessage(error)) {
-      setError("");
+      setError(null);
     }
   }, [failedUploads.length, error, setError]);
 
@@ -445,51 +451,46 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
       ) : null}
 
       <ModelInterfaceChrome
-        error={error || ""}
+        error={error}
         optimizationMessage={optimizationMessage}
-        input={input}
-        chat={chat}
         canRetryError={
-          /wallet/i.test(error)
-            ? true
-            : isUploadErrorMessage(error)
-              ? failedUploads.some((entry) => entry.status !== 'retrying')
-              : true
+          error?.retryAction === "retry-uploads"
+            ? failedUploads.some((entry) => entry.status !== "retrying")
+            : error?.retryAction !== "none"
         }
-        onDismissError={() => setError("")}
+        onDismissError={() => setError(null)}
         onRetryError={async () => {
-          const isWalletError = /wallet/i.test(error);
-          if (isWalletError && refreshWalletFromBackend) {
+          if (!error || error.retryAction === "none") {
+            return;
+          }
+
+          if (error.retryAction === "reload-wallet" && refreshWalletFromBackend) {
             const balance = await refreshWalletFromBackend();
             if (balance !== null) {
-              setError("");
+              setError(null);
             } else {
-              setError("Failed to load wallet balance");
+              setError(CHAT_UI_ERRORS.walletNotLoaded);
             }
             return;
           }
 
-          if (isUploadErrorMessage(error)) {
+          if (error.retryAction === "retry-uploads") {
             retryAllFailedUploads();
             return;
           }
 
-          setError("");
+          setError(null);
           if (input.trim()) {
             await handleSend(input.trim());
-          } else {
-            const lastUserMsgIdx = chat.map((m) => m.role).lastIndexOf("user");
-            if (lastUserMsgIdx !== -1) {
-              const lastUserMsg = chat[lastUserMsgIdx];
-              const nextChat = chat.slice(0, lastUserMsgIdx + 1);
-              setChat(nextChat);
-              await handleSend(undefined, undefined, lastUserMsg, nextChat);
-            } else if (refreshWalletFromBackend) {
-              const balance = await refreshWalletFromBackend();
-              if (balance === null) {
-                setError("Failed to load wallet balance");
-              }
-            }
+            return;
+          }
+
+          const lastUserMsgIdx = chat.map((m) => m.role).lastIndexOf("user");
+          if (lastUserMsgIdx !== -1) {
+            const lastUserMsg = chat[lastUserMsgIdx];
+            const nextChat = chat.slice(0, lastUserMsgIdx + 1);
+            setChat(nextChat);
+            await handleSend(undefined, undefined, lastUserMsg, nextChat);
           }
         }}
       />
@@ -562,6 +563,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     isInitialLoading={isInitialLoading || (modelsLoading && models.length === 0)}
                     onLogout={handleLogout}
                     userInitials={getSidebarUserInitials(currentUser)}
+                    getCachedMessages={getCachedMessages}
                   />
                   <ModelInterfaceChatColumn
                     chat={chat}

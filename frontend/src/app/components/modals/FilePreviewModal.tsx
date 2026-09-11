@@ -16,6 +16,8 @@ import { useExplorerTree } from './useExplorerTree';
 import { PanelResizeHandles } from './PanelResizeHandles';
 import { FilePreviewUnavailable } from './FilePreviewUnavailable';
 import { usePanelDisplayMode } from './usePanelDisplayMode';
+import { copyLocalItem } from './file-preview-os-actions.utils';
+import copy from 'copy-to-clipboard';
 
 const Editor = dynamic(
   () =>
@@ -234,10 +236,44 @@ export const FilePreviewModal: React.FC = () => {
     const handleRevealInFolder = useCallback(async () => {
         if (!payload?.localPath) return;
         try {
-            const bridge = (window as { aigeniusDesktop?: { revealFileInFolder?: (path: string) => Promise<{ ok: boolean; error?: string }> } }).aigeniusDesktop;
-            await bridge?.revealFileInFolder?.(payload.localPath);
+            const bridge = (window as {
+                aigeniusDesktop?: {
+                    revealFileInFolder?: (path: string) => Promise<{ ok: boolean; error?: string }>;
+                    runLocalDesktopTool?: (payload: {
+                        tool: string;
+                        arguments: Record<string, unknown>;
+                    }) => Promise<{ ok: boolean; error?: string }>;
+                };
+            }).aigeniusDesktop;
+            const revealed = await bridge?.revealFileInFolder?.(payload.localPath);
+            if (revealed?.ok) return;
+            if (bridge?.runLocalDesktopTool) {
+                const parent = payload.localPath.replace(/[\\/][^\\/]+$/, '') || payload.localPath;
+                await bridge.runLocalDesktopTool({
+                    tool: 'local_open_in_os',
+                    arguments: { path: parent },
+                });
+            }
         } catch (err) {
             console.error('[FilePreviewModal] Reveal in folder error:', err);
+        }
+    }, [payload]);
+
+    const handleCopy = useCallback(async () => {
+        if (!payload?.localPath) return false;
+        try {
+            const bridge = (window as {
+                aigeniusDesktop?: {
+                    copyFileToClipboard?: (path: string) => Promise<{ ok: boolean; error?: string }>;
+                };
+            }).aigeniusDesktop;
+            return copyLocalItem(payload.localPath, {
+                copyFileToClipboard: bridge?.copyFileToClipboard,
+                writeText: (text) => copy(text),
+            });
+        } catch (err) {
+            console.error('[FilePreviewModal] Copy error:', err);
+            return false;
         }
     }, [payload]);
 
@@ -553,6 +589,8 @@ export const FilePreviewModal: React.FC = () => {
             isSaving={isSaving}
             canSave={isDirty}
             onOpenInOS={handleOpenInOS}
+            onRevealInFolder={handleRevealInFolder}
+            onCopy={handleCopy}
             isFullscreen={isFullscreen}
             onToggleFullscreen={handleToggleFullscreen}
             onClose={closeFilePreview}

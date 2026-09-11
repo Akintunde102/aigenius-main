@@ -7,9 +7,18 @@ export type ShellApprovalPayload = {
 };
 
 contextBridge.exposeInMainWorld('aigeniusShellApproval', {
+  platform: process.platform,
   bootstrap: (cb: (data: ShellApprovalPayload) => void) => {
-    ipcRenderer.once('aigenius-shell-approval-data', (_e, data: ShellApprovalPayload) => {
+    let delivered = false;
+    const deliver = (data: ShellApprovalPayload): void => {
+      if (delivered) {
+        return;
+      }
+      delivered = true;
       cb(data);
+    };
+    ipcRenderer.on('aigenius-shell-approval-data', (_e, data: ShellApprovalPayload) => {
+      deliver(data);
     });
     ipcRenderer.send('aigenius-shell-approval-ready');
   },

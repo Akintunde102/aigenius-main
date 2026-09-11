@@ -49,10 +49,6 @@ describe('list-directory-via-shell', () => {
         Object.defineProperty(process, 'platform', { value: original });
       }
     });
-
-    it('returns custom command when provided', () => {
-      expect(formatListDirectoryShellCommand('/tmp', 'find . -maxdepth 1')).toBe('find . -maxdepth 1');
-    });
   });
 
   describe('parseListDirectoryShellStdout', () => {
@@ -93,11 +89,11 @@ describe('list-directory-via-shell', () => {
       ).toBe(true);
     });
 
-    it('returns false for normal directory listings', () => {
+    it('returns false for empty listings and for real files named similarly to headers', () => {
+      expect(looksLikeMisparsedShellTableOutput([])).toBe(false);
       expect(
         looksLikeMisparsedShellTableOutput([
-          { name: 'apps', path: 'C:\\proj\\apps', isDir: true },
-          { name: 'README.md', path: 'C:\\proj\\README.md', isDir: false },
+          { name: 'NamedPipe.txt', path: 'C:\\proj\\NamedPipe.txt', isDir: false },
         ]),
       ).toBe(false);
     });

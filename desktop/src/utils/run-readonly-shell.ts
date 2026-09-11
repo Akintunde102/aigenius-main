@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import { StringDecoder } from 'string_decoder';
 import { resolveShellProcessClose } from './shell-process-close';
+import { hiddenSpawnOptions } from './hidden-child-process';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_SHELL_OUT = 512 * 1024;
@@ -25,12 +26,15 @@ export function runReadonlyShell(options: ReadonlyShellOptions): Promise<Readonl
     : DEFAULT_TIMEOUT_MS;
 
   return new Promise((resolve) => {
-    const child = spawn(options.shell, options.shellArgs, {
-      cwd: options.cwd,
-      windowsHide: true,
-      env: process.env as NodeJS.ProcessEnv,
-      windowsVerbatimArguments: process.platform === 'win32',
-    });
+    const child = spawn(
+      options.shell,
+      options.shellArgs,
+      hiddenSpawnOptions({
+        cwd: options.cwd,
+        env: process.env as NodeJS.ProcessEnv,
+        windowsVerbatimArguments: process.platform === 'win32',
+      }),
+    );
 
     const decOut = new StringDecoder('utf8');
     const decErr = new StringDecoder('utf8');

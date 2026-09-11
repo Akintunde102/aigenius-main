@@ -19,6 +19,7 @@ import {
 } from './local-tool-executor-helpers';
 import { executeSidecarTool, sidecarToolsEnabled } from './sidecar-tools';
 import { blockInteractiveShellCommand } from './shell-interactive-block';
+import { hiddenSpawnOptions } from './utils/hidden-child-process';
 
 const MAX_CMD_LEN = 64_000;
 const MAX_SHELL_OUT = 512 * 1024;
@@ -171,12 +172,15 @@ export async function runShell(
   };
 
   return new Promise((resolve) => {
-    const child = spawn(shell, shellArgs, {
-      cwd: cwdResolved,
-      windowsHide: true,
-      env: process.env as NodeJS.ProcessEnv,
-      windowsVerbatimArguments: process.platform === 'win32',
-    });
+    const child = spawn(
+      shell,
+      shellArgs,
+      hiddenSpawnOptions({
+        cwd: cwdResolved,
+        env: process.env as NodeJS.ProcessEnv,
+        windowsVerbatimArguments: process.platform === 'win32',
+      }),
+    );
 
     const decOut = new StringDecoder('utf8');
     const decErr = new StringDecoder('utf8');

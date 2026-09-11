@@ -10,6 +10,7 @@ describe('formatPreviewError', () => {
         expect(result.title).toBe("Can't preview this file type");
         expect(result.detail).toContain('ChromeSetup.exe');
         expect(result.hint).toContain('default app');
+        expect(result.hint).toContain('file manager');
     });
 
     it('strips noisy prefixes from read failures', () => {

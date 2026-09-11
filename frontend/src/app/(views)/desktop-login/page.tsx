@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BotMessageSquare, Mic, Wallet } from "lucide-react";
-import { GoogleSignIn } from "@/app/components/auth/GoogleSignIn";
+import { BotMessageSquare, FolderOpen, Wallet } from "lucide-react";
+import { DevLoginButton } from "@/app/components/auth/DevLoginButton";
 import { PublicPageShell } from "@/app/components/PublicPageShell";
 import { DesktopSessionRestoringView } from "@/app/components/DesktopSessionRestoringView";
 import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-details";
+import { readDesktopAuthFlowPhase } from "@/lib/utils/desktop-auth-flow-storage";
 import { useDesktopAuthFlow } from "@/lib/hooks/use-desktop-auth-flow";
 import { useDesktopSessionRestore } from "@/lib/hooks/use-desktop-session-restore";
 
 const TRUST_ITEMS = [
   { icon: BotMessageSquare, label: "Every top model" },
-  { icon: Mic, label: "Voice dictation" },
+  { icon: FolderOpen, label: "Local files" },
   { icon: Wallet, label: "Pay as you go" },
 ] as const;
 
@@ -24,6 +25,7 @@ export default function DesktopLoginPage() {
     setAuthError,
     setAuthFlowWithPersist,
     finishOAuthToken,
+    cancelBrowserSignIn,
   } = useDesktopAuthFlow();
 
   useEffect(() => {
@@ -44,8 +46,10 @@ export default function DesktopLoginPage() {
     setAuthFlowWithPersist("awaiting-browser");
     const res = await window.aigeniusDesktop.startWebSignIn();
     if (!res?.token) {
-      setAuthFlowWithPersist("idle");
-      setAuthError("Browser sign-in did not complete. Finish sign-in in your browser, then try again.");
+      if (readDesktopAuthFlowPhase() !== "idle") {
+        setAuthFlowWithPersist("idle");
+        setAuthError("Browser sign-in did not complete. Finish sign-in in your browser, then try again.");
+      }
       return;
     }
     await finishOAuthToken(res.token);
@@ -79,11 +83,6 @@ export default function DesktopLoginPage() {
             }
             aria-hidden={authLoading}
           >
-            <GoogleSignIn
-              variant="login"
-              onDesktopAuthFlowChange={setAuthFlowWithPersist}
-              onDesktopOAuthToken={finishOAuthToken}
-            />
             <button
               type="button"
               onClick={handleBrowserSignIn}
@@ -113,6 +112,7 @@ export default function DesktopLoginPage() {
             >
               Sign in with Browser
             </button>
+            <DevLoginButton />
           </div>
 
           {authLoading ? (
@@ -126,6 +126,26 @@ export default function DesktopLoginPage() {
                 authFlow === "completing"
                   ? "Setting up your workspace…"
                   : "Return here when you are done — we will finish automatically."
+              }
+              action={
+                authFlow === "awaiting-browser" ? (
+                  <button
+                    type="button"
+                    onClick={cancelBrowserSignIn}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "#71717a",
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      textUnderlineOffset: "0.2em",
+                    }}
+                  >
+                    Cancel and start over
+                  </button>
+                ) : undefined
               }
             />
           ) : null}

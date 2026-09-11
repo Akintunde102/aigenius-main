@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { Button } from "@/app/components/ui/button";
 import Image from "next/image";
-import { AUTH_CONFIG } from "@/lib/config/auth";
 import { completeDesktopOAuthSession } from "@/lib/utils/complete-desktop-oauth-session";
 import { syncAuthSessionCookiesFromStorage } from "@/lib/utils/auth-session";
 import { resolveAuthenticatedDesktopShellRedirect } from "@/lib/utils/safe-internal-next-path";
@@ -12,10 +11,10 @@ import {
     waitForAigeniusDesktopBridge,
 } from "@/lib/utils/desktop-runtime";
 import {
-    buildDevLoginUrl,
     buildGoogleAuthUrl,
     resolveAuthApiRootUrlAsync,
 } from "@/lib/utils/resolve-auth-api-root";
+import { DevLoginButton } from "@/app/components/auth/DevLoginButton";
 
 export type DesktopAuthFlowPhase = "idle" | "awaiting-browser" | "completing";
 
@@ -118,24 +117,6 @@ export const GoogleSignIn = ({
         window.location.href = url;
     };
 
-    const handleDevLogin = async () => {
-        const apiRoot = await resolveAuthApiRootUrlAsync();
-        // Redirect to backend dev-login endpoint
-        let email: string | null = null;
-        try {
-            email = prompt("Enter email for dev login:", "test@example.com");
-        } catch (e) {
-            console.warn("prompt() is not supported in this environment, falling back to default dev email.");
-        }
-        // Fallback for automated browser environments or when prompt dialogs are not supported/cancelled
-        if (!email && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-            email = "test@example.com";
-        }
-        if (email) {
-            window.location.href = `${buildDevLoginUrl(apiRoot)}?email=${encodeURIComponent(email)}`;
-        }
-    };
-
     const buttonText = variant === 'signup' ? 'Continue with Google' : 'Sign in with Google';
 
     return (
@@ -144,28 +125,21 @@ export const GoogleSignIn = ({
                 onClick={handleGoogleSignIn}
                 disabled={isDesktopSigningIn}
                 variant="outline"
-                className={`w-full h-12 font-medium border-primary/20 hover:border-primary/40 hover:scale-[1.02] transition-all duration-200 ${className}`}
+                className={`w-full h-12 inline-flex items-center justify-center gap-3 font-medium border-primary/20 hover:border-primary/40 hover:scale-[1.02] transition-all duration-200 ${className}`}
             >
-                <Image
-                    src="/assets/google-icon.svg"
-                    alt="Google"
-                    width={20}
-                    height={20}
-                    unoptimized
-                    className="mr-3"
-                />
-                {buttonText}
+                <span className="inline-flex shrink-0" aria-hidden>
+                    <Image
+                        src="/assets/google-icon.svg"
+                        alt=""
+                        width={20}
+                        height={20}
+                        unoptimized
+                    />
+                </span>
+                <span>{buttonText}</span>
             </Button>
 
-            {AUTH_CONFIG.ENABLE_DEV_LOGIN && (
-                <button
-                    type="button"
-                    onClick={handleDevLogin}
-                    className="secondary-btn"
-                >
-                    Developer Login (Bypass)
-                </button>
-            )}
+            <DevLoginButton />
         </div>
     );
 };

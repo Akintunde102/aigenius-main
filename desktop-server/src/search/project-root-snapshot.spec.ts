@@ -1,4 +1,3 @@
-import Database from 'better-sqlite3';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -9,7 +8,8 @@ import {
   isProjectRootDirectory,
   resolveContextDirectoryPath,
 } from './project-root-snapshot.js';
-import { upsertFile, ensureBrowseSqlFunctions } from './db/queries.js';
+import { upsertFile } from './db/queries.js';
+import { createTestSearchDb } from './__tests__/test-db.js';
 
 function makeTempProject(): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aigenius-ctx-'));
@@ -21,13 +21,8 @@ function makeTempProject(): string {
   return root;
 }
 
-function makeDb(): Database.Database {
-  const db = new Database(':memory:');
-  for (const file of ['schema.sql', 'schema-chunks.sql', 'schema-import-graph.sql']) {
-    db.exec(fs.readFileSync(path.join(__dirname, 'db', file), 'utf8'));
-  }
-  ensureBrowseSqlFunctions(db);
-  return db;
+function makeDb() {
+  return createTestSearchDb();
 }
 
 describe('project-root-snapshot', () => {
@@ -73,7 +68,7 @@ describe('project-root-snapshot', () => {
     const overview = buildProjectOverview(db, root);
     expect(overview.projectName).toBe(path.basename(root));
     expect(overview.indexedFiles).toBeGreaterThanOrEqual(1);
-    expect(overview.architectureMarkdown).toContain('Project architecture');
+    expect(overview.architectureMarkdown).toContain('Project structural map');
     expect(overview.directory.entries.length).toBeGreaterThan(0);
     expect(overview.git).toBeDefined();
     fs.rmSync(root, { recursive: true, force: true });

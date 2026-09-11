@@ -1,15 +1,13 @@
 /**
  * Tier 1 structural indexer via web-tree-sitter + prebuilt WASM grammars.
  */
-import { createRequire } from 'module';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import Parser from 'web-tree-sitter';
 import type { IndexedEdge, IndexedSymbol } from './language-indexer.js';
 import type { ParsedSymbol } from './symbol-parser.js';
+import { createNodeRequire } from '../../utils/create-node-require.js';
 
-const require = createRequire(import.meta.url);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const nodeRequire = createNodeRequire();
 
 type LangKey = 'typescript' | 'javascript' | 'python' | 'rust' | 'cpp';
 
@@ -30,7 +28,7 @@ const SYMBOL_NODE_TYPES = new Set([
 ]);
 
 function wasmPath(lang: LangKey): string {
-  const pkgRoot = path.dirname(require.resolve('tree-sitter-wasms/package.json'));
+  const pkgRoot = path.dirname(nodeRequire.resolve('tree-sitter-wasms/package.json'));
   const file =
     lang === 'typescript'
       ? 'tree-sitter-typescript.wasm'
@@ -168,7 +166,7 @@ function collectCallEdges(root: Parser.SyntaxNode, symbols: ParsedSymbol[]): Ind
 export function isTreeSitterAvailable(): boolean {
   if (process.env.AIGENIUS_TREE_SITTER === '0') return false;
   try {
-    require.resolve('tree-sitter-wasms/package.json');
+    nodeRequire.resolve('tree-sitter-wasms/package.json');
     return true;
   } catch {
     return false;

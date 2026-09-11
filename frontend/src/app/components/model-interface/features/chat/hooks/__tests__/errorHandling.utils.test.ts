@@ -1,5 +1,6 @@
 import { normalizeWalletForGating, validateWalletBalance, handleSendError, toUserFacingChatErrorMessage, isRequestCancellationMessage, isWalletRelatedChatError, isAuthRelatedChatError } from '../errorHandling.utils';
 import { CHAT_CONFIG, ERROR_MESSAGES } from '../chatOperations.constants';
+import { CHAT_UI_ERRORS } from '../chatUiError';
 import { GatewayFetchError } from '@/nobox-client/functions/access-model';
 
 jest.mock('@/lib/api/auth-client', () => ({
@@ -36,10 +37,10 @@ describe('validateWalletBalance', () => {
 });
 
 describe('toUserFacingChatErrorMessage', () => {
-    test('maps provider-style errors to a generic message', () => {
+    test('maps provider-style rate limits to a busy-model message', () => {
         expect(
             toUserFacingChatErrorMessage(new Error('Provider returned 429: rate limit exceeded')),
-        ).toBe(ERROR_MESSAGES.GENERIC_CHAT_ERROR);
+        ).toBe(CHAT_UI_ERRORS.rateLimit.message);
     });
 
     test('maps request aborted to cancelled copy', () => {
@@ -83,7 +84,7 @@ describe('handleSendError', () => {
             jest.fn(),
             setError,
         );
-        expect(setError).toHaveBeenCalledWith(ERROR_MESSAGES.GENERIC_CHAT_ERROR);
+        expect(setError).toHaveBeenCalledWith(CHAT_UI_ERRORS.sendFailed);
         expect(mockHandleSessionExpired).not.toHaveBeenCalled();
     });
 
@@ -96,7 +97,7 @@ describe('handleSendError', () => {
             jest.fn(),
             setError,
         );
-        expect(setError).toHaveBeenCalledWith(ERROR_MESSAGES.SESSION_EXPIRED);
+        expect(setError).toHaveBeenCalledWith(CHAT_UI_ERRORS.sessionExpired);
         expect(mockHandleSessionExpired).toHaveBeenCalledTimes(1);
     });
 });

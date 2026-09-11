@@ -3,6 +3,11 @@
  */
 
 import { toLocalFileMarkdownImage, toLocalFileMarkdownLink } from './local-file-link';
+import {
+  formatExtensionCounts,
+  inferAggregationFromItems,
+  type DirectoryAggregation,
+} from './list-directory-aggregation.utils';
 
 export interface FormattedToolResult {
   result: string;
@@ -121,6 +126,76 @@ export interface DirectoryListingItem {
   mtime?: number;
 }
 
+function formatListingHeader(payload: {
+  path: string;
+  items: DirectoryListingItem[];
+  hitLimit?: boolean;
+  summaryOnly?: boolean;
+  aggregation?: DirectoryAggregation;
+  warnings?: string[];
+}): string {
+  const aggregation = payload.aggregation ?? inferAggregationFromItems(payload.items);
+  const showing = payload.summaryOnly ? 0 : payload.items.length;
+  const total = aggregation.totalEntries;
+  const unfiltered = aggregation.unfilteredTotal;
+  const totalLabel = aggregation.scanCapped ? `at least ${total}` : String(total);
+
+  let md = '### Directory listing\n\n';
+  md += `- **Directory**: ${toLocalFileMarkdownLink(payload.path)}\n`;
+  const filesLabel = aggregation.totalFiles === 1 ? 'file' : 'files';
+  const dirsLabel = aggregation.totalDirs === 1 ? 'subdirectory' : 'subdirectories';
+  const filesDirs = aggregation.scanCapped
+    ? `at least ${aggregation.totalFiles} ${filesLabel}, at least ${aggregation.totalDirs} ${dirsLabel}`
+    : `${aggregation.totalFiles} ${filesLabel}, ${aggregation.totalDirs} ${dirsLabel}`;
+  md += `- **Total items**: ${totalLabel} (${filesDirs})\n`;
+  if (unfiltered > total) {
+    const unfilteredLabel = aggregation.scanCapped ? `at least ${unfiltered}` : String(unfiltered);
+    md += `- **Unfiltered items**: ${unfilteredLabel} (before pattern/extension filters)\n`;
+  }
+  const types = formatExtensionCounts(aggregation.extensionCounts);
+  if (types) {
+    md += `- **File types**: ${aggregation.scanCapped ? `at least ${types}` : types}\n`;
+  }
+  if (payload.summaryOnly) {
+    md += `- **Showing**: 0 of ${totalLabel} (summary only)\n`;
+  } else if (payload.hitLimit || showing < total) {
+    md += `- **Showing**: ${showing} of ${totalLabel} (limit reached)\n`;
+  } else {
+    md += `- **Showing**: ${showing} of ${totalLabel}\n`;
+  }
+  if (payload.warnings?.length) {
+    for (const warning of payload.warnings) {
+      md += `- **Notice**: ${warning}\n`;
+    }
+  }
+  md += '\n';
+  return md;
+}
+
+function listingAssistantActions(payload: {
+  items: DirectoryListingItem[];
+  hitLimit?: boolean;
+  summaryOnly?: boolean;
+  aggregation?: DirectoryAggregation;
+}): string[] {
+  const aggregation = payload.aggregation ?? inferAggregationFromItems(payload.items);
+  const truncated = !!payload.hitLimit || (!payload.summaryOnly && payload.items.length < aggregation.totalEntries);
+  if (payload.summaryOnly) {
+    return [
+      'To list a subset of files, call `local_list_directory` with `pattern` (glob `Cover_[N-Z]*`) or `extensions: ["pdf"]` and omit `summary_only`.',
+      'Do not use `local_shell` or `run_command` to count or list this folder.',
+    ];
+  }
+  if (!truncated) {
+    return [];
+  }
+  return [
+    'To inspect specific subsets without shell commands, call `local_list_directory` with `pattern` (glob `Cover_[N-Z]*`) or `extensions: ["pdf"]`.',
+    'For high-level directory metrics without raw file lists, call with `summary_only: true`.',
+    'Do not ask the user to count files, and do not use `local_shell` or `run_command` to count them.',
+  ];
+}
+
 /**
  * Formats directory listing results (same structural pattern as other local tools).
  */
@@ -128,17 +203,32 @@ export function formatDirectoryListing(payload: {
   path: string;
   items: DirectoryListingItem[];
   hitLimit?: boolean;
-  shellCommand?: string;
   terminalOutput?: string;
+  summaryOnly?: boolean;
+  aggregation?: DirectoryAggregation;
+  warnings?: string[];
+  hadFilters?: boolean;
+  permissionDenied?: boolean;
 }): FormattedToolResult {
-  const { path: rootPath, items, hitLimit, shellCommand, terminalOutput } = payload;
-  let md = '### Directory listing\n\n';
-  md += `- **Directory**: ${toLocalFileMarkdownLink(rootPath)}\n`;
-  md += `- **Entries**: ${items.length}${hitLimit ? ' (limit reached)' : ''}\n`;
-  if (shellCommand?.trim()) {
-    md += `- **Shell**: \`${shellCommand.trim()}\`\n`;
-  }
-  md += '\n';
+  const {
+    path: rootPath,
+    items,
+    hitLimit,
+    terminalOutput,
+    summaryOnly,
+    aggregation,
+    warnings,
+    hadFilters,
+    permissionDenied,
+  } = payload;
+  let md = formatListingHeader({
+    path: rootPath,
+    items,
+    hitLimit,
+    summaryOnly,
+    aggregation,
+    warnings,
+  });
 
   if (terminalOutput?.trim()) {
     md += '```\n';
@@ -147,8 +237,28 @@ export function formatDirectoryListing(payload: {
     return { result: md.trimEnd() + '\n', rawData: payload };
   }
 
+  const actions = listingAssistantActions(payload);
+  if (actions.length) {
+    md +=
+      '**Assistant action (invoke yourself — do not delegate to the user):**\n\n'
+      + actions.map((a) => `- ${a}`).join('\n')
+      + '\n\n';
+  }
+
+  if (summaryOnly) {
+    return { result: md.trimEnd() + '\n', rawData: payload };
+  }
+
   if (items.length === 0) {
-    md += '*No entries matched (or directory is empty).*';
+    if (permissionDenied) {
+      md += '*Permission denied reading this directory.*';
+      return { result: md, rawData: payload };
+    }
+    const totals = aggregation ?? inferAggregationFromItems(items);
+    const filteredEmpty = hadFilters === true || totals.unfilteredTotal > totals.totalEntries;
+    md += filteredEmpty
+      ? '*No entries matched the current pattern or extensions filter.*'
+      : '*Directory is empty.*';
     return { result: md, rawData: payload };
   }
 

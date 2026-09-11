@@ -3,6 +3,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { UploadedFileEntry } from '../ModelInterface.helpers';
 import type { ChatMessage, Model } from '../shared/types';
 import { normalizeWalletForGating } from '../features/chat/hooks';
+import { CHAT_UI_ERRORS, type ChatUiError } from '../features/chat/hooks/chatUiError';
 
 interface UseModelInterfaceChatBoxSendParams {
   selectedModel: Model | null;
@@ -21,7 +22,7 @@ interface UseModelInterfaceChatBoxSendParams {
   ) => Promise<boolean>;
   setChat: Dispatch<SetStateAction<ChatMessage[]>>;
   setUploadedFiles: Dispatch<SetStateAction<UploadedFileEntry[]>>;
-  setError: (error: string) => void;
+  setError: (error: string | ChatUiError | null) => void;
   setShowWalletModal: (open: boolean) => void;
 }
 
@@ -45,7 +46,7 @@ export function useModelInterfaceChatBoxSend({
       if (!selectedModel) return false;
       if (!message.trim() && uploadedFiles.length === 0) return false;
       if (!project) {
-        setError('No project found. Please create or select a project.');
+        setError(CHAT_UI_ERRORS.noProject);
         return false;
       }
 

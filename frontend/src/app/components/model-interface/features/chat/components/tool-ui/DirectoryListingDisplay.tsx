@@ -4,6 +4,8 @@ import React from 'react';
 import { FiFile, FiFolder } from 'react-icons/fi';
 import {
   fileExtensionLabel,
+  formatDirectoryListingCountLabel,
+  formatDirectoryListingEmptyMessage,
   formatFileSize,
   formatModifiedDate,
   type ParsedDirectoryListing,
@@ -22,12 +24,8 @@ function pathTail(dirPath: string): string {
 }
 
 export function DirectoryListingDisplay({ listing }: DirectoryListingDisplayProps) {
-  const { directoryPath, items, hitLimit, terminalOutput } = listing;
-  const countLabel = hitLimit
-    ? `${items.length}+ entries`
-    : items.length === 1
-      ? '1 entry'
-      : `${items.length} entries`;
+  const { directoryPath, items, terminalOutput } = listing;
+  const countLabel = formatDirectoryListingCountLabel(listing);
 
   if (terminalOutput?.trim()) {
     return (
@@ -56,7 +54,7 @@ export function DirectoryListingDisplay({ listing }: DirectoryListingDisplayProp
       </div>
 
       {items.length === 0 ? (
-        <p className={styles.empty}>No entries matched (or directory is empty).</p>
+        <p className={styles.empty}>{formatDirectoryListingEmptyMessage(listing)}</p>
       ) : (
         <ul className={styles.list} aria-label="Directory entries">
           {items.map((item) => (

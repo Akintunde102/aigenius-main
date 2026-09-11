@@ -5,10 +5,23 @@ import {
     buildConversationTranscriptMessages,
     downloadConversationTranscript,
     extractTranscriptMessage,
+    resolveConversationTranscriptMessages,
 } from '../conversationTranscriptExport';
+
+jest.mock('@/lib/calls/model-chat-conversation', () => ({
+    getConversationById: jest.fn(),
+}));
+
+import { getConversationById } from '@/lib/calls/model-chat-conversation';
+
+const mockedGetConversationById = getConversationById as jest.MockedFunction<typeof getConversationById>;
 
 describe('conversationTranscriptExport', () => {
     const exportedAt = new Date('2026-07-26T08:30:00.000Z');
+
+    beforeEach(() => {
+        mockedGetConversationById.mockReset();
+    });
 
     it('extracts user and assistant text while skipping system messages', () => {
         const messages: ChatMessage[] = [
@@ -100,7 +113,7 @@ describe('conversationTranscriptExport', () => {
         );
     });
 
-    it('downloads a blob-backed file in the browser', () => {
+    it('downloads a blob-backed file in the browser', async () => {
         const click = jest.fn();
         const appendChild = jest.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => node);
         const removeChild = jest.spyOn(document.body, 'removeChild').mockImplementation((node: Node) => node);
@@ -124,7 +137,7 @@ describe('conversationTranscriptExport', () => {
             messages: [{ role: 'user', content: 'Hi', timestamp: 1 }],
         };
 
-        downloadConversationTranscript(session, 'Export me', 'txt', exportedAt);
+        await downloadConversationTranscript(session, 'Export me', 'txt', exportedAt);
 
         expect(createObjectURL).toHaveBeenCalled();
         expect(anchor.download).toBe('Export-me-2026-07-26.txt');
@@ -135,5 +148,55 @@ describe('conversationTranscriptExport', () => {
         appendChild.mockRestore();
         removeChild.mockRestore();
         global.URL = originalUrl;
+    });
+
+    it('fetches messages from the server when sidebar metadata has stripped message bodies', async () => {
+        mockedGetConversationById.mockResolvedValue({
+            id: 'session-1',
+            session: {
+                title: 'PDFDami',
+                modelId: 'model-1',
+                messages: [
+                    { role: 'user', content: 'Summarize this PDF', timestamp: 1 },
+                    { role: 'assistant', content: 'Here is the summary.', timestamp: 2 },
+                ],
+            },
+        } as any);
+
+        const session: ChatSession = {
+            id: 'session-1',
+            title: 'PDFDami',
+            modelId: 'model-1',
+            messages: [],
+        };
+
+        const messages = await resolveConversationTranscriptMessages(session);
+
+        expect(mockedGetConversationById).toHaveBeenCalledWith('session-1');
+        expect(buildConversationTranscriptMessages(messages)).toEqual([
+            { role: 'user', content: 'Summarize this PDF' },
+            { role: 'assistant', content: 'Here is the summary.' },
+        ]);
+    });
+
+    it('prefers cached chatMap messages before fetching from the server', async () => {
+        const cachedMessages: ChatMessage[] = [
+            { role: 'user', content: 'Cached question', timestamp: 1 },
+            { role: 'assistant', content: 'Cached answer', timestamp: 2 },
+        ];
+
+        const session: ChatSession = {
+            id: 'session-1',
+            title: 'Cached chat',
+            modelId: 'model-1',
+            messages: [],
+        };
+
+        const messages = await resolveConversationTranscriptMessages(session, {
+            getCachedMessages: (sessionId) => (sessionId === 'session-1' ? cachedMessages : undefined),
+        });
+
+        expect(mockedGetConversationById).not.toHaveBeenCalled();
+        expect(messages).toEqual(cachedMessages);
     });
 });

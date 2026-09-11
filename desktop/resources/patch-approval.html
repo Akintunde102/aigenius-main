@@ -34,11 +34,12 @@
 
       html,
       body {
-        height: 100%;
+        min-height: 100%;
       }
 
       body {
         margin: 0;
+        min-height: 320px;
         font-family: var(--font);
         font-size: 14px;
         line-height: 1.45;
@@ -51,15 +52,17 @@
       }
 
       .chrome {
-        flex: 1;
+        flex: 1 1 auto;
         display: flex;
         flex-direction: column;
-        min-height: 0;
+        min-height: 280px;
         padding: 0;
       }
 
+      /* Cap height: on Windows, env(titlebar-area-height) can equal the window height and hide actions. */
       #titlebar-drag {
-        height: env(titlebar-area-height, 0px);
+        height: min(40px, env(titlebar-area-height, 40px));
+        max-height: 48px;
         width: 100%;
         -webkit-app-region: drag;
         flex-shrink: 0;

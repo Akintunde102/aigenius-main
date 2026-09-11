@@ -24,19 +24,26 @@ export const CHAT_CONFIG = {
 
 // Error messages
 export const ERROR_MESSAGES = {
-    NO_PROJECT: "No project found. Please create or select a project.",
+    NO_PROJECT: "Create or select a project before sending a message.",
     INSUFFICIENT_FUNDS: "Insufficient funds for the selected model.",
     INSUFFICIENT_WALLET_FUNDS: "Insufficient funds in wallet. Please top up to continue using models.",
     /** Shown when the server stopped the request because the wallet could not cover fees. */
     REQUEST_ABORTED_LOW_BALANCE:
-        "Your request could not finish — your balance was too low for this response. Add credits to continue.",
-    REQUEST_CANCELLED: "Request was cancelled.",
+        "This response could not finish because your balance was too low. Add credits to continue.",
+    REQUEST_CANCELLED: "The request was stopped before it finished.",
     /** Shown when the session is missing or expired — user should sign in again. */
     SESSION_EXPIRED: "Your session has expired. Please sign in again.",
     /** Generic fallback for unexpected chat/API failures — never show raw provider text. */
-    GENERIC_CHAT_ERROR: "Something went wrong. Please try again.",
-    MODEL_RESPONSE_FAILED: "Something went wrong. Please try again.",
+    GENERIC_CHAT_ERROR: "Something went wrong while generating a response. Please try again.",
+    MODEL_RESPONSE_FAILED: "Something went wrong while generating a response. Please try again.",
     TOOL_EXECUTION_FAILED: "This tool could not complete. Please try again.",
+    CONVERSATION_NOT_FOUND:
+        "This conversation is not available. It may have been deleted, or you may not have access.",
+    CONVERSATION_LOAD_FAILED:
+        "Check your connection, then try opening it again from the sidebar.",
+    CONVERSATION_REMOVE_FAILED: "That conversation could not be removed. Please try again.",
+    CONVERSATION_STAR_FAILED: "The starred status could not be saved. Please try again.",
+    CONVERSATION_PUBLISH_FAILED: "Publishing failed. Please try again.",
 } as const;
 
 // Content processing constants

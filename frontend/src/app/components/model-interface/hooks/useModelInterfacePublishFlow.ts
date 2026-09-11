@@ -3,9 +3,10 @@ import type { Dispatch, SetStateAction } from 'react';
 import { publishConversation } from '@/lib/calls/model-chat-conversation';
 import type { ChatSession } from '../shared/types';
 import type { PublishState } from '../ModelInterface.types';
+import { CHAT_UI_ERRORS, type ChatUiError } from '../features/chat/hooks/chatUiError';
 
 type SetChatHistory = Dispatch<SetStateAction<ChatSession[]>>;
-type SetError = (error: string) => void;
+type SetError = (error: string | ChatUiError | null) => void;
 
 export function useModelInterfacePublishFlow(
   publishState: PublishState,
@@ -61,7 +62,7 @@ export function useModelInterfacePublishFlow(
         return conversationId;
       } catch (err) {
         console.error('Failed to publish conversation:', err);
-        setError('Failed to publish conversation. Please try again.');
+        setError(CHAT_UI_ERRORS.conversationPublishFailed);
         throw err;
       }
     },

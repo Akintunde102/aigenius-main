@@ -42,8 +42,8 @@ describe("useModelSelection main split", () => {
 
   it("shows curated defaults on Quick picks when saved list is empty", () => {
     const catalog: Model[] = [
-      makeModel("openrouter/free"),
-      makeModel("openai/gpt-4o"),
+      { ...makeModel("openrouter/free"), featured: true },
+      { ...makeModel("openai/gpt-4o"), featured: true },
       makeModel("custom/model"),
     ];
 

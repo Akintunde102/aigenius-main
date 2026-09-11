@@ -3,20 +3,61 @@ const path = require('path');
 /** @vercel/analytics (client-only in Electron — see ClientAnalytics.tsx). */
 const vercelAnalyticsOrigin = 'https://va.vercel-scripts.com';
 
-/** Local desktop mini-server default; override with NEXT_PUBLIC_NOBOX_API_ROOT_URL or `.env*.local`. */
+function readDevPortsApiUrl() {
+    try {
+        const fs = require('fs');
+        const portsPath = path.join(__dirname, '..', '..', '.dev-ports.json');
+        if (!fs.existsSync(portsPath)) {
+            return undefined;
+        }
+        const { api } = JSON.parse(fs.readFileSync(portsPath, 'utf8'));
+        if (typeof api === 'number' && api > 0) {
+            return `http://localhost:${api}`;
+        }
+    } catch {
+        /* ignore */
+    }
+    return undefined;
+}
+
+/** Local API default; override with NEXT_PUBLIC_NOBOX_API_ROOT_URL or `.env*.local`. */
 const resolvedNoboxApiRootUrl =
     process.env.NEXT_PUBLIC_NOBOX_API_ROOT_URL ||
-    (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : undefined);
+    process.env.NEXT_PUBLIC_AIGENIUS_API_ROOT_URL ||
+    (process.env.NODE_ENV === 'development'
+        ? (readDevPortsApiUrl() || 'http://localhost:8000')
+        : undefined);
 
 /** Allow fetch/WebSocket to the configured API origin in CSP connect-src. */
+function loopbackAliasOrigins(origin) {
+    try {
+        const url = new URL(origin);
+        const altHost =
+            url.hostname === 'localhost'
+                ? '127.0.0.1'
+                : url.hostname === '127.0.0.1'
+                  ? 'localhost'
+                  : null;
+        if (!altHost) return [];
+        const host = url.port ? `${altHost}:${url.port}` : altHost;
+        const origins = [`${url.protocol}//${host}`];
+        if (url.protocol === 'https:') origins.push(`wss://${host}`);
+        if (url.protocol === 'http:') origins.push(`ws://${host}`);
+        return origins;
+    } catch {
+        return [];
+    }
+}
+
 function apiConnectOrigins(apiRootUrl) {
     if (!apiRootUrl) return [];
     try {
         const { protocol, host } = new URL(apiRootUrl);
-        const origins = [`${protocol}//${host}`];
+        const origin = `${protocol}//${host}`;
+        const origins = [origin, ...loopbackAliasOrigins(origin)];
         if (protocol === 'https:') origins.push(`wss://${host}`);
         if (protocol === 'http:') origins.push(`ws://${host}`);
-        return origins;
+        return [...new Set(origins)];
     } catch {
         return [];
     }
@@ -51,7 +92,9 @@ function readDesktopUpstreamFromPackageEnv() {
 
 const desktopUpstreamApiUrl =
     process.env.NEXT_PUBLIC_DESKTOP_UPSTREAM_API_URL ||
-    readDesktopUpstreamFromPackageEnv();
+    (process.env.NODE_ENV === 'development'
+        ? readDevPortsApiUrl()
+        : readDesktopUpstreamFromPackageEnv());
 
 const desktopUpstreamOrigins = apiConnectOrigins(desktopUpstreamApiUrl);
 

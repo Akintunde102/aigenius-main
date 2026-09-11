@@ -1,13 +1,14 @@
 import path from 'path';
 import type { DirectoryListingItem } from './tool-formatter';
 import { listDirectoryViaFs } from './list-directory-via-fs';
-import { assertReadonlyShellCommand, resolveReadonlyShellPlatform } from './readonly-shell-command';
-import { resolveWindowsExecutable } from './resolve-windows-executable';
-import { runReadonlyShell } from './run-readonly-shell';
+import type { DirectoryAggregation } from './list-directory-aggregation.utils';
 
 export type ListDirectoryViaShellOptions = {
   limit?: number;
-  command?: string;
+  summaryOnly?: boolean;
+  pattern?: string;
+  extensions?: string[] | null;
+  recursive?: boolean;
 };
 
 export type ListDirectoryViaShellResult = {
@@ -15,8 +16,9 @@ export type ListDirectoryViaShellResult = {
   shellCommand: string;
   terminalOutput?: string;
   structured: boolean;
-  /** Set when a custom command produced table output that was rejected as unparsable. */
-  parseRejected?: boolean;
+  aggregation?: DirectoryAggregation;
+  warnings?: string[];
+  permissionDenied?: boolean;
 };
 
 function clampLimit(limit: number | undefined): number {
@@ -31,34 +33,11 @@ function escapeShSingleQuoted(value: string): string {
   return value.replace(/'/g, `'\\''`);
 }
 
-export function formatListDirectoryShellCommand(dirPath: string, command?: string): string {
-  if (command?.trim()) {
-    return command.trim();
-  }
+export function formatListDirectoryShellCommand(dirPath: string): string {
   if (process.platform === 'win32') {
     return `Get-ChildItem -LiteralPath '${escapePowerShellSingleQuoted(dirPath)}' -Force`;
   }
   return `ls -1Ap '${escapeShSingleQuoted(dirPath)}'`;
-}
-
-function buildShellInvocation(
-  dirPath: string,
-  command: string,
-): { shell: string; shellArgs: string[] } {
-  const shellPlatform = resolveReadonlyShellPlatform();
-  assertReadonlyShellCommand(command, shellPlatform);
-
-  if (shellPlatform === 'win32') {
-    return {
-      shell: resolveWindowsExecutable('powershell.exe'),
-      shellArgs: ['-NoProfile', '-NonInteractive', '-Command', command],
-    };
-  }
-
-  return {
-    shell: '/bin/sh',
-    shellArgs: ['-c', command],
-  };
 }
 
 export function parseListDirectoryShellStdout(stdout: string): DirectoryListingItem[] {
@@ -146,16 +125,9 @@ export function parseLs1ApOutput(stdout: string, rootPath: string): DirectoryLis
   return items;
 }
 
-function finalizeParsedItems(items: DirectoryListingItem[], rootPath: string, limit: number): DirectoryListingItem[] {
-  const normalized = items.map((item) => ({
-    ...item,
-    path: item.path || path.join(rootPath, item.name),
-  }));
-  return normalized.slice(0, limit);
-}
-
 /**
- * List a directory via read-only shell. When `command` is omitted, uses structured defaults for the file explorer UI.
+ * List a directory via native filesystem APIs. A leftover `command` key on the
+ * tool payload is ignored — this never spawns a shell child process.
  */
 export async function listDirectoryViaShell(
   dirPath: string,
@@ -163,52 +135,19 @@ export async function listDirectoryViaShell(
 ): Promise<ListDirectoryViaShellResult> {
   const resolved = path.resolve(dirPath);
   const limit = clampLimit(options.limit);
-  const customCommand = typeof options.command === 'string' ? options.command.trim() : '';
-
-  if (!customCommand) {
-    const items = finalizeParsedItems(await listDirectoryViaFs(resolved, limit), resolved, limit);
-    return {
-      items,
-      shellCommand: formatListDirectoryShellCommand(resolved),
-      structured: items.length > 0,
-    };
-  }
-
-  const invocation = {
-    ...buildShellInvocation(resolved, customCommand),
-    shellCommand: customCommand,
-  };
-
-  const result = await runReadonlyShell({
-    shell: invocation.shell,
-    shellArgs: invocation.shellArgs,
-    cwd: resolved,
+  const listed = await listDirectoryViaFs(resolved, {
+    limit,
+    summaryOnly: options.summaryOnly,
+    pattern: options.pattern,
+    extensions: options.extensions,
+    recursive: options.recursive,
   });
-
-  if (!result.ok) {
-    throw new Error(result.error);
-  }
-
-  const stdout = result.stdout.trim();
-  let items = parseListDirectoryShellStdout(stdout);
-  if (items.length > 0 && items.every((item) => !path.isAbsolute(item.path))) {
-    items = parseLs1ApOutput(stdout, resolved);
-  }
-
-  let parseRejected = false;
-  if (customCommand && items.length > 0 && looksLikeMisparsedShellTableOutput(items)) {
-    parseRejected = true;
-    items = [];
-  }
-
-  items = finalizeParsedItems(items, resolved, limit);
-  const structured = items.length > 0;
-
   return {
-    items,
-    shellCommand: invocation.shellCommand,
-    terminalOutput: structured ? undefined : stdout,
-    structured,
-    parseRejected,
+    items: listed.items,
+    shellCommand: formatListDirectoryShellCommand(resolved),
+    structured: true,
+    aggregation: listed.aggregation,
+    warnings: listed.warnings,
+    permissionDenied: listed.permissionDenied,
   };
 }

@@ -9,6 +9,7 @@ module.exports = {
         '^(\\.{1,2}/.*)\\.js$': '$1',
         '^@desktop-server/(.*)$': '<rootDir>/../desktop-server/src/$1',
     },
+    setupFiles: ['<rootDir>/jest.setup.cjs'],
     transform: {
         '^.+\\.ts$': [
             'ts-jest',

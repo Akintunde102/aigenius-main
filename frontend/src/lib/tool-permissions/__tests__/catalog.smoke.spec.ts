@@ -1,10 +1,16 @@
-/** Smoke test — verifies source is tracked; extend with behavior tests. */
-import * as fs from 'fs';
-import * as path from 'path';
+import { getCatalogEntry } from '../catalog';
 
-describe('catalog smoke', () => {
-  it('source file exists', () => {
-    const source = path.join(__dirname, '..', 'catalog.ts');
-    expect(fs.existsSync(source)).toBe(true);
+describe('tool permission catalog', () => {
+  it('does not require a confirmation dialog before shell commands', () => {
+    expect(getCatalogEntry('local_shell')?.defaultRequiresApproval).toBe(false);
+    expect(getCatalogEntry('run_command')?.defaultRequiresApproval).toBe(false);
+  });
+
+  it('still asks before applying file patches by default', () => {
+    expect(getCatalogEntry('local_apply_patch')?.defaultRequiresApproval).toBe(true);
+  });
+
+  it('does not require approval for Google image search', () => {
+    expect(getCatalogEntry('serper_google_images')?.defaultRequiresApproval).toBe(false);
   });
 });

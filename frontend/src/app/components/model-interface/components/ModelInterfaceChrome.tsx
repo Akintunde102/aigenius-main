@@ -3,14 +3,12 @@
 import React from "react";
 import { ChatErrorMessage } from "@/app/components/model-interface/features/chat/components/ChatErrorMessage";
 import { WalletCreditsMigrationBanner } from "@/app/components/model-interface/components/WalletCreditsMigrationBanner";
-import type { ChatMessage } from "@/app/components/model-interface/shared/types";
+import type { ChatUiError } from "@/app/components/model-interface/features/chat/hooks/chatUiError";
 import styles from "../ModelInterface.module.scss";
 
 type ModelInterfaceChromeProps = {
-  error: string;
+  error: ChatUiError | null;
   optimizationMessage: string;
-  input: string;
-  chat: ChatMessage[];
   canRetryError?: boolean;
   onDismissError: () => void;
   onRetryError: () => void | Promise<void>;
@@ -30,8 +28,8 @@ export function ModelInterfaceChrome({
 
       {error ? (
         <ChatErrorMessage
-          message={error}
-          canRetry={canRetryError}
+          error={error}
+          canRetry={canRetryError && error.retryAction !== "none"}
           onRetry={onRetryError}
           onDismiss={onDismissError}
         />

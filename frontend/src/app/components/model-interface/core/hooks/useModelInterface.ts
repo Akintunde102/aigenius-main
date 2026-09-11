@@ -12,6 +12,10 @@ import {
   usePersistSessionMessages,
 } from "../../features/chat/hooks";
 import { DRAFT_SESSION_KEY } from "../../features/chat/hooks/chatOperations.constants";
+import {
+  normalizeChatUiError,
+  type ChatUiError,
+} from "../../features/chat/hooks/chatUiError";
 import { isSessionInFlight as checkSessionInFlight } from "../../conversation/sessionInFlight";
 import { useModelInterfaceMessageQueue } from "../../features/chat/hooks/useModelInterfaceMessageQueue";
 import { useUIState, useScrollAndKeyboard } from "../../shared/hooks";
@@ -189,7 +193,10 @@ export function useModelInterface(options?: {
     return chatMap[sessionKey] || [];
   }, [chatMap]);
 
-  const [modelError, setModelError] = useState("");
+  const [modelError, setModelErrorState] = useState<ChatUiError | null>(null);
+  const setModelError = useCallback((value: string | ChatUiError | null) => {
+    setModelErrorState(normalizeChatUiError(value));
+  }, []);
   const [personalities, setPersonalities] = useState<PersonaType[]>([]);
   const [selectedPersonalityName, setSelectedPersonalityName] = useState<
     string | undefined

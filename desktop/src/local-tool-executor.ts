@@ -1,7 +1,6 @@
-import { dialog, shell } from 'electron';
+import { shell } from 'electron';
 import type { BrowserWindow, WebContents } from 'electron';
 import { applyLocalPatch } from './local-apply-patch';
-import { showShellApprovalDialog } from './shell-approval-dialog';
 import { resolveBrowserWindowForIpcSender } from './resolve-browser-window-for-ipc';
 import { getRetrievalMemoryBySlugFromTool, upsertRetrievalMemoryFromTool } from './local-retrieval-memory';
 import { spawn } from 'child_process';

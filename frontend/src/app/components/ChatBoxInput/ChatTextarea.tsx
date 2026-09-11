@@ -135,3 +135,5 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
     </div>
   );
 });
+
+ChatTextarea.displayName = 'ChatTextarea';

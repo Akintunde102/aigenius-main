@@ -64,11 +64,13 @@ describe("wallet migration banner visibility", () => {
   });
 
   it("hides after a verified post-migration top-up", () => {
+    const nowMs = Date.parse("2026-08-20T12:00:00.000Z");
     expect(shouldHideMigrationBannerAfterTopUp(validRecord, 5000)).toBe(true);
     expect(shouldShowWalletMigrationBanner({
       record: validRecord,
       userId: "user-1",
       isDismissed: false,
+      nowMs,
     })).toBe(true);
   });
 });

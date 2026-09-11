@@ -3,9 +3,13 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { FiFolderPlus, FiX } from "react-icons/fi";
-import { Shuffle } from "lucide-react";
+import { FolderPlus, Shuffle } from "lucide-react";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
 import { generateRandomProjectName } from "@/lib/code-projects/random-project-name";
+import {
+  applyCreateNamedFolderResult,
+  resolveNameForNamedFolderCreate,
+} from "@/lib/code-projects/named-project-folder.utils";
 
 type CreateCodeProjectModalProps = {
   open: boolean;
@@ -30,6 +34,7 @@ export function CreateCodeProjectModal({
   const [rootPath, setRootPath] = useState("");
   const [rules, setRules] = useState("");
   const [saving, setSaving] = useState(false);
+  const [creatingFolder, setCreatingFolder] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -40,14 +45,14 @@ export function CreateCodeProjectModal({
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || saving) return;
+      if (e.key !== "Escape" || saving || creatingFolder) return;
       e.preventDefault();
       e.stopPropagation();
       onClose();
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [open, onClose, saving]);
+  }, [open, onClose, saving, creatingFolder]);
 
   const handlePickFolder = useCallback(async () => {
     const bridge = window.aigeniusDesktop;
@@ -66,6 +71,37 @@ export function CreateCodeProjectModal({
   const handleRandomName = useCallback(() => {
     setName(generateRandomProjectName());
   }, []);
+
+  const handleCreateNamedFolder = useCallback(async () => {
+    const resolved = resolveNameForNamedFolderCreate(name, generateRandomProjectName);
+    if (resolved.generated) {
+      setName(resolved.name);
+    }
+
+    const bridge = window.aigeniusDesktop;
+    if (!bridge || typeof bridge.createNamedProjectDirectory !== "function") {
+      setError("Creating folders is available in the desktop app only");
+      return;
+    }
+
+    setCreatingFolder(true);
+    setError(null);
+    try {
+      const result = await bridge.createNamedProjectDirectory({ folderName: resolved.name });
+      const applied = applyCreateNamedFolderResult(result);
+      if (applied.status === "filled") {
+        setRootPath(applied.path);
+        return;
+      }
+      if (applied.status === "error") {
+        setError(applied.message);
+      }
+    } catch {
+      setError("Could not create folder");
+    } finally {
+      setCreatingFolder(false);
+    }
+  }, [name]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +138,7 @@ export function CreateCodeProjectModal({
     <div
       role="presentation"
       className="app-modal-overlay backdrop-blur-[2px]"
-      onClick={saving ? undefined : onClose}
+      onClick={saving || creatingFolder ? undefined : onClose}
     >
       <form
         role="dialog"
@@ -136,7 +172,7 @@ export function CreateCodeProjectModal({
           <button
             type="button"
             onClick={onClose}
-            disabled={saving}
+            disabled={saving || creatingFolder}
             className="shrink-0 rounded-lg p-2 transition-colors hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40 disabled:opacity-50"
             style={{ color: "var(--modal-muted-fg)" }}
             aria-label="Close"
@@ -184,9 +220,30 @@ export function CreateCodeProjectModal({
               Folder
             </label>
             <FieldDescription>
-              Root directory for search indexing and desktop file access.
+              {desktop
+                ? "Use New to create a folder from the project name, or Browse an existing one."
+                : "Root directory for search indexing and desktop file access."}
             </FieldDescription>
             <div className="flex gap-2">
+              {desktop ? (
+                <button
+                  type="button"
+                  onClick={() => void handleCreateNamedFolder()}
+                  disabled={saving || creatingFolder}
+                  className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 text-sm font-medium transition-colors hover:bg-[color-mix(in_srgb,var(--surface-muted)_80%,transparent)] disabled:opacity-50"
+                  style={{
+                    borderColor: "var(--modal-border)",
+                    color: "var(--modal-fg)",
+                    background: "var(--surface-muted)",
+                  }}
+                  aria-label="Create a folder named after this project"
+                  title="Create a folder named after this project"
+                  aria-busy={creatingFolder}
+                >
+                  <FolderPlus className="h-3.5 w-3.5" aria-hidden />
+                  {creatingFolder ? "Creating…" : "New"}
+                </button>
+              ) : null}
               <input
                 id="code-project-path"
                 className="app-modal-input min-w-0 flex-1"
@@ -198,7 +255,8 @@ export function CreateCodeProjectModal({
                 <button
                   type="button"
                   onClick={() => void handlePickFolder()}
-                  className="shrink-0 rounded-lg border px-3 text-sm font-medium transition-colors hover:bg-[color-mix(in_srgb,var(--surface-muted)_80%,transparent)]"
+                  disabled={saving || creatingFolder}
+                  className="shrink-0 rounded-lg border px-3 text-sm font-medium transition-colors hover:bg-[color-mix(in_srgb,var(--surface-muted)_80%,transparent)] disabled:opacity-50"
                   style={{
                     borderColor: "var(--modal-border)",
                     color: "var(--modal-fg)",
@@ -244,14 +302,14 @@ export function CreateCodeProjectModal({
             onClick={onClose}
             className="rounded-lg px-3 py-1.5 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
             style={{ color: "var(--modal-muted-fg)" }}
-            disabled={saving}
+            disabled={saving || creatingFolder}
           >
             Cancel
           </button>
           <button
             type="submit"
             className="app-modal-btn-primary px-4 py-1.5 text-sm"
-            disabled={saving}
+            disabled={saving || creatingFolder}
           >
             {saving ? "Creating…" : "Create"}
           </button>

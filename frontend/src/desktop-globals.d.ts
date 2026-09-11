@@ -20,6 +20,7 @@ declare global {
         preview: string;
       }) => Promise<{ notified: boolean }>;
       startWebSignIn?: () => Promise<{ token?: string | null } | null>;
+      cancelWebSignIn?: () => Promise<{ ok: boolean }>;
       startOAuthSignIn?: (options?: { provider?: 'google' }) => Promise<{ token?: string | null } | null>;
       getDesktopRefreshToken?: () => Promise<string | null>;
       setDesktopRefreshToken?: (token: string) => Promise<{ ok: boolean }>;
@@ -65,6 +66,11 @@ declare global {
         payload: { projectId: string; rootPath: string } | null,
       ) => Promise<{ ok: boolean }>;
       pickProjectDirectory?: () => Promise<{ path: string } | null>;
+      createNamedProjectDirectory?: (payload: { folderName: string }) => Promise<
+        | { ok: true; path: string; created?: boolean }
+        | { ok: true; canceled: true }
+        | { ok: false; error: string }
+      >;
       runLocalDesktopTool?: (
         payload: { tool: string; arguments: Record<string, unknown> },
         options?: {

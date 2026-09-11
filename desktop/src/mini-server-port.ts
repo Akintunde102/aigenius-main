@@ -20,7 +20,7 @@ export function resolveMiniServerPort(): string {
   if (raw !== undefined && String(raw).trim() !== '') {
     return String(raw).trim();
   }
-  if (app.isPackaged) {
+  if (app?.isPackaged) {
     return PACKAGED_MINI_SERVER_PORT;
   }
   return DEV_MINI_SERVER_PORT;

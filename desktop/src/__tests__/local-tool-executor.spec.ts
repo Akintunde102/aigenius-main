@@ -3,6 +3,7 @@ import * as formatter from '../utils/tool-formatter';
 
 // Mock Electron
 jest.mock('electron', () => ({
+  app: { isPackaged: false },
   dialog: {
     showMessageBox: jest.fn(),
   },

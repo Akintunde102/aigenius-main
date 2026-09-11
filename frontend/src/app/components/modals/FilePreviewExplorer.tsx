@@ -27,6 +27,7 @@ import {
   renamePath,
 } from './file-preview-fs';
 import { pathsEqual } from './file-preview-explorer.utils';
+import { copyLocalItem } from './file-preview-os-actions.utils';
 
 export interface ExplorerItem {
   path: string;
@@ -129,6 +130,7 @@ function ExplorerTreeNode({
   onOpenItem,
   onStartRename,
   onDelete,
+  onCopy,
   onInlineEditChange,
   onInlineCommit,
   onInlineCancel,
@@ -146,6 +148,7 @@ function ExplorerTreeNode({
   onOpenItem: (item: ExplorerItem) => void;
   onStartRename: (item: ExplorerItem) => void;
   onDelete: (item: ExplorerItem) => void;
+  onCopy: (item: ExplorerItem) => void;
   onInlineEditChange: (edit: InlineEdit) => void;
   onInlineCommit: () => void;
   onInlineCancel: () => void;
@@ -235,6 +238,9 @@ function ExplorerTreeNode({
 
         {!isRenaming && (
           <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
+            <ExplorerIconButton onClick={() => onCopy(item)} title={item.isDir ? 'Copy folder' : 'Copy file'}>
+              <Copy size={11} />
+            </ExplorerIconButton>
             <ExplorerIconButton onClick={() => onStartRename(item)} title="Rename (F2)">
               <Pencil size={11} />
             </ExplorerIconButton>
@@ -257,6 +263,7 @@ function ExplorerTreeNode({
           onOpenItem={onOpenItem}
           onStartRename={onStartRename}
           onDelete={onDelete}
+          onCopy={onCopy}
           onInlineEditChange={onInlineEditChange}
           onInlineCommit={onInlineCommit}
           onInlineCancel={onInlineCancel}
@@ -276,6 +283,7 @@ function ExplorerTreeBranch({
   onOpenItem,
   onStartRename,
   onDelete,
+  onCopy,
   onInlineEditChange,
   onInlineCommit,
   onInlineCancel,
@@ -289,6 +297,7 @@ function ExplorerTreeBranch({
   onOpenItem: (item: ExplorerItem) => void;
   onStartRename: (item: ExplorerItem) => void;
   onDelete: (item: ExplorerItem) => void;
+  onCopy: (item: ExplorerItem) => void;
   onInlineEditChange: (edit: InlineEdit) => void;
   onInlineCommit: () => void;
   onInlineCancel: () => void;
@@ -319,6 +328,7 @@ function ExplorerTreeBranch({
       onOpenItem={onOpenItem}
       onStartRename={onStartRename}
       onDelete={onDelete}
+      onCopy={onCopy}
       onInlineEditChange={onInlineEditChange}
       onInlineCommit={onInlineCommit}
       onInlineCancel={onInlineCancel}
@@ -386,6 +396,7 @@ export function FilePreviewExplorer({
   const [rootExpanded, setRootExpanded] = useState(true);
   const newMenuRef = useRef<HTMLDivElement>(null);
   const activeRowRef = useRef<HTMLDivElement | null>(null);
+  const asideRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!activePath) return;
@@ -397,12 +408,21 @@ export function FilePreviewExplorer({
   const rootChildren = getChildren(treeRoot);
   const rootLoading = isLoading(treeRoot);
 
-  const handleCopyPath = useCallback(() => {
-    if (!treeRoot) return;
-    copy(treeRoot);
+  const handleCopyItem = useCallback(async (itemPath: string) => {
+    if (!itemPath) return;
+    const bridge = (window as {
+      aigeniusDesktop?: {
+        copyFileToClipboard?: (path: string) => Promise<{ ok: boolean; error?: string }>;
+      };
+    }).aigeniusDesktop;
+    const ok = await copyLocalItem(itemPath, {
+      copyFileToClipboard: bridge?.copyFileToClipboard,
+      writeText: (text) => copy(text),
+    });
+    if (!ok) return;
     setCopiedPath(true);
     window.setTimeout(() => setCopiedPath(false), 1500);
-  }, [treeRoot]);
+  }, []);
 
   useEffect(() => {
     if (!showNewMenu) return;
@@ -507,6 +527,11 @@ export function FilePreviewExplorer({
           ({ path: selectedPath, name: selectedPath.split(/[\\/]/).pop() || selectedPath, isDir: selectedIsDir } as ExplorerItem);
         void handleDelete(item);
       }
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'c') {
+        if (!(e.target instanceof Node) || !asideRef.current?.contains(e.target)) return;
+        e.preventDefault();
+        void handleCopyItem(selectedPath);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -521,6 +546,7 @@ export function FilePreviewExplorer({
 
   return (
     <aside
+      ref={asideRef}
       className="flex w-60 shrink-0 flex-col overflow-hidden border-r sm:w-64"
       style={{ borderColor: 'var(--modal-border)', background: 'var(--surface-muted)' }}
     >
@@ -573,7 +599,14 @@ export function FilePreviewExplorer({
         className="flex shrink-0 items-center gap-0.5 border-b px-1.5 py-1"
         style={{ borderColor: 'var(--modal-border)', background: 'var(--modal-bg)' }}
       >
-        <ExplorerIconButton onClick={handleCopyPath} title={`Copy root path: ${treeRoot}`}>
+        <ExplorerIconButton
+          onClick={() => void handleCopyItem(selectedPath || treeRoot)}
+          title={
+            selectedPath
+              ? `Copy ${selectedIsDir ? 'folder' : 'file'}: ${selectedPath}`
+              : `Copy folder: ${treeRoot}`
+          }
+        >
           {copiedPath ? <Check size={13} className="text-green-500" /> : <Copy size={13} />}
         </ExplorerIconButton>
         <span
@@ -663,6 +696,7 @@ export function FilePreviewExplorer({
                   onOpenItem={onOpenItem}
                   onStartRename={startRename}
                   onDelete={(entry) => void handleDelete(entry)}
+                  onCopy={(entry) => void handleCopyItem(entry.path)}
                   onInlineEditChange={setInlineEdit}
                   onInlineCommit={() => void commitInline()}
                   onInlineCancel={cancelInline}

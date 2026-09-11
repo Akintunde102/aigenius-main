@@ -90,15 +90,28 @@ export function applyStreamingTurnUpdate(
     const next = [...events];
     const reasoningChunk = extractReasoningChunk(params.reasoning, params.reasoningDetails);
     if (reasoningChunk) {
-        appendThinkingChunk(next, reasoningChunk);
+        const last = next[next.length - 1];
+        if (last?.type === 'thinking' && last.loading) {
+            next[next.length - 1] = { ...last, content: last.content + reasoningChunk };
+        } else {
+            next.push({
+                type: 'thinking',
+                content: reasoningChunk,
+                loading: true,
+                timestamp: Date.now(),
+            } satisfies ThinkingEvent);
+        }
     }
 
     const textChunk = params.textChunk;
     if (textChunk) {
-        finalizeOpenThinkingEvent(next);
         const last = next[next.length - 1];
-        if (last?.type === 'text') {
-            last.content += textChunk;
+        if (last?.type === 'thinking' && last.loading) {
+            next[next.length - 1] = { ...last, loading: false };
+        }
+        const lastAfter = next[next.length - 1];
+        if (lastAfter?.type === 'text') {
+            next[next.length - 1] = { ...lastAfter, content: lastAfter.content + textChunk };
         } else {
             next.push({ type: 'text', content: textChunk });
         }

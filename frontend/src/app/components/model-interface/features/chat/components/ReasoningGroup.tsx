@@ -7,7 +7,11 @@ import styles from './ReasoningGroup.module.scss';
 
 interface ReasoningGroupProps {
   event: ThinkingEvent;
-  /** True while the assistant turn is still streaming. */
+  /**
+   * True while the assistant turn is still streaming.
+   * Must not keep this panel open — thinking closes as soon as `event.loading` is false,
+   * so later tool/text streams are not covered by an expanded Thinking… block.
+   */
   messageStreaming?: boolean;
   /** Timeline rows inside the completed turn summary — label only, content on expand. */
   variant?: 'live' | 'timeline';
@@ -15,20 +19,28 @@ interface ReasoningGroupProps {
 
 export function ReasoningGroup({
   event,
-  messageStreaming = false,
   variant = 'live',
 }: ReasoningGroupProps) {
-  const [open, setOpen] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
   const isTimeline = variant === 'timeline';
-  const thinkingInProgress = !isTimeline && (messageStreaming || event.loading);
+  const thinkingInProgress = !isTimeline && event.loading;
+  const [open, setOpen] = useState(() => thinkingInProgress);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const wasThinkingRef = useRef(thinkingInProgress);
+
   const headerLabel = thinkingInProgress ? 'Thinking…' : 'Thought:';
 
   useEffect(() => {
     if (isTimeline) return;
+
     if (thinkingInProgress) {
       setOpen(true);
+      wasThinkingRef.current = true;
+      return;
+    }
+
+    if (wasThinkingRef.current) {
+      setOpen(false);
+      wasThinkingRef.current = false;
     }
   }, [isTimeline, thinkingInProgress]);
 

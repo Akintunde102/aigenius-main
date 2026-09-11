@@ -6,7 +6,10 @@
  *
  * Usage: node scripts/install-server-deps-for-platform.cjs [platform] [arch]
  *   e.g. win32 x64   (default: current process.platform / process.arch)
+ *
+ * Set AIGENIUS_FORCE_PACK_DEPS=1 to ignore the ready stamp and reinstall.
  */
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
@@ -24,6 +27,15 @@ const serverLock = path.join(serverRoot, 'package-lock.json');
 if (!fs.existsSync(serverPkg)) {
   console.error('Missing desktop-server/package.json');
   process.exit(1);
+}
+
+function depsFingerprint() {
+  const chunks = [];
+  chunks.push(fs.readFileSync(serverPkg));
+  if (fs.existsSync(serverLock)) {
+    chunks.push(fs.readFileSync(serverLock));
+  }
+  return crypto.createHash('sha256').update(Buffer.concat(chunks)).digest('hex').slice(0, 16);
 }
 
 function sharpPlatformPackageName(targetPlatform, targetArch) {
@@ -49,13 +61,35 @@ const markers = [
   path.join(nodeModulesDir, 'onnxruntime-node', 'bin', 'napi-v6', platform, arch, 'onnxruntime_binding.node'),
   path.join(nodeModulesDir, 'ppu-paddle-ocr'),
   path.join(nodeModulesDir, 'ts-morph'),
-  path.join(nodeModulesDir, 'web-tree-sitter'),
   path.join(nodeModulesDir, '@vscode', 'ripgrep'),
   ...(sharpPkg ? [path.join(nodeModulesDir, '@img', sharpPkg)] : []),
 ];
 
+function readReadyStamp() {
+  if (!fs.existsSync(readyStamp)) {
+    return null;
+  }
+  try {
+    return JSON.parse(fs.readFileSync(readyStamp, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
 function packDepsValid() {
-  return fs.existsSync(readyStamp) && markers.every((marker) => fs.existsSync(marker));
+  const force = ['1', 'true', 'yes'].includes(
+    String(process.env.AIGENIUS_FORCE_PACK_DEPS || '').trim().toLowerCase(),
+  );
+  if (force) {
+    return false;
+  }
+
+  const stamp = readReadyStamp();
+  if (!stamp || stamp.depsFingerprint !== depsFingerprint()) {
+    return false;
+  }
+
+  return markers.every((marker) => fs.existsSync(marker));
 }
 
 if (packDepsValid()) {
@@ -87,9 +121,6 @@ execSync(
     },
   },
 );
-
-// electron-rebuild removed because modern native deps (better-sqlite3, onnxruntime) use N-API
-// and provide cross-platform prebuilds that are ABI stable without recompilation.
 
 if (sharpPkg) {
   const sharpPlatformDir = path.join(nodeModulesDir, '@img', sharpPkg);
@@ -145,9 +176,26 @@ for (const marker of markers) {
   }
 }
 
+for (const entry of fs.readdirSync(nodeModulesDir)) {
+  if (entry === 'tree-sitter' || entry.startsWith('tree-sitter-') || entry === 'web-tree-sitter') {
+    console.error(`install-server-deps: unexpected package still installed: ${entry}`);
+    process.exit(1);
+  }
+}
+
 fs.writeFileSync(
   readyStamp,
-  JSON.stringify({ platform, arch, electronVersion: 'native-prebuilds', builtAt: new Date().toISOString() }, null, 2),
+  JSON.stringify(
+    {
+      platform,
+      arch,
+      depsFingerprint: depsFingerprint(),
+      electronVersion: 'native-prebuilds',
+      builtAt: new Date().toISOString(),
+    },
+    null,
+    2,
+  ),
 );
 
 console.info(`install-server-deps: OK → ${nodeModulesDir}`);

@@ -49,7 +49,10 @@ describe('ToolStreamingCard (workflow_intent)', () => {
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: /^Details$/i }));
+        const toggle = screen.getByRole('button', { name: /Workflow agent/i });
+        if (toggle.getAttribute('aria-expanded') !== 'true') {
+            fireEvent.click(toggle);
+        }
 
         expect(screen.getByTestId('workflow-transcript-mock')).toHaveTextContent('transcript:run-e2e-99');
     });
@@ -68,7 +71,7 @@ describe('ToolStreamingCard (workflow_intent)', () => {
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: /^Details$/i }));
+        fireEvent.click(screen.getByRole('button'));
 
         expect(screen.queryByTestId('workflow-transcript-mock')).not.toBeInTheDocument();
     });
@@ -83,7 +86,7 @@ describe('ToolStreamingCard (workflow_intent)', () => {
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: /^Details$/i }));
+        fireEvent.click(screen.getByRole('button'));
 
         expect(screen.queryByTestId('workflow-transcript-mock')).not.toBeInTheDocument();
     });

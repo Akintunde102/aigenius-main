@@ -15,6 +15,17 @@ jest.mock('axios', () => ({
   },
 }));
 
+jest.mock('@/lib/utils/desktop-auth-refresh', () => ({
+  canUseDesktopStoredRefreshToken: () => false,
+  clearDesktopStoredRefreshToken: jest.fn().mockResolvedValue(undefined),
+  readDesktopStoredRefreshToken: jest.fn().mockResolvedValue(undefined),
+  getDesktopNativeClientHeaders: () => ({}),
+}));
+
+jest.mock('@/lib/utils/chatStorage', () => ({
+  clearChatStorage: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('@/lib/utils/store', () => {
   return {
     __esModule: true,
@@ -47,9 +58,11 @@ describe('Auth Session Utils', () => {
     });
 
     describe('clearAuthSession', () => {
-        it('should clear local auth state and request backend logout', () => {
+        it('should clear local auth state and request backend logout', async () => {
             clearAuthSession();
-            
+            await Promise.resolve();
+            await Promise.resolve();
+
             expect(axios.post).toHaveBeenCalled();
             expect(storage).not.toHaveBeenCalledWith(storageConstants.NOBOX_REFRESH_TOKEN);
             expect(mockRemoveItem).toHaveBeenCalledTimes(3);

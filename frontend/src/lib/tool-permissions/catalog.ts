@@ -17,7 +17,8 @@ export const TOOL_PERMISSION_CATALOG: ToolPermissionCatalogEntry[] = [
     id: 'local_shell',
     label: 'Run shell commands',
     description: 'Execute terminal commands on your computer',
-    defaultRequiresApproval: MUTATING,
+    // Commands already show in the chat card; a second confirmation window is noise.
+    defaultRequiresApproval: false,
     aliases: ['run_command'],
   },
   {
@@ -169,6 +170,12 @@ export const TOOL_PERMISSION_CATALOG: ToolPermissionCatalogEntry[] = [
     id: 'serper_google_search',
     label: 'Google search',
     description: 'Run a web search via Serper',
+    defaultRequiresApproval: READ_ONLY,
+  },
+  {
+    id: 'serper_google_images',
+    label: 'Google image search',
+    description: 'Search for real photographs to show in chat',
     defaultRequiresApproval: READ_ONLY,
   },
   {

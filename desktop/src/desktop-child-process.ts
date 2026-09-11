@@ -2,6 +2,7 @@ import { utilityProcess, type UtilityProcess } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { spawn, type ChildProcess } from 'child_process';
+import { hiddenSpawnOptions } from './utils/hidden-child-process';
 
 export type ManagedDesktopChild = ChildProcess | UtilityProcess;
 
@@ -106,11 +107,15 @@ function spawnAsNode(
     }
   }
 
-  const child = spawn(binary, [scriptPath], {
-    cwd: opts.cwd,
-    env,
-    stdio: stdioConfig,
-  });
+  const child = spawn(
+    binary,
+    [scriptPath],
+    hiddenSpawnOptions({
+      cwd: opts.cwd,
+      env,
+      stdio: stdioConfig,
+    }),
+  );
 
   if (outStream && child.stdout && child.stderr) {
     wireLogStreams(child, outStream);

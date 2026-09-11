@@ -50,6 +50,15 @@ describe('useDesktopSessionRestore', () => {
         window.history.replaceState({}, '', '/desktop-login?aigenius_shell=1');
     });
 
+    it('starts in restoring state before desktop detection runs', () => {
+        mockEnsureGatewayAuthReady.mockResolvedValue('restored-jwt');
+        mockGetValidAccessToken.mockReturnValue('restored-jwt');
+
+        const { result } = renderHook(() => useDesktopSessionRestore());
+
+        expect(result.current.restoring).toBe(true);
+    });
+
     it('restores a stored desktop session on cold start', async () => {
         mockEnsureGatewayAuthReady.mockResolvedValue('restored-jwt');
         mockGetValidAccessToken.mockReturnValue('restored-jwt');
