@@ -65,11 +65,21 @@ import { createWindow, getWindowIcon, navigateMainShellToApp, resolveWindowIconP
 import { registerMainIpcHandlers } from './main-ipc-handlers';
 import { registerSecondaryBrowserWindowPolicy } from './secondary-browser-window';
 import { installDesktopUiProtocolHandler } from './desktop-ui-protocol';
-import { DESKTOP_APP_USER_MODEL_ID } from './desktop-app-identity';
+import path from 'path';
+import { DESKTOP_APP_USER_MODEL_ID, resolveDesktopUserDataDirName } from './desktop-app-identity';
 
 if (process.platform === 'win32') {
   app.setAppUserModelId(DESKTOP_APP_USER_MODEL_ID);
 }
+
+// Must run before requestSingleInstanceLock(). Electron's default userData dir comes from
+// package.json's top-level "name" ("aigenius-desktop"), the same for dev and packaged builds,
+// so without this override a fresh install silently reuses the dev/Tilt profile folder.
+// Packaged/installed apps get %APPDATA%\AIGenius; `electron .` and Tilt get AIGenius-dev.
+app.setPath(
+  'userData',
+  path.join(app.getPath('appData'), resolveDesktopUserDataDirName(app.isPackaged)),
+);
 
 function showInotifyWarningAsync(): void {
   const limitCheck = checkInotifyLimit();

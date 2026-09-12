@@ -9,6 +9,14 @@ function makeDb() {
   return createTestSearchDb();
 }
 
+function removeDirSafe(dir: string): void {
+  try {
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  } catch {
+    // Windows can briefly lock temp dirs after sqlite closes.
+  }
+}
+
 describe('getContext project root', () => {
   it('returns project_overview for project root path', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aigenius-getctx-'));
@@ -32,7 +40,7 @@ describe('getContext project root', () => {
     expect(result.projectOverview?.architectureMarkdown).toContain('Project structural map');
 
     db.close();
-    fs.rmSync(root, { recursive: true, force: true });
+    removeDirSafe(root);
   });
 
   it('returns directory_overview for subdirectory path', async () => {
@@ -48,7 +56,7 @@ describe('getContext project root', () => {
     expect(result.directoryOverview?.path).toBe(path.normalize(sub));
 
     db.close();
-    fs.rmSync(root, { recursive: true, force: true });
+    removeDirSafe(root);
   });
 });
 

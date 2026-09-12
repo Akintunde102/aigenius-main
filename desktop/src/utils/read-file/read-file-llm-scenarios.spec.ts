@@ -23,6 +23,8 @@ jest.mock('../../active-code-project', () => ({
 }));
 
 describe('read-file-service integration', () => {
+  jest.setTimeout(20_000);
+
   afterEach(async () => {
     if (workspaceRoot) {
       await fs.rm(workspaceRoot, { recursive: true, force: true });

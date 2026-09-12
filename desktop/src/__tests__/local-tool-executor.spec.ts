@@ -1,12 +1,20 @@
 import { runLocalDesktopTool } from '../local-tool-executor';
 import * as formatter from '../utils/tool-formatter';
+import { applySyncedToolPermissionPreferences, resetToolPermissionPreferencesCacheForTests } from '../tool-permission-preferences';
 
 // Mock Electron
 jest.mock('electron', () => ({
-  app: { isPackaged: false },
+  app: {
+    isPackaged: false,
+    getPath: jest.fn(() => '/tmp/aigenius-test'),
+  },
   dialog: {
     showMessageBox: jest.fn(),
   },
+}));
+
+jest.mock('../shell-approval-dialog', () => ({
+  showShellApprovalDialog: jest.fn().mockResolvedValue(true),
 }));
 
 // Mock resolve-browser-window-for-ipc
@@ -33,6 +41,11 @@ describe('local-tool-executor', () => {
   });
 
   beforeEach(() => {
+    resetToolPermissionPreferencesCacheForTests();
+    applySyncedToolPermissionPreferences({
+      autoApproveAll: true,
+      requireApprovalByTool: {},
+    });
     global.fetch = jest.fn();
     jest.clearAllMocks();
   });

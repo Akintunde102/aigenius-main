@@ -10,9 +10,26 @@ import { indexRust } from './rust-indexer.js';
 import { indexCpp, isCppExtension } from './cpp-indexer.js';
 import { indexMakefile, isMakefile } from './makefile-indexer.js';
 import { parseSymbolsAsync } from './symbol-parser.js';
-import { indexWithTreeSitter } from './tree-sitter-indexer.js';
+import type { IndexedEdge, IndexedSymbol } from './language-indexer.js';
 
-import type { IndexedSymbol } from './language-indexer.js';
+/**
+ * `web-tree-sitter` is intentionally excluded from packaged builds (see
+ * `install-server-deps-for-platform.cjs`), so `./tree-sitter-indexer.js` must never be a
+ * static import here — that would fail the whole ESM module graph at load time and crash
+ * the mini-server. Load it lazily and fall back to null when unavailable.
+ */
+async function safeIndexWithTreeSitter(
+  content: string,
+  extension: string,
+): Promise<{ symbols: IndexedSymbol[]; edges: IndexedEdge[] } | null> {
+  try {
+    const { indexWithTreeSitter } = await import('./tree-sitter-indexer.js');
+    return await indexWithTreeSitter(content, extension);
+  } catch (err) {
+    console.warn('[intelligence-router] tree-sitter unavailable, skipping:', err);
+    return null;
+  }
+}
 
 function mergeSymbols(base: IndexedSymbol[], extra: IndexedSymbol[]): IndexedSymbol[] {
   const seen = new Set(base.map((s) => `${s.kind}:${s.name}:${s.lineStart}`));
@@ -45,7 +62,7 @@ export async function indexFileIntelligenceFast(
   }
 
   if (isTypeScriptExtension(ext)) {
-    const tree = await indexWithTreeSitter(content, ext);
+    const tree = await safeIndexWithTreeSitter(content, ext);
     if (tree) {
       return {
         language: 'typescript',
@@ -67,7 +84,7 @@ export async function indexFileIntelligenceFast(
   }
 
   if (ext === 'py') {
-    const tree = await indexWithTreeSitter(content, ext);
+    const tree = await safeIndexWithTreeSitter(content, ext);
     const result = await indexPython(filePath, content);
     if (tree) {
       return {
@@ -81,7 +98,7 @@ export async function indexFileIntelligenceFast(
   }
 
   if (ext === 'rs') {
-    const tree = await indexWithTreeSitter(content, ext);
+    const tree = await safeIndexWithTreeSitter(content, ext);
     const result = await indexRust(filePath, content);
     if (tree) {
       return {
@@ -95,7 +112,7 @@ export async function indexFileIntelligenceFast(
   }
 
   if (isCppExtension(ext)) {
-    const tree = await indexWithTreeSitter(content, ext);
+    const tree = await safeIndexWithTreeSitter(content, ext);
     const result = await indexCpp(filePath, content, ext);
     if (tree) {
       return {
