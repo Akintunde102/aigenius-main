@@ -1,6 +1,8 @@
 import { shouldPersistDesktopApiRoot as shouldPersistAuthApiRoot } from '@/lib/utils/legacy-api-roots';
 
 const DESKTOP_API_ROOT_SESSION_KEY = 'desktop_api_root';
+export const DESKTOP_CALLBACK_SESSION_KEY = 'desktop_callback';
+export const DESKTOP_PKCE_CHALLENGE_SESSION_KEY = 'desktop_pkce_challenge';
 
 /** Ignore legacy desktop default API roots that break Tilt dev OAuth. */
 export function shouldPersistDesktopApiRoot(apiRoot: string): boolean {
@@ -14,6 +16,52 @@ export function storeDesktopApiRoot(apiRoot: string): void {
   const trimmed = apiRoot.trim().replace(/\/+$/, '');
   if (trimmed) {
     sessionStorage.setItem(DESKTOP_API_ROOT_SESSION_KEY, trimmed);
+  }
+}
+
+export function storeDesktopHandoffSession(args: {
+  callback: string;
+  pkceChallenge?: string | null;
+}): void {
+  const callback = args.callback.trim();
+  if (!callback) {
+    return;
+  }
+  sessionStorage.setItem(DESKTOP_CALLBACK_SESSION_KEY, callback);
+  const challenge = args.pkceChallenge?.trim();
+  if (challenge) {
+    sessionStorage.setItem(DESKTOP_PKCE_CHALLENGE_SESSION_KEY, challenge);
+  } else {
+    sessionStorage.removeItem(DESKTOP_PKCE_CHALLENGE_SESSION_KEY);
+  }
+}
+
+export function readStoredDesktopCallback(): string | null {
+  try {
+    const value = sessionStorage.getItem(DESKTOP_CALLBACK_SESSION_KEY);
+    const trimmed = value?.trim();
+    return trimmed || null;
+  } catch {
+    return null;
+  }
+}
+
+export function readStoredDesktopPkceChallenge(): string | null {
+  try {
+    const value = sessionStorage.getItem(DESKTOP_PKCE_CHALLENGE_SESSION_KEY);
+    const trimmed = value?.trim();
+    return trimmed || null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearDesktopHandoffSession(): void {
+  try {
+    sessionStorage.removeItem(DESKTOP_CALLBACK_SESSION_KEY);
+    sessionStorage.removeItem(DESKTOP_PKCE_CHALLENGE_SESSION_KEY);
+  } catch {
+    /* ignore */
   }
 }
 

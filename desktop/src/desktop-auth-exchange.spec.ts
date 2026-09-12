@@ -2,6 +2,7 @@ import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals
 
 describe('exchangeDesktopOAuthCode', () => {
   const originalFetch = global.fetch;
+  const codeVerifier = 'pkce-verifier-12345678901234567890123456789012';
 
   beforeEach(() => {
     jest.resetModules();
@@ -21,7 +22,11 @@ describe('exchangeDesktopOAuthCode', () => {
     })) as unknown as typeof fetch;
 
     const { exchangeDesktopOAuthCode } = await import('./desktop-auth-exchange');
-    const result = await exchangeDesktopOAuthCode('http://127.0.0.1:28000', 'oauth-code');
+    const result = await exchangeDesktopOAuthCode(
+      'http://127.0.0.1:28000',
+      'oauth-code',
+      codeVerifier,
+    );
 
     expect(result).toEqual({
       token: 'access-token',
@@ -34,6 +39,7 @@ describe('exchangeDesktopOAuthCode', () => {
         headers: expect.objectContaining({
           'x-aigenius-desktop': '1',
         }),
+        body: JSON.stringify({ code: 'oauth-code', codeVerifier }),
       }),
     );
   });
@@ -45,6 +51,18 @@ describe('exchangeDesktopOAuthCode', () => {
     })) as unknown as typeof fetch;
 
     const { exchangeDesktopOAuthCode } = await import('./desktop-auth-exchange');
-    await expect(exchangeDesktopOAuthCode('http://127.0.0.1:28000', 'bad-code')).resolves.toBeNull();
+    await expect(
+      exchangeDesktopOAuthCode('http://127.0.0.1:28000', 'bad-code', codeVerifier),
+    ).resolves.toBeNull();
+  });
+
+  it('returns null when codeVerifier is missing', async () => {
+    global.fetch = jest.fn() as unknown as typeof fetch;
+
+    const { exchangeDesktopOAuthCode } = await import('./desktop-auth-exchange');
+    await expect(
+      exchangeDesktopOAuthCode('http://127.0.0.1:28000', 'oauth-code', '  '),
+    ).resolves.toBeNull();
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

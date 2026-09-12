@@ -812,7 +812,11 @@ const AddToWallet = ({
               style={{ color: "var(--modal-muted-fg)" }}
             >
               {confirmingPayment
-                ? "Confirming your payment with Payaza…"
+                ? isFlutterwaveWalletProvider()
+                  ? "Confirming your payment with Flutterwave…"
+                  : isPayazaWalletProvider()
+                    ? "Confirming your payment with Payaza…"
+                    : "Confirming your payment…"
                 : "Please wait, preparing checkout…"}
             </div>
           )}

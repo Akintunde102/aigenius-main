@@ -85,7 +85,9 @@ describe('CreateCodeProjectModal named folder button', () => {
         folderName: 'my-app',
       });
     });
-    expect(screen.getByLabelText(/^folder$/i)).toHaveValue('/tmp/swift-atlas-42');
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^folder$/i)).toHaveValue('/tmp/swift-atlas-42');
+    });
     expect(onCreate).not.toHaveBeenCalled();
   });
 

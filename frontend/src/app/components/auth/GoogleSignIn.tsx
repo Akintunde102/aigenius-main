@@ -5,7 +5,11 @@ import Image from "next/image";
 import { completeDesktopOAuthSession } from "@/lib/utils/complete-desktop-oauth-session";
 import { syncAuthSessionCookiesFromStorage } from "@/lib/utils/auth-session";
 import { resolveAuthenticatedDesktopShellRedirect } from "@/lib/utils/safe-internal-next-path";
-import { resolveDesktopGoogleOAuthUrl } from "@/lib/utils/desktop-google-auth-url";
+import {
+    readStoredDesktopCallback,
+    readStoredDesktopPkceChallenge,
+    resolveDesktopGoogleOAuthUrl,
+} from "@/lib/utils/desktop-google-auth-url";
 import {
     isAigeniusDesktopRuntime,
     waitForAigeniusDesktopBridge,
@@ -106,9 +110,10 @@ export const GoogleSignIn = ({
             setIsDesktopSigningIn(false);
         }
         try {
-            const desktopCallback = sessionStorage.getItem('desktop_callback');
+            const desktopCallback = readStoredDesktopCallback();
             if (desktopCallback) {
-                window.location.href = resolveDesktopGoogleOAuthUrl(desktopCallback, apiRoot);
+                const pkceChallenge = readStoredDesktopPkceChallenge();
+                window.location.href = resolveDesktopGoogleOAuthUrl(desktopCallback, apiRoot, pkceChallenge);
                 return;
             }
         } catch {

@@ -1,6 +1,6 @@
 /**
- * Merges payment/auth NEXT_PUBLIC_* vars for the desktop Vite bundle.
- * Sources (later wins): package.env → .env → .env.local → process.env
+ * Wallet / origin vars for the desktop Vite bundle.
+ * Packaging reads desktop/package.env only — never frontend/.env.local or Tilt process env.
  */
 const fs = require('fs');
 const path = require('path');
@@ -40,18 +40,13 @@ function parseEnvFile(filePath) {
   return out;
 }
 
-function loadDesktopBuildEnv() {
-  const merged = {
-    ...parseEnvFile(PACKAGE_ENV_PATH),
-    ...parseEnvFile(path.join(CLIENT_ROOT, '.env')),
-    ...parseEnvFile(path.join(CLIENT_ROOT, '.env.local')),
-  };
+/** All keys from desktop/package.env (packaging-only; not client/.env.local). */
+function loadPackageEnvFile() {
+  return parseEnvFile(PACKAGE_ENV_PATH);
+}
 
-  for (const key of KEYS) {
-    if (process.env[key]?.trim()) {
-      merged[key] = process.env[key].trim();
-    }
-  }
+function loadDesktopBuildEnv() {
+  const merged = parseEnvFile(PACKAGE_ENV_PATH);
 
   const payazaPublic =
     merged.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY?.trim()
@@ -88,4 +83,4 @@ function loadDesktopBuildEnv() {
   };
 }
 
-module.exports = { loadDesktopBuildEnv, KEYS };
+module.exports = { loadDesktopBuildEnv, loadPackageEnvFile, KEYS, PACKAGE_ENV_PATH };

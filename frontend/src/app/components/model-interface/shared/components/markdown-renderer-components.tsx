@@ -115,7 +115,16 @@ export function MarkdownImage({
         return <LocalFileInlineImage path={filePath} alt={alt} />;
     }
     // eslint-disable-next-line @next/next/no-img-element -- remote markdown images use standard img tags.
-    return <img src={imageSrc} alt={alt} {...props} />;
+    return (
+        <img
+            src={imageSrc}
+            alt={alt}
+            {...props}
+            // Cloudflare hotlink protection 403s when Referer is our origin; a
+            // direct tab open sends no Referer and succeeds. Strip it on markdown imgs.
+            referrerPolicy="no-referrer"
+        />
+    );
 }
 
 export function MarkdownPre({

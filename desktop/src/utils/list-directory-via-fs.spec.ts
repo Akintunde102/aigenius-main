@@ -74,10 +74,12 @@ describe('listDirectoryViaFs', () => {
   it('counts 150 mixed files and hydrates only the display limit', async () => {
     const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'list-dir-fs-150-'));
     try {
-      for (let i = 0; i < 75; i += 1) {
-        await fs.promises.writeFile(path.join(root, `letter-${i}.docx`), 'd');
-        await fs.promises.writeFile(path.join(root, `letter-${i}.pdf`), 'p');
-      }
+      await Promise.all(
+        Array.from({ length: 75 }, async (_, i) => {
+          await fs.promises.writeFile(path.join(root, `letter-${i}.docx`), 'd');
+          await fs.promises.writeFile(path.join(root, `letter-${i}.pdf`), 'p');
+        }),
+      );
 
       const { items, aggregation } = await listDirectoryViaFs(root, { limit: 100 });
       expect(aggregation.totalEntries).toBe(150);
