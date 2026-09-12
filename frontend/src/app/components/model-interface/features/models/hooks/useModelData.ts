@@ -5,6 +5,7 @@ import { getTestingModelName, isTestingModelEnforced } from '@/lib/testing-model
 import { isAigeniusDesktopRuntime, getAigeniusDesktopBridgeFromBrowsingContext } from '@/lib/utils/desktop-runtime';
 import { waitForAccessToken } from '@/lib/api/wait-for-access-token';
 import { subscribeToTokenRefresh } from '@/lib/api/auth-client';
+import { resolveDefaultActiveModel } from '@/app/components/model-interface/shared/constants/quickPickModels';
 
 let inflightModelsPromise: Promise<any> | null = null;
 let cachedModels: any[] | null = null;
@@ -226,11 +227,7 @@ export function useModelData() {
                     defaultModel = list.find((m: any) => m.id === lastModelId);
                 }
                 if (!defaultModel && list) {
-                    // Use the first featured model as the default for first-time users
-                    defaultModel = list.find((m: any) => m.featured === true);
-                }
-                if (!defaultModel && list && list.length > 0) {
-                    defaultModel = list[0];
+                    defaultModel = resolveDefaultActiveModel(list);
                 }
 
                 if (!cancelled) {

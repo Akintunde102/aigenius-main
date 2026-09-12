@@ -11,7 +11,7 @@ declare global {
       };
       openNewWindow?: (relativePath?: string) => Promise<void>;
       /** Present on full preload; optional for partial test doubles. */
-      openExternal?: (url: string) => void;
+      openExternal?: (url: string) => void | Promise<{ opened: boolean; error?: string }>;
       /** Fires when the Electron main window regains OS focus (e.g. after system-browser payment). */
       onMainWindowFocus?: (handler: () => void) => () => void;
       /** Badge + OS notification when a chat response finishes while the app is unfocused. */

@@ -1,5 +1,6 @@
 import { extractOcrFromBuffer } from './indexer/extractors/ocr-extractor.js';
 import { extractEmbeddedPdfText } from './pdf-embedded-text.js';
+import { renderPdfPagesToPngBuffers } from './pdf-page-renderer.js';
 import { pdfTextLooksInsufficient } from './pdf-text-insufficient.js';
 
 export type PdfTextExtractMethod = 'text' | 'ocr';
@@ -29,7 +30,6 @@ async function ocrPdfPages(
   modelsDir: string,
   maxOcrPages: number,
 ): Promise<{ text: string; pagesOcrd: number }> {
-  const { renderPdfPagesToPngBuffers } = await import('./pdf-page-renderer.js');
   const pageBuffers = await renderPdfPagesToPngBuffers(filePath, { maxPages: maxOcrPages });
   const parts: string[] = [];
 

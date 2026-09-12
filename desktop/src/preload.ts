@@ -161,9 +161,8 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     autoApproveAll: boolean;
     requireApprovalByTool: Record<string, boolean>;
   }>,
-  openExternal: (url: string) => {
-    ipcRenderer.send('open-external', url);
-  },
+  openExternal: (url: string) =>
+    ipcRenderer.invoke('open-external', url) as Promise<{ opened: boolean; error?: string }>,
   onMainWindowFocus: (handler: () => void) => {
     const listener = () => {
       handler();

@@ -71,21 +71,49 @@ export function resolveWalletPaymentReference(
   }
 }
 
+export type OpenWalletCheckoutResult = {
+  opened: boolean;
+  error?: string;
+};
+
 /**
- * Opens Paystack/Payaza hosted checkout.
+ * Opens Paystack/Payaza/Flutterwave hosted checkout.
  * - Web: navigates the current tab.
  * - Desktop: opens the system browser (wallet updates via background polling).
- * @returns the checkout URL that was opened (for desktop fallback UI).
  */
-export function openWalletPaymentCheckout(authorizationUrl: string): string {
-  if (typeof window === 'undefined') return authorizationUrl;
+export async function tryOpenWalletPaymentCheckout(
+  authorizationUrl: string,
+): Promise<OpenWalletCheckoutResult> {
+  if (typeof window === 'undefined') {
+    return { opened: false, error: 'No window' };
+  }
 
   if (window.aigeniusDesktop?.isDesktop && typeof window.aigeniusDesktop.openExternal === 'function') {
-    window.aigeniusDesktop.openExternal(authorizationUrl);
-    return authorizationUrl;
+    try {
+      const result = await Promise.resolve(window.aigeniusDesktop.openExternal(authorizationUrl));
+      if (result && typeof result === 'object' && typeof result.opened === 'boolean') {
+        return result;
+      }
+      return { opened: true };
+    } catch (error) {
+      return {
+        opened: false,
+        error: error instanceof Error ? error.message : 'Failed to open checkout',
+      };
+    }
   }
 
   window.location.assign(authorizationUrl);
+  return { opened: true };
+}
+
+/**
+ * Opens hosted checkout. Prefer `tryOpenWalletPaymentCheckout` when the caller
+ * needs to show an error if the system browser did not open.
+ * @returns the checkout URL that was opened (for desktop fallback UI).
+ */
+export function openWalletPaymentCheckout(authorizationUrl: string): string {
+  void tryOpenWalletPaymentCheckout(authorizationUrl);
   return authorizationUrl;
 }
 

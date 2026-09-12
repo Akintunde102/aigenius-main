@@ -96,7 +96,7 @@ describe('Login page desktop handoff', () => {
     expect(storeDesktopHandoffSession).not.toHaveBeenCalled();
   });
 
-  it('does not clear handoff or redirect when only storing for manual Google click', async () => {
+  it('auto-starts Google OAuth for loopback desktop handoffs without auto=google', async () => {
     setLoginSearch('?desktop_callback=http%3A%2F%2F127.0.0.1%3A49201%2F&pkce_challenge=challenge-123');
 
     render(<Login />);
@@ -105,6 +105,10 @@ describe('Login page desktop handoff', () => {
       expect(storeDesktopHandoffSession).toHaveBeenCalled();
     });
     expect(clearDesktopHandoffSession).not.toHaveBeenCalled();
-    expect(resolveDesktopGoogleOAuthUrl).not.toHaveBeenCalled();
+    expect(resolveDesktopGoogleOAuthUrl).toHaveBeenCalledWith(
+      'http://127.0.0.1:49201/',
+      'https://api.example.com',
+      'challenge-123',
+    );
   });
 });

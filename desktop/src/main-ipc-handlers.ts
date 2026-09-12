@@ -59,25 +59,31 @@ export function registerMainIpcHandlers(): void {
     e.returnValue = MINI_SERVER_PORT;
   });
 
-  ipcMain.on('open-external', (e, url: string) => {
+  ipcMain.handle('open-external', async (e, url: string) => {
     if (typeof url !== 'string' || (!url.startsWith('https:') && !url.startsWith('http:'))) {
-      return;
+      return { opened: false as const, error: 'Invalid URL' };
     }
     if (deliverOpenExternalOrAuthUrl(e.sender, url)) {
-      return;
+      return { opened: true as const };
     }
-    if (isHostedPaymentUrl(url)) {
-      void shell.openExternal(url);
-      return;
-    }
-    const win = BrowserWindow.fromWebContents(e.sender);
-    void (async () => {
+    try {
+      if (isHostedPaymentUrl(url)) {
+        await shell.openExternal(url);
+        return { opened: true as const };
+      }
+      const win = BrowserWindow.fromWebContents(e.sender);
       const { showExternalLinkApprovalDialog } = await import('./external-link-approval-dialog');
       const ok = await showExternalLinkApprovalDialog(win ?? undefined, url);
-      if (ok) {
-        void shell.openExternal(url);
+      if (!ok) {
+        return { opened: false as const, error: 'Link was not approved' };
       }
-    })();
+      await shell.openExternal(url);
+      return { opened: true as const };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to open URL';
+      console.error('[aigenius-desktop][ipc] open-external failed:', url, error);
+      return { opened: false as const, error: message };
+    }
   });
 
   ipcMain.handle('open-file-path', async (_event, filePath: string) => {

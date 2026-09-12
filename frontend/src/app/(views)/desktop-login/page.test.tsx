@@ -7,8 +7,20 @@ const mockSetAuthError = jest.fn();
 const mockSetAuthFlowWithPersist = jest.fn();
 const mockFinishOAuthToken = jest.fn();
 const mockStartWebSignIn = jest.fn();
+const mockStartOAuthSignIn = jest.fn();
 const mockUseDesktopSessionRestore = jest.fn();
 const mockUseDesktopAuthFlow = jest.fn();
+
+jest.mock("next/image", () => ({
+  __esModule: true,
+  default: ({
+    unoptimized: _unoptimized,
+    ...props
+  }: React.ImgHTMLAttributes<HTMLImageElement> & { unoptimized?: boolean }) => (
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+    <img {...props} />
+  ),
+}));
 
 jest.mock("@/app/components/PublicPageShell", () => ({
   PublicPageShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -69,18 +81,19 @@ describe("DesktopLoginPage", () => {
     stubIdleAuthFlow();
     window.aigeniusDesktop = {
       isDesktop: true,
+      startOAuthSignIn: mockStartOAuthSignIn,
       startWebSignIn: mockStartWebSignIn,
     };
   });
 
-  it("shows browser sign-in and does not show Google sign-in", () => {
+  it("shows Google sign-in instead of a second web auth page", () => {
     render(<DesktopLoginPage />);
 
     expect(
-      screen.getByRole("button", { name: "Sign in with Browser" }),
+      screen.getByRole("button", { name: "Sign in with Google" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /Sign in with Google/i }),
+      screen.queryByRole("button", { name: "Sign in with Browser" }),
     ).not.toBeInTheDocument();
   });
 
@@ -92,28 +105,46 @@ describe("DesktopLoginPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("starts browser sign-in and finishes with the returned token", async () => {
-    mockStartWebSignIn.mockResolvedValue({ token: "desktop-token" });
+  it("starts Google OAuth in the system browser and finishes with the returned token", async () => {
+    mockStartOAuthSignIn.mockResolvedValue({ token: "desktop-token" });
     render(<DesktopLoginPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sign in with Browser" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with Google" }));
 
     await waitFor(() => {
+      expect(mockStartOAuthSignIn).toHaveBeenCalledWith({ provider: "google" });
+      expect(mockStartWebSignIn).not.toHaveBeenCalled();
       expect(mockSetAuthFlowWithPersist).toHaveBeenCalledWith("awaiting-browser");
       expect(mockFinishOAuthToken).toHaveBeenCalledWith("desktop-token");
     });
   });
 
-  it("resets the flow when browser sign-in returns no token", async () => {
-    mockStartWebSignIn.mockResolvedValue({ token: null });
+  it("falls back to startWebSignIn when startOAuthSignIn is missing", async () => {
+    window.aigeniusDesktop = {
+      isDesktop: true,
+      startWebSignIn: mockStartWebSignIn,
+    };
+    mockStartWebSignIn.mockResolvedValue({ token: "desktop-token" });
     render(<DesktopLoginPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sign in with Browser" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with Google" }));
+
+    await waitFor(() => {
+      expect(mockStartWebSignIn).toHaveBeenCalledTimes(1);
+      expect(mockFinishOAuthToken).toHaveBeenCalledWith("desktop-token");
+    });
+  });
+
+  it("resets the flow when Google sign-in returns no token", async () => {
+    mockStartOAuthSignIn.mockResolvedValue({ token: null });
+    render(<DesktopLoginPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with Google" }));
 
     await waitFor(() => {
       expect(mockSetAuthFlowWithPersist).toHaveBeenCalledWith("idle");
       expect(mockSetAuthError).toHaveBeenCalledWith(
-        expect.stringMatching(/Browser sign-in did not complete/),
+        expect.stringMatching(/Google sign-in did not complete/),
       );
     });
     expect(mockFinishOAuthToken).not.toHaveBeenCalled();
@@ -124,7 +155,7 @@ describe("DesktopLoginPage", () => {
     render(<DesktopLoginPage />);
 
     expect(
-      screen.queryByRole("button", { name: "Sign in with Browser" }),
+      screen.queryByRole("button", { name: "Sign in with Google" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Opening AIGenius…")).toBeInTheDocument();
   });

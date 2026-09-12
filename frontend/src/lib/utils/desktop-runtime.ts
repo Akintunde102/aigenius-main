@@ -178,7 +178,7 @@ export type AigeniusDesktopBridgeSurface = {
   isDesktop?: boolean;
   /** Local Whisper STT; false when mini-server runs with AIGENIUS_ENABLE_STT=0. */
   isSttEnabled?: boolean;
-  openExternal?: (url: string) => void;
+  openExternal?: (url: string) => void | Promise<{ opened: boolean; error?: string }>;
   /** Fires when the Electron main window regains OS focus (e.g. after system-browser payment). */
   onMainWindowFocus?: (handler: () => void) => () => void;
   /** Fires when loopback OAuth completes (even if the original click handler was interrupted). */
