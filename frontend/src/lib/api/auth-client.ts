@@ -25,6 +25,7 @@ import {
     waitForAigeniusDesktopBridge,
 } from '@/lib/utils/desktop-runtime';
 
+
 type RetryableAxiosRequestConfig = InternalAxiosRequestConfig & {
     _authRetry?: boolean;
 };
@@ -342,16 +343,8 @@ const PROACTIVE_CHECK_INTERVAL_MS = 60 * 1000;
 let proactiveRefreshTimer: ReturnType<typeof setInterval> | null = null;
 let consecutiveRefreshFailures = 0;
 
-/**
- * Periodically refreshes the access token before it expires so API calls do not hit
- * expired JWT first (reduces race conditions and failed first requests after idle tabs).
- */
-export function initProactiveAccessTokenRefresh(): void {
-    if (
-        typeof window === 'undefined'
-        || proactiveRefreshTimer
-        || (!canUseHttpOnlyRefreshCookie() && !canUseDesktopStoredRefreshToken())
-    ) {
+function startProactiveRefreshTimer(): void {
+    if (proactiveRefreshTimer) {
         return;
     }
 
@@ -375,6 +368,37 @@ export function initProactiveAccessTokenRefresh(): void {
 
     tick();
     proactiveRefreshTimer = setInterval(tick, PROACTIVE_CHECK_INTERVAL_MS);
+}
+
+/**
+ * Periodically refreshes the access token before it expires so API calls do not hit
+ * expired JWT first (reduces race conditions and failed first requests after idle tabs).
+ *
+ * On desktop, the Electron bridge (window.aigeniusDesktop) may not be attached yet when this
+ * is called from ReactQueryProvider on mount. We wait up to 8 s for the bridge before
+ * evaluating canUseDesktopStoredRefreshToken(), so the 90-day keychain refresh path is
+ * always available after the preload attaches.
+ */
+export function initProactiveAccessTokenRefresh(): void {
+    if (typeof window === 'undefined' || proactiveRefreshTimer) {
+        return;
+    }
+
+    // Fast path: cookie-based refresh (web) or bridge already attached (desktop).
+    if (canUseHttpOnlyRefreshCookie() || canUseDesktopStoredRefreshToken()) {
+        startProactiveRefreshTimer();
+        return;
+    }
+
+    // Desktop slow path: preload bridge may not be attached yet at mount time.
+    // Wait for it before deciding whether to start the timer.
+    if (isDesktopShellFromBuild() || isLikelyElectronRenderer() || isAigeniusDesktopRuntime()) {
+        void waitForAigeniusDesktopBridge(8000).then(() => {
+            if (!proactiveRefreshTimer && canUseDesktopStoredRefreshToken()) {
+                startProactiveRefreshTimer();
+            }
+        });
+    }
 }
 
 function applyAuthHeaders<T extends AxiosRequestConfig>(config: T, token?: string): T {

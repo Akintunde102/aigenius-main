@@ -50,4 +50,9 @@ describe("resolveViewSessionId", () => {
     setActiveRouteConversationTarget("conversation-b");
     expect(resolveViewSessionId("conversation-a", null)).toBe("conversation-b");
   });
+
+  it("falls back to the URL prop when the client route target has not synced yet", () => {
+    setActiveRouteConversationTarget(null);
+    expect(resolveViewSessionId("conversation-a", null)).toBe("conversation-a");
+  });
 });

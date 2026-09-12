@@ -120,15 +120,21 @@ export function useModelInterfaceSessionRouting({
   const lastInitiatedSwitchIdRef = useRef<string | null>(null);
   const prevSessionIdRef = useRef<string | null | undefined>(undefined);
 
-  const [activeRouteConversationId, setActiveRouteConversationId] = useState<
+  const [activeRouteConversationId, setActiveRouteConversationIdState] = useState<
     string | null
-  >(routeConversationId);
+  >(() => {
+    if (routeConversationId) {
+      setActiveRouteConversationTarget(routeConversationId);
+    }
+    return routeConversationId;
+  });
+
+  const setActiveRouteConversationId = useCallback((id: string | null) => {
+    setActiveRouteConversationTarget(id);
+    setActiveRouteConversationIdState(id);
+  }, []);
 
   useSyncRouteConversationId(routeConversationId, setActiveRouteConversationId);
-
-  useEffect(() => {
-    setActiveRouteConversationTarget(activeRouteConversationId);
-  }, [activeRouteConversationId]);
 
   useEffect(() => {
     if (typeof window === "undefined") {

@@ -61,6 +61,7 @@ const markers = [
   path.join(nodeModulesDir, 'onnxruntime-node', 'bin', 'napi-v6', platform, arch, 'onnxruntime_binding.node'),
   path.join(nodeModulesDir, 'ppu-paddle-ocr'),
   path.join(nodeModulesDir, 'ts-morph'),
+  path.join(nodeModulesDir, 'web-tree-sitter'),
   path.join(nodeModulesDir, '@vscode', 'ripgrep'),
   ...(sharpPkg ? [path.join(nodeModulesDir, '@img', sharpPkg)] : []),
 ];
@@ -176,12 +177,6 @@ for (const marker of markers) {
   }
 }
 
-for (const entry of fs.readdirSync(nodeModulesDir)) {
-  if (entry === 'tree-sitter' || entry.startsWith('tree-sitter-') || entry === 'web-tree-sitter') {
-    console.error(`install-server-deps: unexpected package still installed: ${entry}`);
-    process.exit(1);
-  }
-}
 
 fs.writeFileSync(
   readyStamp,
