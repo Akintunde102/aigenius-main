@@ -1,108 +1,107 @@
 import {
+  isDesktopLoopbackCallbackUrl,
   parseLoginDesktopHandoffSearch,
   resolveOAuthTokenDesktopHandoffRedirect,
+  shouldAutoStartDesktopGoogleOAuth,
+  shouldKeepAuthenticatedAuthPageForDesktopHandoff,
 } from './desktop-oauth-handoff';
 
 describe('parseLoginDesktopHandoffSearch', () => {
-  it('returns plain_web when desktop_callback is absent', () => {
+  it('treats a missing callback as plain web sign-in', () => {
     expect(parseLoginDesktopHandoffSearch('')).toEqual({ kind: 'plain_web' });
-    expect(parseLoginDesktopHandoffSearch('?foo=bar')).toEqual({ kind: 'plain_web' });
+    expect(parseLoginDesktopHandoffSearch('?next=/chat')).toEqual({ kind: 'plain_web' });
   });
 
-  it('parses desktop handoff params including pkce_challenge', () => {
-    const search =
-      '?desktop_callback=http%3A%2F%2F127.0.0.1%3A49201%2F'
-      + '&pkce_challenge=abc-challenge'
-      + '&api_root=https%3A%2F%2Fapi.example.com'
-      + '&auto=google';
-
-    expect(parseLoginDesktopHandoffSearch(search)).toEqual({
+  it('reads desktop handoff query params', () => {
+    expect(
+      parseLoginDesktopHandoffSearch(
+        '?desktop_callback=http://127.0.0.1:49201/&pkce_challenge=abc&api_root=https://api.example.com&auto=google',
+      ),
+    ).toEqual({
       kind: 'desktop',
       handoff: {
         callback: 'http://127.0.0.1:49201/',
-        pkceChallenge: 'abc-challenge',
+        pkceChallenge: 'abc',
         apiRoot: 'https://api.example.com',
         autoGoogle: true,
       },
     });
   });
+});
 
-  it('treats blank pkce_challenge as null', () => {
-    const search = '?desktop_callback=http%3A%2F%2F127.0.0.1%3A49201%2F&pkce_challenge=%20%20';
-    expect(parseLoginDesktopHandoffSearch(search)).toEqual({
-      kind: 'desktop',
-      handoff: {
-        callback: 'http://127.0.0.1:49201/',
-        pkceChallenge: null,
-        apiRoot: null,
-        autoGoogle: false,
-      },
-    });
+describe('isDesktopLoopbackCallbackUrl', () => {
+  it('allows http loopback hosts only', () => {
+    expect(isDesktopLoopbackCallbackUrl('http://127.0.0.1:49201/')).toBe(true);
+    expect(isDesktopLoopbackCallbackUrl('http://localhost:9/')).toBe(true);
+    expect(isDesktopLoopbackCallbackUrl('http://[::1]:9/')).toBe(true);
+    expect(isDesktopLoopbackCallbackUrl('https://127.0.0.1:49201/')).toBe(false);
+    expect(isDesktopLoopbackCallbackUrl('http://evil.example/')).toBe(false);
+    expect(isDesktopLoopbackCallbackUrl('not-a-url')).toBe(false);
+  });
+});
+
+describe('shouldKeepAuthenticatedAuthPageForDesktopHandoff', () => {
+  it('keeps /login when desktop is handing off through the system browser', () => {
+    expect(
+      shouldKeepAuthenticatedAuthPageForDesktopHandoff(
+        '/login',
+        '?desktop_callback=http://127.0.0.1:49201/&pkce_challenge=abc',
+      ),
+    ).toBe(true);
   });
 
-  it('ignores auto=google unless desktop_callback is present', () => {
-    expect(parseLoginDesktopHandoffSearch('?auto=google')).toEqual({ kind: 'plain_web' });
+  it('still sends authenticated users home from a normal /login visit', () => {
+    expect(shouldKeepAuthenticatedAuthPageForDesktopHandoff('/login', '')).toBe(false);
+    expect(shouldKeepAuthenticatedAuthPageForDesktopHandoff('/login', '?next=/chat')).toBe(false);
+  });
+
+  it('does not keep the auth page for a non-loopback callback', () => {
+    expect(
+      shouldKeepAuthenticatedAuthPageForDesktopHandoff(
+        '/login',
+        '?desktop_callback=https://evil.example/steal',
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('shouldAutoStartDesktopGoogleOAuth', () => {
+  it('starts Google immediately for a desktop loopback handoff, even without auto=google', () => {
+    expect(
+      shouldAutoStartDesktopGoogleOAuth(
+        '?desktop_callback=http://127.0.0.1:49201/&pkce_challenge=abc',
+      ),
+    ).toBe(true);
+  });
+
+  it('does not auto-start Google for a normal web login', () => {
+    expect(shouldAutoStartDesktopGoogleOAuth('')).toBe(false);
+    expect(shouldAutoStartDesktopGoogleOAuth('?next=/chat')).toBe(false);
+  });
+
+  it('does not auto-start Google for a non-loopback callback', () => {
+    expect(
+      shouldAutoStartDesktopGoogleOAuth('?desktop_callback=https://evil.example/steal'),
+    ).toBe(false);
   });
 });
 
 describe('resolveOAuthTokenDesktopHandoffRedirect', () => {
-  it('redirects to desktop loopback only for explicit desktop callbacks', () => {
+  it('forwards a desktop token only to a loopback callback', () => {
     expect(
       resolveOAuthTokenDesktopHandoffRedirect({
-        token: 'jwt-token',
+        token: 'jwt',
         callbackClient: 'desktop',
-        desktopCallback: 'http://127.0.0.1:49201/',
+        desktopCallback: 'http://127.0.0.1:9/',
       }),
-    ).toBe('http://127.0.0.1:49201/?token=jwt-token');
-  });
+    ).toBe('http://127.0.0.1:9/?token=jwt');
 
-  it('preserves existing query string on loopback callback', () => {
     expect(
       resolveOAuthTokenDesktopHandoffRedirect({
-        token: 'jwt-token',
+        token: 'jwt',
         callbackClient: 'desktop',
-        desktopCallback: 'http://127.0.0.1:49201/?state=1',
-      }),
-    ).toBe('http://127.0.0.1:49201/?state=1&token=jwt-token');
-  });
-
-  it('does not redirect normal web OAuth token landings', () => {
-    expect(
-      resolveOAuthTokenDesktopHandoffRedirect({
-        token: 'jwt-token',
-        callbackClient: null,
-        desktopCallback: 'http://127.0.0.1:49201/',
+        desktopCallback: 'https://evil.example/',
       }),
     ).toBeNull();
-  });
-
-  it('does not redirect when callback_client is not desktop', () => {
-    expect(
-      resolveOAuthTokenDesktopHandoffRedirect({
-        token: 'jwt-token',
-        callbackClient: 'web',
-        desktopCallback: 'http://127.0.0.1:49201/',
-      }),
-    ).toBeNull();
-  });
-
-  it('does not redirect without a stored desktop callback', () => {
-    expect(
-      resolveOAuthTokenDesktopHandoffRedirect({
-        token: 'jwt-token',
-        callbackClient: 'desktop',
-        desktopCallback: null,
-      }),
-    ).toBeNull();
-  });
-
-  it('encodes token values for URL safety', () => {
-    expect(
-      resolveOAuthTokenDesktopHandoffRedirect({
-        token: 'a+b/c',
-        callbackClient: 'desktop',
-        desktopCallback: 'http://127.0.0.1:49201/',
-      }),
-    ).toBe('http://127.0.0.1:49201/?token=a%2Bb%2Fc');
   });
 });

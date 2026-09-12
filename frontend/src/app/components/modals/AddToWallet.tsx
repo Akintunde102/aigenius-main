@@ -1,4 +1,3 @@
-import { InputField } from "@/app/lib/formatic/InputField";
 import { addCommas } from "@/app/lib/utils";
 import {
   clearUserDetailsCache,
@@ -10,6 +9,7 @@ import {
   clearPendingPaymentStorage,
   consumeWalletTopUpResultState,
   openWalletPaymentCheckout,
+  tryOpenWalletPaymentCheckout,
   WALLET_PENDING_PAYMENT_KEY,
   WalletPaymentSuccessOptions,
   WalletTopUpReopenTarget,
@@ -53,6 +53,19 @@ interface AddToWalletProps {
 }
 
 const MIN_TOP_UP_CREDITS_FALLBACK = MIN_TOP_UP_CREDITS;
+
+/** Baseline quick-pick amounts (credits). Filtered/extended against the live minimum top-up. */
+const BASE_PRESET_CREDITS = [1000, 5000, 10000, 25000, 50000, 100000];
+/** The preset nudged as the recommended choice (anchoring effect). */
+const POPULAR_PRESET_CREDITS = 10000;
+
+function buildPresetCredits(minTopUpCredits: number): number[] {
+  const eligible = BASE_PRESET_CREDITS.filter((value) => value >= minTopUpCredits);
+  if (eligible.length > 0 && eligible[0] === minTopUpCredits) {
+    return eligible;
+  }
+  return [minTopUpCredits, ...eligible];
+}
 
 type TransactionStatusResponse = {
   status?: string;
@@ -168,7 +181,18 @@ const AddToWallet = ({
 
   const parsedAmount = parseAmountNaira(amount);
   const canSubmitAmount = parsedAmount >= minTopUpCredits;
+  const belowMinimum = parsedAmount > 0 && parsedAmount < minTopUpCredits;
   const paymentUsd = creditsToUsd(parsedAmount);
+  const presetCredits = React.useMemo(
+    () => buildPresetCredits(minTopUpCredits),
+    [minTopUpCredits],
+  );
+  const isBusy = updating || confirmingPayment || paymentModalLoading;
+
+  const handleAddMoreCredits = React.useCallback(() => {
+    setShowSuccess(false);
+    setAmount(POPULAR_PRESET_CREDITS.toString());
+  }, []);
 
   const applySuccessfulTopUp = React.useCallback(async (
     amountInNaira: string,
@@ -585,274 +609,460 @@ const AddToWallet = ({
   // Modal content
   const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm transition-all duration-300 ease-out animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300 ease-out animate-fadeIn"
+      style={{ background: "var(--modal-overlay)" }}
       onClick={(e) => {
         if (e.target === e.currentTarget) closeModal();
       }}
     >
       <div
-        className="rounded-xl shadow-2xl w-full max-w-[367px] max-[800px]:max-w-[320px] max-[800px]:mx-4 overflow-hidden flex flex-col border relative animate-slideUp backdrop-blur-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-credits-title"
+        className="rounded-2xl shadow-2xl w-full max-w-[420px] max-[480px]:max-w-full overflow-hidden flex flex-col border relative animate-slideUp"
         style={{
           background: "var(--modal-bg)",
           borderColor: "var(--modal-border)",
           color: "var(--modal-fg)",
         }}
       >
-        <button
-          className="absolute top-1 right-1 text-gray-400 hover:text-red-500 transition-colors duration-200 p-0.5 z-10 rounded-full focus:outline-none"
-          onClick={closeModal}
-          aria-label="Close modal"
-          tabIndex={0}
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <div
+          className="flex items-start justify-between gap-3 px-6 py-5 max-[480px]:px-5 max-[480px]:py-4 border-b"
+          style={{ borderColor: "var(--modal-border)" }}
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-        {/* Insufficient funds warning */}
-        {showInsufficientFundsWarning && (
-          <div className="bg-red-500 text-white text-xs px-2 py-2 rounded shadow mb-3 mx-auto mt-4 max-w-xs text-center z-50">
-            {insufficientFundsMessage ||
-              "You need more credits to use this model."}
+          <div>
+            <h2
+              id="add-credits-title"
+              className="text-[17px] font-bold tracking-tight"
+              style={{ color: "var(--modal-fg)" }}
+            >
+              {showSuccess ? "Payment successful" : "Add credits"}
+            </h2>
+            <p
+              className="text-[13px] mt-0.5"
+              style={{ color: "var(--modal-muted-fg)" }}
+            >
+              {showSuccess
+                ? "Your balance has been updated."
+                : "Top up your balance to keep using AIGenius."}
+            </p>
           </div>
-        )}
-        <div className="flex flex-col items-center justify-center w-full min-h-[210px] p-10 max-[800px]:p-6 max-[800px]:min-h-[180px]">
-          {/* Balance Section */}
+          <button
+            className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-current transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+            style={{ background: "var(--modal-bg-muted)" }}
+            onClick={closeModal}
+            aria-label="Close modal"
+            tabIndex={0}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-6 pt-5 pb-6 max-[480px]:px-5 flex flex-col gap-4">
+          {/* Insufficient funds warning */}
+          {showInsufficientFundsWarning && !showSuccess && (
+            <div
+              className="flex items-start gap-2 rounded-xl border px-3 py-2.5 text-[12.5px] leading-snug"
+              style={{
+                background: "rgba(239, 68, 68, 0.1)",
+                borderColor: "rgba(239, 68, 68, 0.35)",
+                color: "#ef4444",
+              }}
+              role="alert"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="shrink-0 mt-0.5"
+              >
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12" y2="17" />
+              </svg>
+              <span>
+                {insufficientFundsMessage || "You need more credits to use this model."}
+              </span>
+            </div>
+          )}
+
+          {/* Balance card */}
           <div
-            className="w-full flex flex-col items-center mb-3 border rounded-lg py-3 max-[800px]:py-2 shadow-sm"
+            className="w-full flex items-center justify-between rounded-xl border px-4 py-3.5"
             style={{
               background: "var(--modal-bg-muted)",
               borderColor: "var(--modal-border)",
             }}
           >
-            <span
-              className="text-[11px] mb-0.5 flex items-center gap-1"
-              style={{ color: "var(--modal-muted-fg)" }}
-            >
-              <svg
-                width="16"
-                height="16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="inline-block text-blue-400 mr-1"
-                viewBox="0 0 24 24"
+            <div className="flex flex-col">
+              <span
+                className="text-[11px] font-medium flex items-center gap-1.5 uppercase tracking-wide"
+                style={{ color: "var(--modal-muted-fg)" }}
               >
-                <rect x="2" y="7" width="20" height="14" rx="2" />
-                <path d="M16 3v4" />
-                <path d="M8 3v4" />
-              </svg>
-              Current balance
-            </span>
-            <div className="w-full flex items-center justify-center mb-1">
-              {loadingCredits ? (
-                <span className="text-blue-400 text-2xl font-bold animate-pulse">
-                  Loading...
-                </span>
-              ) : (
-                <span className="text-blue-600 dark:text-blue-400 text-3xl max-[800px]:text-2xl font-extrabold tracking-tight">
-                  {addCommas(wallet ?? 0)} credits
-                </span>
-              )}
-            </div>
-            {/* Credit / USD equivalence */}
-            <span
-              className="text-[12px] font-medium rounded px-2 py-1 mt-2 mb-1 border shadow-sm flex items-center gap-1"
-              tabIndex={0}
-              aria-label="Credit to USD equivalence"
-              style={{
-                background: "var(--modal-bg)",
-                borderColor: "var(--modal-border)",
-                color: "var(--modal-fg)",
-              }}
-            >
-              <svg
-                width="14"
-                height="14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="inline-block text-blue-400 mr-1"
-                viewBox="0 0 24 24"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12" y2="8" />
-              </svg>
-              {getCreditEquivalenceLabel()}
-            </span>
-          </div>
-          {parsedAmount >= minTopUpCredits && (
-            <p
-              className="text-[12px] text-center mb-2 w-full"
-              style={{ color: "var(--modal-muted-fg)" }}
-            >
-              Pay {formatUsdAmount(paymentUsd)} for {addCommas(parsedAmount)} credits
-            </p>
-          )}
-          {/* Success message if top-up was successful */}
-          {showSuccess && (
-            <div className="w-full flex flex-col items-center mb-2 animate-fadeIn">
-              <span className="text-green-600 font-semibold text-base mb-1 flex items-center gap-1">
                 <svg
-                  width="20"
-                  height="20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="inline-block text-green-500"
-                  viewBox="0 0 24 24"
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                Top-up Successful!
-              </span>
-            </div>
-          )}
-          {/* Credits input and checkout CTA */}
-          <form
-            className="w-full flex flex-row items-center mb-2 mt-1"
-            onSubmit={(e) => {
-              e.preventDefault();
-              submit(parsedAmount);
-            }}
-          >
-            <div
-              style={{ flex: 1 }}
-              className="max-[800px]:[&_input]:!h-[40px] max-[800px]:[&_input]:!text-sm [&_input]:!bg-[var(--modal-bg)] [&_input]:!text-[var(--modal-fg)] [&_input]:!border-[var(--modal-border)]"
-            >
-              <InputField
-                label=""
-                name="amount"
-                type="text"
-                placeholder="Credits to add"
-                value={amount ? addCommas(Number(amount)) : ""}
-                style={{
-                  textAlign: "center",
-                  height: "44px",
-                  fontSize: "16px",
-                  borderTopRightRadius: 0,
-                  borderBottomRightRadius: 0,
-                  borderRight: "none",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
-                }}
-                aria-label="Credits to add"
-                onChange={(name: string, value: string) => {
-                  const numberValue = value.replace(/[^0-9]/g, "");
-                  setAmount(numberValue);
-                }}
-              />
-            </div>
-            <button
-              type="submit"
-              className="bg-blue-500 hover:bg-blue-700 focus:ring-2 focus:ring-blue-300 text-white font-semibold h-[44px] max-[800px]:h-[40px] px-5 max-[800px]:px-3 rounded-r-md transition disabled:opacity-60 text-base max-[800px]:text-sm whitespace-nowrap border border-l-0 border-[var(--modal-border)] flex items-center justify-center"
-              style={{
-                borderTopLeftRadius: 0,
-                borderBottomLeftRadius: 0,
-                marginLeft: "-1px",
-                minWidth: "110px",
-              }}
-              disabled={paymentModalLoading || updating || confirmingPayment || !canSubmitAmount}
-              aria-label="Add credits"
-            >
-              {updating || paymentModalLoading ? (
-                <svg
-                  className="animate-spin mr-2"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
+                  width="13"
+                  height="13"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  viewBox="0 0 24 24"
                 >
-                  <circle cx="12" cy="12" r="10" strokeOpacity="0.2" />
-                  <path d="M12 2a10 10 0 0 1 10 10" />
+                  <rect x="2" y="7" width="20" height="14" rx="2" />
+                  <path d="M16 3v4" />
+                  <path d="M8 3v4" />
                 </svg>
-              ) : null}
-              Add credits
-            </button>
-          </form>
-          {/* Helper text for min amount */}
-          <span
-            className="text-[10px] mt-0.5 mb-1"
-            style={{ color: "var(--modal-muted-fg)" }}
-          >
-            Minimum top-up: {minTopUpCredits.toLocaleString()} credits ({formatUsdAmount(creditsToUsd(minTopUpCredits))})
-          </span>
-          {process.env.NODE_ENV === "development"
-            && isPayazaWalletProvider()
-            && process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY?.includes("PKTEST") ? (
-            <p
-              className="text-[10px] mt-1 text-center leading-relaxed"
-              style={{ color: "var(--modal-muted-fg)" }}
-            >
-              Payaza test card: 4508750015741019 · expiry 01/39 · CVV 100
-            </p>
-          ) : null}
-          {(updating || confirmingPayment) && (
-            <div
-              className="mt-2 text-xs"
-              style={{ color: "var(--modal-muted-fg)" }}
-            >
-              {confirmingPayment
-                ? isFlutterwaveWalletProvider()
-                  ? "Confirming your payment with Flutterwave…"
-                  : isPayazaWalletProvider()
-                    ? "Confirming your payment with Payaza…"
-                    : "Confirming your payment…"
-                : "Please wait, preparing checkout…"}
+                Current balance
+              </span>
+              {loadingCredits ? (
+                <span className="text-2xl font-bold mt-1 animate-pulse" style={{ color: "var(--chat-accent)" }}>
+                  Loading…
+                </span>
+              ) : (
+                <span
+                  className="text-[26px] font-extrabold tracking-tight mt-0.5"
+                  style={{ color: "var(--chat-accent)" }}
+                >
+                  {addCommas(wallet ?? 0)}
+                  <span className="text-[13px] font-semibold ml-1" style={{ color: "var(--modal-muted-fg)" }}>
+                    credits
+                  </span>
+                </span>
+              )}
+              {!loadingCredits && wallet !== null && (
+                <span className="text-[11.5px] mt-0.5" style={{ color: "var(--modal-muted-fg)" }}>
+                  ≈ {formatUsdAmount(creditsToUsd(wallet))} available
+                </span>
+              )}
             </div>
-          )}
-          {pendingCheckoutUrl && isAigeniusDesktopRuntime() ? (
-            <div
-              className="mt-3 rounded-xl border p-3"
+            <span
+              className="text-[10.5px] font-medium rounded-md px-2 py-1 border text-center leading-tight shrink-0"
+              tabIndex={0}
+              aria-label="Credit to USD exchange rate"
               style={{
+                background: "var(--modal-bg)",
                 borderColor: "var(--modal-border)",
-                background: "var(--modal-surface, rgba(255,255,255,0.03))",
+                color: "var(--modal-muted-fg)",
               }}
             >
-              <p
-                className="text-xs leading-relaxed"
+              {getCreditEquivalenceLabel()}
+            </span>
+          </div>
+
+          {showSuccess ? (
+            /* ── Success state ────────────────────────────────────────────── */
+            <div className="w-full flex flex-col items-center py-2 animate-fadeIn">
+              <div
+                className="flex items-center justify-center w-14 h-14 rounded-full mb-3"
+                style={{ background: "rgba(34, 197, 94, 0.12)" }}
+              >
+                <svg
+                  width="28"
+                  height="28"
+                  fill="none"
+                  stroke="#22c55e"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  viewBox="0 0 24 24"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+              <p className="text-[15px] font-semibold text-center" style={{ color: "var(--modal-fg)" }}>
+                {addCommas(parsedAmount)} credits added
+              </p>
+              <p className="text-[12.5px] text-center mt-1" style={{ color: "var(--modal-muted-fg)" }}>
+                Your new balance is {addCommas(wallet ?? 0)} credits.
+              </p>
+              <div className="w-full flex flex-col gap-2 mt-5">
+                <button
+                  type="button"
+                  onClick={handleAddMoreCredits}
+                  className="w-full rounded-xl border font-semibold text-[14px] py-2.5 transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                  style={{
+                    borderColor: "var(--modal-border)",
+                    color: "var(--modal-fg)",
+                    background: "var(--modal-bg)",
+                  }}
+                >
+                  Add more credits
+                </button>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="w-full rounded-xl text-white font-semibold text-[14px] py-2.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                  style={{ background: "var(--chat-accent)" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--chat-accent-hover)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "var(--chat-accent)")}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── Amount selection + checkout ──────────────────────────────── */
+            <form
+              className="w-full flex flex-col gap-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submit(parsedAmount);
+              }}
+            >
+              <div className="flex flex-col gap-2">
+                <span
+                  className="text-[11.5px] font-semibold uppercase tracking-wide"
+                  style={{ color: "var(--modal-muted-fg)" }}
+                >
+                  Choose an amount
+                </span>
+                <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Preset credit amounts">
+                  {presetCredits.map((preset) => {
+                    const isActive = parsedAmount === preset;
+                    const isPopular = preset === POPULAR_PRESET_CREDITS;
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        role="radio"
+                        aria-checked={isActive}
+                        onClick={() => setAmount(preset.toString())}
+                        disabled={isBusy}
+                        className="relative flex flex-col items-center justify-center gap-0.5 rounded-xl border px-2 py-2.5 text-center transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:opacity-60"
+                        style={{
+                          borderColor: isActive ? "var(--chat-accent)" : "var(--modal-border)",
+                          background: isActive ? "var(--chat-accent-muted)" : "var(--modal-bg-muted)",
+                          boxShadow: isActive ? "0 0 0 1px var(--chat-accent)" : "none",
+                        }}
+                      >
+                        {isPopular && (
+                          <span
+                            className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full px-1.5 py-[1px] text-[9px] font-bold uppercase tracking-wide text-white whitespace-nowrap"
+                            style={{ background: "var(--chat-accent)" }}
+                          >
+                            Popular
+                          </span>
+                        )}
+                        <span
+                          className="text-[13.5px] font-bold"
+                          style={{ color: isActive ? "var(--chat-accent)" : "var(--modal-fg)" }}
+                        >
+                          {addCommas(preset)}
+                        </span>
+                        <span className="text-[10.5px]" style={{ color: "var(--modal-muted-fg)" }}>
+                          {formatUsdAmount(creditsToUsd(preset))}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="amount"
+                  className="text-[11.5px] font-semibold uppercase tracking-wide"
+                  style={{ color: "var(--modal-muted-fg)" }}
+                >
+                  Or enter a custom amount
+                </label>
+                <div
+                  className={`app-modal-input-group${belowMinimum ? " app-modal-input-group--invalid" : ""}`}
+                >
+                  <input
+                    id="amount"
+                    name="amount"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 10,000"
+                    value={amount ? addCommas(Number(amount)) : ""}
+                    disabled={isBusy}
+                    onChange={(e) => {
+                      const numberValue = e.target.value.replace(/[^0-9]/g, "");
+                      setAmount(numberValue);
+                    }}
+                    aria-label="Custom credits amount"
+                    aria-invalid={belowMinimum}
+                    className="app-modal-input-group__field"
+                  />
+                  <span className="app-modal-input-group__suffix">
+                    credits
+                  </span>
+                </div>
+                {belowMinimum ? (
+                  <span className="text-[11.5px]" style={{ color: "#ef4444" }}>
+                    Minimum top-up is {minTopUpCredits.toLocaleString()} credits ({formatUsdAmount(creditsToUsd(minTopUpCredits))}).
+                  </span>
+                ) : (
+                  <span className="text-[11.5px]" style={{ color: "var(--modal-muted-fg)" }}>
+                    Minimum top-up: {minTopUpCredits.toLocaleString()} credits ({formatUsdAmount(creditsToUsd(minTopUpCredits))})
+                  </span>
+                )}
+              </div>
+
+              {process.env.NODE_ENV === "development"
+                && isPayazaWalletProvider()
+                && process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY?.includes("PKTEST") ? (
+                <p
+                  className="text-[10px] text-center leading-relaxed"
+                  style={{ color: "var(--modal-muted-fg)" }}
+                >
+                  Payaza test card: 4508750015741019 · expiry 01/39 · CVV 100
+                </p>
+              ) : null}
+
+              <button
+                type="submit"
+                className="w-full rounded-xl text-white font-semibold h-12 transition disabled:opacity-50 disabled:cursor-not-allowed text-[15px] flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                style={{ background: "var(--chat-accent)" }}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.disabled) e.currentTarget.style.background = "var(--chat-accent-hover)";
+                }}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "var(--chat-accent)")}
+                disabled={isBusy || !canSubmitAmount}
+                aria-label="Add credits"
+              >
+                {updating || paymentModalLoading ? (
+                  <svg
+                    className="animate-spin"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" strokeOpacity="0.2" />
+                    <path d="M12 2a10 10 0 0 1 10 10" />
+                  </svg>
+                ) : null}
+                {canSubmitAmount
+                  ? `Add ${addCommas(parsedAmount)} credits · ${formatUsdAmount(paymentUsd)}`
+                  : "Add credits"}
+              </button>
+
+              <div
+                className="flex items-center justify-center gap-1.5 text-[11px]"
                 style={{ color: "var(--modal-muted-fg)" }}
               >
-                Complete payment in your browser. Your wallet will update automatically when you return to the app.
-              </p>
-              <button
-                type="button"
-                className="mt-3 w-full rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-600"
-                onClick={() => {
-                  openWalletPaymentCheckout(pendingCheckoutUrl);
-                }}
-              >
-                Open payment page
-              </button>
-            </div>
-          ) : null}
+                <svg
+                  width="12"
+                  height="12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  viewBox="0 0 24 24"
+                  className="shrink-0"
+                >
+                  <rect x="3" y="11" width="18" height="10" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                Payments are securely processed by our checkout partner
+              </div>
+
+              <div aria-live="polite">
+                {(updating || confirmingPayment) && (
+                  <div
+                    className="flex items-center justify-center gap-2 text-[12.5px] rounded-lg py-2"
+                    style={{ color: "var(--modal-muted-fg)", background: "var(--modal-bg-muted)" }}
+                  >
+                    <svg
+                      className="animate-spin shrink-0"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" strokeOpacity="0.2" />
+                      <path d="M12 2a10 10 0 0 1 10 10" />
+                    </svg>
+                    {confirmingPayment
+                      ? isFlutterwaveWalletProvider()
+                        ? "Confirming your payment with Flutterwave…"
+                        : isPayazaWalletProvider()
+                          ? "Confirming your payment with Payaza…"
+                          : "Confirming your payment…"
+                      : "Please wait, preparing checkout…"}
+                  </div>
+                )}
+              </div>
+
+              {pendingCheckoutUrl && isAigeniusDesktopRuntime() ? (
+                <div
+                  className="rounded-xl border p-3.5"
+                  style={{
+                    borderColor: "var(--modal-border)",
+                    background: "var(--modal-bg-muted)",
+                  }}
+                >
+                  <p
+                    className="text-[12.5px] leading-relaxed"
+                    style={{ color: "var(--modal-muted-fg)" }}
+                  >
+                    Complete payment in your browser. Your wallet will update automatically when you return to the app.
+                  </p>
+                  <button
+                    type="button"
+                    className="mt-3 w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition"
+                    style={{ background: "var(--chat-accent)" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--chat-accent-hover)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "var(--chat-accent)")}
+                    onClick={() => {
+                      void (async () => {
+                        const result = await tryOpenWalletPaymentCheckout(pendingCheckoutUrl);
+                        if (!result.opened) {
+                          toast.error(
+                            result.error
+                              ? `Could not open the payment page (${result.error}).`
+                              : "Could not open the payment page. Please try again.",
+                          );
+                          return;
+                        }
+                        toast("Opening payment page in your browser…", { icon: "🌐", duration: 4000 });
+                      })();
+                    }}
+                  >
+                    Open payment page
+                  </button>
+                </div>
+              ) : null}
+            </form>
+          )}
         </div>
       </div>
       <style jsx>{`
         .animate-fadeIn {
-          animation: fadeIn 0.4s;
+          animation: fadeIn 0.25s ease-out;
         }
         .animate-slideUp {
-          animation: slideUp 0.4s;
+          animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
         @keyframes fadeIn {
           from {
@@ -864,11 +1074,11 @@ const AddToWallet = ({
         }
         @keyframes slideUp {
           from {
-            transform: translateY(40px);
+            transform: translateY(16px) scale(0.98);
             opacity: 0;
           }
           to {
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
             opacity: 1;
           }
         }

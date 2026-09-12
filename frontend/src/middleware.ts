@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeNextStaticChunkPath } from '@/lib/utils/normalize-next-static-chunk-path';
 import { FEATURE_FLAGS } from '@/lib/config/features';
+import { shouldKeepAuthenticatedAuthPageForDesktopHandoff } from '@/lib/utils/desktop-oauth-handoff';
 
 const PUBLIC_PATH_PREFIXES = [
     '/docs',
@@ -95,7 +96,7 @@ export function middleware(request: NextRequest) {
 
     const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/desktop-login' || pathname === '/desktop-welcome';
 
-    if (hasSession && isAuthPage) {
+    if (hasSession && isAuthPage && !shouldKeepAuthenticatedAuthPageForDesktopHandoff(pathname, search)) {
         return NextResponse.redirect(new URL('/', request.url));
     }
 

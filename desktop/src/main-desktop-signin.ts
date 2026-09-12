@@ -179,19 +179,9 @@ export function runDesktopBrowserSignIn(
       const addr = server.address() as net.AddressInfo;
       const callbackUrl = loopbackHttpUrl(addr.port, '/');
       const upstream = resolveUpstreamApiUrl();
-
-      if (options.autoProvider === 'google') {
-        void shell.openExternal(buildUpstreamGoogleAuthUrl(upstream, callbackUrl, challenge));
-        return;
-      }
-
-      const params = new URLSearchParams({
-        desktop_callback: callbackUrl,
-        api_root: upstream,
-        pkce_challenge: challenge,
-      });
-      const authUrl = `${WEBSITE_LOGIN_URL}?${params.toString()}`;
-      void shell.openExternal(authUrl);
+      // Always Google in the system browser. Never `/login` — an existing web session would
+      // steal the tab and leave this loopback waiting.
+      void shell.openExternal(buildUpstreamGoogleAuthUrl(upstream, callbackUrl, challenge));
     });
 
     server.on('error', (err) => {

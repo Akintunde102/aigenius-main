@@ -1,10 +1,15 @@
 /**
- * Hosted payment checkout URLs that may load in a handoff child window (same pattern as OAuth).
- * When Paystack redirects back to the local Next server, `registerLocalOriginHandoff` forwards
- * the URL to the main shell so verification runs inside the app—not the system browser.
+ * Hosted payment checkout URLs that open in the system browser without an extra approval dialog.
+ * Flutterwave Standard returns `https://checkout.flutterwave.com/v3/hosted/pay/...`.
  */
 
-const PAYMENT_HOST_SUFFIXES = ['paystack.com', 'paystack.co', 'payaza.africa'] as const;
+const PAYMENT_HOST_SUFFIXES = [
+  'paystack.com',
+  'paystack.co',
+  'payaza.africa',
+  'flutterwave.com',
+  'flutterwave.co',
+] as const;
 
 function hostnameMatchesSuffix(hostname: string, suffix: string): boolean {
   const h = hostname.toLowerCase();
@@ -15,7 +20,7 @@ function hostnameMatchesSuffix(hostname: string, suffix: string): boolean {
   return h === s || h.endsWith(`.${s}`);
 }
 
-/** True when this URL is a third-party hosted wallet checkout (Paystack, Payaza, etc.). */
+/** True when this URL is a third-party hosted wallet checkout (Paystack, Payaza, Flutterwave). */
 export function isHostedPaymentUrl(urlString: string): boolean {
   if (urlString === 'about:blank' || urlString.startsWith('about:blank?')) {
     return false;

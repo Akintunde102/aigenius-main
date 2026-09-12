@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { BotMessageSquare, FolderOpen, Wallet } from "lucide-react";
 import { DevLoginButton } from "@/app/components/auth/DevLoginButton";
 import { PublicPageShell } from "@/app/components/PublicPageShell";
 import { DesktopSessionRestoringView } from "@/app/components/DesktopSessionRestoringView";
 import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-details";
 import { readDesktopAuthFlowPhase } from "@/lib/utils/desktop-auth-flow-storage";
+import { resolveDesktopShellGoogleSignIn } from "@/lib/utils/desktop-google-signin";
 import { useDesktopAuthFlow } from "@/lib/hooks/use-desktop-auth-flow";
 import { useDesktopSessionRestore } from "@/lib/hooks/use-desktop-session-restore";
 
@@ -40,15 +42,16 @@ export default function DesktopLoginPage() {
     }
   }, []);
 
-  const handleBrowserSignIn = async () => {
-    if (!window.aigeniusDesktop?.startWebSignIn) return;
+  const handleGoogleSignIn = async () => {
+    const startSignIn = resolveDesktopShellGoogleSignIn(window.aigeniusDesktop);
+    if (!startSignIn) return;
     setAuthError(null);
     setAuthFlowWithPersist("awaiting-browser");
-    const res = await window.aigeniusDesktop.startWebSignIn();
+    const res = await startSignIn();
     if (!res?.token) {
       if (readDesktopAuthFlowPhase() !== "idle") {
         setAuthFlowWithPersist("idle");
-        setAuthError("Browser sign-in did not complete. Finish sign-in in your browser, then try again.");
+        setAuthError("Google sign-in did not complete. Finish signing in with Google in your browser, then try again.");
       }
       return;
     }
@@ -85,7 +88,7 @@ export default function DesktopLoginPage() {
           >
             <button
               type="button"
-              onClick={handleBrowserSignIn}
+              onClick={handleGoogleSignIn}
               disabled={authLoading}
               style={{
                 display: "flex",
@@ -110,7 +113,14 @@ export default function DesktopLoginPage() {
                 if (!authLoading) e.currentTarget.style.background = "#f5f5f0";
               }}
             >
-              Sign in with Browser
+              <Image
+                src="/assets/google-icon.svg"
+                alt=""
+                width={20}
+                height={20}
+                unoptimized
+              />
+              Sign in with Google
             </button>
             <DevLoginButton />
           </div>
@@ -120,7 +130,7 @@ export default function DesktopLoginPage() {
               message={
                 authFlow === "completing"
                   ? "Signing you in…"
-                  : "Complete sign-in in your browser"
+                  : "Complete Google sign-in in your browser"
               }
               detail={
                 authFlow === "completing"
