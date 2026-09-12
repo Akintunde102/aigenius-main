@@ -4,7 +4,14 @@
  * the URL to the main shell so verification runs inside the app—not the system browser.
  */
 
-const PAYMENT_HOST_SUFFIXES = ['paystack.com', 'paystack.co', 'payaza.africa'] as const;
+const PAYMENT_HOST_SUFFIXES = [
+  'paystack.com',
+  'paystack.co',
+  'payaza.africa',
+  /** Flutterwave hosted checkout (e.g. checkout-v3.flutterwave.com) */
+  'flutterwave.com',
+  'ravepay.co.ng',
+] as const;
 
 function hostnameMatchesSuffix(hostname: string, suffix: string): boolean {
   const h = hostname.toLowerCase();

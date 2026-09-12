@@ -5,9 +5,11 @@ import { useRedirectDesktopFromWebAuthPage } from "@/lib/hooks/use-redirect-desk
 import { storage } from "@/lib/utils/store";
 import { storageConstants } from "@/lib/constants";
 import {
+  clearDesktopHandoff,
   resolveDesktopGoogleOAuthUrl,
   shouldPersistDesktopApiRoot,
   storeDesktopApiRoot,
+  storeDesktopHandoff,
 } from "@/lib/utils/desktop-google-auth-url";
 import { resolveAuthApiRootUrl } from "@/lib/utils/resolve-auth-api-root";
 
@@ -21,7 +23,7 @@ const Login = () => {
       const pkceChallenge = params.get("pkce_challenge");
       
       if (callback) {
-        sessionStorage.setItem("desktop_callback", callback);
+        storeDesktopHandoff(callback, pkceChallenge);
         const apiRoot = params.get("api_root");
         if (apiRoot && shouldPersistDesktopApiRoot(apiRoot)) {
           storeDesktopApiRoot(apiRoot);
@@ -35,7 +37,7 @@ const Login = () => {
         // If already logged in, request a desktop handoff code so the desktop gets both an access and refresh token.
         const token = storage(storageConstants.NOBOX_TOKEN).getString();
         if (token) {
-          sessionStorage.removeItem("desktop_callback");
+          clearDesktopHandoff();
           const authApiRoot = resolveAuthApiRootUrl();
           
           let retryCount = 0;
@@ -80,7 +82,7 @@ const Login = () => {
         }
       } else {
         // Plain web sign-in — drop any leftover desktop handoff from a prior session.
-        sessionStorage.removeItem("desktop_callback");
+        clearDesktopHandoff();
       }
     }
   }, []);

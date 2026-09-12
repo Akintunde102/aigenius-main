@@ -140,6 +140,9 @@ export function useModelInterface(options?: {
     if (currentSessionId) {
       ids.add(currentSessionId);
     }
+    if (routeConversationId) {
+      ids.add(routeConversationId);
+    }
     ids.add(DRAFT_SESSION_KEY);
     for (const [sessionId, active] of Object.entries(streamingMap)) {
       if (active) ids.add(sessionId);
@@ -148,7 +151,7 @@ export function useModelInterface(options?: {
       if (active) ids.add(sessionId);
     }
     return ids;
-  }, [currentSessionId, streamingMap, loadingMap]);
+  }, [currentSessionId, routeConversationId, streamingMap, loadingMap]);
 
   const {
     chatMap,

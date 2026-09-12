@@ -6,6 +6,10 @@ import { getUserDetails } from "@/lib/calls/get-logged-user-details";
 import { storageConstants } from "@/lib/constants";
 import { useEffect } from "react";
 import { storage } from "@/lib/utils/store";
+import {
+  clearDesktopHandoff,
+  readStoredDesktopCallback,
+} from "@/lib/utils/desktop-google-auth-url";
 import React from "react";
 import ErrorBoundary from "@/app/components/ErrorBoundary";
 import { WorkflowNavigationProgress } from "@/app/components/workflows/WorkflowNavigationProgress";
@@ -36,10 +40,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         // steal a normal web OAuth `?token=` landing on `/`.
         const isDesktopHandoff = urlParams.get("callback_client") === "desktop";
         const desktopCallback = isDesktopHandoff
-          ? sessionStorage.getItem("desktop_callback")
+          ? readStoredDesktopCallback()
           : null;
         if (desktopCallback) {
-          sessionStorage.removeItem("desktop_callback");
+          clearDesktopHandoff();
           const joiner = desktopCallback.includes("?") ? "&" : "?";
           window.location.href = `${desktopCallback}${joiner}token=${encodeURIComponent(token)}`;
           return;

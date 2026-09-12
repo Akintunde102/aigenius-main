@@ -161,8 +161,12 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     autoApproveAll: boolean;
     requireApprovalByTool: Record<string, boolean>;
   }>,
+  openWalletCheckoutUrl: (url: string): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('open-wallet-checkout-url', url) as Promise<{ ok: boolean; error?: string }>,
+  openExternalUrl: (url: string): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('open-external-url', url) as Promise<{ ok: boolean; error?: string }>,
   openExternal: (url: string) => {
-    ipcRenderer.send('open-external', url);
+    void ipcRenderer.invoke('open-external-url', url);
   },
   onMainWindowFocus: (handler: () => void) => {
     const listener = () => {

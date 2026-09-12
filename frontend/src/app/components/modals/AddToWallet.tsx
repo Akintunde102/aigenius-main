@@ -10,6 +10,7 @@ import {
   clearPendingPaymentStorage,
   consumeWalletTopUpResultState,
   openWalletPaymentCheckout,
+  tryOpenWalletPaymentCheckout,
   WALLET_PENDING_PAYMENT_KEY,
   WalletPaymentSuccessOptions,
   WalletTopUpReopenTarget,
@@ -834,7 +835,15 @@ const AddToWallet = ({
                 type="button"
                 className="mt-3 w-full rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-600"
                 onClick={() => {
-                  openWalletPaymentCheckout(pendingCheckoutUrl);
+                  void (async () => {
+                    const result = await tryOpenWalletPaymentCheckout(pendingCheckoutUrl);
+                    if (!result.ok) {
+                      toast.error(
+                        'Could not open your browser. Copy the payment link from support or try again.',
+                      );
+                      console.error('[AddToWallet] open payment page failed:', result.error);
+                    }
+                  })();
                 }}
               >
                 Open payment page

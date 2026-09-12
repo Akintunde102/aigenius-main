@@ -41,14 +41,22 @@ export default function DesktopLoginPage() {
   }, []);
 
   const handleBrowserSignIn = async () => {
-    if (!window.aigeniusDesktop?.startWebSignIn) return;
+    const bridge = window.aigeniusDesktop;
+    if (!bridge?.startOAuthSignIn && !bridge?.startWebSignIn) return;
+
     setAuthError(null);
     setAuthFlowWithPersist("awaiting-browser");
-    const res = await window.aigeniusDesktop.startWebSignIn();
+
+    // Prefer direct Google OAuth with PKCE from the main process. The legacy web-signin
+    // path depends on the hosted login page forwarding pkce_challenge to the API.
+    const res = bridge.startOAuthSignIn
+      ? await bridge.startOAuthSignIn({ provider: "google" })
+      : await bridge.startWebSignIn!();
+
     if (!res?.token) {
       if (readDesktopAuthFlowPhase() !== "idle") {
         setAuthFlowWithPersist("idle");
-        setAuthError("Browser sign-in did not complete. Finish sign-in in your browser, then try again.");
+        setAuthError("Google sign-in did not complete. Finish sign-in in your browser, then try again.");
       }
       return;
     }
@@ -110,7 +118,7 @@ export default function DesktopLoginPage() {
                 if (!authLoading) e.currentTarget.style.background = "#f5f5f0";
               }}
             >
-              Sign in with Browser
+              Sign in with Google
             </button>
             <DevLoginButton />
           </div>

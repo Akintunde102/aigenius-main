@@ -6,6 +6,7 @@ import "@testing-library/jest-dom";
 const mockSetAuthError = jest.fn();
 const mockSetAuthFlowWithPersist = jest.fn();
 const mockFinishOAuthToken = jest.fn();
+const mockStartOAuthSignIn = jest.fn();
 const mockStartWebSignIn = jest.fn();
 const mockUseDesktopSessionRestore = jest.fn();
 const mockUseDesktopAuthFlow = jest.fn();
@@ -69,19 +70,17 @@ describe("DesktopLoginPage", () => {
     stubIdleAuthFlow();
     window.aigeniusDesktop = {
       isDesktop: true,
+      startOAuthSignIn: mockStartOAuthSignIn,
       startWebSignIn: mockStartWebSignIn,
     };
   });
 
-  it("shows browser sign-in and does not show Google sign-in", () => {
+  it("shows Google sign-in as the primary action", () => {
     render(<DesktopLoginPage />);
 
     expect(
-      screen.getByRole("button", { name: "Sign in with Browser" }),
+      screen.getByRole("button", { name: "Sign in with Google" }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /Sign in with Google/i }),
-    ).not.toBeInTheDocument();
   });
 
   it("keeps developer login as a secondary action", () => {
@@ -92,28 +91,46 @@ describe("DesktopLoginPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("starts browser sign-in and finishes with the returned token", async () => {
-    mockStartWebSignIn.mockResolvedValue({ token: "desktop-token" });
+  it("starts Google OAuth sign-in and finishes with the returned token", async () => {
+    mockStartOAuthSignIn.mockResolvedValue({ token: "desktop-token" });
     render(<DesktopLoginPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sign in with Browser" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with Google" }));
 
     await waitFor(() => {
+      expect(mockStartOAuthSignIn).toHaveBeenCalledWith({ provider: "google" });
       expect(mockSetAuthFlowWithPersist).toHaveBeenCalledWith("awaiting-browser");
       expect(mockFinishOAuthToken).toHaveBeenCalledWith("desktop-token");
     });
+    expect(mockStartWebSignIn).not.toHaveBeenCalled();
   });
 
-  it("resets the flow when browser sign-in returns no token", async () => {
-    mockStartWebSignIn.mockResolvedValue({ token: null });
+  it("falls back to web sign-in when OAuth IPC is unavailable", async () => {
+    window.aigeniusDesktop = {
+      isDesktop: true,
+      startWebSignIn: mockStartWebSignIn,
+    };
+    mockStartWebSignIn.mockResolvedValue({ token: "legacy-token" });
     render(<DesktopLoginPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sign in with Browser" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with Google" }));
+
+    await waitFor(() => {
+      expect(mockStartWebSignIn).toHaveBeenCalled();
+      expect(mockFinishOAuthToken).toHaveBeenCalledWith("legacy-token");
+    });
+  });
+
+  it("resets the flow when Google sign-in returns no token", async () => {
+    mockStartOAuthSignIn.mockResolvedValue({ token: null });
+    render(<DesktopLoginPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with Google" }));
 
     await waitFor(() => {
       expect(mockSetAuthFlowWithPersist).toHaveBeenCalledWith("idle");
       expect(mockSetAuthError).toHaveBeenCalledWith(
-        expect.stringMatching(/Browser sign-in did not complete/),
+        expect.stringMatching(/Google sign-in did not complete/),
       );
     });
     expect(mockFinishOAuthToken).not.toHaveBeenCalled();
@@ -124,7 +141,7 @@ describe("DesktopLoginPage", () => {
     render(<DesktopLoginPage />);
 
     expect(
-      screen.queryByRole("button", { name: "Sign in with Browser" }),
+      screen.queryByRole("button", { name: "Sign in with Google" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Opening AIGenius…")).toBeInTheDocument();
   });

@@ -55,6 +55,7 @@ const uiResources =
         {
           from: 'dist-resources/desktop-ui',
           to: 'desktop-ui',
+          filter: ['**/*', '!downloads/**'],
         },
         {
           from: 'dist-resources/desktop-ui-server',
