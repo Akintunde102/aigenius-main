@@ -51,6 +51,29 @@ function persistGroupByAffordabilityPreference(value: boolean): void {
   }
 }
 
+function ModelsLoadingSign() {
+  return (
+    <div
+      className="flex flex-col items-center justify-center gap-3 py-16"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading models"
+    >
+      <div
+        className="h-8 w-8 animate-spin rounded-full border-2"
+        style={{
+          borderColor: "var(--modal-border)",
+          borderTopColor: "var(--chat-accent)",
+        }}
+        aria-hidden
+      />
+      <p className="text-sm" style={{ color: "var(--modal-muted-fg)" }}>
+        Loading models…
+      </p>
+    </div>
+  );
+}
+
 interface ModelSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -66,6 +89,7 @@ interface ModelSelectionModalProps {
   isModelPinned: (id: string) => boolean;
   togglePinModel: (id: string) => void | Promise<void>;
   favoritesLoaded?: boolean;
+  modelsLoading?: boolean;
   recentModels?: Model[];
   // Sort/Filter props
   orderBy?: ModelOrderBy;
@@ -108,6 +132,7 @@ export const ModelSelectionModal = React.memo(({
   isModelPinned,
   togglePinModel,
   favoritesLoaded,
+  modelsLoading = false,
   recentModels = [],
   orderBy: orderByProp = "default",
   setOrderBy: setOrderByProp,
@@ -402,6 +427,10 @@ export const ModelSelectionModal = React.memo(({
     return locked.length > 0;
   }, [wallet, models, avgCostById, selectedModel?.id]);
 
+  const showModelsLoading =
+    (modelsLoading && models.length === 0) ||
+    (activeTab === "favorites" && favoritesLoaded === false);
+
   // Set initial tab once when the modal opens — not when quick picks change mid-session.
   useEffect(() => {
     if (!isOpen) {
@@ -575,7 +604,7 @@ export const ModelSelectionModal = React.memo(({
             style={{ background: "var(--sidebar-bg)" }}
             ref={parentRef}
           >
-            {showAffordabilityToggle && (
+            {showAffordabilityToggle && !showModelsLoading && (
               <div className={isMobile ? "px-1" : "px-2"}>
                 <ModelPickerToggleRow>
                   <ModelToggleSwitch
@@ -598,39 +627,43 @@ export const ModelSelectionModal = React.memo(({
                 </ModelPickerToggleRow>
               </div>
             )}
-            <ModelSelectionGrid
-              parentRef={parentRef}
-              hasLeadingControl={showAffordabilityToggle}
-              listKey={`${activeTab}-${groupByAffordability ? "afford" : "all"}`}
-              models={
-                activeTab === "favorites"
-                  ? favoritesGridSections
-                    ? undefined
-                    : favoritesSorted
-                  : activeTab === "ollama"
-                    ? ollamaModelSections
-                      ? undefined
-                      : ollamaModelsSorted
-                    : undefined
-              }
-              sections={
-                activeTab === "all"
-                  ? allModelSections
-                  : activeTab === "favorites"
+            {showModelsLoading ? (
+              <ModelsLoadingSign />
+            ) : (
+              <ModelSelectionGrid
+                parentRef={parentRef}
+                hasLeadingControl={showAffordabilityToggle}
+                listKey={`${activeTab}-${groupByAffordability ? "afford" : "all"}`}
+                models={
+                  activeTab === "favorites"
                     ? favoritesGridSections
+                      ? undefined
+                      : favoritesSorted
                     : activeTab === "ollama"
                       ? ollamaModelSections
+                        ? undefined
+                        : ollamaModelsSorted
                       : undefined
-              }
-              emptyState={
-                activeTab === "favorites" && !favoritesGridSections
-                  ? (
-                    <FavoritesEmptyState onBrowse={() => setActiveTab("all")} />
-                  )
-                  : undefined
-              }
-              {...sharedCardProps}
-            />
+                }
+                sections={
+                  activeTab === "all"
+                    ? allModelSections
+                    : activeTab === "favorites"
+                      ? favoritesGridSections
+                      : activeTab === "ollama"
+                        ? ollamaModelSections
+                        : undefined
+                }
+                emptyState={
+                  activeTab === "favorites" && !favoritesGridSections
+                    ? (
+                      <FavoritesEmptyState onBrowse={() => setActiveTab("all")} />
+                    )
+                    : undefined
+                }
+                {...sharedCardProps}
+              />
+            )}
             <div className={`${isMobile ? "h-3" : "h-6"}`} />
           </div>
         </div>

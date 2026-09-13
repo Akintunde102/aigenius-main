@@ -120,11 +120,21 @@ export function parseSymbols(content: string, extension: string): ParsedSymbol[]
   }));
 }
 
-/** Async symbol parse: tree-sitter when enabled, else regex. */
+/**
+ * Async symbol parse: tree-sitter when enabled, else regex.
+ *
+ * `web-tree-sitter` is intentionally excluded from packaged builds (see
+ * `install-server-deps-for-platform.cjs`), so the dynamic import below can reject with
+ * ERR_MODULE_NOT_FOUND there. Never let that crash the mini-server — fall back to regex parsing.
+ */
 export async function parseSymbolsAsync(content: string, extension: string): Promise<ParsedSymbol[]> {
-  const { parseSymbolsTreeSitter } = await import('./tree-sitter-bridge.js');
-  const ts = await parseSymbolsTreeSitter(content, extension);
-  if (ts && ts.length > 0) return ts;
+  try {
+    const { parseSymbolsTreeSitter } = await import('./tree-sitter-bridge.js');
+    const ts = await parseSymbolsTreeSitter(content, extension);
+    if (ts && ts.length > 0) return ts;
+  } catch (err) {
+    console.warn('[symbol-parser] tree-sitter unavailable, falling back to regex parsing:', err);
+  }
   return parseSymbols(content, extension);
 }
 

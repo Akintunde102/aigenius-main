@@ -6,7 +6,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const { readPortsFile, DEFAULTS } = require('../../../scripts/dev-ports.cjs');
-const { loadDesktopBuildEnv } = require('./load-desktop-build-env.cjs');
+const { loadDesktopBuildEnv, loadPackageEnvFile } = require('./load-desktop-build-env.cjs');
 
 function readUpstreamFromPackageEnv() {
   const fromEnv = process.env.AIGENIUS_UPSTREAM_API_URL?.trim();
@@ -42,9 +42,11 @@ const miniServerRoot = `http://127.0.0.1:${PACKAGED_MINI_SERVER_PORT}`;
 const apiRoot = upstream || `http://localhost:${apiPort}`;
 
 const walletEnv = loadDesktopBuildEnv();
+const packageFileEnv = loadPackageEnvFile();
 
 const env = {
   ...process.env,
+  ...packageFileEnv,
   NODE_ENV: 'production',
   NEXT_PUBLIC_NOBOX_API_ROOT_URL: miniServerRoot,
   NEXT_PUBLIC_MINI_SERVER_PORT: String(PACKAGED_MINI_SERVER_PORT),
@@ -59,6 +61,14 @@ if (!upstream) {
     apiRoot,
   );
 }
+
+console.info('[desktop-renderer build] package.env wallet', {
+  provider: walletEnv.NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER || '(unset)',
+  flutterwaveKeyPrefix: (walletEnv.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || '').slice(0, 10) || '(unset)',
+  payazaKeyPrefix: (walletEnv.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY || '').slice(0, 10) || '(unset)',
+  upstream: apiRoot,
+  nodeEnv: env.NODE_ENV,
+});
 
 const rendererRoot = path.join(__dirname, '..');
 const viteBin = path.join(rendererRoot, 'node_modules', 'vite', 'bin', 'vite.js');

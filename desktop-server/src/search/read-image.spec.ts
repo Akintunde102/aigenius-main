@@ -21,18 +21,20 @@ const routeExtractionMock = routeExtraction as jest.MockedFunction<typeof routeE
 const getFileIndexRowMock = getFileIndexRow as jest.MockedFunction<typeof getFileIndexRow>;
 
 describe('readImageAnalysis', () => {
+  let tmpDir: string;
   let tmpFile: string;
   const modelsDir = '/fake/models';
   const db = {} as any;
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    tmpFile = path.join(os.tmpdir(), `read-image-test-${Date.now()}.png`);
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'read-image-test-'));
+    tmpFile = path.join(tmpDir, 'sample.png');
     await fs.writeFile(tmpFile, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-  });
+  }, 15_000);
 
   afterEach(async () => {
-    await fs.unlink(tmpFile).catch(() => undefined);
+    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => undefined);
   });
 
   it('returns indexed OCR when mtime matches', async () => {

@@ -669,6 +669,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                 showModelSelectionModal,
                 setShowModelSelectionModal,
                 models,
+                modelsLoading,
                 search,
                 setSearch,
                 selectedModel,

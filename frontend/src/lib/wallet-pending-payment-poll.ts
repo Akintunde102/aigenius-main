@@ -12,7 +12,7 @@ export type PendingPaymentRecord = {
   reference: string;
   amountInNaira: string;
   createdAt: number;
-  provider?: 'paystack' | 'payaza';
+  provider?: 'paystack' | 'payaza' | 'flutterwave';
   /** Payaza: set after hosted checkout opens so we do not verify before Payaza knows the reference. */
   checkoutStarted?: boolean;
 };

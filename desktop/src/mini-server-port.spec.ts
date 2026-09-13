@@ -1,11 +1,11 @@
 /** @jest-environment node */
 
-const mockIsPackaged = jest.fn(() => false);
+const miniServerPortMockIsPackaged = jest.fn(() => false);
 
 jest.mock('electron', () => ({
   app: {
     get isPackaged() {
-      return mockIsPackaged();
+      return miniServerPortMockIsPackaged();
     },
   },
 }));
@@ -18,7 +18,7 @@ describe('resolveMiniServerPort', () => {
     process.env = { ...originalEnv };
     delete process.env.AIGENIUS_MINI_SERVER_PORT;
     delete process.env.DEV_SIDECAR_PORT;
-    mockIsPackaged.mockReturnValue(false);
+    miniServerPortMockIsPackaged.mockReturnValue(false);
   });
 
   afterAll(() => {
@@ -37,7 +37,7 @@ describe('resolveMiniServerPort', () => {
   });
 
   it('defaults to 8001 in packaged builds', async () => {
-    mockIsPackaged.mockReturnValue(true);
+    miniServerPortMockIsPackaged.mockReturnValue(true);
     const { resolveMiniServerPort } = await import('./mini-server-port');
     expect(resolveMiniServerPort()).toBe('8001');
   });

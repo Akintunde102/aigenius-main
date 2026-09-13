@@ -1,5 +1,5 @@
-import { describe, expect, it } from '@jest/globals';
-import { parseSymbols, parseImports } from './symbol-parser';
+import { describe, expect, it, jest } from '@jest/globals';
+import { parseSymbols, parseImports, parseSymbolsAsync } from './symbol-parser';
 
 describe('parseSymbols', () => {
   it('extracts TypeScript exports', () => {
@@ -18,6 +18,24 @@ export const x = 1;
 
   it('returns empty for non-code extensions', () => {
     expect(parseSymbols('hello', 'txt')).toEqual([]);
+  });
+});
+
+describe('parseSymbolsAsync', () => {
+  it('falls back to regex parsing when tree-sitter is unavailable (packaged build)', async () => {
+    // `web-tree-sitter` is intentionally excluded from packaged builds; the dynamic import
+    // must reject without crashing the caller. See install-server-deps-for-platform.cjs.
+    jest.doMock('./tree-sitter-bridge', () => {
+      throw new Error("Cannot find package 'web-tree-sitter'");
+    });
+
+    const content = `export class Foo {\n  bar() {}\n}\nexport function baz() {}\n`;
+    const symbols = await parseSymbolsAsync(content, 'ts');
+
+    expect(symbols.some((s) => s.kind === 'class' && s.name === 'Foo')).toBe(true);
+    expect(symbols.some((s) => s.kind === 'function' && s.name === 'baz')).toBe(true);
+
+    jest.dontMock('./tree-sitter-bridge');
   });
 });
 
