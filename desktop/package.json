@@ -2,7 +2,7 @@
   "name": "aigenius-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "AIGenius Electron shell (Linux, macOS, Windows)",
+  "description": "AIGenius",
   "dependencies": {
     "@vscode/ripgrep": "^1.18.0"
   },
