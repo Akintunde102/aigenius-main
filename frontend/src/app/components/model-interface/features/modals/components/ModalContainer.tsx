@@ -28,6 +28,7 @@ interface ModalContainerProps {
   showModelSelectionModal: boolean;
   setShowModelSelectionModal: (show: boolean) => void;
   models: Model[];
+  modelsLoading?: boolean;
   search: string;
   setSearch: (search: string) => void;
   selectedModel: Model | null;
@@ -81,6 +82,7 @@ export function ModalContainer({
   showModelSelectionModal,
   setShowModelSelectionModal,
   models,
+  modelsLoading = false,
   search,
   setSearch,
   selectedModel,
@@ -141,6 +143,7 @@ export function ModalContainer({
         isOpen={showModelSelectionModal}
         onClose={() => setShowModelSelectionModal(false)}
         models={models}
+        modelsLoading={modelsLoading}
         search={search}
         setSearch={setSearch}
         selectedModel={selectedModel}

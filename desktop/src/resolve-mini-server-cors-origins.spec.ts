@@ -1,16 +1,16 @@
-const mockIsPackaged = { value: false };
+const corsOriginsMockIsPackaged = { value: false };
 
 jest.mock('electron', () => ({
   app: {
     get isPackaged() {
-      return mockIsPackaged.value;
+      return corsOriginsMockIsPackaged.value;
     },
   },
 }));
 
 describe('resolveMiniServerCorsOrigins', () => {
   beforeEach(() => {
-    mockIsPackaged.value = false;
+    corsOriginsMockIsPackaged.value = false;
     delete process.env.AIGENIUS_DESKTOP_CORS_ORIGINS;
     delete process.env.AIGENIUS_DESKTOP_UI_PROTOCOL;
     jest.resetModules();
@@ -24,7 +24,7 @@ describe('resolveMiniServerCorsOrigins', () => {
   });
 
   it('adds aigenius://app when packaged custom protocol is enabled', async () => {
-    mockIsPackaged.value = true;
+    corsOriginsMockIsPackaged.value = true;
     const { resolveMiniServerCorsOrigins } = await import('./resolve-mini-server-cors-origins');
     const value = resolveMiniServerCorsOrigins('8001');
 
@@ -34,7 +34,7 @@ describe('resolveMiniServerCorsOrigins', () => {
   });
 
   it('omits aigenius://app when packaged HTTP UI is forced', async () => {
-    mockIsPackaged.value = true;
+    corsOriginsMockIsPackaged.value = true;
     process.env.AIGENIUS_DESKTOP_UI_PROTOCOL = '0';
     const { resolveMiniServerCorsOrigins } = await import('./resolve-mini-server-cors-origins');
     const value = resolveMiniServerCorsOrigins('8001');
@@ -44,7 +44,7 @@ describe('resolveMiniServerCorsOrigins', () => {
   });
 
   it('merges explicit AIGENIUS_DESKTOP_CORS_ORIGINS without duplicates', async () => {
-    mockIsPackaged.value = true;
+    corsOriginsMockIsPackaged.value = true;
     process.env.AIGENIUS_DESKTOP_CORS_ORIGINS = 'https://extra.example,aigenius://app';
     const { resolveMiniServerCorsOrigins } = await import('./resolve-mini-server-cors-origins');
     const value = resolveMiniServerCorsOrigins('8001');

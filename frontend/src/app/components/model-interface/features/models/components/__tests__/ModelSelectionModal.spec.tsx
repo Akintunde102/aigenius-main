@@ -20,6 +20,7 @@ jest.mock('../ModelSelectionGrid', () => ({
             ? sections.flatMap((section: any) => section.models)
             : models;
         if (allModels.length === 0 && emptyState) return <>{emptyState}</>;
+        if (allModels.length === 0) return <div>No models found.</div>;
         return (
             <div data-testid="grid">
                 {sections?.map((section: any) => (
@@ -133,10 +134,53 @@ describe('ModelSelectionModal', () => {
         expect(items[1]).toHaveTextContent('Model B');
     });
 
-    it('renders FavoritesEmptyState when no favorites exist', () => {
-        render(<ModelSelectionModal {...defaultProps} pinnedModelIds={[]} favoritesLoaded={false} />);
-        // favoritesLoaded false => no auto-switch to "all", so we see the empty state
+    it('shows a loading sign on first open while the catalog is still fetching', () => {
+        render(
+            <ModelSelectionModal
+                {...defaultProps}
+                models={[]}
+                modelsLoading
+                favoritesLoaded={false}
+            />,
+        );
+
+        expect(screen.getByRole('status', { name: /loading models/i })).toBeInTheDocument();
+        expect(screen.queryByTestId('favorites-empty')).not.toBeInTheDocument();
+        expect(screen.queryByText('No models found.')).not.toBeInTheDocument();
+    });
+
+    it('shows a loading sign on Quick picks while favorites are still fetching', () => {
+        render(
+            <ModelSelectionModal
+                {...defaultProps}
+                pinnedModelIds={[]}
+                favoritesLoaded={false}
+            />,
+        );
+
+        expect(screen.getByRole('status', { name: /loading models/i })).toBeInTheDocument();
+        expect(screen.queryByTestId('favorites-empty')).not.toBeInTheDocument();
+    });
+
+    it('still lists the catalog on All Models while favorites are fetching', () => {
+        render(
+            <ModelSelectionModal
+                {...defaultProps}
+                favoritesLoaded={false}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /All Models/i }));
+
+        expect(screen.queryByRole('status', { name: /loading models/i })).not.toBeInTheDocument();
+        expect(screen.getAllByTestId('model-item')).toHaveLength(2);
+    });
+
+    it('renders FavoritesEmptyState when favorites have loaded and none exist', () => {
+        render(<ModelSelectionModal {...defaultProps} pinnedModelIds={[]} favoritesLoaded />);
+        fireEvent.click(screen.getByRole('button', { name: /Quick picks/i }));
         expect(screen.getByTestId('favorites-empty')).toBeInTheDocument();
+        expect(screen.queryByRole('status', { name: /loading models/i })).not.toBeInTheDocument();
     });
 
     it('renders inside the portal if modal-root exists', () => {

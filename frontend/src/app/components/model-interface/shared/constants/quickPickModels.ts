@@ -1,16 +1,15 @@
 import type { Model } from "@/app/components/model-interface/shared/types";
 
 /**
- * Curated default quick-pick models — one strong option per major lab plus free/fast tiers.
- * Order: free → daily drivers → one alternative (max 6 in dropdown).
+ * Curated new-user defaults — keep in sync with backend FEATURED_MODEL_IDS.
+ * There is no gpt-5.3-sol in the catalog; GPT-5.6 Sol is the Sol flagship.
  */
 export const PREFERRED_QUICK_PICK_MODEL_IDS: readonly string[] = [
-  "openrouter/free",
-  "openai/gpt-4o",
-  "openai/gpt-5-mini",
-  "anthropic/claude-sonnet-4.5",
-  "google/gemini-2.5-flash-lite",
-  "deepseek/deepseek-v3.1-terminus",
+  "google/gemini-3.8-flash",
+  "anthropic/claude-sonnet-5",
+  "tencent/hy3",
+  "openai/gpt-5.6-sol",
+  "openai/gpt-6-astra",
 ];
 
 export const MAX_QUICK_PICK_COUNT = 6;
@@ -51,10 +50,17 @@ export function markQuickPicksDefaultsMerged(): void {
 
 /**
  * Resolves platform default quick-pick IDs against the live model catalog.
- * Uses only models marked featured: true in the backend catalog.
+ * Prefers curated IDs in listed order, then other featured models.
  */
 export function resolveDefaultQuickPickModelIds(models: Model[]): string[] {
+  const availableIds = new Set(models.map((model) => model.id));
   const resolved: string[] = [];
+
+  for (const id of PREFERRED_QUICK_PICK_MODEL_IDS) {
+    if (availableIds.has(id) && !resolved.includes(id)) {
+      resolved.push(id);
+    }
+  }
 
   for (const model of models) {
     if (model.featured && !resolved.includes(model.id)) {
@@ -63,6 +69,18 @@ export function resolveDefaultQuickPickModelIds(models: Model[]): string[] {
   }
 
   return resolved.slice(0, MAX_QUICK_PICK_COUNT);
+}
+
+/** First-time composer selection: curated default, then first featured, then first catalog model. */
+export function resolveDefaultActiveModel(models: Model[]): Model | null {
+  if (models.length === 0) return null;
+
+  for (const id of resolveDefaultQuickPickModelIds(models)) {
+    const match = models.find((model) => model.id === id);
+    if (match) return match;
+  }
+
+  return models.find((model) => model.featured === true) ?? models[0] ?? null;
 }
 
 /**

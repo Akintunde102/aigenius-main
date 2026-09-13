@@ -291,7 +291,20 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
         <style dangerouslySetInnerHTML={{ __html: QUICK_PICK_MENU_SCROLL_STYLE }} />
         <div className="quick-pick-menu-scroll max-h-[min(50vh,360px)] overflow-y-auto py-2">
           {!favoritesLoaded ? (
-            <div className="px-3 py-2.5 text-[11px] [color:var(--chat-muted-fg)]">
+            <div
+              className="flex items-center gap-2 px-3 py-2.5 text-[11px] [color:var(--chat-muted-fg)]"
+              role="status"
+              aria-live="polite"
+              aria-label="Loading models"
+            >
+              <span
+                className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2"
+                style={{
+                  borderColor: "var(--chat-composer-border)",
+                  borderTopColor: "var(--chat-accent)",
+                }}
+                aria-hidden
+              />
               Loading models…
             </div>
           ) : activeOutsideQuickPicks && selectedModel ? (

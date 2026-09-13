@@ -12,6 +12,8 @@ const frontendRoot = path.join(repoRoot, 'frontend');
 const frontendSrc = path.join(frontendRoot, 'src');
 const shims = path.resolve(__dirname, 'src/shims');
 
+const isDevMode = (mode: string) => mode === 'development';
+
 export default defineConfig(({ mode }) => ({
   root: __dirname,
   publicDir: path.join(frontendRoot, 'public'),
@@ -63,7 +65,8 @@ export default defineConfig(({ mode }) => ({
     },
   },
   define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),
+    // Use Vite mode, not the parent shell. Tilt/`npm run dev` can export NODE_ENV=development.
+    'process.env.NODE_ENV': JSON.stringify(isDevMode(mode) ? 'development' : 'production'),
     'process.env.NEXT_PUBLIC_NOBOX_API_ROOT_URL': JSON.stringify(
       process.env.NEXT_PUBLIC_NOBOX_API_ROOT_URL ?? 'http://127.0.0.1:8001',
     ),
@@ -125,25 +128,30 @@ export default defineConfig(({ mode }) => ({
       process.env.NEXT_PUBLIC_E2E_WALLET_BYPASS_SECRET ?? '',
     ),
     'process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY': JSON.stringify(
-      process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY ?? desktopBuildEnv.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY,
+      desktopBuildEnv.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY
+        || process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY
+        || '',
     ),
     'process.env.NEXT_PUBLIC_PAYAZA_CHECKOUT_BUSINESS_NAME': JSON.stringify(
-      process.env.NEXT_PUBLIC_PAYAZA_CHECKOUT_BUSINESS_NAME
-        ?? desktopBuildEnv.NEXT_PUBLIC_PAYAZA_CHECKOUT_BUSINESS_NAME,
+      desktopBuildEnv.NEXT_PUBLIC_PAYAZA_CHECKOUT_BUSINESS_NAME
+        || process.env.NEXT_PUBLIC_PAYAZA_CHECKOUT_BUSINESS_NAME
+        || '',
     ),
     'process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY': JSON.stringify(
-      process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY
-        ?? desktopBuildEnv.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
+      desktopBuildEnv.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY
+        || process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY
+        || '',
     ),
     'process.env.NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER': JSON.stringify(
-      process.env.NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER
-        ?? desktopBuildEnv.NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER,
+      desktopBuildEnv.NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER
+        || process.env.NEXT_PUBLIC_WALLET_PAYMENT_PROVIDER
+        || '',
     ),
     'process.env.NEXT_PUBLIC_PAYSTACK_KEY': JSON.stringify(
-      process.env.NEXT_PUBLIC_PAYSTACK_KEY ?? desktopBuildEnv.NEXT_PUBLIC_PAYSTACK_KEY,
+      desktopBuildEnv.NEXT_PUBLIC_PAYSTACK_KEY || process.env.NEXT_PUBLIC_PAYSTACK_KEY || '',
     ),
     'process.env.NEXT_PUBLIC_APP_ORIGIN': JSON.stringify(
-      process.env.NEXT_PUBLIC_APP_ORIGIN ?? desktopBuildEnv.NEXT_PUBLIC_APP_ORIGIN,
+      desktopBuildEnv.NEXT_PUBLIC_APP_ORIGIN || process.env.NEXT_PUBLIC_APP_ORIGIN || '',
     ),
   },
 }));

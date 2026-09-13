@@ -71,124 +71,50 @@ export function resolveWalletPaymentReference(
   }
 }
 
-type OpenWalletCheckoutResult = {
-  ok: boolean;
-  url: string;
+export type OpenWalletCheckoutResult = {
+  opened: boolean;
   error?: string;
 };
-
-function openCheckoutViaAnchor(checkoutUrl: string): void {
-  const anchor = document.createElement('a');
-  anchor.href = checkoutUrl;
-  anchor.target = '_blank';
-  anchor.rel = 'noopener noreferrer';
-  anchor.style.display = 'none';
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-}
-
-/**
- * Desktop-only: try every supported strategy to hand off checkout to the system browser.
- */
-export async function tryOpenWalletPaymentCheckout(
-  authorizationUrl: string,
-): Promise<OpenWalletCheckoutResult> {
-  const checkoutUrl = authorizationUrl?.trim();
-  if (!checkoutUrl) {
-    return { ok: false, url: authorizationUrl, error: 'missing_checkout_url' };
-  }
-
-  const desktop = window.aigeniusDesktop;
-  if (!desktop?.isDesktop) {
-    return { ok: false, url: checkoutUrl, error: 'not_desktop' };
-  }
-
-  const errors: string[] = [];
-  let attemptedBrowserHandoff = false;
-
-  if (typeof desktop.openWalletCheckoutUrl === 'function') {
-    try {
-      const result = await desktop.openWalletCheckoutUrl(checkoutUrl);
-      if (result?.ok) {
-        return { ok: true, url: checkoutUrl };
-      }
-      if (result?.error) {
-        errors.push(result.error);
-      }
-    } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  try {
-    // Electron routes hosted payment URLs to the system browser via setWindowOpenHandler.
-    window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
-    attemptedBrowserHandoff = true;
-  } catch (error) {
-    errors.push(error instanceof Error ? error.message : String(error));
-  }
-
-  try {
-    openCheckoutViaAnchor(checkoutUrl);
-    attemptedBrowserHandoff = true;
-  } catch (error) {
-    errors.push(error instanceof Error ? error.message : String(error));
-  }
-
-  if (typeof desktop.openExternalUrl === 'function') {
-    try {
-      const result = await desktop.openExternalUrl(checkoutUrl);
-      if (result?.ok) {
-        return { ok: true, url: checkoutUrl };
-      }
-      if (result?.error) {
-        errors.push(result.error);
-      }
-    } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
-    }
-  } else if (typeof desktop.openExternal === 'function') {
-    try {
-      desktop.openExternal(checkoutUrl);
-      return { ok: true, url: checkoutUrl };
-    } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  if (attemptedBrowserHandoff) {
-    return { ok: true, url: checkoutUrl };
-  }
-
-  return {
-    ok: false,
-    url: checkoutUrl,
-    error: errors[0] || 'could_not_open_browser',
-  };
-}
 
 /**
  * Opens Paystack/Payaza/Flutterwave hosted checkout.
  * - Web: navigates the current tab.
  * - Desktop: opens the system browser (wallet updates via background polling).
+ */
+export async function tryOpenWalletPaymentCheckout(
+  authorizationUrl: string,
+): Promise<OpenWalletCheckoutResult> {
+  if (typeof window === 'undefined') {
+    return { opened: false, error: 'No window' };
+  }
+
+  if (window.aigeniusDesktop?.isDesktop && typeof window.aigeniusDesktop.openExternal === 'function') {
+    try {
+      const result = await Promise.resolve(window.aigeniusDesktop.openExternal(authorizationUrl));
+      if (result && typeof result === 'object' && typeof result.opened === 'boolean') {
+        return result;
+      }
+      return { opened: true };
+    } catch (error) {
+      return {
+        opened: false,
+        error: error instanceof Error ? error.message : 'Failed to open checkout',
+      };
+    }
+  }
+
+  window.location.assign(authorizationUrl);
+  return { opened: true };
+}
+
+/**
+ * Opens hosted checkout. Prefer `tryOpenWalletPaymentCheckout` when the caller
+ * needs to show an error if the system browser did not open.
  * @returns the checkout URL that was opened (for desktop fallback UI).
  */
 export function openWalletPaymentCheckout(authorizationUrl: string): string {
-  if (typeof window === 'undefined') return authorizationUrl;
-
-  const checkoutUrl = authorizationUrl?.trim();
-  if (!checkoutUrl) {
-    return authorizationUrl;
-  }
-
-  if (window.aigeniusDesktop?.isDesktop) {
-    void tryOpenWalletPaymentCheckout(checkoutUrl);
-    return checkoutUrl;
-  }
-
-  window.location.assign(checkoutUrl);
-  return checkoutUrl;
+  void tryOpenWalletPaymentCheckout(authorizationUrl);
+  return authorizationUrl;
 }
 
 export function appendWalletTopUpReturnMarker(returnPath: string): string {
