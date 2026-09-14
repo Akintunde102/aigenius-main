@@ -165,14 +165,12 @@
     "dmg": {
       "sign": false
     },
-    "afterPack": "./scripts/after-pack-embed-win-icon.cjs",
     "win": {
       "target": [
         "nsis",
         "zip"
       ],
       "icon": "build/icon.ico",
-      "signAndEditExecutable": false,
       "extraResources": [
         {
           "from": "build/vcredist",
@@ -183,7 +181,6 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "include": "build/installer.nsh",
       "installerLanguages": [
         "en_US"
       ],

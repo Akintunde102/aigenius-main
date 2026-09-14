@@ -619,7 +619,7 @@ const AddToWallet = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-credits-title"
-        className="rounded-2xl shadow-2xl w-full max-w-[420px] max-[480px]:max-w-full overflow-hidden flex flex-col border relative animate-slideUp"
+        className="rounded-2xl shadow-2xl w-full max-w-[420px] max-[480px]:max-w-full max-h-[95vh] overflow-y-auto flex flex-col border relative animate-slideUp"
         style={{
           background: "var(--modal-bg)",
           borderColor: "var(--modal-border)",

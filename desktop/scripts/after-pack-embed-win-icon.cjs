@@ -50,7 +50,8 @@ function downloadFile(url, dest, redirectsLeft = 5) {
 }
 
 async function resolveRceditPath() {
-  const cacheDir = path.join(process.env.LOCALAPPDATA || process.env.TEMP || '.', 'aigenius-rcedit');
+  const os = require('os');
+  const cacheDir = path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'aigenius-rcedit');
   fs.mkdirSync(cacheDir, { recursive: true });
   const exe = path.join(cacheDir, 'rcedit-x64.exe');
   if (fs.existsSync(exe) && fs.statSync(exe).size > 10_000) {
@@ -80,6 +81,25 @@ exports.default = async function afterPackEmbedWinIcon(context) {
   }
 
   const rcedit = await resolveRceditPath();
-  execFileSync(rcedit, [exePath, '--set-icon', icoPath], { stdio: 'inherit' });
-  console.info('[afterPack] Embedded Windows icon into', exePath);
+  if (process.platform !== 'win32') {
+    let wineCmd = 'wine';
+    try {
+      execFileSync(wineCmd, ['--version']);
+    } catch {
+      const fs = require('fs');
+      if (fs.existsSync('/opt/homebrew/bin/wine')) {
+        wineCmd = '/opt/homebrew/bin/wine';
+      }
+    }
+    
+    try {
+      execFileSync(wineCmd, [rcedit, exePath, '--set-icon', icoPath], { stdio: 'inherit' });
+      console.info('[afterPack] Embedded Windows icon into', exePath, `(via ${wineCmd})`);
+    } catch (err) {
+      console.warn('[afterPack] Warning: Could not run rcedit via wine. Is wine installed? The Windows .exe will not have a custom icon.', err.message);
+    }
+  } else {
+    execFileSync(rcedit, [exePath, '--set-icon', icoPath], { stdio: 'inherit' });
+    console.info('[afterPack] Embedded Windows icon into', exePath);
+  }
 };
