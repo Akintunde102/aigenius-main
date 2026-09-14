@@ -128,3 +128,8 @@ export function clearDesktopRefreshToken(): void {
     console.warn('[aigenius-desktop] Failed to clear desktop refresh token', error);
   }
 }
+
+export function hasStoredAuthSession(): boolean {
+  return readDesktopRefreshToken() !== null;
+}
+

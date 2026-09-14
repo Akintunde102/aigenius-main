@@ -25,6 +25,7 @@ import { FRONTEND_PORT, FRONTEND_URL, repoRootFromDesktopDist } from './main-bac
 import { createShellBootDataUrl, isShellBootDataUrl } from './shell-boot-page';
 import { desktopUiAppUrl, shouldUseDesktopUiCustomProtocol } from './desktop-ui-mode';
 import { listWindowIconCandidates } from './window-icon-paths';
+import { hasStoredAuthSession } from './desktop-auth-store';
 
 export function resolveWindowIconPath(): string | undefined {
   const repoRoot = repoRootFromDesktopDist();
@@ -223,7 +224,7 @@ export function createWindow(relativePathOrOptions?: string | CreateWindowOption
 
   const loadShellUrl = (): void => {
     if (deferAppLoad || isAdditionalWindow) {
-      const sessionRestoreHint = !relativePath;
+      const sessionRestoreHint = hasStoredAuthSession();
       void win.loadURL(createShellBootDataUrl(sessionRestoreHint));
       if (!deferAppLoad && isAdditionalWindow) {
         void prefetchShellUrl(appUrl).then(() => {
