@@ -21,14 +21,6 @@ function makeTempProject(): string {
   return root;
 }
 
-function removeTempProject(root: string): void {
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
-  } catch {
-    // Best-effort cleanup; Windows can briefly lock temp dirs under load.
-  }
-}
-
 function makeDb() {
   return createTestSearchDb();
 }
@@ -39,14 +31,14 @@ describe('project-root-snapshot', () => {
     const appsWeb = path.join(root, 'apps', 'web');
     expect(resolveContextDirectoryPath(root, root)).toBe(path.normalize(root));
     expect(resolveContextDirectoryPath('apps/web', root)).toBe(path.normalize(appsWeb));
-    removeTempProject(root);
+    fs.rmSync(root, { recursive: true, force: true });
   });
 
   it('isProjectRootDirectory matches path_prefix and git root', () => {
     const root = makeTempProject();
     expect(isProjectRootDirectory(root, root)).toBe(true);
     expect(isProjectRootDirectory(path.join(root, 'apps', 'web'), root)).toBe(false);
-    removeTempProject(root);
+    fs.rmSync(root, { recursive: true, force: true });
   });
 
   it('buildDirectorySnapshot lists top-level entries and entry points', () => {
@@ -58,7 +50,7 @@ describe('project-root-snapshot', () => {
     expect(snap.entries.some((e) => e.name === 'package.json')).toBe(true);
     expect(snap.entryPoints).toContain('package.json');
     expect(snap.entryPoints).toContain('apps/');
-    removeTempProject(root);
+    fs.rmSync(root, { recursive: true, force: true });
     db.close();
   });
 
@@ -79,7 +71,7 @@ describe('project-root-snapshot', () => {
     expect(overview.architectureMarkdown).toContain('Project structural map');
     expect(overview.directory.entries.length).toBeGreaterThan(0);
     expect(overview.git).toBeDefined();
-    removeTempProject(root);
+    fs.rmSync(root, { recursive: true, force: true });
     db.close();
   });
 
@@ -87,6 +79,6 @@ describe('project-root-snapshot', () => {
     const root = makeTempProject();
     const snap = collectGitSnapshot(root);
     expect(snap.isRepo).toBe(false);
-    removeTempProject(root);
+    fs.rmSync(root, { recursive: true, force: true });
   });
 });

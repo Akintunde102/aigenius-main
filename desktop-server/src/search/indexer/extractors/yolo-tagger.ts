@@ -10,11 +10,32 @@
  *                 each row: [cx, cy, w, h, obj_conf, cls_0 … cls_79]
  */
 
-import * as ort from 'onnxruntime-node';
+import type * as OrtTypes from 'onnxruntime-node';
 import { ensureModelsDownloaded } from '../../models-downloader.js';
 import { loadSharp } from '../../sharp-loader.js';
 import fs from 'fs';
 import path from 'path';
+
+/**
+ * `onnxruntime-node`'s bundled DirectML binding calls dlopen() as soon as the module is
+ * evaluated, before any inference runs. On machines where DirectML/D3D12 device probing in its
+ * DllMain fails (no compatible GPU, remote desktop session, outdated GPU driver), that crashes
+ * the *entire* process with ERR_DLOPEN_FAILED — even though image tagging is a purely optional
+ * feature that already degrades gracefully when its model is missing. A static top-level import
+ * would make that unrecoverable; load it lazily and behind a try/catch instead.
+ */
+let ortModule: typeof OrtTypes | null | undefined;
+
+async function loadOrt(): Promise<typeof OrtTypes | null> {
+  if (ortModule !== undefined) return ortModule;
+  try {
+    ortModule = await import('onnxruntime-node');
+  } catch (err) {
+    console.warn('[tagger] onnxruntime-node unavailable — image tagging disabled:', err);
+    ortModule = null;
+  }
+  return ortModule;
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -46,14 +67,19 @@ const MODEL_INPUT_NAME = 'images';                      // verify with: session.
 // Session cache  (one per process, created lazily)
 // ---------------------------------------------------------------------------
 
-let cachedSession: ort.InferenceSession | null = null;
+let cachedSession: OrtTypes.InferenceSession | null = null;
 
 /**
  * Returns the ONNX inference session, creating it on first call.
- * Throws a descriptive error if the model file is missing.
+ * Throws a descriptive error if the model file is missing or onnxruntime-node is unavailable.
  */
-async function loadSession(modelsDir: string): Promise<ort.InferenceSession> {
+async function loadSession(modelsDir: string): Promise<OrtTypes.InferenceSession> {
   if (cachedSession) return cachedSession;
+
+  const ort = await loadOrt();
+  if (!ort) {
+    throw new Error('onnxruntime-node unavailable');
+  }
 
   const modelPath = path.join(modelsDir, 'yolox_nano.onnx');
   if (!fs.existsSync(modelPath)) {
@@ -92,7 +118,7 @@ async function loadSession(modelsDir: string): Promise<ort.InferenceSession> {
  *
  * @returns Tensor shaped [1, 3, INPUT_SIZE, INPUT_SIZE]
  */
-async function buildInputTensor(filePath: string): Promise<ort.Tensor> {
+async function buildInputTensor(filePath: string, ort: typeof OrtTypes): Promise<OrtTypes.Tensor> {
   const pixelsPerChannel = INPUT_SIZE * INPUT_SIZE;
 
   // Use letterboxing (contain) with 114 padding, and flatten with 114
@@ -138,7 +164,7 @@ async function buildInputTensor(filePath: string): Promise<ort.Tensor> {
  * Final score = objectness × argmax(class confidences)
  * A detection is kept when final score ≥ CONF_THRESHOLD.
  */
-function decodeDetections(output: ort.Tensor): Set<string> {
+function decodeDetections(output: OrtTypes.Tensor): Set<string> {
   const data = output.data as Float32Array;
 
   // Derive dims from the tensor itself — never hardcode.
@@ -205,7 +231,7 @@ export async function tagImage(
   modelsDir: string,
 ): Promise<string[]> {
   // Graceful degradation: if the model isn't downloaded, skip silently.
-  let session: ort.InferenceSession;
+  let session: OrtTypes.InferenceSession;
   try {
     session = await loadSession(modelsDir);
   } catch (err) {
@@ -213,7 +239,11 @@ export async function tagImage(
     return [];
   }
 
-  const inputTensor = await buildInputTensor(filePath);
+  const ort = await loadOrt();
+  if (!ort) {
+    return [];
+  }
+  const inputTensor = await buildInputTensor(filePath, ort);
 
   const outputs = await session.run({ [MODEL_INPUT_NAME]: inputTensor });
   const outputTensor = outputs[session.outputNames[0]];

@@ -11,6 +11,10 @@ env/
 out/
 dist/
 build/
+# desktop/build/ is a *source* dir (installer.nsh, app icons), not a build artifact — keep it tracked.
+!desktop/build/
+!desktop/build/**
+desktop/build/vcredist/
 
 # Environment files (keep .env.example and env.example)
 .env
