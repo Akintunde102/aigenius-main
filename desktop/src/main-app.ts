@@ -33,6 +33,7 @@ import {
   globalShortcut,
   session,
   powerMonitor,
+  shell,
 } from 'electron';
 import {
   loadToolPermissionPreferences,
@@ -67,6 +68,7 @@ import { registerSecondaryBrowserWindowPolicy } from './secondary-browser-window
 import { installDesktopUiProtocolHandler } from './desktop-ui-protocol';
 import path from 'path';
 import { DESKTOP_APP_USER_MODEL_ID, resolveDesktopUserDataDirName } from './desktop-app-identity';
+import { installVcRuntimeElevated, isVcRuntimeInstalled } from './vcredist-guard';
 
 if (process.platform === 'win32') {
   app.setAppUserModelId(DESKTOP_APP_USER_MODEL_ID);
@@ -188,15 +190,58 @@ if (!gotLock) {
 
     const mainWindow = createWindow({ deferAppLoad: true });
 
+    // Self-heal: the NSIS install step for the VC++ Redistributable requires admin approval and
+    // can be declined/skipped. Without it, the mini-server crashes with an opaque health-check
+    // timeout that users cannot fix themselves. Catch it here, before that happens.
+    if (app.isPackaged && process.platform === 'win32' && !isVcRuntimeInstalled()) {
+      const { response } = await dialog.showMessageBox({
+        type: 'info',
+        title: 'AIGenius — one-time setup',
+        message: 'AIGenius needs a small Windows system component that is not yet installed.',
+        detail:
+          'This is a one-time step (Microsoft Visual C++ Runtime). Windows will ask you to ' +
+          'approve it — click "Yes" on the next prompt.',
+        buttons: ['Continue', 'Skip'],
+        defaultId: 0,
+        cancelId: 1,
+      });
+      if (response === 0) {
+        const installed = installVcRuntimeElevated();
+        console.info(
+          installed
+            ? '[aigenius-desktop] VC++ runtime install completed.'
+            : '[aigenius-desktop] VC++ runtime install was declined or failed.',
+        );
+      }
+    }
+
     try {
       await startBackendProcesses();
     } catch (err) {
       console.error(err);
-      await dialog.showErrorBox(
-        'AIGenius',
-        app.isPackaged
-          ? `Could not start the local app server.\n\n${String(err)}`
-          : [
+      if (app.isPackaged) {
+        const logsDir = app.getPath('logs');
+        const { response } = await dialog.showMessageBox({
+          type: 'error',
+          title: 'AIGenius',
+          message: 'Could not start the local app server.',
+          detail: [
+            String(err),
+            '',
+            'This is often caused by missing system components or a blocked background process,',
+            'not something wrong with your data. Opening the log file can help diagnose it.',
+          ].join('\n'),
+          buttons: ['Open Log Folder', 'Close'],
+          defaultId: 0,
+          cancelId: 1,
+        });
+        if (response === 0) {
+          await shell.openPath(logsDir);
+        }
+      } else {
+        await dialog.showErrorBox(
+          'AIGenius',
+          [
             'Development: the mini-server or the Next UI is not ready.',
             '',
             `Terminal 1 (leave running): cd frontend && npx next dev -p ${FRONTEND_PORT}`,
@@ -206,7 +251,8 @@ if (!gotLock) {
             '',
             String(err),
           ].join('\n'),
-      );
+        );
+      }
       app.quit();
       return;
     }

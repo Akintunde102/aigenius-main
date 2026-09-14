@@ -4,11 +4,34 @@
  */
 import fs from 'fs';
 import path from 'path';
-import * as ort from 'onnxruntime-node';
+import type * as OrtTypes from 'onnxruntime-node';
 import { hashEmbedText, HASH_EMBED_DIM } from './hash-embedder.js';
 
-const EMBED_DIM = HASH_EMBED_DIM;let cachedSession: ort.InferenceSession | null = null;
+const EMBED_DIM = HASH_EMBED_DIM;
+let cachedSession: OrtTypes.InferenceSession | null = null;
 let modelChecked = false;
+
+/**
+ * `onnxruntime-node`'s bundled DirectML binding calls dlopen() as soon as the module is
+ * evaluated — even before InferenceSession.create() runs. On machines where the DirectML/D3D12
+ * device probing in its DllMain fails (no compatible GPU, remote desktop session, outdated GPU
+ * driver), that dlopen crashes the *entire* process with ERR_DLOPEN_FAILED, taking down the
+ * mini-server even though embeddings are a purely optional feature (falls back to hash
+ * embeddings below). A static top-level import would make that unrecoverable; load it lazily
+ * and behind a try/catch instead.
+ */
+let ortModule: typeof OrtTypes | null | undefined;
+
+async function loadOrt(): Promise<typeof OrtTypes | null> {
+  if (ortModule !== undefined) return ortModule;
+  try {
+    ortModule = await import('onnxruntime-node');
+  } catch (err) {
+    console.warn('[embedding] onnxruntime-node unavailable — hybrid search falls back to hash embeddings:', err);
+    ortModule = null;
+  }
+  return ortModule;
+}
 
 export function embeddingModelPath(modelsDir: string): string {
   return path.join(modelsDir, 'all-MiniLM-L6-v2.onnx');
@@ -18,11 +41,15 @@ export function isEmbeddingAvailable(modelsDir: string): boolean {
   return fs.existsSync(embeddingModelPath(modelsDir));
 }
 
-async function loadSession(modelsDir: string): Promise<ort.InferenceSession> {
+async function loadSession(modelsDir: string): Promise<OrtTypes.InferenceSession> {
   if (cachedSession) return cachedSession;
   const modelPath = embeddingModelPath(modelsDir);
   if (!fs.existsSync(modelPath)) {
     throw new Error(`Embedding model not found at ${modelPath}`);
+  }
+  const ort = await loadOrt();
+  if (!ort) {
+    throw new Error('onnxruntime-node unavailable');
   }
   cachedSession = await ort.InferenceSession.create(modelPath, {
     executionProviders: ['cpu'],
@@ -43,8 +70,11 @@ function tokenizeSimple(text: string, maxTokens = 128): number[] {
   return ids;
 }
 
-export async function embedText(modelsDir: string, text: string): Promise<Float32Array | null> {  if (!isEmbeddingAvailable(modelsDir)) return null;
+export async function embedText(modelsDir: string, text: string): Promise<Float32Array | null> {
+  if (!isEmbeddingAvailable(modelsDir)) return null;
   try {
+    const ort = await loadOrt();
+    if (!ort) return null;
     const session = await loadSession(modelsDir);
     const inputIds = tokenizeSimple(text);
     const attentionMask = inputIds.map(() => 1);
@@ -59,7 +89,7 @@ export async function embedText(modelsDir: string, text: string): Promise<Float3
       [1, attentionMask.length],
     );
     const inputNames = session.inputNames;
-    const feeds: Record<string, ort.Tensor> = {};
+    const feeds: Record<string, OrtTypes.Tensor> = {};
     if (inputNames.includes('input_ids')) feeds.input_ids = inputTensor;
     if (inputNames.includes('attention_mask')) feeds.attention_mask = maskTensor;
     const outputs = await session.run(feeds);
