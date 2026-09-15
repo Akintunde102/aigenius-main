@@ -58,8 +58,9 @@ export function resolveViewSessionId(
     return null;
   }
 
+  const clientRouteId = conversationTargetRef.current.activeRouteConversationId;
   const routeId = conversationTargetRef.current.routeTargetInitialized
-    ? conversationTargetRef.current.activeRouteConversationId
+    ? (clientRouteId ?? routeConversationId)
     : routeConversationId;
 
   if (routeId !== null) {

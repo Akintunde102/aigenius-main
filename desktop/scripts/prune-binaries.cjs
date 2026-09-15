@@ -25,7 +25,7 @@ const JUNK_DIR_NAMES = new Set([
 
 const JUNK_FILE_EXTENSIONS = new Set(['.map', '.md', '.markdown', '.ts', '.flow']);
 
-const FORBIDDEN_PACKAGE_PREFIXES = ['tree-sitter', 'web-tree-sitter'];
+const FORBIDDEN_PACKAGE_PREFIXES = ['tree-sitter'];
 
 if (!fs.existsSync(nodeModulesDir)) {
   console.log(`[prune-binaries] No node_modules found at ${nodeModulesDir}, skipping.`);

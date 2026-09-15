@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { BotMessageSquare, FolderOpen, Wallet } from "lucide-react";
 import { DevLoginButton } from "@/app/components/auth/DevLoginButton";
 import { PublicPageShell } from "@/app/components/PublicPageShell";
 import { DesktopSessionRestoringView } from "@/app/components/DesktopSessionRestoringView";
 import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-details";
 import { readDesktopAuthFlowPhase } from "@/lib/utils/desktop-auth-flow-storage";
-import { resolveDesktopShellGoogleSignIn } from "@/lib/utils/desktop-google-signin";
 import { useDesktopAuthFlow } from "@/lib/hooks/use-desktop-auth-flow";
 import { useDesktopSessionRestore } from "@/lib/hooks/use-desktop-session-restore";
 
@@ -42,16 +40,23 @@ export default function DesktopLoginPage() {
     }
   }, []);
 
-  const handleGoogleSignIn = async () => {
-    const startSignIn = resolveDesktopShellGoogleSignIn(window.aigeniusDesktop);
-    if (!startSignIn) return;
+  const handleBrowserSignIn = async () => {
+    const bridge = window.aigeniusDesktop;
+    if (!bridge?.startOAuthSignIn && !bridge?.startWebSignIn) return;
+
     setAuthError(null);
     setAuthFlowWithPersist("awaiting-browser");
-    const res = await startSignIn();
+
+    // Prefer direct Google OAuth with PKCE from the main process. The legacy web-signin
+    // path depends on the hosted login page forwarding pkce_challenge to the API.
+    const res = bridge.startOAuthSignIn
+      ? await bridge.startOAuthSignIn({ provider: "google" })
+      : await bridge.startWebSignIn!();
+
     if (!res?.token) {
       if (readDesktopAuthFlowPhase() !== "idle") {
         setAuthFlowWithPersist("idle");
-        setAuthError("Google sign-in did not complete. Finish signing in with Google in your browser, then try again.");
+        setAuthError("Google sign-in did not complete. Finish sign-in in your browser, then try again.");
       }
       return;
     }
@@ -88,7 +93,7 @@ export default function DesktopLoginPage() {
           >
             <button
               type="button"
-              onClick={handleGoogleSignIn}
+              onClick={handleBrowserSignIn}
               disabled={authLoading}
               style={{
                 display: "flex",
@@ -113,13 +118,6 @@ export default function DesktopLoginPage() {
                 if (!authLoading) e.currentTarget.style.background = "#f5f5f0";
               }}
             >
-              <Image
-                src="/assets/google-icon.svg"
-                alt=""
-                width={20}
-                height={20}
-                unoptimized
-              />
               Sign in with Google
             </button>
             <DevLoginButton />
@@ -130,7 +128,7 @@ export default function DesktopLoginPage() {
               message={
                 authFlow === "completing"
                   ? "Signing you in…"
-                  : "Complete Google sign-in in your browser"
+                  : "Complete sign-in in your browser"
               }
               detail={
                 authFlow === "completing"

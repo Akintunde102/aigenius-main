@@ -74,7 +74,7 @@ for (const entry of required) {
   }
 }
 
-const forbiddenPrefixes = ['tree-sitter', 'web-tree-sitter'];
+const forbiddenPrefixes = ['tree-sitter'];
 for (const entry of fs.readdirSync(nodeModulesDir)) {
   if (forbiddenPrefixes.some((prefix) => entry === prefix || entry.startsWith(`${prefix}-`))) {
     fail(`forbidden package still present: ${entry}`);

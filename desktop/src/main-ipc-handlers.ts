@@ -26,7 +26,10 @@ import {
   readDesktopRefreshToken,
   storeDesktopRefreshToken,
 } from './desktop-auth-store';
-import { deliverOpenExternalOrAuthUrl } from './navigation-guards';
+import {
+  openUrlInSystemBrowser,
+  openWalletCheckoutInSystemBrowser,
+} from './open-url-in-system-browser';
 import {
   notifyChatCompletionIfBackground,
   type ChatCompletionNotifyPayload,
@@ -38,7 +41,6 @@ import {
 import { cancelDesktopBrowserSignIn, runDesktopBrowserSignIn } from './main-desktop-signin';
 import { resolveUpstreamApiUrl } from './main-backend-lifecycle';
 import { createWindow } from './main-window';
-import { isHostedPaymentUrl } from './payment-allowlist';
 import { revealPathInFileManager } from './reveal-path-in-file-manager';
 import { copyItemToOsClipboard } from './copy-item-to-os-clipboard';
 import { pathToFileURL } from 'url';
@@ -59,31 +61,18 @@ export function registerMainIpcHandlers(): void {
     e.returnValue = MINI_SERVER_PORT;
   });
 
-  ipcMain.handle('open-external', async (e, url: string) => {
-    if (typeof url !== 'string' || (!url.startsWith('https:') && !url.startsWith('http:'))) {
-      return { opened: false as const, error: 'Invalid URL' };
-    }
-    if (deliverOpenExternalOrAuthUrl(e.sender, url)) {
-      return { opened: true as const };
-    }
-    try {
-      if (isHostedPaymentUrl(url)) {
-        await shell.openExternal(url);
-        return { opened: true as const };
-      }
-      const win = BrowserWindow.fromWebContents(e.sender);
-      const { showExternalLinkApprovalDialog } = await import('./external-link-approval-dialog');
-      const ok = await showExternalLinkApprovalDialog(win ?? undefined, url);
-      if (!ok) {
-        return { opened: false as const, error: 'Link was not approved' };
-      }
-      await shell.openExternal(url);
-      return { opened: true as const };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to open URL';
-      console.error('[aigenius-desktop][ipc] open-external failed:', url, error);
-      return { opened: false as const, error: message };
-    }
+  ipcMain.handle('open-wallet-checkout-url', async (_event, url: string) => {
+    return openWalletCheckoutInSystemBrowser(url);
+  });
+
+  ipcMain.handle('open-external-url', async (event, url: string) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return openUrlInSystemBrowser(url, win ?? undefined);
+  });
+
+  ipcMain.on('open-external', (e, url: string) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    void openUrlInSystemBrowser(url, win ?? undefined);
   });
 
   ipcMain.handle('open-file-path', async (_event, filePath: string) => {
