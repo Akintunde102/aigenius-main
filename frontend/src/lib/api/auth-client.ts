@@ -34,6 +34,20 @@ const REQUESTED_WITH_VALUE = 'XMLHttpRequest';
 const LOGIN_PATH = LINKS.internalPages.login.github;
 const AUTH_TOKEN_REFRESHED_EVENT = 'auth:token-refreshed';
 
+/**
+ * The main process appends ?aigenius_desktop_has_session=1 to the app URL when
+ * a refresh token file exists on disk. This lets us skip the 8-second bridge
+ * wait on cold-start when the user isn't logged in, so they reach the login
+ * screen instantly instead of after a long timeout.
+ */
+function desktopBuildHasSession(): boolean {
+    try {
+        return new URLSearchParams(window.location.search).get('aigenius_desktop_has_session') === '1';
+    } catch {
+        return true; // default to waiting (safe fallback)
+    }
+}
+
 let refreshPromise: Promise<string> | null = null;
 
 export function getAccessToken(): string | undefined {
@@ -80,9 +94,10 @@ export async function restoreAccessTokenFromStoredSession(): Promise<string | un
     }
 
     restoreAccessTokenInflight = (async () => {
-        if (
+    if (
             (isDesktopShellFromBuild() || isLikelyElectronRenderer())
             && !isAigeniusDesktopRuntime()
+            && desktopBuildHasSession()
         ) {
             await waitForAigeniusDesktopBridge(8000);
         }
@@ -412,7 +427,7 @@ export async function refreshAccessToken(): Promise<string> {
     }
 
     refreshPromise = (async () => {
-        if (!usesDesktopRefresh && mightBeDesktop && !isAigeniusDesktopRuntime()) {
+        if (!usesDesktopRefresh && mightBeDesktop && !isAigeniusDesktopRuntime() && desktopBuildHasSession()) {
             await waitForAigeniusDesktopBridge(8000);
             usesDesktopRefresh = canUseDesktopStoredRefreshToken();
         }
@@ -475,7 +490,13 @@ export async function refreshAccessToken(): Promise<string> {
         setAccessToken(token);
 
         if (typeof rotatedRefreshToken === 'string' && rotatedRefreshToken.trim().length > 0) {
-            await writeDesktopStoredRefreshToken(rotatedRefreshToken);
+            try {
+                await writeDesktopStoredRefreshToken(rotatedRefreshToken);
+            } catch (writeErr) {
+                // If we can't persist the rotated token, the NEXT refresh will use the revoked
+                // old token and trigger a forced logout. Surface this clearly so it's diagnosable.
+                console.error('[aigenius-desktop] CRITICAL: failed to persist rotated refresh token to keychain. Session will expire in ~1 hour.', writeErr);
+            }
         }
 
         return token;

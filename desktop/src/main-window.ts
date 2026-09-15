@@ -86,18 +86,20 @@ export function getWindowIcon(): Electron.NativeImage | undefined {
   return cachedWindowIcon;
 }
 
-export function resolveMainShellAppUrl(relativePath?: string): string {
+export function resolveMainShellAppUrl(relativePath?: string, opts?: { hasSession?: boolean }): string {
+  const sessionParam = opts?.hasSession ? '?aigenius_desktop_has_session=1' : '';
   if (shouldUseDesktopUiCustomProtocol()) {
     const rel = relativePath
       ? relativePath.startsWith('/')
         ? relativePath
         : `/${relativePath}`
       : '/desktop-login';
-    return desktopUiAppUrl(rel);
+    return desktopUiAppUrl(rel) + sessionParam;
   }
-  return relativePath
+  const base = relativePath
     ? loopbackHttpUrl(FRONTEND_PORT, relativePath.startsWith('/') ? relativePath : '/' + relativePath)
     : FRONTEND_URL;
+  return base + sessionParam;
 }
 
 function attachShellPageReadyHandler(win: BrowserWindow): void {
@@ -264,7 +266,7 @@ export async function navigateMainShellToApp(
   if (win.isDestroyed()) {
     return;
   }
-  const url = resolveMainShellAppUrl(relativePath);
+  const url = resolveMainShellAppUrl(relativePath, { hasSession: hasStoredAuthSession() });
   if (!isShellBootDataUrl(win.webContents.getURL()) && win.webContents.getURL() === url) {
     return;
   }
