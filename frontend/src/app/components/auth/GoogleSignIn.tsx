@@ -112,8 +112,11 @@ export const GoogleSignIn = ({
         try {
             const desktopCallback = readStoredDesktopCallback();
             if (desktopCallback) {
-                const pkceChallenge = readStoredDesktopPkceChallenge();
-                window.location.href = resolveDesktopGoogleOAuthUrl(desktopCallback, apiRoot, pkceChallenge);
+                window.location.href = resolveDesktopGoogleOAuthUrl(
+                    desktopCallback,
+                    apiRoot,
+                    readStoredDesktopPkceChallenge(),
+                );
                 return;
             }
         } catch {

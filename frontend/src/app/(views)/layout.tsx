@@ -6,14 +6,13 @@ import { getUserDetails } from "@/lib/calls/get-logged-user-details";
 import { storageConstants } from "@/lib/constants";
 import { useEffect } from "react";
 import { storage } from "@/lib/utils/store";
+import {
+  clearDesktopHandoff,
+  readStoredDesktopCallback,
+} from "@/lib/utils/desktop-google-auth-url";
 import React from "react";
 import ErrorBoundary from "@/app/components/ErrorBoundary";
 import { WorkflowNavigationProgress } from "@/app/components/workflows/WorkflowNavigationProgress";
-import {
-  clearDesktopHandoffSession,
-  readStoredDesktopCallback,
-} from "@/lib/utils/desktop-google-auth-url";
-import { resolveOAuthTokenDesktopHandoffRedirect } from "@/lib/utils/desktop-oauth-handoff";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathName = usePathname();
@@ -36,14 +35,17 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get("token");
       if (token) {
-        const desktopRedirect = resolveOAuthTokenDesktopHandoffRedirect({
-          token,
-          callbackClient: urlParams.get("callback_client"),
-          desktopCallback: readStoredDesktopCallback(),
-        });
-        if (desktopRedirect) {
-          clearDesktopHandoffSession();
-          window.location.href = desktopRedirect;
+        // Only hand off to the desktop loopback when this redirect is explicitly for the shell.
+        // A stale `desktop_callback` from an earlier "Sign in with Browser" attempt must not
+        // steal a normal web OAuth `?token=` landing on `/`.
+        const isDesktopHandoff = urlParams.get("callback_client") === "desktop";
+        const desktopCallback = isDesktopHandoff
+          ? readStoredDesktopCallback()
+          : null;
+        if (desktopCallback) {
+          clearDesktopHandoff();
+          const joiner = desktopCallback.includes("?") ? "&" : "?";
+          window.location.href = `${desktopCallback}${joiner}token=${encodeURIComponent(token)}`;
           return;
         }
         return;
