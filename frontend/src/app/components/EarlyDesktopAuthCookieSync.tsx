@@ -26,8 +26,19 @@ export default function EarlyDesktopAuthCookieSync(): null {
       }
       syncAuthSessionCookiesFromStorage();
       void syncCodeProjectToDesktop();
-      if (!getValidAccessToken()) {
-        handleSessionExpired();
+      const validToken = getValidAccessToken();
+      // eslint-disable-next-line no-console
+      console.warn('[AIG-AUTH] EarlyDesktopAuthCookieSync: hasAuthSession=true validToken=' + !!validToken + ' path=' + (typeof window !== 'undefined' ? window.location.pathname : 'ssr'));
+      try {
+        const prev = localStorage.getItem('__aig_auth_debug') ?? '';
+        const entry = new Date().toISOString() + ' EarlyDesktopAuthCookieSync: hasAuthSession=true validToken=' + !!validToken;
+        localStorage.setItem('__aig_auth_debug', (prev + '\n' + entry).slice(-10000));
+      } catch { /* ignore */ }
+      if (!validToken) {
+        // [FIX] Do NOT call handleSessionExpired() here on desktop.
+        // An expired access token on cold boot is normal; use-desktop-session-restore
+        // will use the desktop refresh token to get a new one. Calling handleSessionExpired
+        // here would delete the refresh token from disk before it can be used.
       }
     };
 

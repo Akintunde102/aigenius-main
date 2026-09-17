@@ -65,13 +65,13 @@ const DESKTOP_QUEUE_CHAT_SCREENSHOT_CHAN = 'aigenius-desktop-queue-chat-screensh
 const DESKTOP_OAUTH_SIGNIN_COMPLETE_CHAN = 'desktop-oauth-signin-complete';
 const DESKTOP_TOOL_APPROVAL_REQUEST_CHAN = 'aigenius-tool-approval-request';
 
-if (process.env.NODE_ENV !== 'production') {
+if (process.env?.NODE_ENV !== 'production') {
   console.debug('[AIGenius Bridge] Exposing bridge to main world at:', new Date().toISOString());
 }
 
 contextBridge.exposeInMainWorld('aigeniusDesktop', {
   isDesktop: true,
-  isSttEnabled: (process.env.AIGENIUS_ENABLE_STT ?? '0') !== '0',
+  isSttEnabled: ipcRenderer.sendSync('get-stt-enabled'),
   exposedAtIso: new Date().toISOString(),
   miniServerPort: ipcRenderer.sendSync('get-mini-server-port'),
   shellChrome,
@@ -347,7 +347,7 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     ipcRenderer.invoke('web-signin') as Promise<{ token: string } | null>,
   cancelWebSignIn: (): Promise<{ ok: boolean }> =>
     ipcRenderer.invoke('cancel-web-signin') as Promise<{ ok: boolean }>,
-  startOAuthSignIn: (options?: { provider?: 'google' }): Promise<{ token: string } | null> =>
+  startOAuthSignIn: (options?: { provider?: 'google' | 'dev'; email?: string }): Promise<{ token: string } | null> =>
     ipcRenderer.invoke('start-oauth-signin', options) as Promise<{ token: string } | null>,
   getDesktopRefreshToken: (): Promise<string | null> =>
     ipcRenderer.invoke('get-desktop-refresh-token') as Promise<string | null>,

@@ -65,7 +65,16 @@ export function useDesktopSessionRestore(): { restoring: boolean } {
         return;
       }
 
-      await ensureGatewayAuthReady();
+      try {
+        await ensureGatewayAuthReady();
+      } catch {
+        // Desktop cold-boot refresh failed (e.g. upstream unreachable at startup).
+        // Show the login screen rather than redirecting with a stale/expired token.
+        if (!cancelled) {
+          setRestoring(false);
+        }
+        return;
+      }
       if (cancelled) {
         return;
       }

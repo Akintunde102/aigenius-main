@@ -87,20 +87,31 @@ export function getWindowIcon(): Electron.NativeImage | undefined {
 }
 
 export function resolveMainShellAppUrl(relativePath?: string, opts?: { hasSession?: boolean }): string {
-  const sessionParam = opts?.hasSession ? '?aigenius_desktop_has_session=1' : '';
+  const hasSession = opts?.hasSession;
   if (shouldUseDesktopUiCustomProtocol()) {
     const rel = relativePath
       ? relativePath.startsWith('/')
         ? relativePath
         : `/${relativePath}`
       : '/desktop-login';
-    return desktopUiAppUrl(rel) + sessionParam;
+    // desktopUiAppUrl already appends ?aigenius_shell=1, so use & for the session param.
+    const base = desktopUiAppUrl(rel);
+    return hasSession ? `${base}&aigenius_desktop_has_session=1` : base;
   }
   const base = relativePath
     ? loopbackHttpUrl(FRONTEND_PORT, relativePath.startsWith('/') ? relativePath : '/' + relativePath)
     : FRONTEND_URL;
-  return base + sessionParam;
+  if (!hasSession) {
+    return base;
+  }
+  // FRONTEND_URL already contains ?aigenius_shell=1; use & to avoid a malformed double-? URL.
+  // A double-? causes URLSearchParams in the renderer to fail to parse aigenius_desktop_has_session,
+  // which makes desktopBuildHasSession() return false, which skips the bridge wait on cold boot,
+  // which causes the cold-boot refresh to be silently skipped.
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}aigenius_desktop_has_session=1`;
 }
+
 
 function attachShellPageReadyHandler(win: BrowserWindow): void {
   const onShellPageReady = (): void => {

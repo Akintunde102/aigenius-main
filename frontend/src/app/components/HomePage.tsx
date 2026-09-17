@@ -13,6 +13,7 @@ import {
   OS_LABELS,
   type DesktopOS,
 } from "@/lib/utils/detect-desktop-os";
+import DownloadInstructionModal, { type Platform } from "./DownloadInstructionModal";
 import "./home.css";
 
 const PLATFORMS = [
@@ -80,6 +81,7 @@ export default function HomePage() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [downloadingPlatform, setDownloadingPlatform] = useState<Platform | null>(null);
   const [detectedOS, setDetectedOS] = useState<DesktopOS>("unknown");
   const wrapRef = useRef<HTMLDivElement>(null);
   const navDropRef = useRef<HTMLDivElement>(null);
@@ -263,6 +265,10 @@ export default function HomePage() {
                               download: true,
                               target: "_blank",
                               rel: "noopener noreferrer",
+                              onClick: () => {
+                                setDownloadingPlatform(platform.id as Platform);
+                                setNavDropdownOpen(false);
+                              }
                             }
                           : { type: "button" as const })}
                         role="menuitem"
@@ -353,7 +359,14 @@ export default function HomePage() {
                       <li key={platform.id} role="none">
                         <Component
                           {...(platform.href
-                            ? { href: platform.href, download: true }
+                            ? { 
+                                href: platform.href, 
+                                download: true,
+                                onClick: () => {
+                                  setDownloadingPlatform(platform.id as Platform);
+                                  setDropdownOpen(false);
+                                }
+                              }
                             : { type: "button" as const })}
                           role="menuitem"
                           className={isDetected ? "detected" : ""}
@@ -425,7 +438,7 @@ export default function HomePage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   className="hero-light"
-                  src="/images/home-hero-light.png"
+                  src="/images/home-hero-screenshot-light.png"
                   alt="AIGenius app interface in light mode"
                   loading="eager"
                   decoding="sync"
@@ -433,7 +446,7 @@ export default function HomePage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   className="hero-dark"
-                  src="/images/home-hero-dark.png"
+                  src="/images/home-hero-screenshot-dark.png"
                   alt="AIGenius app interface in dark mode"
                   loading="eager"
                   decoding="sync"
@@ -452,6 +465,12 @@ export default function HomePage() {
           </nav>
         </footer>
       </div>
+
+      {/* ── Download Instruction Modal ──────────────────────────────── */}
+      <DownloadInstructionModal
+        platform={downloadingPlatform}
+        onClose={() => setDownloadingPlatform(null)}
+      />
 
       {/* ── About Modal ──────────────────────────────── */}
       {aboutOpen && (

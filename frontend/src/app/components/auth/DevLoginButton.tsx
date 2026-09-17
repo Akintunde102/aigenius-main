@@ -6,14 +6,16 @@ import {
   resolveAuthApiRootUrlAsync,
 } from "@/lib/utils/resolve-auth-api-root";
 import { resolveDevLoginEmail } from "@/app/components/auth/dev-login.utils";
+import { useDesktopAuthFlow } from "@/lib/hooks/use-desktop-auth-flow";
 
 export function DevLoginButton() {
+  const { finishOAuthToken } = useDesktopAuthFlow();
+
   if (!AUTH_CONFIG.ENABLE_DEV_LOGIN) {
     return null;
   }
 
   const handleDevLogin = async () => {
-    const apiRoot = await resolveAuthApiRootUrlAsync();
     let promptedEmail: string | null = null;
     try {
       promptedEmail = prompt("Enter email for dev login:", "test@example.com");
@@ -27,7 +29,19 @@ export function DevLoginButton() {
       promptedEmail,
       typeof window !== "undefined" ? window.location.hostname : "",
     );
+
     if (email) {
+      const bridge = window.aigeniusDesktop;
+      if (bridge?.startOAuthSignIn) {
+        const res = await bridge.startOAuthSignIn({ provider: 'dev', email });
+        // After IPC returns, complete the OAuth session correctly.
+        if (res?.token) {
+          void finishOAuthToken(res.token);
+        }
+        return;
+      }
+
+      const apiRoot = await resolveAuthApiRootUrlAsync();
       window.location.href = `${buildDevLoginUrl(apiRoot)}?email=${encodeURIComponent(email)}`;
     }
   };

@@ -61,6 +61,10 @@ export function registerMainIpcHandlers(): void {
     e.returnValue = MINI_SERVER_PORT;
   });
 
+  ipcMain.on('get-stt-enabled', (e) => {
+    e.returnValue = (process.env.AIGENIUS_ENABLE_STT ?? '0') !== '0';
+  });
+
   ipcMain.handle('open-wallet-checkout-url', async (_event, url: string) => {
     return openWalletCheckoutInSystemBrowser(url);
   });
@@ -423,8 +427,8 @@ export function registerMainIpcHandlers(): void {
   });
 
   ipcMain.handle('web-signin', async (event) => runDesktopBrowserSignIn(event));
-  ipcMain.handle('start-oauth-signin', async (event, options?: { provider?: 'google' }) =>
-    runDesktopBrowserSignIn(event, options?.provider === 'google' ? { autoProvider: 'google' } : {}),
+  ipcMain.handle('start-oauth-signin', async (event, options?: { provider?: 'google' | 'dev', email?: string }) =>
+    runDesktopBrowserSignIn(event, options?.provider ? { autoProvider: options.provider, email: options.email } : {}),
   );
   ipcMain.handle('cancel-web-signin', async () => ({ ok: cancelDesktopBrowserSignIn() }));
 
