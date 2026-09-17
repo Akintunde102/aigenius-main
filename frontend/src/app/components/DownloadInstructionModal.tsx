@@ -116,7 +116,7 @@ export default function DownloadInstructionModal({
         {platform === "windows" && (
           <div className="dl-modal-content">
             <p className="dl-subtitle">
-              AIGenius is brand new, so Windows SmartScreen might flag it. Here's how to open it:
+              AIGenius is brand new, so Windows SmartScreen might flag it. Here&apos;s how to open it:
             </p>
             
             <div className="smartscreen-replica" aria-hidden="true">
@@ -130,7 +130,7 @@ export default function DownloadInstructionModal({
               </div>
               <div className="ss-footer">
                 <button className="ss-btn ss-btn-run" tabIndex={-1}>Run anyway</button>
-                <button className="ss-btn ss-btn-dont" tabIndex={-1}>Don't run</button>
+                <button className="ss-btn ss-btn-dont" tabIndex={-1}>Don&apos;t run</button>
               </div>
             </div>
             
@@ -146,7 +146,7 @@ export default function DownloadInstructionModal({
         {platform === "linux" && (
           <div className="dl-modal-content">
             <p className="dl-subtitle">
-              Here's how to install AIGenius on Linux (Debian/Ubuntu):
+              Here&apos;s how to install AIGenius on Linux (Debian/Ubuntu):
             </p>
             <ol className="dl-steps">
               <li>
