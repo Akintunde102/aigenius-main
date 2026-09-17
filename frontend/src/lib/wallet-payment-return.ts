@@ -90,7 +90,7 @@ export async function tryOpenWalletPaymentCheckout(
 
   if (window.aigeniusDesktop?.isDesktop && typeof window.aigeniusDesktop.openExternal === 'function') {
     try {
-      const result = await Promise.resolve(window.aigeniusDesktop.openExternal(authorizationUrl));
+      const result: any = await Promise.resolve(window.aigeniusDesktop.openExternal(authorizationUrl));
       if (result && typeof result === 'object' && typeof result.opened === 'boolean') {
         return result;
       }
