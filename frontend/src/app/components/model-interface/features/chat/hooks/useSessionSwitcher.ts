@@ -98,7 +98,8 @@ export function useSessionSwitcher({
             const sid = session.id!;
             try {
                 const updatedSession = await loadSessionFromBackend(queryClient, sid);
-                if (!updatedSession?.messages) return;
+                if (!updatedSession?.messages?.length) return;
+                console.log("[DEBUG] loaded session from backend with messages:", updatedSession.messages.length);
 
                 const normalized = normalizeSessionMessages(ensureSystemPromptMessage(updatedSession));
                 const messages = (normalized.messages || []) as ChatMessage[];

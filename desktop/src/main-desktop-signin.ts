@@ -24,7 +24,8 @@ function resolveUpstreamApiUrl(): string {
 }
 
 type DesktopBrowserSignInOptions = {
-  autoProvider?: 'google';
+  autoProvider?: 'google' | 'dev';
+  email?: string;
 };
 
 type ActiveSignInSession = {
@@ -71,6 +72,18 @@ export function buildUpstreamGoogleAuthUrl(upstream: string, desktopCallback: st
     params.append('pkce_challenge', pkceChallenge);
   }
   return `${upstream.replace(/\/+$/, '')}/auth/_/google?${params.toString()}`;
+}
+
+export function buildUpstreamDevAuthUrl(upstream: string, desktopCallback: string, email: string, pkceChallenge?: string): string {
+  const params = new URLSearchParams({
+    callback_url: desktopCallback,
+    callback_client: 'desktop',
+    email,
+  });
+  if (pkceChallenge) {
+    params.append('pkce_challenge', pkceChallenge);
+  }
+  return `${upstream.replace(/\/+$/, '')}/auth/_/dev-login?${params.toString()}`;
 }
 
 /**
@@ -181,7 +194,12 @@ export function runDesktopBrowserSignIn(
       const upstream = resolveUpstreamApiUrl();
       // Always Google in the system browser. Never `/login` — an existing web session would
       // steal the tab and leave this loopback waiting.
-      void shell.openExternal(buildUpstreamGoogleAuthUrl(upstream, callbackUrl, challenge));
+      const loginUrl = options.autoProvider === 'google'
+        ? buildUpstreamGoogleAuthUrl(upstream, callbackUrl, challenge)
+        : options.autoProvider === 'dev'
+        ? buildUpstreamDevAuthUrl(upstream, callbackUrl, options.email || 'test@example.com', challenge)
+        : WEBSITE_LOGIN_URL;
+      void shell.openExternal(loginUrl);
     });
 
     server.on('error', (err) => {

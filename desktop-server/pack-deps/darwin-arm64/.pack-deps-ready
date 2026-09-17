@@ -1,7 +1,7 @@
 {
   "platform": "darwin",
   "arch": "arm64",
-  "depsFingerprint": "3ad40c7f755b9923",
+  "depsFingerprint": "d5d41ee5ee9093b2",
   "electronVersion": "native-prebuilds",
-  "builtAt": "2026-09-15T14:16:02.482Z"
+  "builtAt": "2026-09-16T21:14:07.006Z"
 }

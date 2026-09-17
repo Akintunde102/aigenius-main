@@ -11,7 +11,7 @@ import {
     hasAuthSession,
     syncAuthSessionCookiesFromStorage,
 } from '@/lib/utils/auth-session';
-import { primeDesktopGatewayApiRoot } from '@/lib/api/resolve-gateway-api-root';
+import { primeDesktopGatewayApiRoot, resolveDesktopUpstreamApiRootUrl } from '@/lib/api/resolve-gateway-api-root';
 import {
     canUseDesktopStoredRefreshToken,
     getDesktopNativeClientHeaders,
@@ -29,6 +29,24 @@ import {
 type RetryableAxiosRequestConfig = InternalAxiosRequestConfig & {
     _authRetry?: boolean;
 };
+
+// ── Temporary diagnostic logger ──────────────────────────────────────────────
+// Writes to localStorage so logs survive page navigations and cold-boot reloads.
+// Read the log from DevTools: localStorage.getItem('__aig_auth_debug')
+// Clear it:                   localStorage.removeItem('__aig_auth_debug')
+function authDebugLog(msg: string): void {
+    try {
+        if (typeof localStorage === 'undefined') return;
+        const ts = new Date().toISOString();
+        const entry = `${ts} ${msg}`;
+        const prev = localStorage.getItem('__aig_auth_debug') ?? '';
+        localStorage.setItem('__aig_auth_debug', (prev + '\n' + entry).slice(-10000));
+        // eslint-disable-next-line no-console
+        console.warn('[AIG-AUTH]', entry);
+    } catch { /* never break auth over a log */ }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 
 const REQUESTED_WITH_HEADER = 'X-Requested-With';
 const REQUESTED_WITH_VALUE = 'XMLHttpRequest';
@@ -95,12 +113,15 @@ export async function restoreAccessTokenFromStoredSession(): Promise<string | un
     }
 
     restoreAccessTokenInflight = (async () => {
+    authDebugLog(`restoreAccessToken: start — desktopBuildHasSession=${desktopBuildHasSession()} isRuntime=${isAigeniusDesktopRuntime()} isShellBuild=${isDesktopShellFromBuild()} isElectron=${isLikelyElectronRenderer()}`);
     if (
             (isDesktopShellFromBuild() || isLikelyElectronRenderer())
             && !isAigeniusDesktopRuntime()
             && desktopBuildHasSession()
         ) {
+            authDebugLog('restoreAccessToken: waiting for bridge…');
             await waitForAigeniusDesktopBridge(8000);
+            authDebugLog(`restoreAccessToken: bridge wait done — isRuntime=${isAigeniusDesktopRuntime()}`);
         }
 
         const hasStoredSession = hasAuthSession();
@@ -109,7 +130,10 @@ export async function restoreAccessTokenFromStoredSession(): Promise<string | un
             ? await readDesktopStoredRefreshToken()
             : undefined;
 
+        authDebugLog(`restoreAccessToken: hasStoredSession=${hasStoredSession} canRefreshDesktop=${canRefreshDesktop} hasDesktopToken=${!!desktopRefreshToken} canCookie=${canUseHttpOnlyRefreshCookie()}`);
+
         if (!hasStoredSession && !desktopRefreshToken) {
+            authDebugLog('restoreAccessToken: bail — no session and no desktop token');
             return undefined;
         }
 
@@ -133,7 +157,13 @@ export async function restoreAccessTokenFromStoredSession(): Promise<string | un
 
         try {
             return await refreshAccessToken();
-        } catch {
+        } catch (err) {
+            // On desktop, if we had a stored refresh token the refresh *should* have
+            // worked. Re-throw so callers can handle the failure explicitly (e.g. show
+            // the login screen) rather than silently redirecting with an expired JWT.
+            if (canRefreshDesktop && desktopRefreshToken) {
+                throw err;
+            }
             return undefined;
         }
     })().finally(() => {
@@ -182,14 +212,22 @@ async function resolveAuthRefreshApiBases(): Promise<string[]> {
         bases.add(local);
     }
 
-    if (typeof window !== 'undefined' && isAigeniusDesktopRuntime()) {
+    // On cold boot the bridge may not yet be flagged as runtime-ready
+    // (isAigeniusDesktopRuntime() checks window.aigeniusDesktop?.isDesktop) but we
+    // still need the cloud upstream URL for the refresh call. Use
+    // resolveDesktopUpstreamApiRootUrl() which has its own await + cache and covers
+    // all desktop build paths — not just when the bridge has already attached.
+    if (
+        typeof window !== 'undefined'
+        && (isAigeniusDesktopRuntime() || isDesktopShellFromBuild() || isLikelyElectronRenderer())
+    ) {
         try {
-            const upstream = (await window.aigeniusDesktop?.getUpstreamApiUrl?.())?.trim();
+            const upstream = await resolveDesktopUpstreamApiRootUrl();
             if (upstream) {
                 bases.add(upstream.replace(/\/+$/, ''));
             }
         } catch {
-            /* ignore */
+            /* ignore — local-only will be tried */
         }
     }
 
@@ -255,6 +293,8 @@ function resolveLoginPathAfterSessionExpiry(): string {
 }
 
 export function handleSessionExpired() {
+    const caller = new Error().stack?.split('\n').slice(1, 5).join(' | ') ?? 'unknown';
+    authDebugLog(`handleSessionExpired called — stack: ${caller}`);
     clearStoredAuthSession();
     if (typeof window !== 'undefined') {
         navigateTo(resolveLoginPathAfterSessionExpiry());
@@ -476,6 +516,7 @@ export async function refreshAccessToken(): Promise<string> {
         }
 
         const apiBases = await resolveAuthRefreshApiBases();
+        authDebugLog(`refreshAccessToken: trying bases=${JSON.stringify(apiBases)} usesDesktopRefresh=${usesDesktopRefresh} hasRefreshToken=${!!refreshToken}`);
         let lastError: unknown;
         let token: string | undefined;
         let rotatedRefreshToken: string | undefined;
@@ -507,10 +548,12 @@ export async function refreshAccessToken(): Promise<string> {
         }
 
         if (!token) {
+            authDebugLog(`refreshAccessToken: all bases failed — lastError=${lastError instanceof Error ? lastError.message : String(lastError)}`);
             throw lastError ?? new Error('Refresh response did not include an access token');
         }
 
         consecutiveRefreshFailures = 0;
+        authDebugLog(`refreshAccessToken: SUCCESS — rotatedToken=${!!rotatedRefreshToken}`);
         setAccessToken(token);
 
         if (typeof rotatedRefreshToken === 'string' && rotatedRefreshToken.trim().length > 0) {

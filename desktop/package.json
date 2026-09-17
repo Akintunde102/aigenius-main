@@ -131,6 +131,7 @@
       }
     ],
     "linux": {
+      "icon": "build/aigenius_icon_final.png",
       "target": [
         "deb",
         "flatpak"
