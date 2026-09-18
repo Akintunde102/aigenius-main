@@ -39,7 +39,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 2rem;
+  padding: 1.5rem 2.25rem;
 }
 
 .home-root .nav-logo {
@@ -325,66 +325,85 @@
 .home-root .mockup-wrap {
   position: absolute;
   right: -3%;
-  top: -2%;
+  top: 0;
   bottom: -5%;
   width: 64%;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
   pointer-events: none;
+  overflow: hidden;
+  padding-left: 2px;
+  /* Ambient glow behind screenshot */
+  isolation: isolate;
+}
+
+/* Glowing halo behind the screenshot */
+.home-root .mockup-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -10% -10% auto;
+  height: 60%;
+  background: radial-gradient(
+    ellipse 70% 50% at 55% 20%,
+    rgba(34, 211, 238, 0.18) 0%,
+    rgba(124, 58, 237, 0.12) 45%,
+    transparent 75%
+  );
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(20px);
 }
 
 .home-root .window {
   width: 100%;
   height: 100%;
-  background: #1a1916;
-  border-radius: 14px 14px 0 0;
+  background: #111113;
+  border-radius: 12px 12px 0 0;
   overflow: hidden;
+  /* Shadow only — no border ring */
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.07),
-    0 60px 120px rgba(0, 0, 0, 0.7),
-    0 20px 40px rgba(0, 0, 0, 0.4);
+    8px 40px 100px rgba(0, 0, 0, 0.7),
+    4px 12px 32px rgba(0, 0, 0, 0.4);
+  /* 3D perspective tilt like Linear */
+  transform: perspective(1400px) rotateX(3deg);
+  transform-origin: top center;
 }
 
-/* macOS window bar */
 .home-root .window-bar {
   height: 38px;
-  background: #252420;
+  background: #1a1a1c;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   padding: 0 14px;
-  gap: 8px;
+  gap: 7px;
   flex-shrink: 0;
 }
 
 .home-root .traffic-dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
+  /* Monochrome — no colors, like Cursor */
+  background: #3a3a3d;
 }
 
-.home-root .td-red {
-  background: #ff5f57;
-}
-
-.home-root .td-yellow {
-  background: #febc2e;
-}
-
+.home-root .td-red,
+.home-root .td-yellow,
 .home-root .td-green {
-  background: #28c840;
+  background: #3a3a3d;
 }
 
 .home-root .window-title {
   flex: 1;
   text-align: center;
-  font-size: 0.75rem;
-  color: #52525b;
+  font-size: 0.7rem;
+  color: #4a4a50;
   font-weight: 500;
   letter-spacing: 0.01em;
-  margin-right: 36px;
+  margin-right: 37px; /* offset for the 3 dots width so text is truly centered */
 }
 
 .home-root .window-body {
@@ -402,12 +421,12 @@
   display: block;
 }
 
-/* Fade bottom of window into page */
+/* Fade bottom of window into page background */
 .home-root .window-body::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, transparent 55%, #0e0d0c 100%);
+  background: linear-gradient(to bottom, transparent 50%, #0b0b0d 100%);
   pointer-events: none;
 }
 
@@ -528,7 +547,11 @@ html:not(.dark):not([data-theme="dark"]) .home-root .headline {
 html[data-theme="light"] .home-root .window,
 html:not(.dark):not([data-theme="dark"]) .home-root .window {
   background: #f0efeb;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 60px 120px rgba(0, 0, 0, 0.18), 0 20px 40px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.12),
+    0 0 0 4px rgba(0, 0, 0, 0.04),
+    8px 40px 100px rgba(0, 0, 0, 0.18),
+    4px 12px 32px rgba(0, 0, 0, 0.1);
 }
 
 html[data-theme="light"] .home-root .window-bar,
@@ -539,7 +562,17 @@ html:not(.dark):not([data-theme="dark"]) .home-root .window-bar {
 
 html[data-theme="light"] .home-root .window-body::after,
 html:not(.dark):not([data-theme="dark"]) .home-root .window-body::after {
-  background: linear-gradient(to bottom, transparent 55%, #f7f6f2 100%);
+  background: linear-gradient(to bottom, transparent 50%, #f7f6f2 100%);
+}
+
+html[data-theme="light"] .home-root .mockup-wrap::before,
+html:not(.dark):not([data-theme="dark"]) .home-root .mockup-wrap::before {
+  background: radial-gradient(
+    ellipse 70% 50% at 55% 20%,
+    rgba(8, 145, 178, 0.12) 0%,
+    rgba(124, 58, 237, 0.08) 45%,
+    transparent 75%
+  );
 }
 
 html[data-theme="light"] .home-root .footer,
