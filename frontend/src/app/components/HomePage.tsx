@@ -425,7 +425,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right: macOS window mockup */}
+          {/* Right: screenshot mockup with macOS window chrome */}
           <div className="mockup-wrap" aria-hidden={true}>
             <div className="window">
               <div className="window-bar">
