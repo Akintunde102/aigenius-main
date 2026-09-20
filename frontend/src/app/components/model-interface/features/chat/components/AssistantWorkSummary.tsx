@@ -28,10 +28,10 @@ export function AssistantWorkSummary({ items }: AssistantWorkSummaryProps) {
         className={styles.header}
         aria-expanded={open}
       >
-        <span className={styles.headerLabel}>{summary}</span>
         <span className={styles.chevron} aria-hidden>
           {open ? '▾' : '▸'}
         </span>
+        <span className={styles.headerLabel}>{summary}</span>
       </button>
 
       {open ? (
@@ -77,10 +77,10 @@ function ToolTimelineRow({
         className={styles.timelineHeader}
         aria-expanded={open}
       >
-        <span className={styles.timelineLabel}>{label}</span>
         <span className={styles.chevron} aria-hidden>
           {open ? '▾' : '▸'}
         </span>
+        <span className={styles.timelineLabel}>{label}</span>
       </button>
 
       {open ? (

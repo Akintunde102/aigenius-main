@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ChatMessage as ChatMessageType,
   Model,
@@ -94,9 +94,12 @@ export const ChatAreaVirtualizedList = React.memo(function ChatAreaVirtualizedLi
     copy(content);
   }, []);
 
-  const MAX_MESSAGES = 150;
-  const totalVisible = chat.filter(isVisibleChatMessage).length;
-  const isCapped = totalVisible > MAX_MESSAGES;
+  const [displayLimit, setDisplayLimit] = useState(50);
+  const totalVisibleCount = useMemo(
+    () => chat.filter(isVisibleChatMessage).length,
+    [chat]
+  );
+  const isCapped = totalVisibleCount > displayLimit;
 
   const visibleMessages = useMemo(
     () => {
@@ -104,18 +107,26 @@ export const ChatAreaVirtualizedList = React.memo(function ChatAreaVirtualizedLi
         .map((msg, actualIdx) => ({ msg, actualIdx }))
         .filter(({ msg }) => isVisibleChatMessage(msg));
       
-      return isCapped ? allVisible.slice(-MAX_MESSAGES) : allVisible;
+      return isCapped ? allVisible.slice(-displayLimit) : allVisible;
     },
-    [chat, isCapped],
+    [chat, isCapped, displayLimit],
   );
+
+  const handleLoadMore = useCallback(() => {
+    setDisplayLimit((prev: number) => prev + 50);
+  }, []);
 
   return (
     <div className="w-full flex flex-col">
       {isCapped && (
-        <div className="flex justify-center p-4">
-          <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-lg border border-amber-200 shadow-sm">
-             Performance Note: Only the last {MAX_MESSAGES} messages are being displayed.
-          </div>
+        <div className="flex justify-center p-3">
+          <button
+            type="button"
+            onClick={handleLoadMore}
+            className="rounded-full bg-slate-100 px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition shadow-sm border border-slate-200/60 dark:border-zinc-700/60"
+          >
+            Load older messages ({totalVisibleCount - visibleMessages.length} earlier)
+          </button>
         </div>
       )}
       {visibleMessages.map(({ msg, actualIdx }, displayIdx) => {

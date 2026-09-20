@@ -7,21 +7,24 @@ import { storageConstants } from "@/lib/constants";
 import toast from "react-hot-toast";
 import { Folder, UserAccess, UserDetailsInLocalStorage } from "@/lib/types";
 
+import type { AvatarProps, ButtonProps } from "antd";
+
 // Code split Antd components to reduce bundle size
-const Avatar = dynamic(() => import("antd").then(mod => ({ default: mod.Avatar })), {
+const Avatar = dynamic<AvatarProps>(() => import("antd").then(mod => ({ default: (mod as any).Avatar || (mod.default as any)?.Avatar })), {
     ssr: false,
     loading: () => <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
 });
 
-const Button = dynamic(() => import("antd").then(mod => ({ default: mod.Button })), {
+const Button = dynamic<ButtonProps>(() => import("antd").then(mod => ({ default: (mod as any).Button || (mod.default as any)?.Button })), {
     ssr: false,
     loading: () => <div className="px-4 py-2 bg-gray-200 rounded animate-pulse"></div>
 });
 
-const loggedUser = storage(storageConstants.LOGGED_USER_DETAILS).getObject() as any;
+const getLoggedUser = () => storage(storageConstants.LOGGED_USER_DETAILS).getObject() as any;
 
 const accessUserIsLoggedIn = (userWithAccess: UserAccess) => {
-    return loggedUser.email === userWithAccess.takerDetails.email;
+    const user = getLoggedUser();
+    return user?.email === userWithAccess.takerDetails?.email;
 };
 
 const ShareAccessSearchBar = ({ onUserSelected }: { onUserSelected: (user: any) => void; }) => {

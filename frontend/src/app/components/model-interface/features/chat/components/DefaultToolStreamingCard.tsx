@@ -1,8 +1,14 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { JsonSyntaxBlock } from '@/app/components/JsonSyntaxBlock';
+import dynamic from 'next/dynamic';
 import { FiLoader } from 'react-icons/fi';
+
+const JsonSyntaxBlock = dynamic(
+  () => import('@/app/components/JsonSyntaxBlock').then((mod) => mod.JsonSyntaxBlock),
+  { ssr: false, loading: () => <div className="text-[10px] opacity-70 p-1">Loading JSON...</div> }
+);
+
 import { valueToDisplayString } from '@/lib/utils/messageTextUtils';
 import {
   extractWorkflowIdsFromToolResult,
@@ -17,7 +23,7 @@ import { resolveStreamingToolRowLabel } from './cluster-tool-display-blocks';
 import type { ToolStreamingCardProps } from './tool-streaming-card.types';
 import cardStyles from './DefaultToolStreamingCard.module.scss';
 
-export function DefaultToolStreamingCard({
+export const DefaultToolStreamingCard = React.memo(function DefaultToolStreamingCard({
   streaming_tool,
   result,
   arguments: toolArgsProp,
@@ -93,23 +99,20 @@ export function DefaultToolStreamingCard({
 
   useEffect(() => {
     if (!groupItem || detailsOnly) return;
-    if (loading) {
-      setContainerCollapsed(false);
-      wasGroupLoadingRef.current = true;
-      return;
-    }
-
-    if (wasGroupLoadingRef.current) {
+    if (!loading && wasGroupLoadingRef.current) {
+      // Auto-collapse when done — keeps chat clean.
       setContainerCollapsed(true);
       wasGroupLoadingRef.current = false;
+    }
+    if (loading) {
+      wasGroupLoadingRef.current = true;
     }
   }, [groupItem, detailsOnly, loading]);
 
   useEffect(() => {
     if (groupItem) return;
-    if (loading && filteredLogs.length > 1) {
-      setActivityOpen(true);
-    }
+    // Do not auto-open activity logs while running —
+    // the user opens the panel manually.
   }, [groupItem, loading, filteredLogs.length]);
 
   useEffect(() => {
@@ -338,4 +341,4 @@ export function DefaultToolStreamingCard({
       )}
     </div>
   );
-}
+});

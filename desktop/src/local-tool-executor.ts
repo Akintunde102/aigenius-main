@@ -253,19 +253,9 @@ export async function runLocalDesktopTool(
     case 'local_git_status': {
       const sidecarGit = await executeSidecarTool('local_git_status', rawArgs);
       if (sidecarGit?.ok) {
-        const hint = formatEditSessionHint();
-        return {
-          ok: true,
-          result: hint ? `${sidecarGit.result}\n\n${hint}` : sidecarGit.result,
-        };
+        return sidecarGit;
       }
-      const res = await runGitStatus(rawArgs);
-      if (!res.ok) return res;
-      const hint = formatEditSessionHint();
-      return {
-        ok: true,
-        result: hint ? `${res.result}\n\n${hint}` : res.result,
-      };
+      return runGitStatus(rawArgs);
     }
     case 'local_git_diff': {
       const sidecarDiff = await executeSidecarTool('local_git_diff', rawArgs);

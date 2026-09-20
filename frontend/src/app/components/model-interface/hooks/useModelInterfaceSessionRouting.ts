@@ -425,6 +425,7 @@ export function useModelInterfaceSessionRouting({
 
   const handleSessionSwitch = useCallback(
     (session: ChatSession) => {
+      handleStop();
       pendingDraftModeRef.current = false;
       setPendingDraftMode(false);
       persistCurrentConversationScroll();
@@ -450,6 +451,7 @@ export function useModelInterfaceSessionRouting({
       }
     },
     [
+      handleStop,
       applySessionPersonalityState,
       currentSessionId,
       persistCurrentConversationScroll,

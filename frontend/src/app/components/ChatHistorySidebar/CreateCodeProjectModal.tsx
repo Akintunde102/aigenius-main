@@ -8,6 +8,7 @@ import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
 import { generateRandomProjectName } from "@/lib/code-projects/random-project-name";
 import {
   applyCreateNamedFolderResult,
+  deriveProjectNameFromPath,
   resolveNameForNamedFolderCreate,
 } from "@/lib/code-projects/named-project-folder.utils";
 
@@ -15,6 +16,7 @@ type CreateCodeProjectModalProps = {
   open: boolean;
   onClose: () => void;
   onCreate: (input: { name: string; rootPath: string; rules?: string }) => Promise<void>;
+  existingProjects?: Array<{ name: string; rootPath?: string }>;
 };
 
 function FieldDescription({ children }: { children: React.ReactNode }) {
@@ -29,6 +31,7 @@ export function CreateCodeProjectModal({
   open,
   onClose,
   onCreate,
+  existingProjects,
 }: CreateCodeProjectModalProps) {
   const [name, setName] = useState("");
   const [rootPath, setRootPath] = useState("");
@@ -54,19 +57,36 @@ export function CreateCodeProjectModal({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [open, onClose, saving, creatingFolder]);
 
+  const handleRootPathChange = useCallback(
+    (newPath: string) => {
+      setRootPath(newPath);
+      const derived = deriveProjectNameFromPath(newPath, existingProjects);
+      if (derived) {
+        setName(derived);
+      }
+    },
+    [existingProjects],
+  );
+
   const handlePickFolder = useCallback(async () => {
     const bridge = window.aigeniusDesktop;
     if (bridge && typeof bridge.pickProjectDirectory === "function") {
       try {
         const picked = await bridge.pickProjectDirectory();
-        if (picked?.path) setRootPath(picked.path);
+        if (picked?.path) {
+          setRootPath(picked.path);
+          const derived = deriveProjectNameFromPath(picked.path, existingProjects);
+          if (derived) {
+            setName(derived);
+          }
+        }
       } catch {
         setError("Could not open folder picker");
       }
       return;
     }
     setError("Folder picker is available in the desktop app only");
-  }, []);
+  }, [existingProjects]);
 
   const handleRandomName = useCallback(() => {
     setName(generateRandomProjectName());
@@ -91,6 +111,10 @@ export function CreateCodeProjectModal({
       const applied = applyCreateNamedFolderResult(result);
       if (applied.status === "filled") {
         setRootPath(applied.path);
+        const derived = deriveProjectNameFromPath(applied.path, existingProjects);
+        if (derived) {
+          setName(derived);
+        }
         return;
       }
       if (applied.status === "error") {
@@ -101,7 +125,7 @@ export function CreateCodeProjectModal({
     } finally {
       setCreatingFolder(false);
     }
-  }, [name]);
+  }, [name, existingProjects]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,45 +207,12 @@ export function CreateCodeProjectModal({
 
         <div className="app-modal-panel-body space-y-4">
           <div>
-            <label htmlFor="code-project-name" className="app-modal-field-label">
-              Name
-            </label>
-            <FieldDescription>
-              A short label shown in the sidebar. You can change it later.
-            </FieldDescription>
-            <div className="flex gap-2">
-              <input
-                id="code-project-name"
-                className="app-modal-input min-w-0 flex-1"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. my-app"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={handleRandomName}
-                className="flex shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors hover:bg-[color-mix(in_srgb,var(--surface-muted)_80%,transparent)]"
-                style={{
-                  borderColor: "var(--modal-border)",
-                  color: "var(--modal-fg)",
-                  background: "var(--surface-muted)",
-                }}
-                aria-label="Generate random name"
-              >
-                <Shuffle className="h-3.5 w-3.5" aria-hidden />
-                Random
-              </button>
-            </div>
-          </div>
-
-          <div>
             <label htmlFor="code-project-path" className="app-modal-field-label">
               Folder
             </label>
             <FieldDescription>
               {desktop
-                ? "Use New to create a folder from the project name, or Browse an existing one."
+                ? "Use New to create a folder or Browse an existing one. Project name will be generated automatically."
                 : "Root directory for search indexing and desktop file access."}
             </FieldDescription>
             <div className="flex gap-2">
@@ -246,10 +237,11 @@ export function CreateCodeProjectModal({
               ) : null}
               <input
                 id="code-project-path"
-                className="app-modal-input min-w-0 flex-1"
+                className="app-modal-input min-w-0 flex-1 font-mono text-xs"
                 value={rootPath}
-                onChange={(e) => setRootPath(e.target.value)}
+                onChange={(e) => handleRootPathChange(e.target.value)}
                 placeholder={desktop ? "Pick or paste path" : "Absolute path to project root"}
+                autoFocus
               />
               {desktop ? (
                 <button
@@ -267,7 +259,51 @@ export function CreateCodeProjectModal({
                 </button>
               ) : null}
             </div>
+            <div className="mt-1.5 min-h-[1.25rem]">
+              {rootPath ? (
+                <p className="text-xs font-mono break-all" style={{ color: "var(--modal-muted-fg)" }} data-testid="folder-full-path">
+                  Full path: <span className="font-semibold text-[color-mix(in_srgb,var(--modal-fg)_85%,transparent)]">{rootPath}</span>
+                </p>
+              ) : (
+                <p className="text-xs font-mono opacity-60" style={{ color: "var(--modal-muted-fg)" }} data-testid="folder-full-path">
+                  No folder selected
+                </p>
+              )}
+            </div>
           </div>
+
+          <div>
+            <label htmlFor="code-project-name" className="app-modal-field-label">
+              Name
+            </label>
+            <FieldDescription>
+              A short label shown in the sidebar. Automatically generated from selected folder.
+            </FieldDescription>
+            <div className="flex gap-2">
+              <input
+                id="code-project-name"
+                className="app-modal-input min-w-0 flex-1"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. my-app"
+              />
+              <button
+                type="button"
+                onClick={handleRandomName}
+                className="flex shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors hover:bg-[color-mix(in_srgb,var(--surface-muted)_80%,transparent)]"
+                style={{
+                  borderColor: "var(--modal-border)",
+                  color: "var(--modal-fg)",
+                  background: "var(--surface-muted)",
+                }}
+                aria-label="Generate random name"
+              >
+                <Shuffle className="h-3.5 w-3.5" aria-hidden />
+                Random
+              </button>
+            </div>
+          </div>
+
 
           <div>
             <label htmlFor="code-project-rules" className="app-modal-field-label">

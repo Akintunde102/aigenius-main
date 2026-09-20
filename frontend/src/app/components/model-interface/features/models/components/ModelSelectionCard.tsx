@@ -15,6 +15,7 @@ interface ModelSelectionCardProps {
   wallet?: number | null;
   selectedModelId?: string;
   onAddCredits?: () => void;
+  isPreviewedRecent?: boolean;
 }
 
 /**
@@ -36,6 +37,7 @@ export const ModelSelectionCard = memo(function ModelSelectionCard({
   wallet,
   selectedModelId,
   onAddCredits,
+  isPreviewedRecent,
 }: ModelSelectionCardProps) {
   const handleSelect = useCallback(
     () => onSelect(model),
@@ -64,6 +66,7 @@ export const ModelSelectionCard = memo(function ModelSelectionCard({
       wallet={wallet}
       selectedModelId={selectedModelId}
       onAddCredits={onAddCredits}
+      isPreviewedRecent={isPreviewedRecent}
     />
   );
 });

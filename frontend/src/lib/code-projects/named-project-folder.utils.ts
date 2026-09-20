@@ -31,3 +31,56 @@ export function applyCreateNamedFolderResult(
   }
   return { status: 'error', message: 'Could not create folder' };
 }
+
+export function deriveProjectNameFromPath(
+  folderPath: string,
+  existingProjects?: Array<{ name: string; rootPath?: string }> | string[],
+): string {
+  if (!folderPath || !folderPath.trim()) {
+    return '';
+  }
+
+  const normalized = folderPath.trim().replace(/\\/g, '/').replace(/\/+$/, '');
+  const rawSegments = normalized.split('/').filter(Boolean);
+  if (rawSegments.length === 0) {
+    return '';
+  }
+
+  let cleanSegments = rawSegments;
+  if (rawSegments.length > 1 && /^[a-zA-Z]:$/.test(rawSegments[0])) {
+    cleanSegments = rawSegments.slice(1);
+  } else if (rawSegments.length === 1 && /^[a-zA-Z]:$/.test(rawSegments[0])) {
+    return '';
+  }
+
+  if (cleanSegments.length === 0) {
+    return '';
+  }
+
+  const existingNames = new Set<string>();
+  if (existingProjects) {
+    for (const item of existingProjects) {
+      const nameStr = typeof item === 'string' ? item : item.name;
+      if (nameStr && nameStr.trim()) {
+        existingNames.add(nameStr.trim().toLowerCase());
+      }
+    }
+  }
+
+  for (let depth = 1; depth <= cleanSegments.length; depth++) {
+    const candidateSegments = cleanSegments.slice(cleanSegments.length - depth);
+    const candidateName = candidateSegments.join('/');
+
+    if (!existingNames.has(candidateName.toLowerCase())) {
+      return candidateName;
+    }
+  }
+
+  const baseName = cleanSegments.join('/');
+  let suffix = 2;
+  while (existingNames.has(`${baseName} (${suffix})`.toLowerCase())) {
+    suffix++;
+  }
+  return `${baseName} (${suffix})`;
+}
+

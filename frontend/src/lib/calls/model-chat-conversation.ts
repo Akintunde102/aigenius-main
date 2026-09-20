@@ -296,18 +296,30 @@ export const getPinnedChats = async (): Promise<ChatSession[]> => {
     return Array.isArray(sessions) ? sessions.map(normalizeSessionMessages) : [];
 };
 
-export const getAllChatResources = async (): Promise<AllChatResourcesPayload> => {
-    if (getAllChatResourcesInflight) {
+export const getAllChatResources = async (params?: {
+    limit?: number;
+    cursor?: string | null;
+    projectId?: string | null;
+    perProjectLimit?: number;
+}): Promise<AllChatResourcesPayload & { nextCursor?: string | null; hasNextPage?: boolean }> => {
+    if (!params && getAllChatResourcesInflight) {
         return getAllChatResourcesInflight;
     }
 
     const request = (async () => {
         await waitForAccessToken();
 
+        const queryArgs: Record<string, string> = {};
+        if (params?.limit) queryArgs.limit = String(params.limit);
+        if (params?.cursor) queryArgs.cursor = params.cursor;
+        if (params?.projectId) queryArgs.projectId = params.projectId;
+        if (params?.perProjectLimit) queryArgs.perProjectLimit = String(params.perProjectLimit);
+
         const r = await serverCall({
             serverCallProps: {
                 call: serverCalls.getGatewayModelChatsResources,
             },
+            ...(Object.keys(queryArgs).length > 0 ? { queryArgs } : {}),
             authorized: true,
         });
 
@@ -316,7 +328,9 @@ export const getAllChatResources = async (): Promise<AllChatResourcesPayload> =>
         }
         let payload = normalizeAggregatedResourcesPayload(r.dataReturned);
 
-        if ((payload.chatHistory?.length ?? 0) === 0) {
+        const rawData = r.dataReturned as { nextCursor?: string | null; hasNextPage?: boolean } | null;
+
+        if (!params && (payload.chatHistory?.length ?? 0) === 0) {
             try {
                 const history = await getChatHistory();
                 if (history.length > 0) {
@@ -327,14 +341,22 @@ export const getAllChatResources = async (): Promise<AllChatResourcesPayload> =>
             }
         }
 
-        return payload;
-    })()
-        .finally(() => {
-            getAllChatResourcesInflight = null;
-        });
+        return {
+            ...payload,
+            nextCursor: rawData?.nextCursor ?? null,
+            hasNextPage: rawData?.hasNextPage ?? false,
+        };
+    })();
 
-    getAllChatResourcesInflight = request;
-    return request;
+    if (!params) {
+        getAllChatResourcesInflight = request;
+    }
+
+    return request.finally(() => {
+        if (!params) {
+            getAllChatResourcesInflight = null;
+        }
+    });
 };
 
 export const getConversationById = async (conversationId: string): Promise<ModelChatConversation | null> => {

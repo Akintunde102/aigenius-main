@@ -333,9 +333,17 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
 
     const handlePublishRequest = useCallback((session: ChatSession) => {
         if (onPublish) {
-            onPublish(session);
+            // Sidebar sessions are lazy-loaded — messages may be [] even when
+            // the conversation has content. Hydrate from the in-memory cache so
+            // the publish modal (and backend) receives the real message list.
+            const cachedMessages = session.id ? getCachedMessages?.(session.id) : undefined;
+            const hydratedSession =
+                cachedMessages && cachedMessages.length > 0 && (session.messages?.length ?? 0) === 0
+                    ? { ...session, messages: cachedMessages }
+                    : session;
+            onPublish(hydratedSession);
         }
-    }, [onPublish]);
+    }, [onPublish, getCachedMessages]);
 
     // Modal Confirmation Handlers
     const confirmDelete = async () => {

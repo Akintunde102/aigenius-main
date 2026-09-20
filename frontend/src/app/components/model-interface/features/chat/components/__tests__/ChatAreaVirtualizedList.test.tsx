@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { ChatAreaVirtualizedList } from "../ChatAreaVirtualizedList";
 import { ChatMessage } from "@/app/components/model-interface/shared/types";
 
@@ -76,7 +76,7 @@ describe("ChatAreaVirtualizedList", () => {
     expect(messages[1]).toHaveTextContent("Hi");
   });
 
-  it("caps the display to the last 150 non-system messages", () => {
+  it("caps the display to the last 50 non-system messages", () => {
     // Total 160 user messages
     const chat: ChatMessage[] = Array.from({ length: 160 }, (_, i) => ({
       role: "user",
@@ -87,14 +87,31 @@ describe("ChatAreaVirtualizedList", () => {
     render(<ChatAreaVirtualizedList {...mockProps} chat={chat} />);
 
     const messages = screen.getAllByTestId("chat-message-wrapper");
-    expect(messages).toHaveLength(150);
-    
-    // Should show the LAST 150 (from 10 to 159)
-    expect(messages[0]).toHaveTextContent("Message 10");
-    expect(messages[149]).toHaveTextContent("Message 159");
+    expect(messages).toHaveLength(50);
 
-    // Performance note should be visible
-    expect(screen.getByText(/Performance Note: Only the last 150 messages/i)).toBeInTheDocument();
+    // Should show the LAST 50 (from 110 to 159)
+    expect(messages[0]).toHaveTextContent("Message 110");
+    expect(messages[49]).toHaveTextContent("Message 159");
+
+    expect(screen.getByRole("button", { name: /Load older messages \(110 earlier\)/i })).toBeInTheDocument();
+  });
+
+  it("loads 50 more older messages when the load-older button is clicked", () => {
+    const chat: ChatMessage[] = Array.from({ length: 160 }, (_, i) => ({
+      role: "user",
+      content: `Message ${i}`,
+      timestamp: i,
+    }));
+
+    render(<ChatAreaVirtualizedList {...mockProps} chat={chat} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Load older messages/i }));
+
+    const messages = screen.getAllByTestId("chat-message-wrapper");
+    expect(messages).toHaveLength(100);
+    expect(messages[0]).toHaveTextContent("Message 60");
+    expect(messages[99]).toHaveTextContent("Message 159");
+    expect(screen.getByRole("button", { name: /Load older messages \(60 earlier\)/i })).toBeInTheDocument();
   });
 
   it("correctly maps actualIdx even when capped", () => {
@@ -107,8 +124,8 @@ describe("ChatAreaVirtualizedList", () => {
     render(<ChatAreaVirtualizedList {...mockProps} chat={chat} />);
 
     const messages = screen.getAllByTestId("chat-message-wrapper");
-    
-    // First displayed message is at index 10 in the original array
-    expect(messages[0].getAttribute("data-idx")).toBe("10");
+
+    // First displayed message is at index 110 in the original array
+    expect(messages[0].getAttribute("data-idx")).toBe("110");
   });
 });

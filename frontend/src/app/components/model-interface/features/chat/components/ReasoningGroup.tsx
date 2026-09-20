@@ -61,11 +61,11 @@ export function ReasoningGroup({
         className={styles.header}
         aria-expanded={open}
       >
-        <span className={`${styles.headerLabel} ${thinkingInProgress ? styles.headerLabelActive : ''}`}>
-          {headerLabel}
-        </span>
         <span className={styles.chevron} aria-hidden>
           {open ? '▾' : '▸'}
+        </span>
+        <span className={`${styles.headerLabel} ${thinkingInProgress ? styles.headerLabelActive : ''}`}>
+          {headerLabel}
         </span>
       </button>
 
