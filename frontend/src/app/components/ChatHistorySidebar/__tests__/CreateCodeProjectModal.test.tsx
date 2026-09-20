@@ -58,19 +58,66 @@ describe('CreateCodeProjectModal named folder button', () => {
     return waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
   }
 
-  it('places the New button before the folder input and Browse after it', async () => {
+  it('places the Folder section before Name in DOM order, with New and Browse buttons surrounding Folder input', async () => {
     renderModal();
     await getDialog();
 
+    const folderInput = screen.getByLabelText(/^folder$/i);
+    const nameInput = screen.getByLabelText(/^name$/i);
     const newButton = screen.getByRole('button', { name: /create a folder named after this project/i });
-    const pathInput = screen.getByLabelText(/^folder$/i);
     const browseButton = screen.getByRole('button', { name: /^browse$/i });
 
-    expect(newButton.compareDocumentPosition(pathInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(pathInput.compareDocumentPosition(browseButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Folder comes before Name
+    expect(folderInput.compareDocumentPosition(nameInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // New button before folder input, Browse button after folder input
+    expect(newButton.compareDocumentPosition(folderInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(folderInput.compareDocumentPosition(browseButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(
-      screen.getByText(/use new to create a folder from the project name/i),
+      screen.getByText(/use new to create a folder or browse an existing one/i),
     ).toBeInTheDocument();
+  });
+
+  it('displays full path of the folder under the folder input in small print', async () => {
+    renderModal();
+    await getDialog();
+
+    expect(screen.getByTestId('folder-full-path')).toHaveTextContent('No folder selected');
+
+    fireEvent.change(screen.getByLabelText(/^folder$/i), { target: { value: 'C:\\Users\\DELL5530\\Desktop\\account' } });
+
+    expect(screen.getByTestId('folder-full-path')).toHaveTextContent('Full path: C:\\Users\\DELL5530\\Desktop\\account');
+  });
+
+  it('automatically generates project name when folder path is picked via Browse', async () => {
+    (window.aigeniusDesktop!.pickProjectDirectory as jest.Mock).mockResolvedValue({
+      path: '/home/user/desktop/account',
+    });
+
+    renderModal();
+    await getDialog();
+
+    fireEvent.click(screen.getByRole('button', { name: /^browse$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^folder$/i)).toHaveValue('/home/user/desktop/account');
+    });
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('account');
+  });
+
+  it('automatically disambiguates name using parent folder when an existing project has the same name', async () => {
+    (window.aigeniusDesktop!.pickProjectDirectory as jest.Mock).mockResolvedValue({
+      path: 'C:\\Users\\DELL5530\\Desktop\\account',
+    });
+
+    renderModal({ existingProjects: [{ name: 'account' }] });
+    await getDialog();
+
+    fireEvent.click(screen.getByRole('button', { name: /^browse$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^folder$/i)).toHaveValue('C:\\Users\\DELL5530\\Desktop\\account');
+    });
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Desktop/account');
   });
 
   it('creates a folder from the typed name and fills the path without submitting', async () => {
@@ -152,7 +199,6 @@ describe('CreateCodeProjectModal named folder button', () => {
     expect(screen.queryByRole('button', { name: /create a folder named after this project/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^browse$/i })).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'web-app' } });
     fireEvent.change(screen.getByLabelText(/^folder$/i), { target: { value: '/abs/web-app' } });
     fireEvent.click(screen.getByRole('button', { name: /^create$/i }));
 
@@ -175,3 +221,4 @@ describe('CreateCodeProjectModal named folder button', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Name and folder path are required');
   });
 });
+

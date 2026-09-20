@@ -5,6 +5,7 @@ import { ChatArea } from './ChatArea';
 import { ChatAreaVirtualizedList } from './ChatAreaVirtualizedList';
 import { ChatBoxInput } from '@/app/components/ChatBoxInput';
 import { OrphanThreadModal } from './OrphanThreadModal';
+import { ContextSummaryBadge } from './ContextSummaryBadge';
 import { ChatMessage, ChatSession, Model, PendingOrphanReply } from '@/app/components/model-interface/shared/types';
 import { useBrowserDetection } from '@/app/components/model-interface/shared/hooks';
 import { useMobileKeyboard, useMobileLayout } from '@/app/components/model-interface/features/mobile/hooks';
@@ -23,6 +24,8 @@ import type { SetChatUiError } from '@/app/components/model-interface/features/c
 interface ChatContainerProps {
     chat: ChatMessage[];
     chatHistory?: ChatSession[];
+    conversationSummary?: string;
+    lastSummarizedAt?: string;
     selectedModel: Model | null;
     models: Model[];
     showCosts: boolean;
@@ -204,9 +207,15 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     onMiniModeToggle,
     isMiniMode,
     analyzer = null,
+    conversationSummary,
+    lastSummarizedAt,
 }, ref) => {
     const inputRef = useRef<any>(null);
     const orphanInputRef = useRef<HTMLTextAreaElement>(null);
+
+    const currentSession = chatHistory?.find((s) => s.id === currentSessionId);
+    const activeSummary = conversationSummary || (currentSession?.metadata as any)?.conversationSummary;
+    const activeSummaryTime = lastSummarizedAt || (currentSession?.metadata as any)?.lastSummarizedAt;
 
     const streamVisibleInChat =
         streaming || (Boolean(isAudioMode) && audioStatus === 'speaking');

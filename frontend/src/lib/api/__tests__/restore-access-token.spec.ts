@@ -133,6 +133,7 @@ describe('restoreAccessTokenFromStoredSession', () => {
         mockIsLikelyElectronRenderer.mockReturnValue(true);
         mockWaitForAigeniusDesktopBridge.mockResolvedValue(true);
         mockReadDesktopStoredRefreshToken.mockResolvedValue('desktop-refresh-token');
+        window.history.replaceState({}, '', '/');
     });
 
     it('returns the existing access token when it is still valid', async () => {
@@ -179,6 +180,7 @@ describe('restoreAccessTokenFromStoredSession', () => {
         mockHasAuthSession.mockReturnValue(true);
         mockIsAigeniusDesktopRuntime.mockReturnValue(false);
         mockAxiosPost.mockResolvedValue({ data: { token: refreshedToken } });
+        window.history.replaceState({}, '', '/?aigenius_desktop_has_session=1');
 
         const { restoreAccessTokenFromStoredSession } = await import('@/lib/api/auth-client');
         await restoreAccessTokenFromStoredSession();

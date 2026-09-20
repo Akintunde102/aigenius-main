@@ -41,8 +41,8 @@ export function useUIState(models: Model[]) {
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [totalSpent, setTotalSpent] = useState(0);
 
-  // Upload states
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  // Upload & Preview states
+  const [imagePreview, setImagePreview] = useState<any | string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragActive, setDragActive] = useState(false);

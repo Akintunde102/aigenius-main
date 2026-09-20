@@ -14,7 +14,7 @@ function isPatchToolEvent(event: ToolEvent): boolean {
   return event.tool === PATCH_TOOL;
 }
 
-export function ToolStreamingGroup({
+export const ToolStreamingGroup = React.memo(function ToolStreamingGroup({
   events,
   /** True while the assistant turn is still streaming (model request in flight). */
   messageStreaming = false,
@@ -45,11 +45,8 @@ export function ToolStreamingGroup({
     ? buildInProgressClusterHeader(events, messageStreaming) ?? 'Working…'
     : completedSummary ?? 'Worked';
 
-  const isSingleCompactTool = compactEvents.length === 1 && patchEvents.length === 0;
-
   useEffect(() => {
     if (requestInProgress) {
-      setOpen(true);
       wasWorkingRef.current = true;
       return;
     }
@@ -60,40 +57,28 @@ export function ToolStreamingGroup({
     }
   }, [requestInProgress]);
 
-  if (isSingleCompactTool) {
-    const evt = compactEvents[0];
-    return (
-      <div className={styles.group}>
-        <ToolStreamingCard
-          groupItem
-          streaming_tool={{
-            tool: evt.tool,
-            displayName: evt.displayName,
-            logs: evt.logs,
-            loading: evt.loading,
-            success: evt.success,
-            arguments: evt.arguments,
-          }}
-          result={evt.result}
-          arguments={evt.arguments}
-        />
-      </div>
-    );
-  }
+  if (!events.length) return null;
 
   return (
     <div className={styles.group}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((prev) => !prev)}
         className={styles.header}
         aria-expanded={open}
       >
+        <span className={styles.chevron} aria-hidden="true">
+          {open ? '▾' : '▸'}
+        </span>
+        <span className={styles.headerIcon}>
+          {requestInProgress ? (
+            <span className={styles.spinner} aria-hidden="true" />
+          ) : (
+            <span className={styles.checkIcon} aria-hidden="true">✓</span>
+          )}
+        </span>
         <span className={`${styles.headerLabel} ${requestInProgress ? styles.headerLabelActive : ''}`}>
           {headerLabel}
-        </span>
-        <span className={styles.chevron} aria-hidden>
-          {open ? '▾' : '▸'}
         </span>
       </button>
 
@@ -146,4 +131,4 @@ export function ToolStreamingGroup({
       ) : null}
     </div>
   );
-}
+});

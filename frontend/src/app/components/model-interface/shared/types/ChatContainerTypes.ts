@@ -14,7 +14,7 @@ export interface ChatData {
 }
 
 export interface UIState {
-    imagePreview: string | null;
+    imagePreview: any | string | null;
     showScrollToBottom: boolean;
     mobileSidebarOpen?: boolean;
     sidebarStyle?: boolean;
@@ -40,7 +40,7 @@ export interface ChatHandlers {
     onCancelUpload?: (file?: File) => void;
     onShowSavedChats?: () => void;
     onStreamingToggle?: (enabled: boolean) => void;
-    setImagePreview: (preview: string | null) => void;
+    setImagePreview: (preview: any) => void;
     setInput: (input: string) => void;
     setIsTyping?: (typing: boolean) => void;
 }
@@ -69,8 +69,8 @@ export interface LegacyChatContainerProps {
     showNaira: boolean;
     showTyping: boolean;
     loading: boolean;
-    imagePreview: string | null;
-    setImagePreview: (preview: string | null) => void;
+    imagePreview: any | string | null;
+    setImagePreview: (preview: any) => void;
     chatEndRef: React.RefObject<HTMLDivElement>;
     chatAreaRef: React.RefObject<HTMLDivElement>;
     showScrollToBottom: boolean;

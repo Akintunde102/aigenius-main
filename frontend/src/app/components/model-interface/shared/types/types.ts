@@ -271,7 +271,7 @@ export interface ModelInterfaceState {
     loading: boolean;
     error: string;
     streaming: boolean;
-    imagePreview: string | null;
+    imagePreview: any | string | null;
     uploading: boolean;
     uploadProgress: number | null;
     dragActive: boolean;

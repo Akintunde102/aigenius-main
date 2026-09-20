@@ -101,6 +101,8 @@ interface ModelSelectionGridProps {
   isSortingByReleaseDate: boolean;
   wallet?: number | null;
   onAddCredits?: () => void;
+  /** ID of the recently-picked model being previewed (shows 'Click to use' CTA). */
+  previewedModelId?: string;
 }
 
 export const ModelSelectionGrid = React.memo(({
@@ -120,6 +122,7 @@ export const ModelSelectionGrid = React.memo(({
   isSortingByReleaseDate,
   wallet,
   onAddCredits,
+  previewedModelId,
 }: ModelSelectionGridProps) => {
   const [scrollPaneHeight, setScrollPaneHeight] = useState(0);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
@@ -262,6 +265,7 @@ export const ModelSelectionGrid = React.memo(({
               wallet={wallet}
               selectedModelId={selectedModelId}
               onAddCredits={onAddCredits}
+              isPreviewedRecent={previewedModelId != null && previewedModelId === row.model.id}
             />
           </div>
         );

@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { stripHopByHopRequestHeaders } from './hop-by-hop.js';
+import { stripHopByHopRequestHeaders, stripHopByHopResponseHeaders } from './hop-by-hop.js';
 
 export function createUpstreamProxyHandler(upstreamBaseUrl: string) {
   return async (c: Context) => {
@@ -29,6 +29,12 @@ export function createUpstreamProxyHandler(upstreamBaseUrl: string) {
     try {
       const res = await fetch(proxyReq);
       const mutableHeaders = new Headers(res.headers);
+      // fetch() automatically decompresses body (gzip, br, deflate).
+      // Strip encoding & length headers so browser does not fail with ERR_CONTENT_DECODING_FAILED.
+      mutableHeaders.delete('content-encoding');
+      mutableHeaders.delete('content-length');
+      stripHopByHopResponseHeaders(mutableHeaders);
+
       return new Response(res.body, {
         status: res.status,
         statusText: res.statusText,

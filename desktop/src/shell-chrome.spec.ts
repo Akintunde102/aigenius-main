@@ -35,13 +35,28 @@ describe('mainShellBrowserWindowOptions', () => {
       expect(overlay.color).toBe(MAIN_SHELL_CHROME_BG);
     }
   });
+
+  it('uses frameless hidden titleBar on win32 (custom renderer controls)', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    const o = mainShellBrowserWindowOptions();
+    expect(o.frame).toBe(false);
+    expect(o.titleBarStyle).toBe('hidden');
+    expect(o.titleBarOverlay).toBeUndefined();
+    expect(o.autoHideMenuBar).toBeUndefined();
+  });
 });
 
 describe('mainShellRendererChrome', () => {
-  it('matches overlay height on non-darwin', () => {
+  it('matches overlay height on linux', () => {
     const c = mainShellRendererChrome('linux');
     expect(c.titleBarTopPx).toBe(MAIN_SHELL_OVERLAY_HEIGHT_PX);
     expect(c.contentLeftPx).toBe(0);
+    expect(c.titleBarRightInsetPx).toBe(MAIN_SHELL_WIN_LINUX_WCO_RIGHT_INSET_PX);
+  });
+
+  it('reserves overlay height and button inset on win32 (frameless custom controls)', () => {
+    const c = mainShellRendererChrome('win32');
+    expect(c.titleBarTopPx).toBe(MAIN_SHELL_OVERLAY_HEIGHT_PX);
     expect(c.titleBarRightInsetPx).toBe(MAIN_SHELL_WIN_LINUX_WCO_RIGHT_INSET_PX);
   });
 

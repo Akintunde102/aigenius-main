@@ -5,6 +5,7 @@ import {
     removeSavedChatItemById,
     getSavedFullChatSessions,
     getChatHistory,
+    getAllChatResources,
     getPinnedChats,
     pinChatSession,
     unpinChatSession,
@@ -23,27 +24,54 @@ export function useChatHistory() {
     const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
     const [pendingDeleteIdx, setPendingDeleteIdx] = useState<number | null>(null);
 
-    // Load chat history and saved chats on mount - now uses IndexedDB first
+    // Load initial per-project chat preview (top 5 per project) and background prefetch older chats
     useEffect(() => {
+        let isMounted = true;
         const loadData = async () => {
             try {
-                // These functions now load from IndexedDB first, then sync with backend
-                const [savedChatsData, savedFullChatsData, chatHistoryData, pinnedChatsData] = await Promise.all([
+                const [savedChatsData, savedFullChatsData, initialResources, pinnedChatsData] = await Promise.all([
                     getSavedChatItems(),
                     getSavedFullChatSessions(),
-                    getChatHistory(),
+                    getAllChatResources({ perProjectLimit: 5 }),
                     getPinnedChats()
                 ]);
+                if (!isMounted) return;
+
                 setSavedChats(savedChatsData);
                 setSavedFullChats(savedFullChatsData);
-                setChatHistory(chatHistoryData);
+                setChatHistory(initialResources.chatHistory || []);
                 setPinnedChats(pinnedChatsData);
+
+                // Background prefetch remaining history silently without blocking UI
+                if (initialResources.hasNextPage || initialResources.nextCursor) {
+                    const prefetchOlderPages = async () => {
+                        try {
+                            const fullResources = await getAllChatResources({ limit: 50, cursor: initialResources.nextCursor });
+                            if (!isMounted) return;
+                            if (fullResources.chatHistory?.length) {
+                                setChatHistory(prev => {
+                                    const existingIds = new Set(prev.map(c => c.id));
+                                    const newItems = fullResources.chatHistory.filter(c => Boolean(c.id) && !existingIds.has(c.id));
+                                    return [...prev, ...newItems];
+                                });
+                            }
+                        } catch (err) {
+                            console.warn('Background chat history prefetch skipped or completed:', err);
+                        }
+                    };
+
+                    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+                        window.requestIdleCallback(() => { void prefetchOlderPages(); });
+                    } else {
+                        setTimeout(() => { void prefetchOlderPages(); }, 1200);
+                    }
+                }
             } catch (error) {
                 console.error('Failed to load chat data:', error);
-                // Don't block UI on error - just log it
             }
         };
         loadData();
+        return () => { isMounted = false; };
     }, []);
 
     // Save pinned chats when changed
