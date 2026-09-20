@@ -98,7 +98,7 @@ describe('buildToolClusterSummary', () => {
       }),
     ];
 
-    expect(buildToolClusterSummary(events)).toBe('Read 4 files');
+    expect(buildToolClusterSummary(events)).toBe('Read a.ts, b.ts +2 more');
   });
 
   it('describes list directory without explored-file wording', () => {

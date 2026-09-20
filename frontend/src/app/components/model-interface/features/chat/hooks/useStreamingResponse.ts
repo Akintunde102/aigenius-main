@@ -146,12 +146,38 @@ export function useStreamingResponse({
     }, [selectedModel?.id, selectedModel?.name, selectedPersonalityName, selectedPersonalityIconUrl, setChatForSession]);
 
 
+    const rafHandleRef = useRef<number | null>(null);
+    const pendingUpdateRef = useRef<{ chatMapKey: string; processedContent: ProcessedContent } | null>(null);
+
+    const flushPendingStreamingMessage = useCallback(() => {
+        if (rafHandleRef.current !== null) {
+            cancelAnimationFrame(rafHandleRef.current);
+            rafHandleRef.current = null;
+        }
+        if (pendingUpdateRef.current) {
+            const { chatMapKey, processedContent } = pendingUpdateRef.current;
+            pendingUpdateRef.current = null;
+            setChatForSession(chatMapKey, prev => updateLastAssistantMessage(prev, processedContent));
+        }
+    }, [setChatForSession]);
+
     const updateStreamingMessage = useCallback((
         processedContent: ProcessedContent,
         chatMapKey: string
     ): void => {
-        // Write directly to the stream's session slot — always correct regardless of active view.
-        setChatForSession(chatMapKey, prev => updateLastAssistantMessage(prev, processedContent));
+        pendingUpdateRef.current = { chatMapKey, processedContent };
+        if (rafHandleRef.current === null && typeof window !== 'undefined' && 'requestAnimationFrame' in window) {
+            rafHandleRef.current = requestAnimationFrame(() => {
+                rafHandleRef.current = null;
+                if (pendingUpdateRef.current) {
+                    const { chatMapKey: key, processedContent: content } = pendingUpdateRef.current;
+                    pendingUpdateRef.current = null;
+                    setChatForSession(key, prev => updateLastAssistantMessage(prev, content));
+                }
+            });
+        } else if (typeof window === 'undefined' || !('requestAnimationFrame' in window)) {
+            setChatForSession(chatMapKey, prev => updateLastAssistantMessage(prev, processedContent));
+        }
     }, [setChatForSession]);
 
     const handleStreamingResponse = useCallback(async (
@@ -539,6 +565,7 @@ export function useStreamingResponse({
             syncSidebarHistory();
             throw err;
         } finally {
+            flushPendingStreamingMessage();
             const currentController = abortControllersRef.current.get(chatMapKey);
             if (currentController === abortController) {
                 abortControllersRef.current.delete(chatMapKey);

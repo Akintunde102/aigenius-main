@@ -81,9 +81,14 @@ export const StructuredMessage: React.FC<StructuredMessageProps> = ({
                                 kind={item.kind}
                                 fileName={item.fileName}
                                 fileUrl={item.fileUrl}
-                                onImagePreview={(url) => {
-                                    onImagePreview(url);
-                                    setImagePreview(url);
+                                onPreview={(target) => {
+                                    onImagePreview(target as any);
+                                    setImagePreview(target as any);
+                                }}
+                                onImagePreview={(url, name, kind) => {
+                                    const target = { fileUrl: url, fileName: name || item.fileName, kind: kind || item.kind };
+                                    onImagePreview(target as any);
+                                    setImagePreview(target as any);
                                 }}
                             />
                         ))}
@@ -111,6 +116,10 @@ export const ImageMessage: React.FC<ImageMessageProps> = ({
     kind="image"
     fileName="Image"
     fileUrl={imageUrl}
+    onPreview={(target) => {
+      onImagePreview(target as any);
+      setImagePreview(target as any);
+    }}
     onImagePreview={(url) => {
       onImagePreview(url);
       setImagePreview(url);

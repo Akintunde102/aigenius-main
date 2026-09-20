@@ -21,7 +21,7 @@ export function AssistantTurnSegments({
     segments,
     messageRole,
     streaming,
-    gapClassName = 'flex flex-col gap-3 md:gap-4',
+    gapClassName = 'flex flex-col gap-1.5 md:gap-2',
 }: AssistantTurnSegmentsProps) {
     if (segments.length === 0) {
         return null;

@@ -28,7 +28,6 @@ describe("ModelSelectionFeaturedCard layout", () => {
         averageCost={23}
         isSelected={false}
         onShowDetails={jest.fn()}
-        isSortingByReleaseDate
       />,
     );
 
@@ -40,6 +39,25 @@ describe("ModelSelectionFeaturedCard layout", () => {
     expect(container.textContent).not.toMatch(/\bctx\b/i);
     expect(container.textContent).not.toMatch(/2024/);
     expect(screen.getByLabelText(/Add Gemini 3 Flash to quick picks/i)).toBeInTheDocument();
+  });
+
+  it("renders release date on the card when sorting by release date", () => {
+    const { container } = render(
+      <ModelSelectionFeaturedCard
+        model={model}
+        isPinned={false}
+        onTogglePin={jest.fn()}
+        onSelect={jest.fn()}
+        averageCost={23}
+        isSelected={false}
+        onShowDetails={jest.fn()}
+        isSortingByReleaseDate
+      />,
+    );
+
+    const dateEl = container.querySelector(".app-model-card__date");
+    expect(dateEl).toBeInTheDocument();
+    expect(dateEl).toHaveTextContent(/2024/);
   });
 
   it("hides the tools hint when the model has no extra tooling", () => {

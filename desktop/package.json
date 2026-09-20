@@ -94,6 +94,7 @@
       "output": "release"
     },
     "icon": "build/icon.ico",
+    "afterPack": "scripts/after-pack-embed-win-icon.cjs",
     "files": [
       "dist/**/*",
       "package.json",
@@ -176,6 +177,7 @@
         "zip"
       ],
       "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
       "extraResources": [
         {
           "from": "build/vcredist",

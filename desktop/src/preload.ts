@@ -36,18 +36,30 @@ function mainShellRendererChrome(platform: NodeJS.Platform): {
   titleBarTopPx: number;
   contentLeftPx: number;
   titleBarRightInsetPx: number;
+  platform: NodeJS.Platform;
 } {
   if (platform === 'darwin') {
     return {
       titleBarTopPx: MAIN_SHELL_MAC_TITLE_TOP_PX,
       contentLeftPx: 0,
       titleBarRightInsetPx: MAIN_SHELL_DARWIN_TITLEBAR_RIGHT_INSET_PX,
+      platform,
+    };
+  }
+  if (platform === 'win32') {
+    // Frameless + custom renderer controls — keep in sync with shell-chrome.ts.
+    return {
+      titleBarTopPx: MAIN_SHELL_OVERLAY_HEIGHT_PX,
+      contentLeftPx: 0,
+      titleBarRightInsetPx: MAIN_SHELL_WIN_LINUX_WCO_RIGHT_INSET_PX,
+      platform,
     };
   }
   return {
     titleBarTopPx: MAIN_SHELL_OVERLAY_HEIGHT_PX,
     contentLeftPx: 0,
     titleBarRightInsetPx: MAIN_SHELL_WIN_LINUX_WCO_RIGHT_INSET_PX,
+    platform,
   };
 }
 
@@ -455,6 +467,27 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
   },
   respondToolApproval: (requestId: string, approved: boolean): void => {
     ipcRenderer.send(`aigenius-tool-approval-response:${requestId}`, approved);
+  },
+  // Window controls — used by the custom title bar on frameless windows (Windows / Linux).
+  minimizeWindow: (): void => {
+    ipcRenderer.send('window-minimize');
+  },
+  maximizeWindow: (): void => {
+    ipcRenderer.send('window-maximize');
+  },
+  closeWindow: (): void => {
+    ipcRenderer.send('window-close');
+  },
+  isWindowMaximized: (): Promise<boolean> =>
+    ipcRenderer.invoke('window-is-maximized') as Promise<boolean>,
+  onWindowMaximizeChange: (handler: (isMaximized: boolean) => void) => {
+    const fn = (_event: unknown, maximized: boolean): void => {
+      handler(maximized);
+    };
+    ipcRenderer.on('window-maximize-change', fn);
+    return () => {
+      ipcRenderer.removeListener('window-maximize-change', fn);
+    };
   },
 });
 

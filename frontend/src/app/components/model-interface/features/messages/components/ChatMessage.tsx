@@ -267,7 +267,7 @@ export function ChatMessage({
         if (msg.role !== 'user' || loading || streaming || isEditing) return;
 
         const target = event.target as HTMLElement | null;
-        if (target?.closest('button, a, input, textarea, [role="menu"], [role="menuitem"]')) {
+        if (target?.closest('button, a, input, textarea, [role="menu"], [role="menuitem"], [data-no-edit], [data-attachment-card]')) {
             return;
         }
 
@@ -565,12 +565,16 @@ export function ChatMessage({
                                         <AudioMessage
                                             fileUrl={messageContent.fileUrl}
                                             fileName={messageContent.fileName}
+                                            onImagePreview={onImagePreview}
+                                            setImagePreview={setImagePreview}
                                         />
                                     ) : messageContent.isFileMsg ? (
                                         <FileMessage
                                             fileUrl={messageContent.fileUrl}
                                             fileName={messageContent.fileName}
                                             onCopy={onCopy}
+                                            onImagePreview={onImagePreview}
+                                            setImagePreview={setImagePreview}
                                         />
                                     ) : messageContent.isStructuredContent ? (
                                         <StructuredMessage
@@ -665,6 +669,9 @@ export function ChatMessage({
                                         onOpenUsageDetails={() => setShowUsageDetails(true)}
                                         onOpenChange={setMessageActionsMenuOpen}
                                     />
+                                    {streaming ? (
+                                        <AssistantStreamStatus loading={loading} />
+                                    ) : null}
                                     <CostDisplay
                                         variant="costOnly"
                                         msg={msg}
@@ -714,9 +721,6 @@ export function ChatMessage({
                                             formatCost={formatCost}
                                         />
                                     )}
-                                    {msg.role === "assistant" && streaming ? (
-                                        <AssistantStreamStatus loading={loading} />
-                                    ) : null}
                                 </div>
                             </div>
                             {msg.role === "user" ? (

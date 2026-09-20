@@ -55,7 +55,7 @@ const REHYPE_PLUGINS = [
 ];
 
 /** Renders LLM message text as GFM Markdown with fenced-code syntax highlighting. */
-export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
+export const MarkdownRenderer = React.memo(function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
     const processedContent = useMemo(() => {
         let text = repairLlmMarkdown(content);
         if (isAigeniusDesktopRuntime()) {
@@ -86,4 +86,4 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
             </ReactMarkdown>
         </div>
     );
-}
+});

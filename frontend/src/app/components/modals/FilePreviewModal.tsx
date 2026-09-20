@@ -18,14 +18,18 @@ import { FilePreviewUnavailable } from './FilePreviewUnavailable';
 import { usePanelDisplayMode } from './usePanelDisplayMode';
 import { copyLocalItem } from './file-preview-os-actions.utils';
 import copy from 'copy-to-clipboard';
+import type { EditorProps } from '@monaco-editor/react';
 
-const Editor = dynamic(
+const Editor = dynamic<EditorProps>(
   () =>
     import('@monaco-editor/react').then((mod) => {
-      mod.loader.config({
-        paths: { vs: '/monaco-editor/min/vs' },
-      });
-      return mod.default;
+      const monacoMod = mod as any;
+      if (monacoMod.loader) {
+        monacoMod.loader.config({
+          paths: { vs: '/monaco-editor/min/vs' },
+        });
+      }
+      return { default: monacoMod.default ?? monacoMod };
     }),
   { ssr: false, loading: () => <div className="p-4 text-sm text-muted-foreground">Loading editor…</div> },
 );
@@ -426,7 +430,7 @@ export const FilePreviewModal: React.FC = () => {
 
         if (payload.type === 'folder' && payload.localPath) {
             fetchFolderContents(payload.localPath);
-        } else if (payload.type === 'code' && payload.localPath && (!payload.textContent || payload.textContent === '// Loading code...')) {
+        } else if (payload.type === 'code' && payload.localPath && (typeof payload.textContent !== 'string' || payload.textContent === '// Loading code...')) {
             const fetchCode = async () => {
                 try {
                     const res = await bridge.runLocalDesktopTool({
@@ -435,10 +439,11 @@ export const FilePreviewModal: React.FC = () => {
                     });
                     if (res.ok) {
                         const data = res.rawData || JSON.parse(res.result);
-                        setPayload(p => p ? { ...p, textContent: data.content } : p);
-                        setEditedContent(data.content);
+                        const content = typeof data?.content === 'string' ? data.content : '';
+                        setPayload(p => p ? { ...p, textContent: content } : p);
+                        setEditedContent(content);
                         if (originalPayload?.localPath === payload.localPath) {
-                            setOriginalPayload(p => p ? { ...p, textContent: data.content } : p);
+                            setOriginalPayload(p => p ? { ...p, textContent: content } : p);
                         }
                     } else {
                         setError(`Failed to read file: ${res.error}`);
@@ -517,7 +522,7 @@ export const FilePreviewModal: React.FC = () => {
                     </div>
                 );
             case 'code':
-                const isCodeLoading = !payload.textContent || payload.textContent === '// Loading code...';
+                const isCodeLoading = typeof payload.textContent !== 'string' || payload.textContent === '// Loading code...';
                 if (showMarkdownPreview && isMarkdown) {
                     return (
                         <div
@@ -535,7 +540,7 @@ export const FilePreviewModal: React.FC = () => {
                             height="100%"
                             theme={monacoThemeId}
                             path={payload.localPath ?? payload.name}
-                            value={payload.textContent}
+                            value={payload.textContent === '// Loading code...' ? '' : (payload.textContent ?? '')}
                             onChange={(value) => setEditedContent(value || '')}
                             onMount={handleEditorMount}
                             beforeMount={handleEditorWillMount}

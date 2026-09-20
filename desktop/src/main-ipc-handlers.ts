@@ -468,4 +468,43 @@ export function registerMainIpcHandlers(): void {
     };
   });
 
+  // Custom window controls for frameless windows (Windows / Linux).
+  ipcMain.on('window-minimize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) {
+      win.minimize();
+    }
+  });
+
+  ipcMain.on('window-maximize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) {
+      return;
+    }
+    const next = !win.isMaximized();
+    if (win.isMaximized()) {
+      win.unmaximize();
+    } else {
+      win.maximize();
+    }
+    // Notify renderer of the new state after the OS has applied it.
+    setImmediate(() => {
+      if (!win.isDestroyed()) {
+        win.webContents.send('window-maximize-change', next);
+      }
+    });
+  });
+
+  ipcMain.on('window-close', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) {
+      win.close();
+    }
+  });
+
+  ipcMain.handle('window-is-maximized', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return win && !win.isDestroyed() ? win.isMaximized() : false;
+  });
+
 }

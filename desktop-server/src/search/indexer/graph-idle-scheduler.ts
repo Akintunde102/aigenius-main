@@ -20,7 +20,7 @@ function pickPendingGraphFiles(
   limit: number,
 ): string[] {
   const norm = pathPrefix.replace(/\\/g, '/');
-  const prefixFilter = norm ? 'AND REPLACE(path, CHAR(92), "/") LIKE ?' : '';
+  const prefixFilter = norm ? "AND REPLACE(path, CHAR(92), '/') LIKE ?" : '';
   const params: unknown[] = [];
   if (norm) params.push(`${norm}%`);
   params.push(limit);

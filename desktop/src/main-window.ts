@@ -26,6 +26,7 @@ import { createShellBootDataUrl, isShellBootDataUrl } from './shell-boot-page';
 import { desktopUiAppUrl, shouldUseDesktopUiCustomProtocol } from './desktop-ui-mode';
 import { listWindowIconCandidates } from './window-icon-paths';
 import { hasStoredAuthSession } from './desktop-auth-store';
+import { attachShowWindowWhenReady, revealShowableWindow } from './show-window-when-ready';
 
 export function resolveWindowIconPath(): string | undefined {
   const repoRoot = repoRootFromDesktopDist();
@@ -169,7 +170,11 @@ export function createWindow(relativePathOrOptions?: string | CreateWindowOption
     ...mainShellBrowserWindowOptions(),
     width: 1280,
     height: 800,
-    show: false,
+    title: 'AIGenius',
+    // Windows titleBarOverlay often never maps a window created with show: false
+    // (ready-to-show never fires). Splash uses the same dark chrome color, so a
+    // brief empty frame is preferable to a process that never appears.
+    show: process.platform === 'win32',
     ...(icon ? { icon } : {}),
     webPreferences: {
       preload: preloadPath,
@@ -179,16 +184,6 @@ export function createWindow(relativePathOrOptions?: string | CreateWindowOption
       /** Default on (Electron/Chromium). Set `AIGENIUS_BACKGROUND_THROTTLING=0` for legacy smooth-unfocused behavior. */
       backgroundThrottling: process.env.AIGENIUS_BACKGROUND_THROTTLING !== '0',
     },
-  });
-
-  if (icon && !win.isDestroyed()) {
-    win.setIcon(icon);
-  }
-
-  win.once('ready-to-show', () => {
-    if (!win.isDestroyed()) {
-      win.show();
-    }
   });
 
   attachMainShellNavigationGuards(win);
@@ -202,12 +197,6 @@ export function createWindow(relativePathOrOptions?: string | CreateWindowOption
   });
   attachChatCompletionWindowFocusHandlers(win);
   attachShellPageReadyHandler(win);
-
-  win.once('ready-to-show', () => {
-    if (!win.isDestroyed()) {
-      win.show();
-    }
-  });
 
   if (!app.isPackaged) {
     win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
@@ -265,6 +254,34 @@ export function createWindow(relativePathOrOptions?: string | CreateWindowOption
     loadShellUrl();
   }
 
+  attachShowWindowWhenReady(win);
+
+  if (process.platform === 'win32') {
+    revealShowableWindow(win);
+    try {
+      win.center();
+    } catch {
+      /* ignore */
+    }
+    setTimeout(() => {
+      if (win.isDestroyed()) {
+        return;
+      }
+      let handle = 'n/a';
+      try {
+        handle = win.getNativeWindowHandle().toString('hex');
+      } catch {
+        /* ignore */
+      }
+      console.info('[aigenius-desktop] window mapped', {
+        visible: win.isVisible(),
+        minimized: win.isMinimized(),
+        bounds: win.getBounds(),
+        handle,
+      });
+    }, 1500);
+  }
+
   startupMark('window_created');
   return win;
 }
@@ -279,10 +296,12 @@ export async function navigateMainShellToApp(
   }
   const url = resolveMainShellAppUrl(relativePath, { hasSession: hasStoredAuthSession() });
   if (!isShellBootDataUrl(win.webContents.getURL()) && win.webContents.getURL() === url) {
+    revealShowableWindow(win);
     return;
   }
   await prefetchShellUrl(url);
   if (!win.isDestroyed()) {
     await win.loadURL(url);
+    revealShowableWindow(win);
   }
 }

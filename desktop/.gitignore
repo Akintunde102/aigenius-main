@@ -3,6 +3,7 @@ dist-resources/
 release/
 node_modules/
 .tilt-setup-stamp.json
+.tilt-launch-electron.vbs
 ../desktop-server/pack-deps/
 .env
 whisper.cpp/

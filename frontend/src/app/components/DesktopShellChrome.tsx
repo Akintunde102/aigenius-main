@@ -1,11 +1,14 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useLayoutEffect } from "react";
 import DesktopTitleBarActions from "./DesktopTitleBarActions";
 
 /** Matches Electron `MAIN_SHELL_CHROME_BG` / window `backgroundColor`. */
 const DESKTOP_CHROME_BG = "#1a1a1c";
+
+/** `-webkit-app-region` is not in the csstype CSSProperties; cast to allow it. */
+type DragStyle = CSSProperties & { WebkitAppRegion?: "drag" | "no-drag" };
 
 function syncDesktopChromeCssVars(): void {
   const c = window.aigeniusDesktop?.shellChrome;
@@ -48,15 +51,19 @@ export default function DesktopShellChrome({
     syncDesktopChromeCssVars();
   }, []);
 
+  const dragStripStyle: DragStyle = {
+    height: "var(--aigenius-desktop-titlebar-top, 0px)",
+    backgroundColor: "var(--aigenius-desktop-chrome-bg, transparent)",
+    // Make the whole strip draggable; child elements override with no-drag as needed.
+    WebkitAppRegion: "drag",
+  };
+
   return (
     <>
       <div
         aria-hidden
         className="aigenius-desktop-drag-strip fixed left-0 right-0 top-0 z-[100]"
-        style={{
-          height: "var(--aigenius-desktop-titlebar-top, 0px)",
-          backgroundColor: "var(--aigenius-desktop-chrome-bg, transparent)",
-        }}
+        style={dragStripStyle}
       />
       <DesktopTitleBarActions />
       <div

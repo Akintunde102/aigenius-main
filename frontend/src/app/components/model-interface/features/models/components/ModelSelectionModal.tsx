@@ -256,7 +256,8 @@ export const ModelSelectionModal = React.memo(({
     isSortingByReleaseDate: orderBy === "release_date",
     wallet,
     onAddCredits,
-  }), [isModelPinned, togglePinModel, setSelectedModel, onClose, avgCostById, selectedModel?.id, handleShowModelDetails, isMobile, orderBy, wallet, onAddCredits]);
+    previewedModelId: previewedRecentModel?.id,
+  }), [isModelPinned, togglePinModel, setSelectedModel, onClose, avgCostById, selectedModel?.id, handleShowModelDetails, isMobile, orderBy, wallet, onAddCredits, previewedRecentModel?.id]);
 
   const majorProviders = useMemo(
     () => getMajorProviders(extractProviders(models)),

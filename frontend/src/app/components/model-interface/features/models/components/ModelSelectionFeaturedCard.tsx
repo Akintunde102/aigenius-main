@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react';
-import { FiInfo, FiLayers } from 'react-icons/fi';
+import { FiInfo, FiLayers, FiArrowRight } from 'react-icons/fi';
 import { Model } from '@/app/components/model-interface/shared/types';
 import { hasExtraToolingCapability, getModelDisplayName } from '@/app/components/model-interface/shared/utils';
 import { ModelToggleSwitch } from '@/app/components/ChatBoxInput/ModelToggleSwitch';
@@ -27,6 +27,8 @@ type ModelSelectionFeaturedCardProps = {
     wallet?: number | null;
     selectedModelId?: string;
     onAddCredits?: () => void;
+    /** True when this card is the recently-picked model currently being previewed. */
+    isPreviewedRecent?: boolean;
 };
 
 const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
@@ -38,9 +40,11 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
     isSelected,
     onShowDetails,
     isMobile = false,
+    isSortingByReleaseDate = false,
     wallet = null,
     selectedModelId,
     onAddCredits,
+    isPreviewedRecent = false,
 }: ModelSelectionFeaturedCardProps) {
     const supportsTools = hasExtraToolingCapability(model);
     const displayName = getModelDisplayName(model);
@@ -78,7 +82,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
         <div
             role="button"
             tabIndex={isWalletLocked ? -1 : 0}
-            className={`group app-model-card relative w-full max-w-xl px-2.5 py-1.5 ${isSelected ? 'app-model-card--selected' : ''} ${isWalletLocked ? 'app-model-card--wallet-locked mb-1 cursor-not-allowed [background-color:color-mix(in_srgb,var(--modal-fg)_8%,transparent)]' : 'cursor-pointer'}`}
+            className={`group app-model-card relative w-full max-w-xl px-2.5 py-1.5 ${isSelected ? 'app-model-card--selected' : ''} ${isPreviewedRecent ? 'app-model-card--previewed-recent' : ''} ${isWalletLocked ? 'app-model-card--wallet-locked mb-1 cursor-not-allowed [background-color:color-mix(in_srgb,var(--modal-fg)_8%,transparent)]' : 'cursor-pointer'}`}
             onClick={handlePrimaryAction}
             onKeyDown={(e) => {
                 if (isWalletLocked) return;
@@ -89,6 +93,15 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
             }}
             aria-disabled={isWalletLocked}
         >
+            {isPreviewedRecent && (
+                <span
+                    className="app-model-card__previewed-cta"
+                    aria-label="Click to use this model for chat"
+                >
+                    <FiArrowRight size={9} strokeWidth={2.5} />
+                    <span>Click to use</span>
+                </span>
+            )}
             {supportsTools && (
                 <span
                     className="app-model-card__tools-hint"
@@ -115,6 +128,17 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                         </span>
                     ) : null}
                 </div>
+
+                {isSortingByReleaseDate && slots.release && (
+                    <span
+                        className={`app-model-card__date shrink-0 ${
+                            isMobile ? '!text-[10px]' : ''
+                        }`}
+                        title={`Released: ${slots.release}`}
+                    >
+                        {slots.release}
+                    </span>
+                )}
 
                 <div className="app-model-card__actions">
                     {onShowDetails && (

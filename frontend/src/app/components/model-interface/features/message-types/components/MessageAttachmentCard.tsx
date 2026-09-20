@@ -1,49 +1,27 @@
 'use client';
 
 import React from 'react';
-import { FileText, Loader2, Music2, X } from 'lucide-react';
+import { FileText, Loader2, Music2, X, Eye } from 'lucide-react';
 import { fileExtensionLabel, type AttachmentKind } from './messageAttachment.utils';
 
 export type MessageAttachmentCardProps = {
     kind: AttachmentKind;
     fileName: string;
     fileUrl?: string;
-    onImagePreview?: (url: string) => void;
+    onImagePreview?: (url: string, fileName?: string, kind?: AttachmentKind) => void;
+    onPreview?: (attachment: { fileUrl: string; fileName: string; kind: AttachmentKind }) => void;
     onRemove?: () => void;
     isLoading?: boolean;
     statusLabel?: string;
     disabled?: boolean;
 };
 
-function shellClassForKind(kind: AttachmentKind): string {
-    const base =
-        'relative inline-flex shrink-0 flex-col overflow-hidden rounded-xl border border-[var(--border-subtle,#e5e7eb)] bg-[var(--surface-muted,#f8fafc)] shadow-sm transition hover:border-[var(--border-strong,#cbd5e1)]';
-    if (kind === 'image') {
-        return `${base} h-28 w-28`;
-    }
-    return `${base} h-28 w-36`;
-}
-
-function AttachmentCardFooter({ fileName }: { fileName: string }) {
-    const extension = fileExtensionLabel(fileName);
-
-    return (
-        <div className="flex min-h-0 items-center gap-2 px-2 py-1.5">
-            <span className="shrink-0 rounded bg-[#f4e7df] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#9a3412]">
-                {extension}
-            </span>
-            <span className="truncate text-xs text-[var(--text-primary,#0f172a)]">
-                {fileName}
-            </span>
-        </div>
-    );
-}
-
 export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
     kind,
     fileName,
     fileUrl,
     onImagePreview,
+    onPreview,
     onRemove,
     isLoading = false,
     statusLabel,
@@ -51,12 +29,30 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
 }) => {
     const ext = fileExtensionLabel(fileName);
 
+    const handleCardClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!fileUrl) return;
+        if (onPreview) {
+            e.preventDefault();
+            onPreview({ fileUrl, fileName, kind });
+        } else if (onImagePreview) {
+            e.preventDefault();
+            onImagePreview(fileUrl, fileName, kind);
+        }
+    };
+
     if (kind === 'image' && fileUrl) {
         return (
-            <div className="group relative flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800/80 dark:hover:border-slate-600" title={fileName}>
+            <div
+                data-no-edit="true"
+                data-attachment-card="true"
+                className="group relative flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800/80 dark:hover:border-slate-600 cursor-pointer overflow-hidden"
+                title={`View ${fileName}`}
+                onClick={handleCardClick}
+            >
                 <button
                     type="button"
-                    onClick={() => onImagePreview?.(fileUrl)}
+                    onClick={handleCardClick}
                     className="h-full w-full overflow-hidden rounded-xl"
                     title={fileName}
                     aria-label={`Open image ${fileName}`}
@@ -64,10 +60,13 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
                     <img
                         src={fileUrl}
                         alt={fileName}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         loading="lazy"
                         decoding="async"
                     />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Eye className="h-5 w-5 text-white drop-shadow-md" />
+                    </div>
                 </button>
                 {statusLabel ? (
                     <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[8px] font-medium text-white">
@@ -77,7 +76,11 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
                 {onRemove ? (
                     <button
                         type="button"
-                        onClick={onRemove}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onRemove();
+                        }}
                         disabled={disabled}
                         className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-red-500/90 text-white shadow-sm transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-600 disabled:opacity-50"
                         title="Remove"
@@ -95,13 +98,19 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
         );
     }
 
-    const cardContent = (
-        <div className="group relative flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800/80 dark:hover:border-slate-600" title={fileName}>
-            <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-2">
+    const cardInnerContent = (
+        <div
+            data-no-edit="true"
+            data-attachment-card="true"
+            className="group relative flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800/80 dark:hover:border-slate-600 cursor-pointer overflow-hidden"
+            title={`View ${fileName}`}
+            onClick={fileUrl ? handleCardClick : undefined}
+        >
+            <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-2 transition-transform duration-300 group-hover:scale-105">
                 {kind === 'audio' ? (
-                    <Music2 size={20} className="text-slate-400 dark:text-slate-500" />
+                    <Music2 size={20} className="text-orange-500 dark:text-orange-400" />
                 ) : (
-                    <FileText size={20} className="text-slate-400 dark:text-slate-500" />
+                    <FileText size={20} className="text-slate-400 dark:text-slate-500 group-hover:text-orange-500 transition-colors" />
                 )}
                 <span className="max-w-[64px] truncate text-[9px] font-medium text-slate-600 dark:text-slate-300">
                     {fileName}
@@ -141,7 +150,7 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
         </div>
     );
 
-    if (fileUrl && !onRemove) {
+    if (fileUrl && !onRemove && !onPreview && !onImagePreview) {
         return (
             <a
                 href={fileUrl}
@@ -150,11 +159,12 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
                 title={fileName}
                 aria-label={`Open file ${fileName}`}
                 className="inline-block"
+                onClick={(e) => e.stopPropagation()}
             >
-                {cardContent}
+                {cardInnerContent}
             </a>
         );
     }
 
-    return cardContent;
+    return cardInnerContent;
 };

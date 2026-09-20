@@ -19,13 +19,25 @@ export const MAIN_SHELL_WIN_LINUX_WCO_RIGHT_INSET_PX = 138;
 
 /**
  * Native title bar integration for the main shell window (VS Code–style): inset traffic
- * lights on macOS; frameless + window-controls overlay on Windows and Linux.
+ * lights on macOS; frameless + window-controls overlay on Linux; fully frameless with
+ * custom renderer controls on Windows.
+ *
+ * Windows avoids `titleBarOverlay` intentionally — Electron 43 + WCO on this host maps a
+ * BrowserWindow that reports visible:true but never creates an enumerable HWND. Instead we
+ * go frame:false + titleBarStyle:'hidden' and let the renderer draw its own min/max/close.
  */
 export function mainShellBrowserWindowOptions(): BrowserWindowConstructorOptions {
   if (process.platform === 'darwin') {
     return {
       titleBarStyle: 'hiddenInset',
       trafficLightPosition: { x: 14, y: 11 },
+      backgroundColor: MAIN_SHELL_CHROME_BG,
+    };
+  }
+  if (process.platform === 'win32') {
+    return {
+      frame: false,
+      titleBarStyle: 'hidden',
       backgroundColor: MAIN_SHELL_CHROME_BG,
     };
   }
@@ -52,6 +64,15 @@ export function mainShellRendererChrome(platform: NodeJS.Platform): {
       /** Reserved for a future in-window menu row (VS Code–style); not applied to the whole page. */
       contentLeftPx: 0,
       titleBarRightInsetPx: MAIN_SHELL_DARWIN_TITLEBAR_RIGHT_INSET_PX,
+    };
+  }
+  if (platform === 'win32') {
+    // Frameless + custom renderer controls — same height as Linux overlay strip.
+    // titleBarRightInsetPx reserves space for the three custom caption buttons (3 × 46px ≈ 138).
+    return {
+      titleBarTopPx: MAIN_SHELL_OVERLAY_HEIGHT_PX,
+      contentLeftPx: 0,
+      titleBarRightInsetPx: MAIN_SHELL_WIN_LINUX_WCO_RIGHT_INSET_PX,
     };
   }
   return {

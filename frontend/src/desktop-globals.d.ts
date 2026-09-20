@@ -8,6 +8,8 @@ declare global {
         titleBarTopPx: number;
         contentLeftPx: number;
         titleBarRightInsetPx: number;
+        /** The OS platform as reported by Node's `process.platform` in the Electron main/preload process. */
+        platform: string;
       };
       openNewWindow?: (relativePath?: string) => Promise<void>;
       /** Present on full preload; optional for partial test doubles. */
@@ -83,6 +85,12 @@ declare global {
       onQueueChatScreenshot?: (
         handler: (items: Array<{ base64: string; mimeType: string; basename: string }>) => void,
       ) => () => void;
+      /** Custom window controls for frameless windows (Windows / Linux). */
+      minimizeWindow?: () => void;
+      maximizeWindow?: () => void;
+      closeWindow?: () => void;
+      isWindowMaximized?: () => Promise<boolean>;
+      onWindowMaximizeChange?: (handler: (isMaximized: boolean) => void) => () => void;
       [key: string]: any;
     };
   }

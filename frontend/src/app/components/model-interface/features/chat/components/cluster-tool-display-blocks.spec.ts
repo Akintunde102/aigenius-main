@@ -39,7 +39,7 @@ describe('resolveStreamingToolRowLabel', () => {
         reads: [{ path: 'a.ts' }, { path: 'b.ts' }],
       },
     });
-    expect(resolveStreamingToolRowLabel(t)).toBe('Read 2 files');
+    expect(resolveStreamingToolRowLabel(t)).toBe('Read a.ts, b.ts');
   });
 
   it('shows shell summary while a shell tool is still loading', () => {

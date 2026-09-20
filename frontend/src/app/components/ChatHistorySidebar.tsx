@@ -304,6 +304,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
             <CreateCodeProjectModal
                 open={showCreateProjectModal}
                 onClose={() => setShowCreateProjectModal(false)}
+                existingProjects={codeProjects}
                 onCreate={async (input) => {
                     await addProject(input);
                 }}
