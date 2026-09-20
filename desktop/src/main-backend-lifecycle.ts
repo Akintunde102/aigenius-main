@@ -229,6 +229,26 @@ export async function waitForIndexerIpc(port: string, timeoutMs = 60_000): Promi
   throw new Error(`Indexer IPC not ready on ${host}:${port} after ${timeoutMs}ms`);
 }
 
+export async function sendIndexerShutdown(port: string, timeoutMs = 2000): Promise<void> {
+  const host = '127.0.0.1';
+  const portNum = Number.parseInt(port, 10);
+  return new Promise<void>((resolve) => {
+    const socket = net.createConnection({ host, port: portNum }, () => {
+      const payload = JSON.stringify({ id: 'kill-orphan', op: 'shutdown' });
+      socket.write(`${payload}\n`);
+    });
+    socket.on('data', () => {
+      socket.end();
+      resolve();
+    });
+    socket.on('error', () => resolve());
+    setTimeout(() => {
+      socket.destroy();
+      resolve();
+    }, timeoutMs);
+  });
+}
+
 export async function startIndexerProcess(userDataPath: string, modelsDir: string, token: string, logsDir: string): Promise<void> {
   if (process.env.AIGENIUS_EXTERNAL_INDEXER === '0') {
     return;
@@ -237,6 +257,13 @@ export async function startIndexerProcess(userDataPath: string, modelsDir: strin
   if (!fs.existsSync(entry)) {
     console.warn('[aigenius-desktop] Indexer entry missing; skipping utility process:', entry);
     return;
+  }
+
+  try {
+    await sendIndexerShutdown(INDEXER_IPC_PORT);
+    await new Promise(r => setTimeout(r, 500));
+  } catch (err) {
+    console.warn('[aigenius-desktop] Failed to send pre-flight shutdown to indexer', err);
   }
   startIndexerUtilityProcess({
     desktopServerDir: desktopServerDir(),
@@ -397,7 +424,7 @@ export async function startBackendProcesses(): Promise<void> {
   const useCustomUiProtocol = shouldUseDesktopUiCustomProtocol();
   const frontendWaitMs = app.isPackaged ? 120_000 : 180_000;
   const waitTargets: Promise<void>[] = [
-    waitForHttpOk(loopbackHttpUrl(miniPort, '/health'), 60_000, 1000),
+    waitForHttpOk(loopbackHttpUrl(miniPort, '/health'), 180_000, 1000),
   ];
   if (!useCustomUiProtocol) {
     waitTargets.push(waitForFrontendPageReady(FRONTEND_URL, frontendWaitMs, 400));

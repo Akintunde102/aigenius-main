@@ -15,3 +15,10 @@ export function stripHopByHopRequestHeaders(headers: Headers): void {
     headers.delete(name);
   }
 }
+
+export function stripHopByHopResponseHeaders(headers: Headers): void {
+  for (const name of HOP_BY_HOP_REQUEST_HEADERS) {
+    headers.delete(name);
+  }
+}
+

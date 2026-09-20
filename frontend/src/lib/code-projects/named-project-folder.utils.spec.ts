@@ -1,5 +1,6 @@
 import {
   applyCreateNamedFolderResult,
+  deriveProjectNameFromPath,
   resolveNameForNamedFolderCreate,
 } from './named-project-folder.utils';
 
@@ -46,3 +47,28 @@ describe('applyCreateNamedFolderResult', () => {
     });
   });
 });
+
+describe('deriveProjectNameFromPath', () => {
+  it('returns leaf folder name when no existing project names collide', () => {
+    expect(deriveProjectNameFromPath('C:\\Users\\DELL5530\\Desktop\\account')).toBe('account');
+    expect(deriveProjectNameFromPath('/home/user/my-project/')).toBe('my-project');
+  });
+
+  it('disambiguates using parent folder names when leaf name already exists', () => {
+    const existing = [{ name: 'account' }];
+    expect(deriveProjectNameFromPath('C:\\Users\\DELL5530\\Desktop\\account', existing)).toBe('Desktop/account');
+    expect(deriveProjectNameFromPath('/home/user/account', existing)).toBe('user/account');
+  });
+
+  it('uses deeper parent folders when depth 2 also collides e.g. desktop/account vs home/account', () => {
+    const existing = [{ name: 'account' }, { name: 'desktop/account' }];
+    expect(deriveProjectNameFromPath('C:\\Users\\DELL5530\\desktop\\account', existing)).toBe('DELL5530/desktop/account');
+    expect(deriveProjectNameFromPath('/home/user/account', [{ name: 'account' }])).toBe('user/account');
+  });
+
+  it('handles empty or whitespace inputs gracefully', () => {
+    expect(deriveProjectNameFromPath('')).toBe('');
+    expect(deriveProjectNameFromPath('   ')).toBe('');
+  });
+});
+

@@ -287,15 +287,22 @@ export async function getLocalChatResources(): Promise<{
     }
 }
 
-export async function getAllChatResources(): Promise<{
+export async function getAllChatResources(params?: {
+    limit?: number;
+    cursor?: string | null;
+    projectId?: string | null;
+    perProjectLimit?: number;
+}): Promise<{
     savedChats: ChatMessage[];
     savedFullChats: ChatSession[];
     chatHistory: ChatSession[];
     pinnedChats: ChatSession[];
+    nextCursor?: string | null;
+    hasNextPage?: boolean;
 }> {
     try {
         await waitForAccessToken();
-        const backendResources = await dbGetAllChatResources();
+        const backendResources = await dbGetAllChatResources(params);
 
         let resolvedResources = backendResources;
 
@@ -311,7 +318,7 @@ export async function getAllChatResources(): Promise<{
             getLocalPinnedChats(),
         ]);
 
-        if ((resolvedResources.chatHistory?.length ?? 0) === 0) {
+        if (!params && (resolvedResources.chatHistory?.length ?? 0) === 0) {
             try {
                 const historyOnly = await dbGetChatHistory();
                 if (historyOnly.length > 0) {
@@ -331,18 +338,22 @@ export async function getAllChatResources(): Promise<{
                     : [];
 
         // Store fresh backend data in IndexedDB for offline access
-        await Promise.all([
-            storeSavedChats(resolvedResources.savedChats || []),
-            storeSavedFullChats(resolvedResources.savedFullChats || []),
-            storeChatHistory(resolvedHistory || []),
-            storePinnedChats(resolvedResources.pinnedChats || [])
-        ]);
+        if (!params || (!params.cursor && !params.projectId)) {
+            await Promise.all([
+                storeSavedChats(resolvedResources.savedChats || []),
+                storeSavedFullChats(resolvedResources.savedFullChats || []),
+                storeChatHistory(resolvedHistory || []),
+                storePinnedChats(resolvedResources.pinnedChats || [])
+            ]);
+        }
 
         return {
             savedChats: resolvedResources.savedChats || [],
             savedFullChats: resolvedResources.savedFullChats || [],
             chatHistory: resolvedHistory || [],
-            pinnedChats: resolvedResources.pinnedChats || []
+            pinnedChats: resolvedResources.pinnedChats || [],
+            nextCursor: backendResources.nextCursor,
+            hasNextPage: backendResources.hasNextPage,
         };
     } catch (error) {
         console.warn('Failed to fetch from backend, falling back to local IndexedDB data:', error);

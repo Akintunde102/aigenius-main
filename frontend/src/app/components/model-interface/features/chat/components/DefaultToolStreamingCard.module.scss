@@ -1,11 +1,11 @@
 .root {
   width: 100%;
   min-width: 0;
-  font-size: 12px;
-  line-height: 1.35;
+  font-size: var(--chat-body-size, 0.9375rem);
+  line-height: var(--chat-body-leading, 1.5);
   font-weight: 400;
-  letter-spacing: 0.01em;
-  color: var(--tool-work-muted, #64748b);
+  letter-spacing: 0;
+  color: var(--tool-work-muted, #475569);
 }
 
 .rootGroupItem {
@@ -17,17 +17,20 @@
   display: inline-flex;
   max-width: 100%;
   align-items: baseline;
-  gap: 0.2rem;
+  gap: 0.25rem;
   padding: 0;
   text-align: left;
   color: inherit;
   background: transparent;
   border: none;
   cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
   transition: color 0.15s ease;
 
   &:hover {
-    color: var(--tool-work-text, #334155);
+    color: var(--tool-work-text, #0f172a);
   }
 
   &:focus-visible {
@@ -40,7 +43,7 @@
 .title {
   min-width: 0;
   font-weight: 400;
-  color: var(--tool-work-item, #64748b);
+  color: var(--tool-work-item, #475569);
 }
 
 .titleLoading {

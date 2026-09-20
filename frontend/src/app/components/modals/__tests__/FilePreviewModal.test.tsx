@@ -253,4 +253,43 @@ describe('FilePreviewModal', () => {
             expect(img).toHaveAttribute('src', 'blob:mock-preview');
         });
     });
+
+    it('opens empty code file without getting stuck in loading state', async () => {
+        const mockRunLocalDesktopTool = jest.fn().mockResolvedValue({
+            ok: true,
+            rawData: { path: '/workspace/note.md', content: '' }
+        });
+
+        (window as any).aigeniusDesktop = {
+            runLocalDesktopTool: mockRunLocalDesktopTool
+        };
+
+        render(<FilePreviewModal />);
+
+        await act(async () => {
+            filePreviewEmitter.emit('open', {
+                type: 'code',
+                name: 'note.md',
+                url: 'local-file:///workspace/note.md',
+                localPath: '/workspace/note.md',
+                textContent: '// Loading code...'
+            });
+        });
+
+        await waitFor(() => {
+            const editor = screen.getByTestId('monaco-editor');
+            expect(editor).toBeInTheDocument();
+            expect(editor).toHaveTextContent('');
+        });
+
+        expect(screen.queryByText('// Loading code...')).not.toBeInTheDocument();
+        expect(mockRunLocalDesktopTool).toHaveBeenCalledWith({
+            tool: 'local_read_file',
+            arguments: { path: '/workspace/note.md' },
+        });
+        const readFileCalls = mockRunLocalDesktopTool.mock.calls.filter(
+            (call: any[]) => call[0]?.tool === 'local_read_file',
+        );
+        expect(readFileCalls).toHaveLength(1);
+    });
 });

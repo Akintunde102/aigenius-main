@@ -35,6 +35,11 @@ import {
   powerMonitor,
   shell,
 } from 'electron';
+
+if (process.platform === 'win32') {
+  app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+}
+
 import {
   loadToolPermissionPreferences,
 } from './tool-permission-preferences';
@@ -111,7 +116,10 @@ if (!gotLock) {
       '[aigenius-desktop][bridge-debug] exit: another instance holds requestSingleInstanceLock()',
     );
   }
-  app.quit();
+  // Exit code 2 = single-instance lock already held by another process.
+  // dev-tilt.cjs uses this to detect a stale-Electron collision and retry,
+  // rather than treating it as a clean user close (code 0) or a crash.
+  app.exit(2);
 } else {
   configureDesktopNotificationBranding();
   registerSecondaryBrowserWindowPolicy(app);
