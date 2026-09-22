@@ -79,10 +79,12 @@ export function requestToolApprovalInApp(
       if (event.sender !== parent.webContents) {
         return;
       }
+      console.log(`[DEBUG] requestToolApprovalInApp: Received response on ${responseChannel}:`, approved);
       settle(approved === true);
     };
 
     const timer = setTimeout(() => {
+      console.log(`[DEBUG] requestToolApprovalInApp: Timeout of ${IN_APP_APPROVAL_TIMEOUT_MS}ms reached.`);
       fail(new Error('In-app approval timed out'));
     }, IN_APP_APPROVAL_TIMEOUT_MS);
 

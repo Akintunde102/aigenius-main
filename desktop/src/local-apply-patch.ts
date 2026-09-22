@@ -164,17 +164,32 @@ export async function applyLocalPatch(
   }
   const { ops } = parsed;
 
+  console.log('[DEBUG] applyLocalPatch called with operations:', ops.length);
   const gateError = checkBlastRadiusGate(ops);
   if (gateError) {
+    console.log('[DEBUG] checkBlastRadiusGate returned an error:', gateError);
     return { ok: false, error: gateError };
   }
 
   const riskyPaths = riskyPatchPaths(ops);
-  const blastSummary = riskyPaths.length ? await fetchBlastRadiusSummaryForPaths(riskyPaths) : null;
+  console.log('[DEBUG] riskyPaths:', riskyPaths);
+  
+  let blastSummary = null;
+  if (riskyPaths.length) {
+    console.log('[DEBUG] Calling fetchBlastRadiusSummaryForPaths...');
+    try {
+      blastSummary = await fetchBlastRadiusSummaryForPaths(riskyPaths);
+      console.log('[DEBUG] fetchBlastRadiusSummaryForPaths completed:', blastSummary);
+    } catch (e) {
+      console.log('[DEBUG] fetchBlastRadiusSummaryForPaths threw an error:', e);
+    }
+  }
 
   if (parent && shouldRequireToolApproval('local_apply_patch')) {
+    console.log('[DEBUG] Parent exists and approval required. Calling showPatchApprovalDialog...');
     try {
       const approved = await showPatchApprovalDialog(parent, ops, blastSummary);
+      console.log('[DEBUG] showPatchApprovalDialog completed with approved =', approved);
       if (!approved) {
         return { ok: false, error: 'User declined to apply file changes' };
       }
