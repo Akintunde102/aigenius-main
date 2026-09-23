@@ -46,6 +46,10 @@ function isPublicPath(pathname: string): boolean {
         return true;
     }
 
+    if (pathname === '/h' || pathname.startsWith('/h/')) {
+        return true;
+    }
+
     // Static asset extensions (images, fonts, installers)
     if (/\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|woff|woff2|ttf|eot|dmg)$/i.test(pathname)) {
         return true;

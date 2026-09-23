@@ -28,6 +28,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     pathName === LINKS.internalPages.error.main ||
     pathName.startsWith("/docs") ||
     pathName.startsWith("/published-conversations") ||
+    pathName === "/h" ||
+    pathName.startsWith("/h/") ||
     pathName.startsWith("/integrations");
 
   useEffect(() => {

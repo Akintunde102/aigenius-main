@@ -5,6 +5,8 @@ export type OpenUrlInSystemBrowserResult =
   | { ok: true }
   | { ok: false; error: string };
 
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
+
 function normalizeHttpUrl(url: unknown): string | null {
   if (typeof url !== 'string') {
     return null;
@@ -14,6 +16,27 @@ function normalizeHttpUrl(url: unknown): string | null {
     return null;
   }
   return trimmed;
+}
+
+/**
+ * Published conversation pages are public links the user asked to view.
+ * Loopback only — other hosts still go through the external-link approval dialog.
+ */
+export function isLoopbackPublishedConversationUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return false;
+  }
+  if (!LOOPBACK_HOSTS.has(parsed.hostname.toLowerCase())) {
+    return false;
+  }
+  const path = parsed.pathname.replace(/\/+$/, '') || '/';
+  return path === '/published-conversations' || path.startsWith('/published-conversations/');
 }
 
 /**
@@ -57,13 +80,13 @@ export async function openUrlInSystemBrowser(
     return { ok: false, error: 'invalid_url' };
   }
 
-  if (isHostedPaymentUrl(normalized)) {
+  if (isHostedPaymentUrl(normalized) || isLoopbackPublishedConversationUrl(normalized)) {
     try {
       await shell.openExternal(normalized, { activate: true });
       return { ok: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error('[aigenius-desktop] openUrlInSystemBrowser payment failed', {
+      console.error('[aigenius-desktop] openUrlInSystemBrowser direct open failed', {
         url: normalized,
         message,
       });

@@ -130,7 +130,7 @@ export function filterModels(
         .some((mod: string) => mod.toLowerCase().includes(searchLower));
     const matchesSearch =
       textMatch || (searchImpliesTools && hasExtraToolingCapability(m));
-    const matchesImageOnly = !imageFilterOnly || hasImageSupport(m);
+    const matchesImageOnly = !imageFilterOnly || hasFileOrImageInputSupport(m);
     const matchesInputModality = imageFilterOnly
       ? true
       : selectedModalities.length === 0 ||
@@ -333,6 +333,15 @@ export function hasImageSupport(m: Model): boolean {
   return rootOutput.some(has);
 }
 
+/** True if model accepts image or file attachments as input. */
+export function hasFileOrImageInputSupport(m: Model): boolean {
+  const modalities = m.architecture?.input_modalities ?? [];
+  return modalities.some((mod) => {
+    const lower = (mod || "").toLowerCase();
+    return lower.includes("image") || lower.includes("file");
+  });
+}
+
 /** Unique sorted provider ids from models. */
 export function extractProviders(models: Model[]): string[] {
   const set = new Set<string>();
@@ -406,7 +415,7 @@ export function filterModelsNew(
     const provider = getProvider(m.id);
     const matchesProvider =
       selectedProviders.length === 0 || selectedProviders.includes(provider);
-    const matchesImageOnly = !imageFilterOnly || hasImageSupport(m);
+    const matchesImageOnly = !imageFilterOnly || hasFileOrImageInputSupport(m);
     const matchesWebSearch = !showWebSearch || hasWebSearchCapability(m);
     
     if (!matchesProvider || !matchesImageOnly || !matchesWebSearch) return false;

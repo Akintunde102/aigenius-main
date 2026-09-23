@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { subscribeToTokenRefresh } from '@/lib/api/auth-client';
 import {
-  createCodeProject,
   deleteCodeProject,
   listCodeProjects,
   type CodeProject,
@@ -16,7 +15,12 @@ import {
   subscribeActiveCodeProject,
   type ActiveCodeProjectSnapshot,
 } from '@/lib/code-projects/active-code-project';
-import { applyChatProjectScopeFromSession } from '@/lib/code-projects/apply-chat-project-scope';
+import {
+  applyCodeProjectsChanged,
+  notifyCodeProjectsChanged,
+  subscribeCodeProjectsChanged,
+} from '@/lib/code-projects/code-projects-events';
+import { runCreateCodeProject } from '@/lib/code-projects/create-code-project-workflow';
 import { useAuthReady } from '@/lib/hooks/useAuthReady';
 
 export function useCodeProjects() {
@@ -62,6 +66,16 @@ export function useCodeProjects() {
     });
   }, []);
 
+  useEffect(() => {
+    return subscribeCodeProjectsChanged((detail) => {
+      if (detail.action === 'refresh') {
+        void refresh();
+        return;
+      }
+      setProjects((prev) => applyCodeProjectsChanged(prev, detail));
+    });
+  }, [refresh]);
+
   const selectProject = useCallback((project: CodeProject | null) => {
     if (!project) {
       setActiveCodeProject(null);
@@ -76,21 +90,21 @@ export function useCodeProjects() {
   }, []);
 
   const addProject = useCallback(async (input: CreateCodeProjectInput) => {
-    const created = await createCodeProject(input);
-    setProjects((prev) => [created, ...prev]);
-    selectProject(created);
-    applyChatProjectScopeFromSession(created.id, {
-      id: created.id,
-      name: created.name,
-      rootPath: created.rootPath,
-      rules: created.rules,
+    const result = await runCreateCodeProject({
+      name: input.name,
+      rootPath: input.rootPath,
+      rules: input.rules,
+      createFolder: false,
     });
-    return created;
-  }, [selectProject]);
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+    return result.project;
+  }, []);
 
   const editProject = useCallback(async (id: string, input: Partial<CreateCodeProjectInput>) => {
     const updated = await updateCodeProject(id, input);
-    setProjects((prev) => prev.map((p) => (p.id === id ? updated : p)));
+    notifyCodeProjectsChanged({ action: 'updated', project: updated });
     const active = getActiveCodeProject();
     if (active?.id === id) {
       selectProject(updated);
@@ -100,7 +114,7 @@ export function useCodeProjects() {
 
   const removeProject = useCallback(async (id: string) => {
     await deleteCodeProject(id);
-    setProjects((prev) => prev.filter((p) => p.id !== id));
+    notifyCodeProjectsChanged({ action: 'deleted', id });
     const active = getActiveCodeProject();
     if (active?.id === id) {
       setActiveCodeProject(null);

@@ -302,7 +302,7 @@ export default function HomePage() {
             </h1>
             <p className="subtext">
               Switch between GPT, Claude, Gemini and more — without juggling
-              tabs or subscriptions. Bring files, voice, and projects. Pay only
+              tabs or subscriptions. Bring files and projects. Pay only
               for what you use.
             </p>
 
@@ -425,7 +425,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right: screenshot mockup with macOS window chrome */}
+          {/* Right: product window on a colored stage (light sage / dark olive) */}
           <div className="mockup-wrap" aria-hidden={true}>
             <div className="window">
               <div className="window-bar">
@@ -440,6 +440,8 @@ export default function HomePage() {
                   className="hero-light"
                   src="/images/home-hero-screenshot-light.png"
                   alt="AIGenius app interface in light mode"
+                  width={1024}
+                  height={634}
                   loading="eager"
                   decoding="sync"
                 />
@@ -448,6 +450,8 @@ export default function HomePage() {
                   className="hero-dark"
                   src="/images/home-hero-screenshot-dark.png"
                   alt="AIGenius app interface in dark mode"
+                  width={1024}
+                  height={634}
                   loading="eager"
                   decoding="sync"
                 />
@@ -531,13 +535,13 @@ export default function HomePage() {
                 subscriptions or switching tabs to compare answers.
               </p>
               <p className="about-desc">
-                Bring your own files and voice, and pay only for the AI calls
+                Bring your own files and projects, and pay only for the AI calls
                 you actually use.
               </p>
             </div>
 
             <p className="about-tags">
-              Multi-model chat · File &amp; voice support · Pay-per-use billing
+              Multi-model chat · Files &amp; projects · Pay-per-use billing
             </p>
 
             {/* Legal — small fonts below */}

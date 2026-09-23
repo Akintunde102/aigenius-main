@@ -7,6 +7,7 @@ export const PUBLIC_ROUTES_TO_PREFETCH = [
   "/login",
   "/signup",
   "/published-conversations",
+  "/h",
   "/docs",
   "/docs/privacy-policy",
   "/docs/terms-and-conditions",
