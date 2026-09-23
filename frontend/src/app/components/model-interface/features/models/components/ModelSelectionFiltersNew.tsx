@@ -119,10 +119,10 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
               onClick={() => setImageFilterOnly((prev) => !prev)}
               title={
                 imageFilterOnly
-                  ? "Image output – on"
-                  : "Image output – show only models that can generate images"
+                  ? "Files & images – on"
+                  : "Files & images – show only models that accept file and image attachments"
               }
-              ariaLabel="Filter by image output"
+              ariaLabel="Filter by file and image input"
             >
               <FaRegImage size={13} />
             </FilterPillIconButton>

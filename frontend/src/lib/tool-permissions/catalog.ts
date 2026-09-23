@@ -28,6 +28,12 @@ export const TOOL_PERMISSION_CATALOG: ToolPermissionCatalogEntry[] = [
     defaultRequiresApproval: MUTATING,
   },
   {
+    id: 'local_create_project',
+    label: 'Create project',
+    description: 'Create or reuse a sidebar project folder on this computer',
+    defaultRequiresApproval: READ_ONLY,
+  },
+  {
     id: 'local_retrieval_memory_upsert',
     label: 'Save retrieval memory',
     description: 'Write or update saved memory entries on disk',
@@ -113,6 +119,12 @@ export const TOOL_PERMISSION_CATALOG: ToolPermissionCatalogEntry[] = [
     label: 'Search notes',
     description: 'Search notes by keyword',
     defaultRequiresApproval: READ_ONLY,
+  },
+  {
+    id: 'host_markdown',
+    label: 'Host Markdown',
+    description: 'Create Markdown drafts, update them, publish to a public or restricted page, and list pages',
+    defaultRequiresApproval: MUTATING,
   },
   // Gmail
   {

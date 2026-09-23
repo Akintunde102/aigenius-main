@@ -48,7 +48,7 @@ export const metadata = {
     template: "%s | AIGenius",
   },
   description:
-    "Switch between GPT-4o, Claude 3.5, Gemini 1.5, DeepSeek and more without juggling tabs or subscriptions. Bring files, voice, and code projects. Pay only for what you use.",
+    "Switch between GPT-4o, Claude 3.5, Gemini 1.5, DeepSeek and more without juggling tabs or subscriptions. Bring files and code projects. Pay only for what you use.",
   keywords: [
     "AI chat",
     "GPT-4o",
@@ -72,7 +72,7 @@ export const metadata = {
     url: "https://aigenius.noboxlabs.xyz",
     title: "AIGenius — Chat with every AI model, in one workspace",
     description:
-      "Switch between GPT-4o, Claude 3.5, Gemini 1.5, DeepSeek and more without juggling tabs or subscriptions. Bring files, voice, and code projects. Pay only for what you use.",
+      "Switch between GPT-4o, Claude 3.5, Gemini 1.5, DeepSeek and more without juggling tabs or subscriptions. Bring files and code projects. Pay only for what you use.",
     siteName: "AIGenius",
     images: [
       {
@@ -87,7 +87,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "AIGenius — Chat with every AI model, in one workspace",
     description:
-      "Switch between GPT-4o, Claude 3.5, Gemini 1.5, DeepSeek and more without juggling tabs or subscriptions. Bring files, voice, and code projects. Pay only for what you use.",
+      "Switch between GPT-4o, Claude 3.5, Gemini 1.5, DeepSeek and more without juggling tabs or subscriptions. Bring files and code projects. Pay only for what you use.",
     images: ["/images/home-hero-dark.png"],
     creator: "@noboxhq",
   },

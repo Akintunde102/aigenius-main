@@ -36,6 +36,22 @@ const visionModel = makeModel({
     output_modalities: ["text", "image"],
   },
 });
+const imageOutputOnlyModel = makeModel({
+  id: "stability/sdxl",
+  name: "SDXL",
+  architecture: {
+    input_modalities: ["text"],
+    output_modalities: ["text", "image"],
+  },
+});
+const fileInputModel = makeModel({
+  id: "google/gemini-file-input",
+  name: "Gemini File Input",
+  architecture: {
+    input_modalities: ["text", "file"],
+    output_modalities: ["text"],
+  },
+});
 const webSearchModel = makeModel({
   id: "perplexity/sonar-small",
   name: "Sonar Small",
@@ -44,7 +60,7 @@ const webSearchModel = makeModel({
   },
 });
 
-const allModels = [modelA, modelB, visionModel, webSearchModel];
+const allModels = [modelA, modelB, visionModel, imageOutputOnlyModel, fileInputModel, webSearchModel];
 
 describe("filterModelsNew", () => {
   it("should return all models when search and filters are empty", () => {
@@ -81,10 +97,12 @@ describe("filterModelsNew", () => {
     expect(result.some(m => m.id === modelB.id)).toBe(true);
   });
 
-  it("should filter for image support", () => {
+  it("should filter for file or image input support", () => {
     const result = filterModelsNew(allModels, "", [], true);
-    expect(result.length).toBe(1);
-    expect(result[0].id).toBe(visionModel.id);
+    expect(result.map((m) => m.id).sort()).toEqual(
+      [fileInputModel.id, visionModel.id].sort(),
+    );
+    expect(result.some((m) => m.id === imageOutputOnlyModel.id)).toBe(false);
   });
 
   it("should filter for web search capability", () => {

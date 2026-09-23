@@ -7,6 +7,7 @@ import {
   getFileExtensionFromCloudFile,
   groupCloudFilesByCategory,
   isImageCloudFile,
+  isMarkdownCloudFile,
   joinCloudFileS3Links,
   normalizeUploadFilesList,
   sortCloudFilesNewestFirst,
@@ -39,6 +40,12 @@ describe("user-files.utils", () => {
         file({ id: "2", name: "abc", originalName: "photo.JPEG" }),
       ),
     ).toBe("jpeg");
+  });
+
+  it("isMarkdownCloudFile accepts md and markdown", () => {
+    expect(isMarkdownCloudFile(file({ id: "3", name: "notes.md", originalName: "notes" }))).toBe(true);
+    expect(isMarkdownCloudFile(file({ id: "4", name: "guide.markdown", originalName: "guide" }))).toBe(true);
+    expect(isMarkdownCloudFile(file({ id: "5", name: "notes.txt", originalName: "notes.txt" }))).toBe(false);
   });
 
   it("isImageCloudFile detects image types", () => {

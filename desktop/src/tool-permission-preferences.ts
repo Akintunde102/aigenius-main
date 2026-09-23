@@ -33,6 +33,12 @@ export const TOOL_PERMISSION_CATALOG: ToolPermissionCatalogEntry[] = [
     defaultRequiresApproval: true,
   },
   {
+    id: 'local_create_project',
+    label: 'Create project',
+    description: 'Create or reuse a sidebar project folder on this computer',
+    defaultRequiresApproval: false,
+  },
+  {
     id: 'local_retrieval_memory_upsert',
     label: 'Save retrieval memory',
     description: 'Write or update saved memory entries on disk',

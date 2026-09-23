@@ -137,6 +137,11 @@ export function isImageCloudFile(file: CloudFile): boolean {
   return IMAGE_EXT.has(ext.toLowerCase());
 }
 
+export function isMarkdownCloudFile(file: CloudFile): boolean {
+  const ext = getFileExtensionFromCloudFile(file);
+  return ext === "md" || ext === "markdown";
+}
+
 export function classifyUserFileCategory(extension: string): UserFileCategory {
   const ext = extension.toLowerCase();
   if (!ext) return "other";

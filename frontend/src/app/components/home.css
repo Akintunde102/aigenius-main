@@ -1,5 +1,13 @@
 .home-root * {
   box-sizing: border-box;
+}
+
+/* Landing chrome only. #main-content is Tailwind UI (published chats, docs).
+   This file is unlayered, so a universal margin/padding reset would beat
+   every Tailwind spacing utility inside those pages.
+   :where() keeps this reset weaker than .nav / .footer padding rules.
+   A bare :not(#main-content *) counts as an ID and zeroed the site header. */
+.home-root :where(*:not(#main-content *)) {
   margin: 0;
   padding: 0;
 }
@@ -125,8 +133,10 @@
   position: relative;
   z-index: 10;
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
+  gap: 1.25rem;
   overflow: hidden;
+  padding: 0 1.25rem 1.25rem 0;
 }
 
 /* ── Left content ─────────────────────────────── */
@@ -134,8 +144,11 @@
   position: relative;
   z-index: 10;
   flex-shrink: 0;
-  width: 42%;
-  padding: 0 2.5rem 3rem 2.5rem;
+  width: 36%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 1.5rem 2.25rem 2.5rem;
   animation: homePageFadeUp 0.6s ease both;
 }
 
@@ -321,113 +334,92 @@
   height: 0.65rem;
 }
 
-/* ── Right: App window mockup ─────────────────── */
+/* ── Right: product window on a colored stage ─── */
 .home-root .mockup-wrap {
-  position: absolute;
-  right: -3%;
-  top: 0;
-  bottom: -5%;
-  width: 64%;
+  position: relative;
+  flex: 1;
+  min-width: 0;
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: center;
   pointer-events: none;
   overflow: hidden;
-  padding-left: 2px;
-  /* Ambient glow behind screenshot */
   isolation: isolate;
-}
-
-/* Glowing halo behind the screenshot */
-.home-root .mockup-wrap::before {
-  content: "";
-  position: absolute;
-  inset: -10% -10% auto;
-  height: 60%;
-  background: radial-gradient(
-    ellipse 70% 50% at 55% 20%,
-    rgba(34, 211, 238, 0.18) 0%,
-    rgba(124, 58, 237, 0.12) 45%,
-    transparent 75%
-  );
-  pointer-events: none;
-  z-index: -1;
-  filter: blur(20px);
+  /* Dark slate stage — cool counterpart to light sage */
+  background: #3a414c;
+  border-radius: 16px;
+  padding: 2.25rem 2rem;
 }
 
 .home-root .window {
   width: 100%;
-  height: 100%;
-  background: #111113;
-  border-radius: 12px 12px 0 0;
+  flex: 0 1 auto;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #1c1c1e;
+  border-radius: 12px;
   overflow: hidden;
-  /* Shadow only — no border ring */
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
-    8px 40px 100px rgba(0, 0, 0, 0.7),
-    4px 12px 32px rgba(0, 0, 0, 0.4);
-  /* 3D perspective tilt like Linear */
-  transform: perspective(1400px) rotateX(3deg);
-  transform-origin: top center;
+    0 1px 1px rgba(0, 0, 0, 0.12),
+    0 8px 24px rgba(0, 0, 0, 0.28),
+    0 28px 56px rgba(0, 0, 0, 0.32);
 }
 
 .home-root .window-bar {
   height: 38px;
-  background: #1a1a1c;
+  background: #2a2a2c;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   padding: 0 14px;
-  gap: 7px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .home-root .traffic-dot {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   flex-shrink: 0;
-  /* Monochrome — no colors, like Cursor */
-  background: #3a3a3d;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.18);
 }
 
-.home-root .td-red,
-.home-root .td-yellow,
+.home-root .td-red {
+  background: #ff5f57;
+}
+
+.home-root .td-yellow {
+  background: #febc2e;
+}
+
 .home-root .td-green {
-  background: #3a3a3d;
+  background: #28c840;
 }
 
 .home-root .window-title {
   flex: 1;
   text-align: center;
   font-size: 0.7rem;
-  color: #4a4a50;
+  color: #8a8a90;
   font-weight: 500;
   letter-spacing: 0.01em;
-  margin-right: 37px; /* offset for the 3 dots width so text is truly centered */
+  margin-right: 44px; /* offset for the 3 dots width so text is truly centered */
 }
 
 .home-root .window-body {
   width: 100%;
-  height: calc(100% - 38px);
+  line-height: 0;
   overflow: hidden;
   position: relative;
+  background: #111113;
 }
 
 .home-root .window-body img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: left top;
+  height: auto;
   display: block;
-}
-
-/* Fade bottom of window into page background */
-.home-root .window-body::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, transparent 50%, #0b0b0d 100%);
-  pointer-events: none;
 }
 
 /* ── Footer ───────────────────────────────────── */
@@ -544,35 +536,35 @@ html:not(.dark):not([data-theme="dark"]) .home-root .headline {
   color: #18181b;
 }
 
+html[data-theme="light"] .home-root .mockup-wrap,
+html:not(.dark):not([data-theme="dark"]) .home-root .mockup-wrap {
+  background: #c5c6b6;
+}
+
 html[data-theme="light"] .home-root .window,
 html:not(.dark):not([data-theme="dark"]) .home-root .window {
-  background: #f0efeb;
+  background: #f7f6f2;
+  border-color: rgba(0, 0, 0, 0.1);
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.12),
-    0 0 0 4px rgba(0, 0, 0, 0.04),
-    8px 40px 100px rgba(0, 0, 0, 0.18),
-    4px 12px 32px rgba(0, 0, 0, 0.1);
+    0 1px 1px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.1),
+    0 24px 48px rgba(0, 0, 0, 0.12);
 }
 
 html[data-theme="light"] .home-root .window-bar,
 html:not(.dark):not([data-theme="dark"]) .home-root .window-bar {
-  background: #e5e4e0;
+  background: #f3f2ee;
   border-color: rgba(0, 0, 0, 0.08);
 }
 
-html[data-theme="light"] .home-root .window-body::after,
-html:not(.dark):not([data-theme="dark"]) .home-root .window-body::after {
-  background: linear-gradient(to bottom, transparent 50%, #f7f6f2 100%);
+html[data-theme="light"] .home-root .window-title,
+html:not(.dark):not([data-theme="dark"]) .home-root .window-title {
+  color: #8a8a84;
 }
 
-html[data-theme="light"] .home-root .mockup-wrap::before,
-html:not(.dark):not([data-theme="dark"]) .home-root .mockup-wrap::before {
-  background: radial-gradient(
-    ellipse 70% 50% at 55% 20%,
-    rgba(8, 145, 178, 0.12) 0%,
-    rgba(124, 58, 237, 0.08) 45%,
-    transparent 75%
-  );
+html[data-theme="light"] .home-root .window-body,
+html:not(.dark):not([data-theme="dark"]) .home-root .window-body {
+  background: #f7f6f2;
 }
 
 html[data-theme="light"] .home-root .footer,
@@ -606,7 +598,7 @@ html:not(.dark):not([data-theme="dark"]) .home-root .dropdown a:hover {
 @media (max-width: 800px) {
   .home-root .content {
     width: 100%;
-    padding: 0 1.5rem 3rem 1.5rem;
+    padding: 0 1.5rem 2rem 1.5rem;
   }
 
   .home-root .mockup-wrap {
@@ -616,6 +608,8 @@ html:not(.dark):not([data-theme="dark"]) .home-root .dropdown a:hover {
   .home-root .main {
     align-items: center;
     justify-content: center;
+    padding: 0;
+    gap: 0;
   }
 
   .home-root .headline {

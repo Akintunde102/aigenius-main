@@ -12,6 +12,7 @@ Single map for humans and tooling: how the Next.js app is wired, where to edit b
 | [src/app/components/model-interface/README.md](./src/app/components/model-interface/README.md) | Session lifecycle, `useSessionSwitcher`, backend endpoints |
 | [docs/archive/README.md](./docs/archive/README.md) | Historical / one-off notes (auth refactor, plus-button explorations) |
 | [docs/guides/](./docs/guides/) | Longer how-tos (e.g. lightweight modal pattern) |
+| [docs/guides/public-page-design.md](./docs/guides/public-page-design.md) | How to design a public page that matches an existing product surface |
 
 ## App Router map
 

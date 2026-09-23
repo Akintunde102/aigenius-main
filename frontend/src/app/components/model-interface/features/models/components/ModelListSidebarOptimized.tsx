@@ -3,7 +3,7 @@ import { ModelSearchBar } from './ModelSearchBar';
 import { ModelFilters } from './ModelFilters';
 import { ModelListItem } from './ModelListItem';
 import { SHOW_LEGACY_FILTERS } from '@/app/components/model-interface/shared/constants';
-import { hasImageSupport } from '@/app/components/model-interface/shared/utils';
+import { hasFileOrImageInputSupport } from '@/app/components/model-interface/shared/utils';
 import { getPinnedModels, setPinnedModels, getDeletedModels, setDeletedModels } from '@/lib/utils/modelInterfaceUtils';
 import { Model } from '@/app/components/model-interface/shared/types';
 
@@ -102,7 +102,7 @@ export const ModelListSidebarOptimized: React.FC<ModelListSidebarOptimizedProps>
                 (m.architecture?.output_modalities?.filter((mod: string) => (mod || '').toLowerCase() !== 'text').some((mod: string) => selectedOutputModalities.includes(mod)));
 
             const matchesWebSearch = !showWebSearch || (hasWebSearchCapability && hasWebSearchCapability(m));
-            const matchesImageOnly = !imageFilterOnly || hasImageSupport(m);
+            const matchesImageOnly = !imageFilterOnly || hasFileOrImageInputSupport(m);
 
             return matchesSearch && matchesInputModality && matchesOutputModality && matchesWebSearch && matchesImageOnly;
         });

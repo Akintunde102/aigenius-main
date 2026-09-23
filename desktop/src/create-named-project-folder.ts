@@ -172,6 +172,45 @@ export async function createNamedProjectFolder(options: {
   }
 }
 
+/** Default parent for model-created projects (no OS picker). */
+export const SILENT_PROJECTS_PARENT_FOLDER = 'AIGenius Projects';
+
+export function joinSilentProjectsParentDir(
+  documentsPath: string,
+  pathImpl: Pick<PathJoinImpl, 'join'> = path,
+): string {
+  return pathImpl.join(documentsPath, SILENT_PROJECTS_PARENT_FOLDER);
+}
+
+/**
+ * Create or reuse `Documents/AIGenius Projects/<name>` with no folder picker.
+ * Reuses the directory when it already exists.
+ */
+export async function runCreateNamedProjectDirectorySilent(input: {
+  folderName: unknown;
+  documentsPath: string;
+  createFolder?: typeof createNamedProjectFolder;
+  pathImpl?: PathJoinImpl;
+}): Promise<CreateNamedProjectDirectoryResult> {
+  const folderName = sanitizeProjectFolderName(input.folderName);
+  if (!folderName) {
+    return { ok: false, error: 'Enter a valid project name first' };
+  }
+
+  const documentsPath = typeof input.documentsPath === 'string' ? input.documentsPath.trim() : '';
+  const pathImpl = input.pathImpl ?? path;
+  if (!documentsPath || !pathImpl.isAbsolute(documentsPath)) {
+    return { ok: false, error: 'Choose a folder to create the project in' };
+  }
+
+  const createFolder = input.createFolder ?? createNamedProjectFolder;
+  return createFolder({
+    parentDir: joinSilentProjectsParentDir(documentsPath, pathImpl),
+    folderName,
+    pathImpl,
+  });
+}
+
 export async function runCreateNamedProjectDirectoryRequest(input: {
   folderName: unknown;
   documentsPath: string;
