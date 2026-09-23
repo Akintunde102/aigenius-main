@@ -13,6 +13,7 @@ import GlobalToaster from '@/app/components/GlobalToaster';
 import ScheduleNotificationListener from '@/app/components/ScheduleNotificationListener';
 import ViewportHeightSetter from '@/app/ViewportHeightSetter';
 import { FilePreviewModal } from '@/app/components/modals/FilePreviewModal';
+import DesktopToolApprovalHost from '@/app/components/DesktopToolApprovalHost';
 import { ColorModeBootstrapScript } from '@/app/components/ColorModeBootstrapScript';
 import ReactQueryProvider from '@/lib/providers/ReactQueryProvider';
 import { ThemeProvider } from '@/lib/providers/ThemeProvider';
@@ -61,8 +62,10 @@ export default function App() {
             <ScheduleNotificationListener />
             <GlobalToaster />
             <FilePreviewModal />
+            <DesktopToolApprovalHost />
           </ErrorBoundary>
         </DesktopShellChrome>
+        <div id="modal-root" />
         <ClientAnalytics />
       </BrowserRouter>
     </ThemeProvider>
