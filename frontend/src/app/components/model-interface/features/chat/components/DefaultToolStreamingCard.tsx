@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { FiLoader } from 'react-icons/fi';
 
 const JsonSyntaxBlock = dynamic(
-  () => import('@/app/components/JsonSyntaxBlock').then((mod) => ({ default: mod.JsonSyntaxBlock })),
+  () => import('@/app/components/JsonSyntaxBlock').then((mod) => mod.JsonSyntaxBlock),
   { ssr: false, loading: () => <div className="text-[10px] opacity-70 p-1">Loading JSON...</div> }
 );
 

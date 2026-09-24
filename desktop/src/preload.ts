@@ -198,7 +198,7 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     ipcRenderer.invoke('shell-new-window', relativePath) as Promise<void>,
   pickProjectDirectory: (): Promise<{ path: string } | null> =>
     ipcRenderer.invoke('pick-project-directory') as Promise<{ path: string } | null>,
-  createNamedProjectDirectory: (payload: { folderName: string }): Promise<
+  createNamedProjectDirectory: (payload: { folderName: string; silent?: boolean }): Promise<
     | { ok: true; path: string; created: boolean }
     | { ok: true; canceled: true }
     | { ok: false; error: string }

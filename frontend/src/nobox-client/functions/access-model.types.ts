@@ -31,7 +31,7 @@ export type AigeniusDesktopBridge = {
     };
   }>;
   pickProjectDirectory?: () => Promise<{ path: string } | null>;
-  createNamedProjectDirectory?: (payload: { folderName: string }) => Promise<
+  createNamedProjectDirectory?: (payload: { folderName: string; silent?: boolean }) => Promise<
     | { ok: true; path: string; created?: boolean }
     | { ok: true; canceled: true }
     | { ok: false; error: string }

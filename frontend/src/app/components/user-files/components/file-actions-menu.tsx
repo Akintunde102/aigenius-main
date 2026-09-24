@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { MessageSquare, MoreHorizontal } from "lucide-react";
-import { FiCopy, FiExternalLink } from "react-icons/fi";
+import { FiCopy, FiExternalLink, FiGlobe } from "react-icons/fi";
 import type { CloudFile } from "@/app/components/file/file.interface";
+import { isMarkdownCloudFile } from "../user-files.utils";
+import { PublishHostedMarkdownModal } from "./PublishHostedMarkdownModal";
+import { useState } from "react";
 
 
 export function FileActionsMenu({
@@ -22,9 +25,11 @@ export function FileActionsMenu({
   /** When true, only “Open conversation” is shown (Open/Copy live on the card). */
   conversationOnly?: boolean;
 }) {
+  const [publishOpen, setPublishOpen] = useState(false);
   const conv = file.sourceConversationId?.trim();
+  const canPublishMarkdown = isMarkdownCloudFile(file);
 
-  if (conversationOnly && !conv) {
+  if (conversationOnly && !conv && !canPublishMarkdown) {
     return null;
   }
 
@@ -84,6 +89,21 @@ export function FileActionsMenu({
             </button>
           </>
         ) : null}
+        {canPublishMarkdown ? (
+          <button
+            type="button"
+            className={menuItemClass}
+            onClick={() => {
+              setPublishOpen(true);
+              (
+                document.activeElement as HTMLElement | null
+              )?.closest("details")?.removeAttribute("open");
+            }}
+          >
+            <FiGlobe size={14} className="opacity-70" aria-hidden />
+            Publish page
+          </button>
+        ) : null}
         {conv ? (
           <Link
             href={`/chat/${conv}`}
@@ -100,6 +120,11 @@ export function FileActionsMenu({
           </Link>
         ) : null}
       </div>
+      <PublishHostedMarkdownModal
+        file={file}
+        isOpen={publishOpen}
+        onClose={() => setPublishOpen(false)}
+      />
     </details>
   );
 }

@@ -5,7 +5,9 @@ import {
   createNamedProjectFolder,
   isPathInsideParent,
   joinNamedProjectFolderPath,
+  joinSilentProjectsParentDir,
   runCreateNamedProjectDirectoryRequest,
+  runCreateNamedProjectDirectorySilent,
   sanitizeProjectFolderName,
 } from './create-named-project-folder';
 
@@ -224,5 +226,67 @@ describe('runCreateNamedProjectDirectoryRequest', () => {
       path: '/home/me/code/swift-atlas-42',
       created: true,
     });
+  });
+});
+
+describe('runCreateNamedProjectDirectorySilent', () => {
+  it('does not open a picker and creates under Documents/AIGenius Projects', async () => {
+    const createFolder = jest.fn().mockResolvedValue({
+      ok: true,
+      path: '/home/me/Documents/AIGenius Projects/Demo',
+      created: true,
+    });
+    const result = await runCreateNamedProjectDirectorySilent({
+      folderName: 'Demo',
+      documentsPath: '/home/me/Documents',
+      pathImpl: path.posix,
+      createFolder,
+    });
+    expect(createFolder).toHaveBeenCalledWith({
+      parentDir: '/home/me/Documents/AIGenius Projects',
+      folderName: 'Demo',
+      pathImpl: path.posix,
+    });
+    expect(result).toEqual({
+      ok: true,
+      path: '/home/me/Documents/AIGenius Projects/Demo',
+      created: true,
+    });
+  });
+
+  it('reuses an existing directory instead of failing', async () => {
+    const createFolder = jest.fn().mockResolvedValue({
+      ok: true,
+      path: '/home/me/Documents/AIGenius Projects/Demo',
+      created: false,
+    });
+    const result = await runCreateNamedProjectDirectorySilent({
+      folderName: 'Demo',
+      documentsPath: '/home/me/Documents',
+      pathImpl: path.posix,
+      createFolder,
+    });
+    expect(result).toEqual({
+      ok: true,
+      path: '/home/me/Documents/AIGenius Projects/Demo',
+      created: false,
+    });
+  });
+
+  it('rejects an invalid name without calling mkdir', async () => {
+    const createFolder = jest.fn();
+    const result = await runCreateNamedProjectDirectorySilent({
+      folderName: '   ',
+      documentsPath: '/home/me/Documents',
+      createFolder,
+    });
+    expect(result).toEqual({ ok: false, error: 'Enter a valid project name first' });
+    expect(createFolder).not.toHaveBeenCalled();
+  });
+
+  it('joins the silent parent folder name', () => {
+    expect(joinSilentProjectsParentDir('/home/me/Documents', path.posix)).toBe(
+      '/home/me/Documents/AIGenius Projects',
+    );
   });
 });

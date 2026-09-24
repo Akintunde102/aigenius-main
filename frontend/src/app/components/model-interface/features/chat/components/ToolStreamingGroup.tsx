@@ -16,10 +16,14 @@ function isPatchToolEvent(event: ToolEvent): boolean {
 
 export const ToolStreamingGroup = React.memo(function ToolStreamingGroup({
   events,
-  /** True while the assistant turn is still streaming (model request in flight). */
-  messageStreaming = false,
 }: {
   events: ToolEvent[];
+  /**
+   * True while the assistant turn is still streaming.
+   * Must not keep this cluster working — in-progress UI is only for tools
+   * in THIS cluster with `loading: true`, so a later tool/thinking block
+   * does not leave earlier clusters spinning.
+   */
   messageStreaming?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -39,14 +43,13 @@ export const ToolStreamingGroup = React.memo(function ToolStreamingGroup({
   }, [events]);
 
   const toolsInFlight = events.some((e) => e.loading);
-  const requestInProgress = messageStreaming || toolsInFlight;
   const completedSummary = useMemo(() => buildToolClusterSummary(events), [events]);
-  const headerLabel = requestInProgress
-    ? buildInProgressClusterHeader(events, messageStreaming) ?? 'Working…'
+  const headerLabel = toolsInFlight
+    ? buildInProgressClusterHeader(events) ?? 'Working…'
     : completedSummary ?? 'Worked';
 
   useEffect(() => {
-    if (requestInProgress) {
+    if (toolsInFlight) {
       wasWorkingRef.current = true;
       return;
     }
@@ -55,7 +58,7 @@ export const ToolStreamingGroup = React.memo(function ToolStreamingGroup({
       setOpen(false);
       wasWorkingRef.current = false;
     }
-  }, [requestInProgress]);
+  }, [toolsInFlight]);
 
   if (!events.length) return null;
 
@@ -71,13 +74,13 @@ export const ToolStreamingGroup = React.memo(function ToolStreamingGroup({
           {open ? '▾' : '▸'}
         </span>
         <span className={styles.headerIcon}>
-          {requestInProgress ? (
+          {toolsInFlight ? (
             <span className={styles.spinner} aria-hidden="true" />
           ) : (
             <span className={styles.checkIcon} aria-hidden="true">✓</span>
           )}
         </span>
-        <span className={`${styles.headerLabel} ${requestInProgress ? styles.headerLabelActive : ''}`}>
+        <span className={`${styles.headerLabel} ${toolsInFlight ? styles.headerLabelActive : ''}`}>
           {headerLabel}
         </span>
       </button>

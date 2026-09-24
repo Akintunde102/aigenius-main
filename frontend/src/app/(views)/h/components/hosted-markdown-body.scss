@@ -1,0 +1,25 @@
+.hosted-markdown-body.markdown-chat-body.markdown-body {
+  color: var(--app-ink-900);
+  background-color: transparent;
+  color-scheme: inherit;
+  --fgColor-default: var(--app-ink-900);
+  --fgColor-muted: var(--chat-muted-fg);
+  --bgColor-default: transparent;
+  --bgColor-muted: var(--surface-muted);
+  --borderColor-default: var(--chat-composer-border);
+  --borderColor-muted: var(--chat-composer-border);
+}
+
+.hosted-markdown-body.markdown-chat-body.markdown-body a {
+  color: var(--chat-accent);
+}
+
+.hosted-markdown-body.markdown-chat-body.markdown-body a.hosted-heading-anchor {
+  color: inherit;
+  text-decoration: none;
+}
+
+.hosted-markdown-body.markdown-chat-body.markdown-body a.hosted-heading-anchor:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}

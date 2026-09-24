@@ -19,6 +19,7 @@ import {
 } from '@/lib/tool-permissions';
 import { activeEditorForRuntime } from '@/lib/code-projects/active-editor-context';
 import { resolveProjectScopeForChatRequest } from '@/lib/code-projects/chat-project-scope';
+import { runCreateCodeProjectFromToolArgs } from '@/lib/code-projects/create-code-project-workflow';
 
 // Constants
 const OPENAI_CHAT_COMPLETIONS_PATH = '/gateway/*/openai/v1/chat/completions';
@@ -191,7 +192,7 @@ type AigeniusDesktopBridge = {
     };
   }>;
   pickProjectDirectory?: () => Promise<{ path: string } | null>;
-  createNamedProjectDirectory?: (payload: { folderName: string }) => Promise<
+  createNamedProjectDirectory?: (payload: { folderName: string; silent?: boolean }) => Promise<
     | { ok: true; path: string; created?: boolean }
     | { ok: true; canceled: true }
     | { ok: false; error: string }
@@ -733,6 +734,31 @@ async function fulfillDesktopToolDelegate(
       hasRunLocal: typeof desktop?.runLocalDesktopTool === 'function',
       tool: ev.tool,
     });
+  }
+
+  if (ev.tool === 'local_create_project') {
+    try {
+      const created = await runCreateCodeProjectFromToolArgs(ev.arguments ?? {});
+      if (created.success) {
+        await postDesktopToolDelegateResult(
+          config,
+          ev.delegate_id,
+          { result: JSON.stringify(created) },
+          signal,
+        );
+      } else {
+        await postDesktopToolDelegateResult(
+          config,
+          ev.delegate_id,
+          { error: created.error },
+          signal,
+        );
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to create project';
+      await postDesktopToolDelegateResult(config, ev.delegate_id, { error: msg }, signal);
+    }
+    return;
   }
 
   if (!desktop?.runLocalDesktopTool) {

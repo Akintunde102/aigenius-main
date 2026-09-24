@@ -5,6 +5,7 @@ import { DEV_LOOPBACK_HOST, loopbackHttpUrl } from './loopback-host';
 import { showExternalLinkApprovalDialog } from './external-link-approval-dialog';
 import { isNoboxAuthBackendFlowUrl, isOauthSignInUrl } from './oauth-allowlist';
 import { isHostedPaymentUrl } from './payment-allowlist';
+import { isLoopbackPublishedConversationUrl } from './open-url-in-system-browser';
 import { MINI_SERVER_PORT } from './mini-server-port';
 import {
   showAuxiliaryWindowWhenReady,
@@ -283,6 +284,11 @@ export function attachMainShellNavigationGuards(win: BrowserWindow): void {
   });
 
   webContents.setWindowOpenHandler(({ url }) => {
+    if (isLoopbackPublishedConversationUrl(url)) {
+      void shell.openExternal(url, { activate: true });
+      return { action: 'deny' };
+    }
+
     if (isUrlAllowedInMainShell(url)) {
       if (isTopLevelShellWindow(win)) {
         loadAllowedShellUrlInParent(win, url);

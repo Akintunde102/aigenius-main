@@ -46,7 +46,6 @@ export function resolveStreamingToolRowLabel(
 
 export function buildInProgressClusterHeader(
   events: ToolEvent[],
-  _messageStreaming = false,
 ): string | null {
   const loadingEvents = events.filter((event) => event.loading);
 

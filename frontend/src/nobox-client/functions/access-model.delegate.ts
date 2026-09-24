@@ -24,6 +24,7 @@ import {
   promptToolApproval,
   shouldRequireToolApproval,
 } from '@/lib/tool-permissions';
+import { runCreateCodeProjectFromToolArgs } from '@/lib/code-projects/create-code-project-workflow';
 
 /** Prevent duplicate POSTs for the same delegate_id (retries, overlapping SSE handlers). */
 const desktopToolDelegatePosted = new Set<string>();
@@ -217,6 +218,31 @@ export async function fulfillDesktopToolDelegate(
       hasRunLocal: typeof desktop?.runLocalDesktopTool === 'function',
       tool: ev.tool,
     });
+  }
+
+  if (ev.tool === 'local_create_project') {
+    try {
+      const created = await runCreateCodeProjectFromToolArgs(ev.arguments ?? {});
+      if (created.success) {
+        await postDesktopToolDelegateResult(
+          config,
+          ev.delegate_id,
+          { result: JSON.stringify(created) },
+          signal,
+        );
+      } else {
+        await postDesktopToolDelegateResult(
+          config,
+          ev.delegate_id,
+          { error: created.error },
+          signal,
+        );
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to create project';
+      await postDesktopToolDelegateResult(config, ev.delegate_id, { error: msg }, signal);
+    }
+    return;
   }
 
   if (!desktop?.runLocalDesktopTool) {
