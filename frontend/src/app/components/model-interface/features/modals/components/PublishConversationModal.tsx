@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FiX, FiGlobe, FiLock, FiCopy, FiCheck, FiExternalLink } from 'react-icons/fi';
-import { ChatMessage, ChatSession } from '@/app/components/model-interface/shared/types';
+import { ChatSession } from '@/app/components/model-interface/shared/types';
+import {
+    copyPublishedConversationUrl,
+    openPublishedConversationUrl,
+} from '../utils/publishedConversationLink.utils';
 
 interface PublishConversationModalProps {
     isOpen: boolean;
@@ -74,18 +78,20 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
         }
     };
 
-    const copyUrl = async () => {
-        try {
-            await navigator.clipboard.writeText(publishedUrl);
+    const displayedUrl = publishedUrl || existingUrl;
+
+    const copyUrl = () => {
+        void copyPublishedConversationUrl(displayedUrl).then((copied) => {
+            if (!copied) {
+                return;
+            }
             setUrlCopied(true);
             setTimeout(() => setUrlCopied(false), 2000);
-        } catch (error) {
-            console.error('Failed to copy URL:', error);
-        }
+        });
     };
 
     const openUrl = () => {
-        window.open(publishedUrl, '_blank');
+        openPublishedConversationUrl(displayedUrl);
     };
 
     const handleClose = () => {
@@ -186,9 +192,10 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
                             <div className="flex items-center gap-2 p-2 rounded border" style={{ background: "var(--modal-bg-muted)", borderColor: "var(--modal-border)" }}>
                                 <input
                                     type="text"
-                                    value={publishedUrl || existingUrl}
+                                    value={displayedUrl}
                                     readOnly
-                                    className="flex-1 text-sm bg-transparent border-none outline-none"
+                                    title={displayedUrl}
+                                    className="flex-1 min-w-0 text-sm bg-transparent border-none outline-none"
                                     style={{ color: "var(--modal-fg)" }}
                                 />
                                 <button

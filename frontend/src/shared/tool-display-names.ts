@@ -16,6 +16,7 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
     keep_search_notes: 'Search Notes',
     keep_update_note: 'Update Note',
     keep_delete_note: 'Delete Note',
+    host_markdown: 'Host Markdown',
     convert_to_pdf_and_upload: 'Convert to PDF',
     web_fetch: 'Fetch web page',
     serper_google_search: 'Google search',
@@ -40,6 +41,7 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
     local_shell: 'Local terminal (desktop)',
     run_command: 'Local terminal (desktop)',
     local_apply_patch: 'Apply local file patch (desktop)',
+    local_create_project: 'Create project (desktop)',
     local_get_context: 'Code context resolver (desktop)',
     local_list_directory: 'List directory (desktop)',
     local_symbol_outline: 'Symbol outline (desktop)',
@@ -117,6 +119,14 @@ export function getToolActivityHint(
             if (typeof q === 'string' && q.trim()) return `Searching notes: "${q.slice(0, 32)}…"`;
             return 'Searching notes…';
         }
+        case 'host_markdown': {
+            const action = args.action;
+            if (action === 'create_draft') return 'Saving Markdown draft…';
+            if (action === 'update') return 'Updating hosted page…';
+            if (action === 'publish') return 'Publishing hosted page…';
+            if (action === 'list') return 'Listing hosted pages…';
+            return 'Working on hosted Markdown…';
+        }
         case 'convert_to_pdf_and_upload':
             return 'Converting and uploading PDF…';
         case 'serper_google_search': {
@@ -156,6 +166,13 @@ export function getToolActivityHint(
                 return `Preparing ${ops.length} file change${ops.length === 1 ? '' : 's'}…`;
             }
             return 'Preparing file patch…';
+        }
+        case 'local_create_project': {
+            const name = args.name;
+            if (typeof name === 'string' && name.trim()) {
+                return `Creating project ${name.trim()}…`;
+            }
+            return 'Creating project…';
         }
         case 'run_command':
         case 'local_shell': {

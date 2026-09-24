@@ -36,9 +36,9 @@ export const ModelFilters: React.FC<ModelFiltersProps> = React.memo(({
                         <button
                             type="button"
                             onClick={() => setImageFilterOnly(prev => !prev)}
-                            title={imageFilterOnly ? 'Image output – on' : 'Image output – show only models that can generate images'}
+                            title={imageFilterOnly ? 'Files & images – on' : 'Files & images – show only models that accept file and image attachments'}
                             className={`inline-flex items-center justify-center rounded-md border transition-colors flex-shrink-0 ${isMobile ? 'w-7 h-7' : 'w-8 h-8'} ${imageFilterOnly ? 'bg-pink-100 text-pink-700 border-pink-300' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
-                            aria-label="Filter by image output"
+                            aria-label="Filter by file and image input"
                         >
                             <FaRegImage size={isMobile ? 12 : 14} />
                         </button>

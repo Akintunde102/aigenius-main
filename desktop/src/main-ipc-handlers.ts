@@ -20,7 +20,10 @@ import { setActiveCodeProjectIndex } from './active-code-project';
 import { refreshProjectArchitectureMemory } from './project-architecture-memory';
 import { setMainActiveEditor } from './active-editor-main';
 import { saveLastCodeProject } from './last-code-project';
-import { runCreateNamedProjectDirectoryRequest } from './create-named-project-folder';
+import {
+  runCreateNamedProjectDirectoryRequest,
+  runCreateNamedProjectDirectorySilent,
+} from './create-named-project-folder';
 import {
   clearDesktopRefreshToken,
   readDesktopRefreshToken,
@@ -293,10 +296,21 @@ export function registerMainIpcHandlers(): void {
       payload && typeof payload === 'object' && 'folderName' in payload
         ? (payload as { folderName: unknown }).folderName
         : '';
+    const silent =
+      payload && typeof payload === 'object' && 'silent' in payload
+        ? (payload as { silent?: unknown }).silent === true
+        : false;
+    const documentsPath = app.getPath('documents');
+    if (silent) {
+      return runCreateNamedProjectDirectorySilent({
+        folderName,
+        documentsPath,
+      });
+    }
     const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
     return runCreateNamedProjectDirectoryRequest({
       folderName,
-      documentsPath: app.getPath('documents'),
+      documentsPath,
       showOpenDialog: (options) => dialog.showOpenDialog(win, options),
     });
   });

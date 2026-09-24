@@ -1,43 +1,109 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import {
+    FiCheck,
+    FiDownload,
+    FiHome,
+    FiList,
+    FiLoader,
+    FiLogIn,
+    FiMoon,
+    FiShare2,
+    FiSun,
+    FiTrash2,
+} from 'react-icons/fi';
+import copy from 'copy-to-clipboard';
 import { formatUsdCostAsCredits } from '@/lib/credits';
-import { FiUser, FiCalendar, FiArrowLeft, FiLoader, FiShare2, FiMessageSquare, FiTrash2, FiHome } from 'react-icons/fi';
 import { deletePublishedConversation, PublishedConversation } from '@/lib/calls/model-chat-conversation';
 import { getStoredUserDetailsSnapshot } from '@/lib/calls/get-logged-user-details';
-import { ChatMessage as ChatMessageType, Model } from '@/app/components/model-interface/shared/types';
+import { ChatMessage as ChatMessageType } from '@/app/components/model-interface/shared/types';
+import { applyColorMode, persistColorMode } from '@/lib/color-mode';
 import { ChatMessage } from './';
-import copy from 'copy-to-clipboard';
-import Link from 'next/link';
-import { PAGE_BG } from '@/app/components/public-page-shell.constants';
+import {
+    buildPublishedConversationMarkdown,
+    listPublishedConversationQuestions,
+    publishedConversationAuthorName,
+    publishedConversationDownloadName,
+    publishedMessageAnchorId,
+} from '../publishedConversationSeo.utils';
 
 interface PublishedConversationDetailClientProps {
     conversation: PublishedConversation;
 }
 
+const iconButtonClass = [
+    'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-sm',
+    'border-[var(--chat-composer-border)] bg-[var(--chat-composer-bg)] text-[var(--app-ink-900)]',
+    'hover:bg-[var(--surface-muted)]',
+    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-accent)]',
+    'disabled:cursor-not-allowed disabled:opacity-60',
+].join(' ');
+
+const textButtonClass = [
+    'inline-flex h-10 items-center rounded-lg border px-4 text-sm',
+    'border-[var(--chat-composer-border)] bg-[var(--chat-composer-bg)] text-[var(--app-ink-900)]',
+    'hover:bg-[var(--surface-muted)]',
+    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-accent)]',
+].join(' ');
+
 export default function PublishedConversationDetailClient({ conversation }: PublishedConversationDetailClientProps) {
     const router = useRouter();
-
-    const [currentUser, setCurrentUser] = useState<any>(null);
+    const [currentUser, setCurrentUser] = useState<{ id?: string } | null>(null);
     const [deleting, setDeleting] = useState(false);
-
-    // States for ChatMessage component functionality
+    const [linkCopied, setLinkCopied] = useState(false);
+    const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+    const [jumpOpen, setJumpOpen] = useState(false);
+    const jumpMenuRef = useRef<HTMLDivElement>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [savedChats, setSavedChats] = useState<ChatMessageType[]>([]);
-    const [selectedModel, setSelectedModel] = useState<Model | null>(null);
 
     useEffect(() => {
         setCurrentUser(getStoredUserDetailsSnapshot());
+        setResolvedTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
     }, []);
 
-    const handleDelete = async () => {
-        if (!conversation || !currentUser) return;
+    useEffect(() => {
+        if (!jumpOpen) return;
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setJumpOpen(false);
+        };
+        const onPointer = (event: MouseEvent) => {
+            if (!jumpMenuRef.current?.contains(event.target as Node)) {
+                setJumpOpen(false);
+            }
+        };
+        document.addEventListener('keydown', onKey);
+        document.addEventListener('mousedown', onPointer);
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            document.removeEventListener('mousedown', onPointer);
+        };
+    }, [jumpOpen]);
 
+    const authorName = publishedConversationAuthorName(conversation.user);
+    const messages = conversation.session?.messages ?? [];
+    const questions = useMemo(
+        () => (messages.length > 2 ? listPublishedConversationQuestions(messages) : []),
+        [messages],
+    );
+    const isOwner = Boolean(currentUser && conversation.userId === currentUser.id);
+
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        });
+    };
+
+    const handleDelete = async () => {
+        if (!currentUser) return;
         if (!confirm('Are you sure you want to delete this published conversation? This action cannot be undone.')) {
             return;
         }
-
         try {
             setDeleting(true);
             await deletePublishedConversation(conversation.id);
@@ -50,175 +116,203 @@ export default function PublishedConversationDetailClient({ conversation }: Publ
         }
     };
 
-    const isOwner = conversation && currentUser && conversation.userId === currentUser.id;
-
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
-    const copyMessage = async (content: string) => {
-        try {
-            copy(content);
-        } catch (err) {
-            console.error('Failed to copy message:', err);
-        }
-    };
-
     const shareConversation = async () => {
+        const url = window.location.href;
         try {
             if (navigator.share) {
                 await navigator.share({
-                    title: conversation?.publishedTitle,
-                    text: conversation?.publishedDescription,
-                    url: window.location.href,
+                    title: conversation.publishedTitle,
+                    text: conversation.publishedDescription,
+                    url,
                 });
-            } else {
-                await navigator.clipboard.writeText(window.location.href);
-                alert('Link copied to clipboard!');
+                return;
             }
         } catch (err) {
-            console.error('Failed to share:', err);
+            if ((err as { name?: string })?.name === 'AbortError') return;
         }
+        copy(url);
+        setLinkCopied(true);
+        window.setTimeout(() => setLinkCopied(false), 1600);
     };
 
-
-    const handleSaveMessage = (msg: ChatMessageType) => {
-        setSavedChats(prev => [...prev, msg]);
+    const downloadConversation = () => {
+        const markdown = buildPublishedConversationMarkdown(conversation);
+        const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = publishedConversationDownloadName(conversation.publishedTitle);
+        anchor.click();
+        URL.revokeObjectURL(url);
     };
 
-    const handleReplayMessage = (message: ChatMessageType, idx: number) => {
-        // Not supported in published view
-    };
-
-    const handleImagePreview = (url: string) => {
-        setImagePreview(url);
-    };
-
-    const formatCost = (cost: number, _showNaira?: boolean) => formatUsdCostAsCredits(cost);
-
-    const renderMessage = (message: ChatMessageType, index: number) => {
-        return (
-            <ChatMessage
-                key={index}
-                msg={message}
-                idx={index}
-                selectedModel={selectedModel}
-                showCosts={true}
-                onSave={handleSaveMessage}
-                onCopy={copyMessage}
-                onReplay={handleReplayMessage}
-                onImagePreview={handleImagePreview}
-                imagePreview={imagePreview}
-                setImagePreview={setImagePreview}
-                formatCost={formatCost}
-                savedChats={savedChats}
-                loading={false}
-                streaming={false}
-            />
-        )
+    const toggleTheme = () => {
+        const next = resolvedTheme === 'dark' ? 'light' : 'dark';
+        persistColorMode(next);
+        applyColorMode(next);
+        setResolvedTheme(next);
     };
 
     return (
-        <div className="relative w-full min-h-[50vh] pb-10" style={{ backgroundColor: PAGE_BG }}>
-
-            <div
-                className="sticky top-0 z-30 border-b border-zinc-700 shadow-sm"
-                style={{ backgroundColor: PAGE_BG }}
-            >
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex items-center gap-4 mb-4">
-                        <Link
-                            href="/"
-                            className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-gray-300 hover:text-white transition-colors"
-                        >
-                            <FiHome size={20} />
-                        </Link>
+        <article className="published-thread min-h-[70vh] w-full bg-[var(--chat-canvas-bg)] text-[var(--app-ink-900)]">
+            <header className="sticky top-0 z-30 border-b border-[var(--chat-composer-border)] bg-[var(--chat-canvas-bg)]/95 backdrop-blur-sm">
+                <div className="mx-auto flex h-11 w-full max-w-3xl items-center gap-2 px-4 sm:px-6">
+                    <nav className="sr-only" aria-label="Breadcrumb">
+                        <ol>
+                            <li><Link href="/">AIGenius</Link></li>
+                            <li><Link href="/published-conversations">Published</Link></li>
+                            <li aria-current="page">{conversation.publishedTitle}</li>
+                        </ol>
+                    </nav>
+                    <h1 className="min-w-0 flex-1 truncate text-sm font-semibold" title={conversation.publishedTitle}>
+                        {conversation.publishedTitle}
+                    </h1>
+                    <p className="hidden shrink-0 whitespace-nowrap text-xs text-[var(--chat-muted-fg)] sm:block">
+                        <span className="font-medium text-[var(--app-ink-900)]">{authorName}</span>
+                        <span aria-hidden="true"> · </span>
+                        <time dateTime={conversation.publishedAt}>{formatDate(conversation.publishedAt)}</time>
+                        <span aria-hidden="true"> · </span>
+                        <span>{messages.length} {messages.length === 1 ? 'message' : 'messages'}</span>
+                    </p>
+                    <p className="sr-only">
+                        {authorName}. Published {formatDate(conversation.publishedAt)}. {messages.length} {messages.length === 1 ? 'message' : 'messages'}.
+                    </p>
+                    <div className="ml-auto flex shrink-0 items-center gap-1" role="toolbar" aria-label="Conversation actions">
+                        {questions.length >= 2 ? (
+                            <div className="relative" ref={jumpMenuRef}>
+                                <button
+                                    type="button"
+                                    className={iconButtonClass}
+                                    aria-label="Jump to a question"
+                                    aria-expanded={jumpOpen}
+                                    aria-haspopup="menu"
+                                    onClick={() => setJumpOpen((open) => !open)}
+                                >
+                                    <FiList size={15} aria-hidden />
+                                </button>
+                                {jumpOpen ? (
+                                    <nav
+                                        aria-label="Questions in this conversation"
+                                        className="absolute right-0 top-full z-40 mt-1 max-h-64 w-72 overflow-y-auto rounded-xl border border-[var(--chat-composer-border)] bg-[var(--chat-composer-bg)] p-2 shadow-lg"
+                                    >
+                                        <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm">
+                                            {questions.map((question) => (
+                                                <li key={question.anchorId}>
+                                                    <a
+                                                        href={`#${question.anchorId}`}
+                                                        className="block py-1 text-[var(--app-ink-900)] underline-offset-2 hover:underline"
+                                                        onClick={() => setJumpOpen(false)}
+                                                    >
+                                                        {question.label}
+                                                    </a>
+                                                </li>
+                                            ))}
+                                        </ol>
+                                    </nav>
+                                ) : null}
+                            </div>
+                        ) : null}
                         <button
-                            onClick={() => router.push('/published-conversations')}
-                            className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-gray-300 hover:text-white transition-colors"
+                            type="button"
+                            className={iconButtonClass}
+                            onClick={toggleTheme}
+                            aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                         >
-                            <FiArrowLeft size={20} />
+                            {resolvedTheme === 'dark' ? <FiSun size={15} aria-hidden /> : <FiMoon size={15} aria-hidden />}
                         </button>
-                        <div className="flex-1">
-                            <h1 className="text-2xl font-bold text-white line-clamp-1 mb-0">
-                                {conversation.publishedTitle}
-                            </h1>
-                        </div>
-                        <button
-                            aria-label="Share conversation"
-                            onClick={shareConversation}
-                            className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 transition-colors"
-                        >
-                            <FiShare2 size={18} />
+                        <button type="button" className={iconButtonClass} onClick={downloadConversation} aria-label="Download conversation as Markdown">
+                            <FiDownload size={15} aria-hidden />
                         </button>
-
-                        {isOwner && (
+                        <button type="button" className={iconButtonClass} onClick={shareConversation} aria-label="Share conversation">
+                            {linkCopied ? <FiCheck size={15} aria-hidden /> : <FiShare2 size={15} aria-hidden />}
+                        </button>
+                        {!currentUser ? (
+                            <Link href="/login" className={iconButtonClass} aria-label="Sign in">
+                                <FiLogIn size={15} aria-hidden />
+                            </Link>
+                        ) : (
+                            <Link href="/" className={iconButtonClass} aria-label="Open AIGenius">
+                                <FiHome size={15} aria-hidden />
+                            </Link>
+                        )}
+                        {isOwner ? (
                             <button
+                                type="button"
+                                className={iconButtonClass}
                                 onClick={handleDelete}
                                 disabled={deleting}
                                 aria-label="Delete conversation"
-                                className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-300 hover:text-red-400 bg-gray-700 hover:bg-gray-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                             >
-                                {deleting ? (
-                                    <FiLoader size={18} className="animate-spin" />
-                                ) : (
-                                    <FiTrash2 size={18} />
-                                )}
+                                {deleting ? <FiLoader size={15} className="animate-spin" aria-hidden /> : <FiTrash2 size={15} aria-hidden />}
                             </button>
-                        )}
+                        ) : null}
                     </div>
-
-                    <div className="flex items-center gap-4 text-xs sm:text-sm text-gray-300 mb-2 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                            <FiUser size={14} className="text-gray-300" />
-                            <span className="font-medium text-white">{`${conversation.user?.firstName || ''} ${conversation.user?.lastName || ''}`.trim() || 'Anonymous'}</span>
-                        </div>
-                        <span className="text-gray-500">•</span>
-                        <div className="flex items-center gap-2">
-                            <FiCalendar size={14} className="text-gray-300" />
-                            <span className="text-gray-300">{formatDate(conversation.publishedAt)}</span>
-                        </div>
-                        <span className="text-gray-500">•</span>
-                        <div className="flex items-center gap-2">
-                            <FiMessageSquare size={14} className="text-gray-300" />
-                            <span className="text-gray-300">{conversation.session?.messages?.length || 0} messages</span>
-                        </div>
-                    </div>
-
-                    {conversation.publishedDescription && (
-                        <div className="p-3 bg-gray-700/50 rounded-xl border border-gray-600">
-                            <p className="text-gray-200 leading-relaxed">
-                                {conversation.publishedDescription}
-                            </p>
-                        </div>
-                    )}
+                    <span className="sr-only" aria-live="polite">{linkCopied ? 'Link copied' : ''}</span>
                 </div>
-            </div>
+            </header>
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-                {conversation.session?.messages && conversation.session.messages.length > 0 ? (
-                    <div className="space-y-1">
-                        {conversation.session.messages.map((message, index) => {
-                            return renderMessage(message, index)
-                        })}
+            <div className="mx-auto w-full max-w-3xl px-4 py-4 sm:px-6">
+                {conversation.publishedDescription ? (
+                    <p className="sr-only">{conversation.publishedDescription}</p>
+                ) : null}
+
+                {messages.length > 0 ? (
+                    <div className="flex flex-col gap-6">
+                        {messages.map((message, index) => (
+                            <div
+                                key={message.id || message.messageId || index}
+                                id={publishedMessageAnchorId(index)}
+                                className="scroll-mt-14"
+                            >
+                                <ChatMessage
+                                    msg={message}
+                                    idx={index}
+                                    selectedModel={null}
+                                    showCosts={false}
+                                    onSave={(saved) => setSavedChats((prev) => [...prev, saved])}
+                                    onCopy={(content) => { copy(content); }}
+                                    onReplay={() => undefined}
+                                    onImagePreview={setImagePreview}
+                                    imagePreview={imagePreview}
+                                    setImagePreview={setImagePreview}
+                                    formatCost={(value) => formatUsdCostAsCredits(value)}
+                                    savedChats={savedChats}
+                                    loading={false}
+                                    streaming={false}
+                                />
+                            </div>
+                        ))}
                     </div>
                 ) : (
-                    <div className="text-center py-20">
-                        <div className="w-16 h-16 bg-gradient-to-br from-gray-700 to-gray-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <FiMessageSquare className="text-gray-400" size={24} />
-                        </div>
-                        <div className="text-gray-400 text-lg">No messages in this conversation</div>
-                    </div>
+                    <p className="py-16 text-center text-[var(--chat-muted-fg)]">
+                        No messages in this conversation.
+                    </p>
                 )}
+
+                <section
+                    aria-label="Use AIGenius"
+                    className="mt-12 rounded-2xl border border-[var(--chat-composer-border)] bg-[var(--chat-composer-bg)] px-5 py-6"
+                >
+                    <h2 className="text-lg font-semibold tracking-tight">Continue in AIGenius</h2>
+                    <p className="mt-2 max-w-[62ch] text-sm leading-6 text-[var(--app-ink-700)]">
+                        Sign in to chat with the same models, bring your own files, and publish a conversation of your own.
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        <Link
+                            href="/login"
+                            className="inline-flex h-10 items-center rounded-lg bg-[var(--chat-accent)] px-4 text-sm font-semibold text-white hover:bg-[var(--chat-accent-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-accent)]"
+                        >
+                            Sign in
+                        </Link>
+                        <Link
+                            href="/signup"
+                            className={textButtonClass}
+                        >
+                            Create an account
+                        </Link>
+                    </div>
+                </section>
             </div>
-        </div>
+        </article>
     );
 }
-
-

@@ -116,6 +116,15 @@ export type ServerCallsKeyType =
     | "getAllGatewayModelChatsPublishedConversations"
     | "getGatewayModelChatsPublishedConversation"
     | "deleteGatewayModelChatsPublishedConversation"
+    | "postGatewayHostedFiles"
+    | "getGatewayHostedFiles"
+    | "putGatewayHostedFiles"
+    | "postGatewayHostedFilesPublish"
+    | "postGatewayHostedFilesUnpublish"
+    | "deleteGatewayHostedFiles"
+    | "getAllGatewayHostedFiles"
+    | "getGatewayPublicHostedFile"
+    | "getGatewayHostedFileBySlug"
     | "getGatewayIntegrationsGmailConnect"
     | "getGatewayIntegrationsGmailStatus"
     | "deleteGatewayIntegrationsGmail"
@@ -692,6 +701,51 @@ export const serverCalls: ServerCallsType<ServerCallsKeyType> = {
         path: (args: { id: string }) => `/gateway/*/model-chats/published-conversation/${args.id}`,
         name: "deleteGatewayModelChatsPublishedConversation",
         verb: ServerCallVerbs.Delete,
+    },
+    postGatewayHostedFiles: {
+        path: "/gateway/*/hosted-files",
+        name: "postGatewayHostedFiles",
+        verb: ServerCallVerbs.Post,
+    },
+    getGatewayHostedFiles: {
+        path: "/gateway/*/hosted-files",
+        name: "getGatewayHostedFiles",
+        verb: ServerCallVerbs.Get,
+    },
+    putGatewayHostedFiles: {
+        path: (args: { id: string }) => `/gateway/*/hosted-files/${args.id}`,
+        name: "putGatewayHostedFiles",
+        verb: ServerCallVerbs.Put,
+    },
+    postGatewayHostedFilesPublish: {
+        path: (args: { id: string }) => `/gateway/*/hosted-files/${args.id}/publish`,
+        name: "postGatewayHostedFilesPublish",
+        verb: ServerCallVerbs.Post,
+    },
+    postGatewayHostedFilesUnpublish: {
+        path: (args: { id: string }) => `/gateway/*/hosted-files/${args.id}/unpublish`,
+        name: "postGatewayHostedFilesUnpublish",
+        verb: ServerCallVerbs.Post,
+    },
+    deleteGatewayHostedFiles: {
+        path: (args: { id: string }) => `/gateway/*/hosted-files/${args.id}`,
+        name: "deleteGatewayHostedFiles",
+        verb: ServerCallVerbs.Delete,
+    },
+    getAllGatewayHostedFiles: {
+        path: "/gateway/*/public/hosted-pages",
+        name: "getAllGatewayHostedFiles",
+        verb: ServerCallVerbs.Get,
+    },
+    getGatewayPublicHostedFile: {
+        path: (args: { hostedSlug: string }) => `/gateway/*/public/hosted-file/${args.hostedSlug}`,
+        name: "getGatewayPublicHostedFile",
+        verb: ServerCallVerbs.Get,
+    },
+    getGatewayHostedFileBySlug: {
+        path: (args: { hostedSlug: string }) => `/gateway/*/hosted-files/by-slug/${args.hostedSlug}`,
+        name: "getGatewayHostedFileBySlug",
+        verb: ServerCallVerbs.Get,
     },
     getGatewayCodeProjects: {
         path: "/gateway/*/code-projects",

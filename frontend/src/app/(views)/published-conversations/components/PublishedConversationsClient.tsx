@@ -9,6 +9,7 @@ import { deletePublishedConversation, PublishedConversation } from '@/lib/calls/
 import { LandingAmbientBackground } from '@/app/components/ui';
 import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
 import { cn } from '@/lib/utils';
+import { publishedMessageReadableText } from '../publishedConversationSeo.utils';
 
 interface PublishedConversationsClientProps {
     conversations: PublishedConversation[];
@@ -72,10 +73,11 @@ export default function PublishedConversationsClient({ conversations }: Publishe
 
     const getConversationPreview = (conversation: PublishedConversation) => {
         const firstUserMessage = conversation.session?.messages?.find(msg => msg.role === 'user');
-        if (firstUserMessage && typeof firstUserMessage.content === 'string') {
-            return firstUserMessage.content.length > 150
-                ? firstUserMessage.content.substring(0, 150) + '...'
-                : firstUserMessage.content;
+        const preview = firstUserMessage
+            ? publishedMessageReadableText(firstUserMessage).split('\n').map((line) => line.trim()).find(Boolean) ?? ''
+            : '';
+        if (preview) {
+            return preview.length > 150 ? `${preview.slice(0, 150)}...` : preview;
         }
         return 'No preview available';
     };

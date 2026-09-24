@@ -35,7 +35,7 @@ export const CostDisplay: React.FC<CostDisplayProps> = ({
         )}
         {msg.role === 'assistant' && assistantFooterLabel ? (
             <span
-                className="font-semibold text-slate-600 truncate max-w-[12rem] shrink"
+                className="max-w-[12rem] shrink truncate font-semibold text-[var(--app-ink-700)]"
                 title={assistantFooterLabel}
             >
                 {assistantFooterLabel}

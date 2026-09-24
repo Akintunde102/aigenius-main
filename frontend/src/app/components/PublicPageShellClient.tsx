@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { prefetchPublicRoutes } from "@/lib/public-route-prefetch";
 import { scheduleChatShellPrefetch } from "@/lib/chat-shell-prefetch";
 import { hasAuthSession } from "@/lib/utils/auth-session";
+import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-details";
 import {
   applyResolvedColorMode,
   COLOR_MODE_STORAGE_KEY,
@@ -27,7 +28,27 @@ export function ThemeInitializer() {
   return null;
 }
 
+function readPublicHeaderSession(): { signedIn: boolean; label: string } {
+  if (typeof window === "undefined") {
+    return { signedIn: false, label: "Open app" };
+  }
+  const user = getStoredUserDetailsSnapshot<{ firstName?: string | null }>();
+  const signedIn = hasAuthSession() || Boolean(user);
+  const firstName = user?.firstName?.trim();
+  return { signedIn, label: firstName || "Open app" };
+}
+
 export function PublicHeader() {
+  const pathname = usePathname();
+  const [signedIn, setSignedIn] = useState(false);
+  const [label, setLabel] = useState("Open app");
+
+  useEffect(() => {
+    const session = readPublicHeaderSession();
+    setSignedIn(session.signedIn);
+    setLabel(session.label);
+  }, []);
+
   const toggleTheme = () => {
     const html = document.documentElement;
     const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
@@ -39,6 +60,9 @@ export function PublicHeader() {
     }
     applyResolvedColorMode(next);
   };
+
+  const signInHref = `/login?next=${encodeURIComponent(pathname || "/")}`;
+
   return (
     <>
       <PrefetchPublicNavRoutes />
@@ -53,7 +77,11 @@ export function PublicHeader() {
         </Link>
         <div className="nav-links">
           <Link prefetch href="/docs">About</Link>
-          <Link prefetch href="/login" className="nav-signin">Sign in</Link>
+          {signedIn ? (
+            <Link prefetch href="/" className="nav-signin">{label}</Link>
+          ) : (
+            <Link prefetch href={signInHref} className="nav-signin">Sign in</Link>
+          )}
           <button type="button" className="theme-toggle" aria-label="Toggle theme" onClick={toggleTheme}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" aria-hidden={true}>
               <circle cx="12" cy="12" r="9" />

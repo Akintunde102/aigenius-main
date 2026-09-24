@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { FiCopy, FiCheck } from 'react-icons/fi';
 import { JsonSyntaxBlock } from '@/app/components/JsonSyntaxBlock';
 import {
     ChatMessage as ChatMessageType,
@@ -10,23 +11,21 @@ import { buildAssistantRenderSegments } from '@/app/components/model-interface/f
 import { buildChatMessageDisplayBlocks } from '@/app/components/model-interface/features/messages/components/chatMessageDisplay.utils';
 import { enrichEventsWithLegacyThinking } from '@/app/components/model-interface/features/chat/utils/thinkingEvent.utils';
 import { buildCopyTextFromEvents } from '@/lib/utils/messageCopyText';
+import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
+import { normalizeMessageContent } from '@/lib/utils/messageContentUtils';
 import { AssistantTurnSegments } from '@/app/components/model-interface/features/messages/components/AssistantTurnSegments';
+import { StructuredMessage } from '@/app/components/model-interface/features/message-types/components/ImageMessage';
+import type { StructuredContentBlock } from '@/app/components/model-interface/features/message-types/components/messageAttachment.utils';
 import { shouldHideEmptyAssistantMessage } from '@/app/components/model-interface/features/messages/utils/assistantMessageVisibility.utils';
 
-// Custom hooks
-import { useMessageContent, useCostCalculation, useSaveState } from '@/app/(views)/published-conversations/hooks';
-
-// Components
+import { useMessageContent, useCostCalculation } from '@/app/(views)/published-conversations/hooks';
 import {
-    MessageHeader,
     ImageMessage,
     ImageWithTextMessage,
     AudioMessage,
     FileMessage,
     TextMessage,
-    ActionIcons,
     CostDisplay,
-    UsageDetailsModal
 } from './';
 
 interface ChatMessageProps {
@@ -47,46 +46,32 @@ interface ChatMessageProps {
     streaming?: boolean;
 }
 
-// Main ChatMessage Component
 export function ChatMessage({
     msg,
-    idx,
-    selectedModel,
     models = [],
     showCosts,
-    onSave,
     onCopy,
-    onReplay,
     onImagePreview,
     imagePreview,
     setImagePreview,
     formatCost,
-    loading = false,
     streaming = false,
-    savedChats = []
 }: ChatMessageProps) {
-    const [showUsageDetails, setShowUsageDetails] = useState(false);
-
-    // Custom hooks - must be called before any early returns
+    const [copied, setCopied] = useState(false);
     const messageContent = useMessageContent(msg.content);
     const cost = useCostCalculation(msg, showCosts);
-    const { isSaved, justSaved, handleSave } = useSaveState(msg, savedChats, onSave);
 
-    // Memoized values - prefer model name; resolve modelId to name when modelName missing
     const modelName = useMemo(() => {
         if (msg.modelName) return msg.modelName;
         if (msg.modelId) {
             const matched = models.find((m) => m.id === msg.modelId);
             return matched?.name ?? msg.modelId;
         }
-        return msg.role === 'assistant' ? 'Model' : '';
+        return msg.role === 'assistant' ? 'Assistant' : '';
     }, [msg.modelName, msg.modelId, msg.role, models]);
 
     const displayName = useMemo(() => {
-        if (msg.role === 'assistant') {
-            // Priority: personaName (from message) > modelName
-            if (msg.personaName) return msg.personaName;
-        }
+        if (msg.role === 'assistant' && msg.personaName) return msg.personaName;
         return modelName;
     }, [msg.personaName, modelName, msg.role]);
 
@@ -104,50 +89,58 @@ export function ChatMessage({
         () => buildChatMessageDisplayBlocks(displayEvents, { streaming }),
         [displayEvents, streaming],
     );
-
     const renderBlocks = useMemo(() => clusterToolDisplayBlocks(displayBlocks), [displayBlocks]);
-
     const renderSegments = useMemo(
         () => buildAssistantRenderSegments(renderBlocks, streaming),
         [renderBlocks, streaming],
     );
 
-    // Event handlers
+    const normalizedContent = useMemo(
+        () => normalizeMessageContent(msg.content),
+        [msg.content],
+    );
+    const structuredContent = Array.isArray(normalizedContent)
+        ? (normalizedContent as StructuredContentBlock[])
+        : null;
+
+    const speaker = msg.role === 'user' ? 'You' : (displayName || 'Assistant');
+
     const handleCopy = useCallback(() => {
         if (displayEvents.length > 0) {
             onCopy(buildCopyTextFromEvents(displayEvents));
-            return;
-        }
-        if (messageContent.isImageMsg) {
-            if (messageContent.imageText) {
-                // Copy both text and image URL
-                onCopy(`${messageContent.imageText}\n\nImage: ${messageContent.imageUrl}`);
-            } else {
-                onCopy(messageContent.imageUrl);
-            }
+        } else if (structuredContent) {
+            const text = structuredContent
+                .map((block) => textPartToPlainString(block.text))
+                .filter((part) => part.trim())
+                .join('\n\n');
+            onCopy(text || textPartToPlainString(structuredContent));
+        } else if (messageContent.isImageMsg) {
+            onCopy(messageContent.imageText
+                ? `${messageContent.imageText}\n\nImage: ${messageContent.imageUrl}`
+                : messageContent.imageUrl);
         } else if (messageContent.isFileMsg) {
             onCopy(messageContent.fileUrl);
         } else {
-            onCopy(typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content));
+            onCopy(typeof msg.content === 'string' ? msg.content : textPartToPlainString(normalizedContent));
         }
-    }, [displayEvents, messageContent, msg.content, onCopy]);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1600);
+    }, [displayEvents, structuredContent, messageContent, msg.content, normalizedContent, onCopy]);
 
-    const handleReplay = useCallback(() => {
-        if (msg.role === 'user') {
-            // Pass the full message to preserve structured content (text + images + files)
-            onReplay(msg, idx);
-        }
-    }, [msg, onReplay, idx]);
+    const isLongUserText = useMemo(() => {
+        if (msg.role !== 'user') return false;
+        const plain = textPartToPlainString(normalizedContent);
+        return plain.length > 280;
+    }, [msg.role, normalizedContent]);
 
-    // Opaque bubbles on the dark PublicPageShell; avoid md:bg-transparent (poor contrast on public bg).
     const messageContainerClasses = useMemo(() => {
-        if (msg.role === "user") {
-            return "relative rounded-3xl px-4 py-2 text-sm transition-all duration-200 bg-blue-100 text-blue-900 max-w-sm ml-auto";
+        if (msg.role === 'user') {
+            return [
+                'relative ml-auto min-w-0 rounded-[22px] border px-4 py-3 leading-relaxed',
+                '[background-color:var(--user-bubble-bg)] [border-color:var(--user-bubble-border)] [color:var(--user-bubble-fg)]',
+            ].join(' ');
         }
-        return [
-            "relative min-w-0 w-full max-w-[85%] text-sm text-zinc-100 transition-all duration-200",
-            "rounded-3xl px-4 py-2 bg-zinc-800 border border-zinc-700 mr-auto",
-        ].join(" ");
+        return 'relative min-w-0 w-full px-1 py-1 leading-relaxed [color:var(--app-ink-900)]';
     }, [msg.role]);
 
     const messageStyles = useMemo(() => ({
@@ -155,9 +148,11 @@ export function ChatMessage({
         position: 'relative' as const,
         display: 'flex',
         flexDirection: 'column' as const,
-        fontSize: '14px',
-        ...(msg.role === 'user' ? { maxWidth: '320px' } : {}),
-    }), [msg.role]);
+        fontSize: 'var(--chat-body-size, 0.9375rem)',
+        ...(msg.role === 'user'
+            ? { maxWidth: isLongUserText ? '352px' : '320px' }
+            : { maxWidth: '100%' }),
+    }), [msg.role, isLongUserText]);
 
     if (shouldHideEmptyAssistantMessage(msg, { streaming, displayEvents })) {
         return null;
@@ -165,104 +160,88 @@ export function ChatMessage({
 
     return (
         <div
-            className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            style={{ marginBottom: "0.5rem" }}
+            className={`relative flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start md:justify-center'}`}
+            aria-label={speaker}
         >
-            <div className={`relative group flex items-end gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"} w-full`}>
-                <div className={messageContainerClasses} style={messageStyles}>
-                    <MessageHeader
-                        role={msg.role}
-                        modelName={displayName}
-                        suppressAssistantHeader={msg.role === 'assistant'}
-                    />
-
-                    {/* Chat content — event-based assistant turns match main chat */}
-                    {msg.role === 'assistant' && renderSegments.length > 0 ? (
-                        <AssistantTurnSegments
-                            segments={renderSegments}
-                            messageRole={msg.role}
-                            streaming={streaming}
-                            gapClassName="flex flex-col gap-3"
-                        />
-                    ) : messageContent.isImageMsg ? (
-                        messageContent.imageText ? (
-                            <ImageWithTextMessage
-                                imageUrl={messageContent.imageUrl}
-                                imageText={messageContent.imageText}
+            <div className={`relative flex w-full items-end gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start md:max-w-[720px]'}`}>
+                <div className={`${messageContainerClasses} min-w-0`} style={messageStyles}>
+                    <div className="min-w-0">
+                        {msg.role === 'assistant' && renderSegments.length > 0 ? (
+                            <AssistantTurnSegments
+                                segments={renderSegments}
+                                messageRole={msg.role}
+                                streaming={streaming}
+                                gapClassName="flex flex-col gap-3"
+                            />
+                        ) : messageContent.isAudioMsg ? (
+                            <AudioMessage fileUrl={messageContent.fileUrl} onCopy={onCopy} />
+                        ) : messageContent.isFileMsg ? (
+                            <FileMessage
+                                fileUrl={messageContent.fileUrl}
+                                fileName={messageContent.fileName}
+                                onCopy={onCopy}
+                            />
+                        ) : structuredContent ? (
+                            <StructuredMessage
+                                content={structuredContent}
                                 onImagePreview={onImagePreview}
                                 imagePreview={imagePreview}
                                 setImagePreview={setImagePreview}
-                            />
-                        ) : (
-                            <ImageMessage
-                                imageUrl={messageContent.imageUrl}
-                                onImagePreview={onImagePreview}
-                                imagePreview={imagePreview}
-                                setImagePreview={setImagePreview}
-                            />
-                        )
-                    ) : messageContent.isAudioMsg ? (
-                        <AudioMessage
-                            fileUrl={messageContent.fileUrl}
-                            onCopy={onCopy}
-                        />
-                    ) : messageContent.isFileMsg ? (
-                        <FileMessage
-                            fileUrl={messageContent.fileUrl}
-                            fileName={messageContent.fileName}
-                            onCopy={onCopy}
-                        />
-                    ) : typeof msg.content === 'string' ? (
-                        <TextMessage
-                            content={msg.content}
-                            streaming={streaming}
-                            role={msg.role}
-                        />
-                    ) : (
-                        <JsonSyntaxBlock
-                            value={msg.content}
-                            preClassName="max-h-64 border-zinc-600/80"
-                            codeClassName="text-[11px]"
-                        />
-                    )}
-
-                    {/* Footer: Action icons and metadata */}
-                    <div
-                        className={`mt-3 pt-2 border-t ${msg.role === "user" ? "border-blue-200/50" : "border-zinc-600"}`}
-                    >
-                        <div
-                            className={`flex items-center justify-between text-[12px] mb-2 w-full ${msg.role === "user" ? "text-gray-600" : "text-zinc-400"}`}
-                        >
-                            <ActionIcons
-                                msg={msg}
-                                isSaved={isSaved}
-                                justSaved={justSaved}
-                                loading={loading}
                                 streaming={streaming}
-                                onCopy={handleCopy}
-                                onSave={handleSave}
-                                onReplay={handleReplay}
-                                setShowUsageDetails={setShowUsageDetails}
                             />
-                            <CostDisplay
-                                msg={msg}
+                        ) : messageContent.isImageMsg ? (
+                            messageContent.imageText ? (
+                                <ImageWithTextMessage
+                                    imageUrl={messageContent.imageUrl}
+                                    imageText={messageContent.imageText}
+                                    onImagePreview={onImagePreview}
+                                    imagePreview={imagePreview}
+                                    setImagePreview={setImagePreview}
+                                />
+                            ) : (
+                                <ImageMessage
+                                    imageUrl={messageContent.imageUrl}
+                                    onImagePreview={onImagePreview}
+                                    imagePreview={imagePreview}
+                                    setImagePreview={setImagePreview}
+                                />
+                            )
+                        ) : typeof normalizedContent === 'string' && normalizedContent.trim() ? (
+                            <TextMessage
+                                content={normalizedContent}
                                 streaming={streaming}
-                                showCosts={showCosts}
-                                cost={cost}
-                                formatCost={formatCost}
-                                assistantFooterLabel={msg.role === 'assistant' ? displayName : undefined}
+                                role={msg.role}
                             />
-                        </div>
+                        ) : normalizedContent != null && normalizedContent !== '' ? (
+                            <JsonSyntaxBlock
+                                value={normalizedContent}
+                                preClassName="max-h-64 border-slate-200/80"
+                                codeClassName="text-[11px]"
+                            />
+                        ) : null}
                     </div>
+
+                    <div className={`mt-2 flex items-center gap-2 text-[11px] text-[var(--chat-muted-fg)] ${msg.role === 'user' ? 'justify-end' : 'justify-between'}`}>
+                        <button
+                            type="button"
+                            onClick={handleCopy}
+                            aria-label={copied ? 'Message copied' : `Copy ${speaker} message`}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--chat-muted-fg)] hover:bg-[var(--surface-muted)] hover:text-[var(--app-ink-900)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-accent)]"
+                        >
+                            {copied ? <FiCheck size={13} aria-hidden /> : <FiCopy size={13} aria-hidden />}
+                        </button>
+                        <CostDisplay
+                            msg={msg}
+                            streaming={streaming}
+                            showCosts={showCosts}
+                            cost={cost}
+                            formatCost={formatCost}
+                            assistantFooterLabel={msg.role === 'assistant' ? displayName : undefined}
+                        />
+                    </div>
+                    <span className="sr-only" aria-live="polite">{copied ? 'Copied to clipboard' : ''}</span>
                 </div>
             </div>
-
-            <UsageDetailsModal
-                showUsageDetails={showUsageDetails}
-                setShowUsageDetails={setShowUsageDetails}
-                msg={msg}
-                streaming={streaming}
-            />
         </div>
     );
 }
