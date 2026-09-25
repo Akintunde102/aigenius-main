@@ -54,6 +54,7 @@
     "package:win:arm64:full": "npm run prepackage:win:arm64 && electron-builder --win --arm64 --config.npmRebuild=false",
     "package:win:lite": "npm run prepackage:win && electron-builder --win --x64 --config.npmRebuild=false",
     "package:win:full": "npm run prepackage:win:full && electron-builder --win --x64 --config.npmRebuild=false",
+    "package:win:appx": "npm run prepackage:win && electron-builder --win appx --x64 --config.npmRebuild=false",
     "package:linux:arm64:dir": "electron-builder --linux dir --arm64 --config.npmRebuild=false",
     "package:linux:arm64": "npm run prepackage:linux:arm64 && npm run package:linux:arm64:dir",
     "dev:frontend": "cd ../frontend && npm run dev",
@@ -174,7 +175,8 @@
     "win": {
       "target": [
         "nsis",
-        "zip"
+        "zip",
+        "appx"
       ],
       "icon": "build/icon.ico",
       "signAndEditExecutable": false,
@@ -193,6 +195,14 @@
       ],
       "displayLanguageSelector": false,
       "deleteAppDataOnUninstall": false
+    },
+    "appx": {
+      "applicationId": "AIGenius",
+      "identityName": "YOUR_MS_STORE_IDENTITY_NAME",
+      "publisher": "CN=YOUR_MS_STORE_PUBLISHER_ID",
+      "publisherDisplayName": "Nobox Labs",
+      "displayName": "AIGenius",
+      "description": "Every top AI model in one workspace."
     },
     "compression": "normal"
   }

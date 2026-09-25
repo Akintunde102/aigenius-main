@@ -283,19 +283,26 @@ export default function DesktopToolApprovalHost() {
     }
 
     return bridge.onToolApprovalRequest((request: DesktopToolApprovalRequest) => {
+      console.log('[DEBUG] DesktopToolApprovalHost received onToolApprovalRequest:', request);
       const item: PendingApproval =
         request.kind === 'shell'
           ? {
               requestId: request.requestId,
               kind: 'shell',
               payload: request.payload as ShellApprovalPayload,
-              respond: (approved) => bridge.respondToolApproval!(request.requestId, approved),
+              respond: (approved) => {
+                console.log(`[DEBUG] Responding to tool approval ${request.requestId} with:`, approved);
+                bridge.respondToolApproval!(request.requestId, approved);
+              },
             }
           : {
               requestId: request.requestId,
               kind: 'patch',
               payload: request.payload as PatchApprovalPayload,
-              respond: (approved) => bridge.respondToolApproval!(request.requestId, approved),
+              respond: (approved) => {
+                console.log(`[DEBUG] Responding to tool approval ${request.requestId} with:`, approved);
+                bridge.respondToolApproval!(request.requestId, approved);
+              },
             };
       queueRef.current.push(item);
       setPending((current) => current ?? item);

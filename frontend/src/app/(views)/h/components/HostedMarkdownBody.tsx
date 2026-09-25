@@ -63,7 +63,7 @@ export function HostedMarkdownBody({ markdown }: { markdown: string }) {
         };
 
         const heading = (Tag: 'h1' | 'h2' | 'h3'): NonNullable<Components['h1']> =>
-            ({ children, node: _node, ...props }) => {
+            function HostedHeading({ children, node: _node, ...props }) {
                 const id = idFor(children);
                 return (
                     <Tag {...props} id={id} className="scroll-mt-14">
