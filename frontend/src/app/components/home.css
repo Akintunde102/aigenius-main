@@ -596,6 +596,24 @@ html:not(.dark):not([data-theme="dark"]) .home-root .dropdown a:hover {
 }
 
 @media (max-width: 800px) {
+  .home-root .nav {
+    padding: 1.25rem 1rem;
+  }
+  
+  .home-root .nav-logo-text,
+  .home-root .about-nav-btn,
+  .home-root .nav-download-text {
+    display: none;
+  }
+
+  .home-root .nav-links a {
+    padding: 0.375rem 0.5rem;
+  }
+
+  .home-root .nav-download-cta {
+    padding: 0.5rem;
+  }
+
   .home-root .content {
     width: 100%;
     padding: 0 1.5rem 2rem 1.5rem;
