@@ -103,7 +103,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
             />
             <span className="hidden h-8 w-px shrink-0 self-stretch bg-stone-300/90 sm:block" aria-hidden />
             {shellDoc ? (
-              <div className="min-w-0 flex-1 flex flex-col justify-center gap-0.5">
+              <div className="hidden sm:flex min-w-0 flex-1 flex-col justify-center gap-0.5">
                 <p className="text-[10px] font-semibold uppercase leading-none tracking-[0.2em] text-stone-500">
                   {shellDoc.eyebrow}
                 </p>
