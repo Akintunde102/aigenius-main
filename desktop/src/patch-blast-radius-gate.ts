@@ -102,6 +102,7 @@ export async function fetchBlastRadiusSummaryForPaths(
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ paths, pathPrefix, maxDepth: 3 }),
+      signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) return null;
     const data = (await res.json()) as {
