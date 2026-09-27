@@ -14,6 +14,7 @@ import {
   type DesktopOS,
 } from "@/lib/utils/detect-desktop-os";
 import DownloadInstructionModal, { type Platform } from "./DownloadInstructionModal";
+import CartoonCapabilityBanner from "./CartoonCapabilityBanner";
 import "./home.css";
 
 const PLATFORMS = [
@@ -297,15 +298,19 @@ export default function HomePage() {
         <main className="main">
           {/* Left: Copy & CTA */}
           <div className="content">
+            <div className="hero-pet-banner-stage">
+              <CartoonCapabilityBanner />
+            </div>
             <h1 className="headline">
-              Chat with every AI
+              All the best AI models.
               <br />
-              model, in one place.
+              In one simple app.
             </h1>
             <p className="subtext">
-              Switch between GPT, Claude, Gemini and more — without juggling
-              tabs or subscriptions. Bring files and projects. Pay only
-              for what you use.
+              Switch instantly between Claude, GPT, and Gemini with direct
+              access to your local files, code, and projects. Start getting work
+              done for as low as $1 with zero platform lock-in — no $20/mo
+              subscriptions required.
             </p>
 
             <div className="cta-wrap">
@@ -422,7 +427,7 @@ export default function HomePage() {
                   </svg>
                   Linux
                 </span>
-                <span>· Free to start</span>
+                <span>· Free to start · Start from $1 · Zero lock-in</span>
               </div>
             </div>
           </div>

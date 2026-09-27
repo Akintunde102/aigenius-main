@@ -12,6 +12,8 @@ export interface ChatHistoryActions {
 export interface ChatHistoryListItemProps {
     session: ChatSession;
     isActive: boolean;
+    /** True when the user has typed text without sending (unsent draft). */
+    hasDraft?: boolean;
     /** True when this conversation has an in-flight send/stream in the background. */
     isGenerating?: boolean;
     models: Model[];

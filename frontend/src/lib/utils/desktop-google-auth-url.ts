@@ -4,13 +4,23 @@ const DESKTOP_API_ROOT_SESSION_KEY = 'desktop_api_root';
 const DESKTOP_CALLBACK_SESSION_KEY = 'desktop_callback';
 const DESKTOP_PKCE_CHALLENGE_SESSION_KEY = 'desktop_pkce_challenge';
 
-export function storeDesktopHandoff(callback: string, pkceChallenge?: string | null): void {
-  const trimmedCallback = callback.trim();
+export type DesktopHandoffParams = {
+  callback: string;
+  pkceChallenge?: string | null;
+};
+
+export function storeDesktopHandoff(
+  callbackOrParams: string | DesktopHandoffParams,
+  pkceChallenge?: string | null,
+): void {
+  const callback = typeof callbackOrParams === 'string' ? callbackOrParams : callbackOrParams?.callback;
+  const challenge = typeof callbackOrParams === 'string' ? pkceChallenge : callbackOrParams?.pkceChallenge;
+  const trimmedCallback = callback?.trim();
   if (!trimmedCallback) {
     return;
   }
   sessionStorage.setItem(DESKTOP_CALLBACK_SESSION_KEY, trimmedCallback);
-  const trimmedChallenge = pkceChallenge?.trim();
+  const trimmedChallenge = challenge?.trim();
   if (trimmedChallenge) {
     sessionStorage.setItem(DESKTOP_PKCE_CHALLENGE_SESSION_KEY, trimmedChallenge);
   } else {
@@ -46,6 +56,9 @@ export function clearDesktopHandoff(): void {
     // ignore
   }
 }
+
+export const storeDesktopHandoffSession = storeDesktopHandoff;
+export const clearDesktopHandoffSession = clearDesktopHandoff;
 
 /** Ignore legacy desktop default API roots that break Tilt dev OAuth. */
 export function shouldPersistDesktopApiRoot(apiRoot: string): boolean {

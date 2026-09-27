@@ -100,9 +100,15 @@
   font-weight: 600;
   line-height: 1.4;
   letter-spacing: -0.0125em;
-  color: #1a1a1a;
+  color: #1c1c1a;
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
+}
+
+.markdown-chat-body.markdown-body h1,
+.markdown-chat-body.markdown-body h2 {
+  border-bottom: 1px solid #e2e2de;
+  padding-bottom: 0.3em;
 }
 
 @media (min-width: 768px) {
@@ -150,7 +156,7 @@
 .markdown-chat-body.markdown-body strong,
 .markdown-chat-body.markdown-body b {
   font-weight: 600;
-  color: #1a1a1a;
+  color: #1c1c1a;
 }
 
 .markdown-chat-body.markdown-body em {
@@ -161,7 +167,7 @@
 .markdown-chat-body.markdown-body hr {
   margin: 1.5rem 0;
   border: 0;
-  border-top: 1px solid rgba(26, 26, 26, 0.08);
+  border-top: 1px solid #e2e2de;
 }
 
 .markdown-chat-body.markdown-body p:first-child,
@@ -175,13 +181,13 @@
 }
 
 .markdown-chat-body.markdown-body a {
-  color: var(--app-brand-600, #3e6fc4);
+  color: #1c1c1a;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .markdown-chat-body.markdown-body a:hover {
-  color: var(--app-brand-500, #4c7fd9);
+  color: #1c1c1a;
 }
 
 /* --- Code: wrapped text + hover copy (see markdown-code-widgets.tsx) --- */
@@ -317,8 +323,8 @@
 .markdown-chat-body.markdown-body blockquote {
   margin: 0.75rem 0;
   padding: 0 0 0 0.85rem;
-  border-left: 3px solid rgba(76, 127, 217, 0.4);
-  color: #555;
+  border-left: 3px solid #e2e2de;
+  color: #6b6b65;
   font-weight: 400;
 }
 
@@ -333,7 +339,7 @@
 /* github-markdown: zebra is on `tr`; keep rows visually neutral—cells own the surface */
 .markdown-chat-body.markdown-body table tr {
   background-color: transparent;
-  border-top-color: rgba(58, 71, 87, 0.12);
+  border-top-color: #e2e2de;
 }
 
 .markdown-chat-body.markdown-body table tr:nth-child(2n) {
@@ -343,23 +349,23 @@
 .markdown-chat-body.markdown-body table th,
 .markdown-chat-body.markdown-body table td {
   padding: 0.35rem 0.6rem;
-  border: 1px solid rgba(58, 71, 87, 0.18);
+  border: 1px solid #e2e2de;
   white-space: pre-line;
 }
 
 .markdown-chat-body.markdown-body table thead th {
-  background-color: #e2e8f0;
-  color: #0f172a;
+  background-color: #efefec;
+  color: #1c1c1a;
   font-weight: 600;
 }
 
 .markdown-chat-body.markdown-body table tbody td {
   background-color: #ffffff;
-  color: #1e293b;
+  color: #1c1c1a;
 }
 
 .markdown-chat-body.markdown-body table tr:nth-child(2n) td {
-  background-color: #f8fafc;
+  background-color: #ffffff;
 }
 
 .markdown-chat-body.markdown-body img {
@@ -623,6 +629,16 @@
 .dark .markdown-chat-body.markdown-body blockquote {
   color: #a1a1aa;
   border-left-color: rgba(96, 165, 250, 0.45);
+}
+
+.dark .markdown-chat-body.markdown-body a {
+  color: #e4e4e7;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dark .markdown-chat-body.markdown-body a:hover {
+  color: #ffffff;
 }
 
 .dark .markdown-chat-body.markdown-body table thead th {

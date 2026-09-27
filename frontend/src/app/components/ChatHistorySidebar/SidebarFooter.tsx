@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from "react";
-import { FiBookmark, FiMoreVertical, FiLogOut, FiLink, FiGift, FiFolder, FiZap, FiBell, FiMoon, FiSun, FiPlus, FiMonitor, FiShield, FiChevronRight, FiCheck } from 'react-icons/fi';
+import { FiBookmark, FiLogOut, FiLink, FiGift, FiFolder, FiZap, FiBell, FiMoon, FiSun, FiPlus, FiMonitor, FiShield, FiChevronRight, FiCheck, FiSettings } from 'react-icons/fi';
 import { createPortal } from 'react-dom';
 import { useTheme } from "@/lib/providers/ThemeProvider";
 import type { ColorMode } from "@/lib/color-mode";
@@ -10,20 +10,21 @@ import { FEATURE_FLAGS } from "@/lib/config/features";
 
 /** Fixed slot so mixed Feather icons (diagonal link vs square folder) align in the menu column. */
 const MENU_ICON_SLOT =
-    "flex size-4 shrink-0 items-center justify-center text-current [&>svg]:block";
+    "flex size-4 shrink-0 items-center justify-center text-current [&>svg]:block opacity-75";
 
 const MENU_ROW_BASE =
-    "sidebar-menu-row flex w-full items-center gap-2 px-3 py-1.5 text-left transition-colors";
+    "sidebar-menu-row group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40";
 
 const THEME_SUBMENU_ROW =
-    "sidebar-menu-row flex w-full items-center gap-2 px-3 py-1.5 pl-8 text-left transition-colors";
+    "sidebar-menu-row group flex w-full items-center gap-2.5 rounded-lg py-2 pl-[2.25rem] pr-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40";
 
-const MENU_ICON_SIZE = 12;
+const MENU_ICON_SIZE = 15;
+const MENU_ICON_STROKE = 1.75;
 
 const THEME_OPTIONS: { value: ColorMode; label: string; icon: React.ReactNode }[] = [
-    { value: 'light', label: 'Light', icon: <FiSun size={MENU_ICON_SIZE} strokeWidth={2} /> },
-    { value: 'dark', label: 'Dark', icon: <FiMoon size={MENU_ICON_SIZE} strokeWidth={2} /> },
-    { value: 'system', label: 'System', icon: <FiMonitor size={MENU_ICON_SIZE} strokeWidth={2} /> },
+    { value: 'light', label: 'Light', icon: <FiSun size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} /> },
+    { value: 'dark', label: 'Dark', icon: <FiMoon size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} /> },
+    { value: 'system', label: 'System', icon: <FiMonitor size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} /> },
 ];
 
 function AutoApproveSafetyDialog({
@@ -151,40 +152,39 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
     return (
         <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', zIndex: 10 }}>
             <div
-                className="flex w-full items-center justify-between px-3 py-1.5 pr-2 text-[11px]"
+                className="flex w-full items-center justify-between px-3 py-2 text-xs"
                 style={{
                     backgroundColor: "var(--sidebar-bg)",
                     borderTop: "1px solid var(--sidebar-border)",
                     color: "var(--sidebar-muted-fg)",
-                    boxShadow: "0 -1px 0 0 rgba(0,0,0,0.1)",
                 }}
                 aria-label="Nobox"
             >
                 <div className="relative">
                     <span
-                        className="flex cursor-help items-center text-[11px] font-medium text-slate-400"
+                        className="flex cursor-help items-center gap-1 text-[11.5px] font-medium"
+                        style={{ color: "var(--sidebar-muted-fg)" }}
                         onMouseEnter={() => setShowTooltip(true)}
                         onMouseLeave={() => setShowTooltip(false)}
                     >
                         <svg
-                            width="15"
-                            height="15"
+                            width="11"
+                            height="11"
                             viewBox="0 0 20 20"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
-                            className="mr-1 inline-block"
-                            style={{ verticalAlign: 'middle' }}
+                            className="shrink-0"
                         >
                             <path
                                 d="M11.3 1.046a1 1 0 0 1 .7 1.054l-.3 5.9h4.3a1 1 0 0 1 .8 1.6l-8 10.5a1 1 0 0 1-1.8-.8l.3-5.8H3.1a1 1 0 0 1-.8-1.6l8-10.5a1 1 0 0 1 .9-.354z"
                                 fill="#FECB00"
                             />
                         </svg>
-                        by <span className="ml-1 font-bold tracking-wide text-[#FECB00]">Nobox</span>
+                        by <span className="font-bold tracking-wide text-[#FECB00]">Nobox</span>
                     </span>
 
                     {showTooltip && (
-                        <div className="absolute bottom-full left-0 z-50 translate-y-[-8px] transform whitespace-nowrap rounded-md bg-[#0F172A] px-3 py-2 text-xs text-white shadow-[0px_8px_20px_rgba(0,0,0,0.06)]">
+                        <div className="absolute bottom-full left-0 z-50 translate-y-[-8px] transform whitespace-nowrap rounded-lg bg-[#0F172A] px-3 py-2 text-xs text-white shadow-lg">
                             Email us at nobox.hq@gmail.com
                             <div className="absolute left-4 top-full h-0 w-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-[#0F172A]" />
                         </div>
@@ -192,48 +192,13 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2" ref={menuRef}>
-                    <div
-                        className="flex items-center gap-1.5 rounded-md px-1 py-0.5"
-                        title="Auto-approve tools"
-                    >
-                        <span className="hidden text-[10px] font-medium sm:inline" style={{ color: "var(--sidebar-muted-fg)" }}>
-                            Auto
-                        </span>
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked={toolPermissionState?.autoApproveAll ?? false}
-                            aria-label="Auto-approve all tools"
-                            className={[
-                                "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
-                                "focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40",
-                                toolPermissionState?.autoApproveAll
-                                    ? "bg-sky-600"
-                                    : "bg-slate-300 dark:bg-slate-600",
-                            ].join(" ")}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleAutoApproveToggle();
-                            }}
-                        >
-                            <span
-                                className={[
-                                    "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform",
-                                    toolPermissionState?.autoApproveAll
-                                        ? "translate-x-4"
-                                        : "translate-x-0.5",
-                                ].join(" ")}
-                            />
-                        </button>
-                    </div>
-
                     <button
                         type="button"
-                        aria-label="Sidebar menu"
+                        aria-label="Settings"
                         aria-haspopup="menu"
                         aria-expanded={isMenuOpen}
-                        className="flex h-6 w-6 items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
-                        style={{ color: "var(--sidebar-muted-fg)" }}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:[background-color:var(--sidebar-menu-row-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+                        style={{ color: isMenuOpen ? "var(--sidebar-fg)" : "var(--sidebar-muted-fg)" }}
                         onClick={(e) => {
                             e.stopPropagation();
                             setIsMenuOpen((open) => {
@@ -241,49 +206,48 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                 return !open;
                             });
                         }}
-                        title="Menu"
+                        title="Settings"
                     >
-                        <FiMoreVertical size={13} />
+                        <FiSettings size={14} strokeWidth={1.75} />
                     </button>
 
                     {isMenuOpen && (
                         <div
-                            className="absolute bottom-full right-0 z-[999] mb-1 min-w-[11rem] rounded-lg shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+                            className="sidebar-settings-menu absolute bottom-full left-2 right-2 z-[999] mb-2 rounded-xl px-1.5 py-1.5 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.35),0_2px_8px_-2px_rgba(0,0,0,0.15)]"
                             style={{
                                 backgroundColor: "var(--sidebar-menu-bg)",
-                                border: "1px solid var(--sidebar-menu-border)",
+                                border: "1px solid var(--sidebar-border)",
                             }}
                         >
-                            <div className="py-1">
+                            <div className="flex flex-col gap-0.5">
                                 {walletFormatted !== null && (
-                                    <>
-                                        <div
-                                            className="border-b px-3 py-2 text-[11px]"
-                                            style={{ borderColor: "var(--sidebar-menu-border)" }}
-                                        >
-                                            <div style={{ color: "var(--sidebar-muted-fg)" }}>Credits</div>
-                                            <div
-                                                className="mt-0.5 text-[13px] font-semibold tabular-nums"
-                                                style={{ color: "var(--sidebar-fg)" }}
-                                            >
-                                                {walletFormatted}
-                                            </div>
+                                    <div
+                                        className="mb-1 flex items-center justify-between gap-2 rounded-lg px-2.5 py-2"
+                                        style={{
+                                            background: "color-mix(in srgb, var(--sidebar-menu-row-hover) 60%, transparent)",
+                                            border: "1px solid var(--sidebar-border)",
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--sidebar-muted-fg)" }}>Credits</span>
                                         </div>
-                                        <button
-                                            type="button"
-                                            className={MENU_ROW_BASE}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onAddCredits();
-                                                setIsMenuOpen(false);
-                                            }}
-                                        >
-                                            <span className={MENU_ICON_SLOT} aria-hidden>
-                                                <FiPlus size={MENU_ICON_SIZE} strokeWidth={2} />
-                                            </span>
-                                            <span>Add credits</span>
-                                        </button>
-                                    </>
+                                        <div className="flex min-w-0 items-center gap-2">
+                                            <span className="sidebar-settings-value">{walletFormatted}</span>
+                                            <button
+                                                type="button"
+                                                className="flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition-colors hover:[background-color:var(--sidebar-menu-row-hover)] focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+                                                style={{ color: "var(--sidebar-fg)", background: "var(--sidebar-menu-bg)", border: "1px solid var(--sidebar-border)" }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onAddCredits();
+                                                    setIsMenuOpen(false);
+                                                }}
+                                            >
+                                                <FiPlus size={11} strokeWidth={2} />
+                                                <span>Add</span>
+                                            </button>
+                                        </div>
+                                    </div>
                                 )}
 
                                 {onShowSavedChats && (
@@ -297,7 +261,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         }}
                                     >
                                         <span className={MENU_ICON_SLOT} aria-hidden>
-                                            <FiBookmark size={MENU_ICON_SIZE} strokeWidth={2} />
+                                            <FiBookmark size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
                                         <span>Saved messages</span>
                                     </button>
@@ -314,7 +278,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         }}
                                     >
                                         <span className={MENU_ICON_SLOT} aria-hidden>
-                                            <FiFolder size={MENU_ICON_SIZE} strokeWidth={2} />
+                                            <FiFolder size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
                                         <span>My files</span>
                                     </button>
@@ -331,7 +295,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         }}
                                     >
                                         <span className={MENU_ICON_SLOT} aria-hidden>
-                                            <FiZap size={MENU_ICON_SIZE} strokeWidth={2} />
+                                            <FiZap size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
                                         <span>Workflows</span>
                                     </button>
@@ -348,7 +312,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         }}
                                     >
                                         <span className={MENU_ICON_SLOT} aria-hidden>
-                                            <FiBell size={MENU_ICON_SIZE} strokeWidth={2} />
+                                            <FiBell size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
                                         <span>Notifications</span>
                                     </button>
@@ -365,7 +329,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         }}
                                     >
                                         <span className={MENU_ICON_SLOT} aria-hidden>
-                                            <FiLink size={MENU_ICON_SIZE} strokeWidth={2} />
+                                            <FiLink size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
                                         <span>Integrations</span>
                                     </button>
@@ -382,7 +346,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         }}
                                     >
                                         <span className={MENU_ICON_SLOT} aria-hidden>
-                                            <FiShield size={MENU_ICON_SIZE} strokeWidth={2} />
+                                            <FiShield size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
                                         <span>Tool permissions</span>
                                     </button>
@@ -401,21 +365,22 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                     >
                                         <span className="flex min-w-0 items-center gap-2.5">
                                             <span className={MENU_ICON_SLOT} aria-hidden>
-                                                {theme === 'light' && <FiSun size={MENU_ICON_SIZE} strokeWidth={2} />}
-                                                {theme === 'dark' && <FiMoon size={MENU_ICON_SIZE} strokeWidth={2} />}
-                                                {theme === 'system' && <FiMonitor size={MENU_ICON_SIZE} strokeWidth={2} />}
+                                                {theme === 'light' && <FiSun size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />}
+                                                {theme === 'dark' && <FiMoon size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />}
+                                                {theme === 'system' && <FiMonitor size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />}
                                             </span>
                                             <span>Appearance</span>
                                         </span>
                                         <FiChevronRight
-                                            size={MENU_ICON_SIZE}
-                                            className={`shrink-0 transition-transform ${showThemeSubmenu ? 'rotate-90' : ''}`}
+                                            size={14}
+                                            strokeWidth={2}
+                                            className={`shrink-0 opacity-50 transition-transform ${showThemeSubmenu ? 'rotate-90' : ''}`}
                                             aria-hidden
                                         />
                                     </button>
 
                                     {showThemeSubmenu && (
-                                        <div role="menu" aria-label="Appearance">
+                                        <div role="menu" aria-label="Appearance" className="mb-0.5 mt-0.5 flex flex-col gap-0.5">
                                             {THEME_OPTIONS.map((option) => {
                                                 const isActive = theme === option.value;
                                                 return (
@@ -424,7 +389,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                                         type="button"
                                                         role="menuitemradio"
                                                         aria-checked={isActive}
-                                                        className={`${THEME_SUBMENU_ROW} ${isActive ? 'font-medium' : ''}`}
+                                                        className={`${THEME_SUBMENU_ROW} ${isActive ? 'sidebar-menu-row--active' : ''}`}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setTheme(option.value);
@@ -437,7 +402,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                                         </span>
                                                         <span className="flex-1">{option.label}</span>
                                                         {isActive && (
-                                                            <FiCheck size={MENU_ICON_SIZE} strokeWidth={2.5} className="shrink-0 text-sky-500" aria-hidden />
+                                                            <FiCheck size={13} strokeWidth={2.5} className="shrink-0 opacity-70" aria-hidden />
                                                         )}
                                                     </button>
                                                 );
@@ -457,7 +422,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         }}
                                     >
                                         <span className={MENU_ICON_SLOT} aria-hidden>
-                                            <FiGift size={MENU_ICON_SIZE} strokeWidth={2} />
+                                            <FiGift size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
                                         <span>Give Credits</span>
                                     </button>
@@ -466,7 +431,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                 {onLogout && (
                                     <button
                                         type="button"
-                                        className={`${MENU_ROW_BASE} text-red-600`}
+                                        className={`${MENU_ROW_BASE} sidebar-menu-row--danger`}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             onLogout();
@@ -474,11 +439,53 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         }}
                                     >
                                         <span className={MENU_ICON_SLOT} aria-hidden>
-                                            <FiLogOut size={MENU_ICON_SIZE} strokeWidth={2} />
+                                            <FiLogOut size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
                                         <span>Logout</span>
                                     </button>
                                 )}
+
+                                <div
+                                    className="my-1.5 border-t"
+                                    style={{ borderColor: "var(--sidebar-border)" }}
+                                />
+
+                                <button
+                                    type="button"
+                                    role="menuitemcheckbox"
+                                    aria-checked={toolPermissionState?.autoApproveAll ?? false}
+                                    aria-label="Auto-approve all tools"
+                                    className={`${MENU_ROW_BASE} w-full cursor-pointer justify-between`}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAutoApproveToggle();
+                                    }}
+                                >
+                                    <span className="flex min-w-0 items-center gap-2.5">
+                                        <span className={MENU_ICON_SLOT} aria-hidden>
+                                            <FiZap size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
+                                        </span>
+                                        <span>Auto-approve</span>
+                                    </span>
+                                    <span
+                                        aria-hidden="true"
+                                        className={[
+                                            "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors pointer-events-none",
+                                            toolPermissionState?.autoApproveAll
+                                                ? "bg-sky-500"
+                                                : "bg-[color-mix(in_srgb,var(--sidebar-fg)_30%,transparent)]",
+                                        ].join(" ")}
+                                    >
+                                        <span
+                                            className={[
+                                                "inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform",
+                                                toolPermissionState?.autoApproveAll
+                                                    ? "translate-x-[1.125rem]"
+                                                    : "translate-x-0.5",
+                                            ].join(" ")}
+                                        />
+                                    </span>
+                                </button>
                             </div>
                         </div>
                     )}

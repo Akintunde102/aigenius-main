@@ -6,16 +6,21 @@
 html[data-aigenius-desktop-shell="1"] {
   height: 100%;
   overflow: hidden;
-  background-color: var(--aigenius-desktop-chrome-bg, #1a1a1c);
+  background-color: var(--sidebar-bg, #16161a);
 
   body {
     height: 100%;
     overflow: hidden;
-    background-color: var(--aigenius-desktop-chrome-bg, #1a1a1c);
+    background-color: var(--sidebar-bg, #16161a);
   }
 
   .aigenius-desktop-sidebar-chrome {
     -webkit-app-region: no-drag;
+  }
+
+  /* Separator below the title bar — mirrors SidebarFooter border-top. */
+  [data-mobile-sidebar] {
+    border-top: 1px solid var(--sidebar-border);
   }
 
   /* 
@@ -39,6 +44,6 @@ html[data-aigenius-desktop-shell="1"] {
  */
 .aigenius-desktop-drag-strip {
   -webkit-app-region: drag;
-  /* Opaque shell chrome — avoids body `--app-mist-100` bleeding through above the content padding. */
-  background-color: var(--aigenius-desktop-chrome-bg, #1a1a1c);
+  /* Opaque shell chrome — matches sidebar surface above the content padding. */
+  background-color: var(--sidebar-bg, #16161a);
 }

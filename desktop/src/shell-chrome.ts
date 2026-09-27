@@ -1,7 +1,7 @@
 import type { BrowserWindowConstructorOptions } from 'electron';
 
-/** Dark title region aligned with VS Code / editor shells (not pure black). */
-export const MAIN_SHELL_CHROME_BG = '#1a1a1c';
+/** Title region aligned with `--sidebar-bg` in `frontend/src/app/styles/globals.scss`. */
+export const MAIN_SHELL_CHROME_BG = '#16161a';
 /** Control glyphs on Windows / Linux window-controls overlay. */
 export const MAIN_SHELL_CHROME_SYMBOL = '#a1a1aa';
 

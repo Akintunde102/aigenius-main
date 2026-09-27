@@ -139,6 +139,7 @@ export interface UseChatOperationsReturn {
     refreshWalletBalance: () => Promise<number | null>;
     canRetryLastSend: boolean;
     retryLastFailedSend: () => Promise<void>;
+    hasDraftSession: (sessionId: string) => boolean;
 }
 
 // Props for streaming response handler

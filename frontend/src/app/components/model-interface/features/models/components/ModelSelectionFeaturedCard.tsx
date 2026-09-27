@@ -9,9 +9,10 @@ import {
     isModelPickLocked,
 } from '../utils/modelWalletAffordance.utils';
 import { ModelWalletLockIndicator } from './ModelWalletLockIndicator';
+import { ModelCreditBurnIndicator } from './ModelCreditBurnIndicator';
 
-const ToolsCapabilityIcon = ({ size = 7, className = '' }: { size?: number; className?: string }) => (
-    <FiLayers size={size} className={className} aria-hidden strokeWidth={1.25} />
+const ToolsCapabilityIcon = ({ size = 10, className = '' }: { size?: number; className?: string }) => (
+    <FiLayers size={size} className={className} aria-hidden strokeWidth={1.75} />
 );
 
 type ModelSelectionFeaturedCardProps = {
@@ -61,8 +62,8 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
         [wallet, requiredBalance, model.id, selectedModelId],
     );
     const slots = useMemo(
-        () => buildModelCardSlots(model, averageCost),
-        [model, averageCost],
+        () => buildModelCardSlots(model, averageCost, wallet),
+        [model, averageCost, wallet],
     );
 
     const handlePrimaryAction = () => {
@@ -82,7 +83,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
         <div
             role="button"
             tabIndex={isWalletLocked ? -1 : 0}
-            className={`group app-model-card relative w-full max-w-xl px-2.5 py-1.5 ${isSelected ? 'app-model-card--selected' : ''} ${isPreviewedRecent ? 'app-model-card--previewed-recent' : ''} ${isWalletLocked ? 'app-model-card--wallet-locked mb-1 cursor-not-allowed [background-color:color-mix(in_srgb,var(--modal-fg)_8%,transparent)]' : 'cursor-pointer'}`}
+            className={`group app-model-card relative w-full ${isMobile ? 'px-2.5 py-1.5' : 'px-3 py-1.5'} ${isSelected ? 'app-model-card--selected' : ''} ${isPreviewedRecent ? 'app-model-card--previewed-recent' : ''} ${isWalletLocked ? 'app-model-card--wallet-locked mb-1 cursor-not-allowed [background-color:color-mix(in_srgb,var(--modal-fg)_8%,transparent)]' : 'cursor-pointer'}`}
             onClick={handlePrimaryAction}
             onKeyDown={(e) => {
                 if (isWalletLocked) return;
@@ -93,33 +94,30 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
             }}
             aria-disabled={isWalletLocked}
         >
-            {isPreviewedRecent && (
-                <span
-                    className="app-model-card__previewed-cta"
-                    aria-label="Click to use this model for chat"
-                >
-                    <FiArrowRight size={9} strokeWidth={2.5} />
-                    <span>Click to use</span>
-                </span>
-            )}
-            {supportsTools && (
-                <span
-                    className="app-model-card__tools-hint"
-                    title="Extra tooling (Gmail, Keep, etc.)"
-                >
-                    <ToolsCapabilityIcon size={7} />
-                </span>
-            )}
-
             <div className="app-model-card__layout">
                 <div className="min-w-0 flex-1">
-                    <span className={`block truncate app-model-card__title ${isWalletLocked ? 'opacity-70' : ''}`}>
-                        {displayName}
-                    </span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span className={`truncate app-model-card__title ${isWalletLocked ? 'opacity-70' : ''}`}>
+                            {displayName}
+                        </span>
+                        {supportsTools && (
+                            <span
+                                className="app-model-card__tools-hint shrink-0 inline-flex items-center"
+                                title="Extra tooling (Gmail, Keep, etc.)"
+                            >
+                                <ToolsCapabilityIcon size={10} />
+                            </span>
+                        )}
+                    </div>
                     {isWalletLocked ? (
                         <ModelWalletLockIndicator
                             requiredBalance={requiredBalance}
                             wallet={wallet}
+                            className="mt-1"
+                        />
+                    ) : slots.cost?.burnPercentage !== null && slots.cost?.burnPercentage !== undefined && slots.cost.burnPercentage >= 60 ? (
+                        <ModelCreditBurnIndicator
+                            burnPercentage={slots.cost.burnPercentage}
                             className="mt-1"
                         />
                     ) : slots.cost ? (
@@ -132,7 +130,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                 {isSortingByReleaseDate && slots.release && (
                     <span
                         className={`app-model-card__date shrink-0 ${
-                            isMobile ? '!text-[10px]' : ''
+                            isMobile ? '!text-[9.5px]' : ''
                         }`}
                         title={`Released: ${slots.release}`}
                     >
@@ -140,11 +138,21 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                     </span>
                 )}
 
+                {isPreviewedRecent && (
+                    <span
+                        className="app-model-card__previewed-cta shrink-0"
+                        aria-label="Click to use this model for chat"
+                    >
+                        <FiArrowRight size={10} strokeWidth={2.5} />
+                        <span>Click to use</span>
+                    </span>
+                )}
+
                 <div className="app-model-card__actions">
                     {onShowDetails && (
                         <button
                             type="button"
-                            className={`flex shrink-0 items-center justify-center rounded-sm text-[var(--sidebar-muted-fg)] opacity-40 transition-colors hover:opacity-80 hover:text-[var(--sidebar-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--chat-accent)] focus-visible:ring-offset-1 focus-visible:opacity-100 ${isMobile ? 'p-0.5' : 'p-1'
+                            className={`flex shrink-0 items-center justify-center rounded-lg text-[var(--sidebar-muted-fg)] opacity-60 transition-all hover:opacity-100 hover:text-[var(--sidebar-fg)] hover:bg-black/5 dark:hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--chat-accent)] focus-visible:ring-offset-1 focus-visible:opacity-100 ${isMobile ? 'h-5.5 w-5.5' : 'h-6 w-6'
                                 }`}
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -152,7 +160,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                             }}
                             title="More info"
                         >
-                            <FiInfo size={isMobile ? 11 : 12} strokeWidth={1.5} />
+                            <FiInfo size={12} strokeWidth={1.75} />
                         </button>
                     )}
                     <ModelToggleSwitch

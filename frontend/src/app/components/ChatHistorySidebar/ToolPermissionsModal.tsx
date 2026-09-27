@@ -105,20 +105,25 @@ export const ToolPermissionsModal: React.FC<ToolPermissionsModalProps> = ({ onCl
         className="mx-4 flex max-h-[min(640px,90vh)] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-slate-700">
-          <div className="flex items-center gap-2">
-            <FiShield className="text-sky-600" size={18} aria-hidden />
-            <h2 id="tool-permissions-title" className="text-lg font-semibold text-gray-900 dark:text-slate-50">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-slate-700">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-sky-500/10 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400"
+              aria-hidden
+            >
+              <FiShield className="h-4 w-4" />
+            </div>
+            <h2 id="tool-permissions-title" className="text-base font-semibold leading-none text-gray-900 dark:text-slate-50">
               Tool permissions
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-slate-800"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-slate-800"
             aria-label="Close"
           >
-            <FiX size={20} />
+            <FiX className="h-4 w-4" />
           </button>
         </div>
 

@@ -5,7 +5,10 @@ import { DEV_LOOPBACK_HOST, loopbackHttpUrl } from './loopback-host';
 import { showExternalLinkApprovalDialog } from './external-link-approval-dialog';
 import { isNoboxAuthBackendFlowUrl, isOauthSignInUrl } from './oauth-allowlist';
 import { isHostedPaymentUrl } from './payment-allowlist';
-import { isLoopbackPublishedConversationUrl } from './open-url-in-system-browser';
+import {
+  isLoopbackPublishedConversationUrl,
+  isTrustedDirectExternalUrl,
+} from './open-url-in-system-browser';
 import { MINI_SERVER_PORT } from './mini-server-port';
 import {
   showAuxiliaryWindowWhenReady,
@@ -170,6 +173,10 @@ function isHttpOrHttpsUrl(urlString: string): boolean {
 }
 
 function openExternalInSystemBrowserAfterApproval(parent: BrowserWindow, url: string): void {
+  if (url.startsWith('mailto:')) {
+    void shell.openExternal(url);
+    return;
+  }
   if (!isHttpOrHttpsUrl(url)) {
     return;
   }
@@ -271,6 +278,11 @@ export function attachMainShellNavigationGuards(win: BrowserWindow): void {
       }
       return;
     }
+    if (url.startsWith('mailto:') || isTrustedDirectExternalUrl(url)) {
+      event.preventDefault();
+      void shell.openExternal(url, { activate: true });
+      return;
+    }
     event.preventDefault();
     blockAndEscalate(url);
   };
@@ -307,6 +319,11 @@ export function attachMainShellNavigationGuards(win: BrowserWindow): void {
       if (isTopLevelShellWindow(win)) {
         openOauthInSystemBrowser(win, url);
       }
+      return { action: 'deny' };
+    }
+
+    if (url.startsWith('mailto:') || isTrustedDirectExternalUrl(url)) {
+      void shell.openExternal(url, { activate: true });
       return { action: 'deny' };
     }
 

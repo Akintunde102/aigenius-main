@@ -32,6 +32,7 @@ function isPublicPath(pathname: string): boolean {
         pathname.startsWith('/_next') ||
         pathname.startsWith('/assets') ||
         pathname.startsWith('/images') ||
+        pathname.startsWith('/mascot') ||
         pathname.startsWith('/vad') ||
         pathname.startsWith('/stream-status') ||
         pathname.startsWith('/public') ||
@@ -50,8 +51,8 @@ function isPublicPath(pathname: string): boolean {
         return true;
     }
 
-    // Static asset extensions (images, fonts, installers)
-    if (/\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|woff|woff2|ttf|eot|dmg)$/i.test(pathname)) {
+    // Static asset extensions (images, fonts, 3D models, installers)
+    if (/\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|woff|woff2|ttf|eot|dmg|glb|gltf)$/i.test(pathname)) {
         return true;
     }
 

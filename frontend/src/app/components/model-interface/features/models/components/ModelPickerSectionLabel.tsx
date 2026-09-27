@@ -21,7 +21,7 @@ export function ModelPickerSectionLabel({
   className = "",
 }: ModelPickerSectionLabelProps) {
   const sharedClassName =
-    `sidebar-section-label truncate font-medium uppercase transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40 ${className}`;
+    `sidebar-section-label truncate text-[11px] font-semibold uppercase tracking-wider transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40 ${className}`;
 
   if (onClick) {
     return (
@@ -31,7 +31,7 @@ export function ModelPickerSectionLabel({
         title={title}
         aria-expanded={ariaExpanded}
         aria-pressed={ariaPressed}
-        className={`w-full rounded px-1 py-0.5 text-left ${sharedClassName}`}
+        className={`w-full rounded px-1.5 py-1 text-left ${sharedClassName}`}
         style={{ color: "var(--sidebar-muted-fg)" }}
       >
         {children}
@@ -41,7 +41,7 @@ export function ModelPickerSectionLabel({
 
   return (
     <span
-      className={`block px-1 py-0.5 ${sharedClassName}`}
+      className={`block px-1.5 py-1 ${sharedClassName}`}
       style={{ color: "var(--sidebar-muted-fg)" }}
     >
       {children}
@@ -64,7 +64,7 @@ export function ModelPickerSectionBlock({
 }: ModelPickerSectionBlockProps) {
   return (
     <div
-      className={`max-w-xl pb-0.5 ${isFirst ? "pt-1" : "pt-2"} ${className}`}
+      className={`max-w-xl pb-1 ${isFirst ? "pt-1" : "pt-3"} ${className}`}
     >
       {children}
     </div>

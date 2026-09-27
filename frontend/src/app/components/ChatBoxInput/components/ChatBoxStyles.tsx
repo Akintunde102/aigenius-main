@@ -27,15 +27,31 @@ const ChatBoxStyles: React.FC = () => (
             color: var(--chat-muted-fg);
         }
         .chat-composer-send--enabled {
-            background-color: var(--chat-accent);
+            background-color: var(--send-btn-bg, #ecece9);
+            color: var(--send-btn-fg, #1c1c1a);
         }
         .chat-composer-send--enabled:hover {
-            background-color: var(--chat-accent-hover);
+            background-color: #e2e2de;
+            color: #1c1c1a;
         }
         .chat-composer-send--disabled {
             cursor: not-allowed;
+            background-color: var(--send-btn-bg, #ecece9);
+            color: var(--send-btn-fg, #1c1c1a);
+            opacity: 0.45;
+        }
+        :global(.dark) .chat-composer-send--enabled {
+            background-color: var(--chat-accent);
+            color: #ffffff;
+        }
+        :global(.dark) .chat-composer-send--enabled:hover {
+            background-color: var(--chat-accent-hover);
+            color: #ffffff;
+        }
+        :global(.dark) .chat-composer-send--disabled {
             background-color: var(--chat-accent-muted);
             color: var(--chat-muted-fg);
+            opacity: 1;
         }
         .chat-composer-stop {
             background-color: color-mix(in srgb, var(--app-ink-900) 52%, transparent);

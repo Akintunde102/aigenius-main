@@ -1,7 +1,10 @@
 import {
   computeModelRequiredBalance,
   computeCreditsShortfall,
+  getModelCreditBurnPercentage,
+  getModelCreditBurnWarning,
   getModelWalletLockShortHint,
+  isHighCreditBurnModel,
   isModelPickLocked,
   partitionModelsByWalletAffordance,
 } from "../modelWalletAffordance.utils";
@@ -78,4 +81,44 @@ describe("modelWalletAffordance.utils", () => {
     expect(affordable.map((m) => m.id)).toEqual([cheap.id]);
     expect(locked.map((m) => m.id)).toEqual([expensive.id]);
   });
+
+  describe("credit burn calculations", () => {
+    it("returns null when wallet is null, undefined, or non-positive", () => {
+      expect(getModelCreditBurnPercentage(model, null, 0.01)).toBeNull();
+      expect(getModelCreditBurnPercentage(model, undefined, 0.01)).toBeNull();
+      expect(getModelCreditBurnPercentage(model, 0, 0.01)).toBeNull();
+      expect(getModelCreditBurnPercentage(model, -5, 0.01)).toBeNull();
+    });
+
+    it("returns null when model cost is 0 or negative", () => {
+      expect(getModelCreditBurnPercentage(model, 100, 0)).toBeNull();
+    });
+
+    it("calculates the correct burn percentage relative to wallet", () => {
+      // 0.07 USD * 1000 credits/USD = 70 credits.
+      // 70 credits / 100 credits in wallet = 70%
+      expect(getModelCreditBurnPercentage(model, 100, 0.07)).toBe(70);
+
+      // 0.035 USD * 1000 credits/USD = 35 credits.
+      // 35 credits / 50 credits in wallet = 70%
+      expect(getModelCreditBurnPercentage(model, 50, 0.035)).toBe(70);
+
+      // 0.01 USD * 1000 = 10 credits.
+      // 10 / 100 = 10%
+      expect(getModelCreditBurnPercentage(model, 100, 0.01)).toBe(10);
+    });
+
+    it("flags models that burn 60% or more of wallet", () => {
+      expect(isHighCreditBurnModel(model, 100, 0.06)).toBe(true);
+      expect(isHighCreditBurnModel(model, 100, 0.085)).toBe(true);
+      expect(isHighCreditBurnModel(model, 100, 0.059)).toBe(false);
+      expect(isHighCreditBurnModel(model, null, 0.06)).toBe(false);
+    });
+
+    it("formats a user-friendly warning message", () => {
+      expect(getModelCreditBurnWarning(60)).toBe("Burns ~60% of credits");
+      expect(getModelCreditBurnWarning(85)).toBe("Burns ~85% of credits");
+    });
+  });
 });
+

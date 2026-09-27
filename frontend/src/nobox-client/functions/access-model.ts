@@ -690,6 +690,33 @@ async function fulfillToolApprovalRequest(
   }
 }
 
+function publishLocalDesktopToolEnd(
+  onToolStreamEvent: ((event: ToolStreamEvent) => void) | undefined,
+  tool: string,
+  out: { ok: true; result: string } | { ok: false; error: string },
+): void {
+  if (!onToolStreamEvent) return;
+  onToolStreamEvent({
+    type: 'end',
+    tool,
+    success: out.ok,
+    result: out.ok ? out.result : JSON.stringify({ error: out.error, success: false }),
+  });
+}
+
+/** Renderer-side cap so a stuck IPC call cannot leave the tool card spinning after the API connection drops. */
+function localShellWatchdogMs(tool: string, args: Record<string, unknown> | undefined): number | null {
+  if (tool !== 'run_command' && tool !== 'local_shell') return null;
+  const requested = typeof args?.timeout_ms === 'number' && args.timeout_ms >= 1000
+    ? Math.min(args.timeout_ms, 300_000)
+    : 60_000;
+  const block = typeof args?.block_until_ms === 'number' && Number.isFinite(args.block_until_ms) && args.block_until_ms >= 0
+    ? Math.min(Math.floor(args.block_until_ms), requested)
+    : null;
+  const wait = block != null ? Math.max(block, 50) : requested;
+  return wait + 8_000;
+}
+
 async function fulfillDesktopToolDelegate(
   ev: {
     type: 'client_delegate';
@@ -792,21 +819,54 @@ async function fulfillDesktopToolDelegate(
         }
         : undefined;
 
-    const out = await desktop.runLocalDesktopTool(
+    const run = desktop.runLocalDesktopTool(
       {
         tool: ev.tool,
         arguments: ev.arguments ?? {},
       },
       streamOpts,
     );
-    if (out.ok) {
-      await postDesktopToolDelegateResult(config, ev.delegate_id, { result: out.result }, signal);
-    } else {
-      await postDesktopToolDelegateResult(config, ev.delegate_id, { error: out.error }, signal);
+    run.catch(() => {});
+    const cap = localShellWatchdogMs(ev.tool, ev.arguments);
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    const out = cap == null
+      ? await run
+      : await Promise.race([
+        run,
+        new Promise<Awaited<typeof run>>((_, reject) => {
+          watchdog = setTimeout(() => {
+            reject(new Error(
+              `Command did not finish within ${Math.round(cap / 1000)}s. It may still be running on your computer.`,
+            ));
+          }, cap);
+        }),
+      ]).finally(() => {
+        if (watchdog) clearTimeout(watchdog);
+      });
+    publishLocalDesktopToolEnd(onToolStreamEvent, ev.tool, out);
+    try {
+      if (out.ok) {
+        await postDesktopToolDelegateResult(config, ev.delegate_id, { result: out.result }, signal);
+      } else {
+        await postDesktopToolDelegateResult(config, ev.delegate_id, { error: out.error }, signal);
+      }
+    } catch (postErr: unknown) {
+      console.warn(
+        '[AIGenius Bridge] Local tool finished but the result could not be sent to the API:',
+        postErr instanceof Error ? postErr.message : postErr,
+      );
     }
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Local tool failed';
-    await postDesktopToolDelegateResult(config, ev.delegate_id, { error: msg }, signal);
+    publishLocalDesktopToolEnd(onToolStreamEvent, ev.tool, { ok: false, error: msg });
+    try {
+      await postDesktopToolDelegateResult(config, ev.delegate_id, { error: msg }, signal);
+    } catch (postErr: unknown) {
+      console.warn(
+        '[AIGenius Bridge] Local tool failed and the error could not be sent to the API:',
+        postErr instanceof Error ? postErr.message : postErr,
+      );
+    }
   }
 }
 

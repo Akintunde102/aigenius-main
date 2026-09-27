@@ -43,7 +43,7 @@ describe("estimateModelSelectionRowSize", () => {
 
   it("keeps section headers compact and aligned with sidebar rhythm", () => {
     expect(estimateModelPickerSectionHeaderHeight(true, false, false)).toBe(19);
-    expect(estimateModelPickerSectionHeaderHeight(false, false, false)).toBe(23);
+    expect(estimateModelPickerSectionHeaderHeight(false, false, false)).toBe(21);
     expect(estimateModelPickerSectionHeaderHeight(true, false, true)).toBe(15);
     expect(estimateModelPickerSectionHeaderHeight(true, true, false)).toBe(34);
   });
