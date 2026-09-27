@@ -5,7 +5,13 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const { readPortsFile, DEFAULTS } = require('../../../scripts/dev-ports.cjs');
+let devPorts = { readPortsFile: () => null, DEFAULTS: { api: 3000 } };
+try {
+  devPorts = require('../../../scripts/dev-ports.cjs');
+} catch (e) {
+  console.warn('dev-ports.cjs not found, using fallbacks');
+}
+const { readPortsFile, DEFAULTS } = devPorts;
 const { loadDesktopBuildEnv, loadPackageEnvFile } = require('./load-desktop-build-env.cjs');
 
 function readUpstreamFromPackageEnv() {
