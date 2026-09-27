@@ -210,6 +210,28 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     >,
   setCodeProjectIndex: (payload: { projectId: string; rootPath: string } | null): Promise<{ ok: boolean }> =>
     ipcRenderer.invoke('set-code-project-index', payload) as Promise<{ ok: boolean }>,
+  
+  // Auto-Updater hooks
+  checkForUpdates: () => ipcRenderer.invoke('aigenius-check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('aigenius-download-update'),
+  installUpdate: () => ipcRenderer.invoke('aigenius-install-update'),
+  onUpdateAvailable: (handler: (info: any) => void) => {
+    ipcRenderer.on('aigenius-update-available', (_event, info) => handler(info));
+    return () => ipcRenderer.removeAllListeners('aigenius-update-available');
+  },
+  onUpdateDownloaded: (handler: (info: any) => void) => {
+    ipcRenderer.on('aigenius-update-downloaded', (_event, info) => handler(info));
+    return () => ipcRenderer.removeAllListeners('aigenius-update-downloaded');
+  },
+  onUpdateError: (handler: (error: string) => void) => {
+    ipcRenderer.on('aigenius-update-error', (_event, error) => handler(error));
+    return () => ipcRenderer.removeAllListeners('aigenius-update-error');
+  },
+  onUpdateProgress: (handler: (progress: any) => void) => {
+    ipcRenderer.on('aigenius-update-progress', (_event, progress) => handler(progress));
+    return () => ipcRenderer.removeAllListeners('aigenius-update-progress');
+  },
+
   syncActiveEditor: (payload: {
     path: string;
     name: string;
