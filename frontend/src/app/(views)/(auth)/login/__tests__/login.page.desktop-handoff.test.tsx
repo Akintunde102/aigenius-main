@@ -50,7 +50,7 @@ describe('Login page desktop handoff', () => {
     render(<Login />);
 
     await waitFor(() => {
-      expect(storeDesktopHandoffSession).toHaveBeenCalledWith({
+      expect(storeDesktopHandoff).toHaveBeenCalledWith({
         callback: 'http://127.0.0.1:49201/',
         pkceChallenge: 'challenge-123',
       });
@@ -91,7 +91,7 @@ describe('Login page desktop handoff', () => {
     render(<Login />);
 
     await waitFor(() => {
-      expect(clearDesktopHandoffSession).toHaveBeenCalled();
+      expect(clearDesktopHandoff).toHaveBeenCalled();
     });
     expect(storeDesktopHandoffSession).not.toHaveBeenCalled();
   });
