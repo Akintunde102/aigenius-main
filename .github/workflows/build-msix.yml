@@ -1,0 +1,29 @@
+name: Build MSIX for Windows
+
+on:
+  workflow_dispatch: # Allows you to manually trigger the build from the GitHub Actions tab
+
+jobs:
+  build-msix:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: yarn install
+
+      - name: Build MSIX
+        run: yarn workspace aigenius-desktop run package:win:appx
+
+      - name: Upload MSIX Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: AIGenius-MSIX
+          path: desktop/release/*.appx
