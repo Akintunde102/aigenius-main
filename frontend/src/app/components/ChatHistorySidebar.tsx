@@ -68,6 +68,7 @@ interface ChatHistorySidebarProps {
     /** Initials for collapsed desktop rail avatar (e.g. from logged-in user). */
     userInitials?: string;
     getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
+    hasDraftSession?: (sessionId: string) => boolean;
 }
 
 const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
@@ -105,6 +106,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     onLogout,
     userInitials = "?",
     getCachedMessages,
+    hasDraftSession,
 }) => {
     const [showWalletModal, setShowWalletModal] = React.useState(false);
     const [paymentModalLoading, setPaymentModalLoading] = React.useState(false);
@@ -372,6 +374,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 onNewChatForProject={handleNewChatForProject}
                 onProjectInfo={setInfoProjectId}
                 getCachedMessages={getCachedMessages}
+                hasDraftSession={hasDraftSession}
             />
 
             <SidebarFooter

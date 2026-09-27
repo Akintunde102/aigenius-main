@@ -3,9 +3,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useLayoutEffect } from "react";
 import DesktopTitleBarActions from "./DesktopTitleBarActions";
-
-/** Matches Electron `MAIN_SHELL_CHROME_BG` / window `backgroundColor`. */
-const DESKTOP_CHROME_BG = "#1a1a1c";
+import DesktopOpacityFloatingControl from "./DesktopOpacityFloatingControl";
 
 /** `-webkit-app-region` is not in the csstype CSSProperties; cast to allow it. */
 type DragStyle = CSSProperties & { WebkitAppRegion?: "drag" | "no-drag" };
@@ -17,7 +15,6 @@ function syncDesktopChromeCssVars(): void {
     root.style.removeProperty("--aigenius-desktop-titlebar-top");
     root.style.removeProperty("--aigenius-desktop-content-left");
     root.style.removeProperty("--aigenius-desktop-titlebar-right-inset");
-    root.style.removeProperty("--aigenius-desktop-chrome-bg");
     return;
   }
   root.style.setProperty("--aigenius-desktop-titlebar-top", `${c.titleBarTopPx}px`);
@@ -26,7 +23,6 @@ function syncDesktopChromeCssVars(): void {
     "--aigenius-desktop-titlebar-right-inset",
     `${c.titleBarRightInsetPx}px`,
   );
-  root.style.setProperty("--aigenius-desktop-chrome-bg", DESKTOP_CHROME_BG);
 }
 
 /**
@@ -53,7 +49,7 @@ export default function DesktopShellChrome({
 
   const dragStripStyle: DragStyle = {
     height: "var(--aigenius-desktop-titlebar-top, 0px)",
-    backgroundColor: "var(--aigenius-desktop-chrome-bg, transparent)",
+    backgroundColor: "var(--sidebar-bg, transparent)",
     // Make the whole strip draggable; child elements override with no-drag as needed.
     WebkitAppRegion: "drag",
   };
@@ -66,6 +62,7 @@ export default function DesktopShellChrome({
         style={dragStripStyle}
       />
       <DesktopTitleBarActions />
+      <DesktopOpacityFloatingControl />
       <div
         className="aigenius-desktop-app-shell flex min-h-0 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain"
         style={{

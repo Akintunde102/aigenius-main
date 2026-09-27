@@ -3,7 +3,8 @@ import {
   applySyncedToolPermissionPreferences,
   resetToolPermissionPreferencesCacheForTests,
 } from '../tool-permission-preferences';
-import { confirmLocalShellExecution } from '../local-tool-executor-shell';
+import { confirmLocalShellExecution, runShell } from '../local-tool-executor-shell';
+import { killChildProcessTree } from '../utils/shell-process-tree';
 
 jest.mock('electron', () => ({
   app: {
@@ -77,4 +78,73 @@ describe('confirmLocalShellExecution', () => {
       }),
     );
   });
+});
+
+describe('runShell long-running commands', () => {
+  const mockSender = {
+    isDestroyed: () => false,
+    send: jest.fn(),
+  } as never;
+
+  function nodeEval(code: string): string {
+    // Use PATH `node` so cmd.exe /c does not split on spaces in Program Files.
+    return `node -e ${JSON.stringify(code)}`;
+  }
+
+  beforeEach(() => {
+    resetToolPermissionPreferencesCacheForTests();
+    applySyncedToolPermissionPreferences({
+      autoApproveAll: true,
+      requireApprovalByTool: {},
+    });
+  });
+
+  it('returns while a sleeper is still running when block_until_ms elapses', async () => {
+    let pidToClean: number | undefined;
+    try {
+      const started = Date.now();
+      const out = await runShell(
+        mockSender,
+        undefined,
+        {
+          command: nodeEval("console.log('ready'); setInterval(() => {}, 1000)"),
+          cwd: process.cwd(),
+          block_until_ms: 1200,
+          timeout_ms: 10_000,
+        },
+      );
+      expect(Date.now() - started).toBeLessThan(5_000);
+      expect(out.ok).toBe(true);
+      if (out.ok) {
+        expect(out.result).toContain('still running');
+        expect(out.result).toContain('ready');
+        pidToClean = (out.rawData as { pid?: number } | undefined)?.pid;
+      }
+    } finally {
+      if (typeof pidToClean === 'number') {
+        killChildProcessTree({ pid: pidToClean });
+      }
+    }
+  });
+
+  it('settles a nested never-exit process on timeout instead of hanging', async () => {
+    const nested = nodeEval(
+      "require('child_process').spawn(process.execPath, ['-e', 'setInterval(()=>{}, 1000)'], {stdio:'inherit', windowsHide:true}); console.log('parent-ready'); setInterval(()=>{}, 1000)",
+    );
+    const started = Date.now();
+    const out = await runShell(
+      mockSender,
+      undefined,
+      {
+        command: nested,
+        cwd: process.cwd(),
+        timeout_ms: 1_200,
+      },
+    );
+    expect(Date.now() - started).toBeLessThan(6_000);
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/timed out/i);
+    }
+  }, 12_000);
 });

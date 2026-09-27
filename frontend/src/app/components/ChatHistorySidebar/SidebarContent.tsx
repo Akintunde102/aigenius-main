@@ -34,6 +34,7 @@ interface SidebarContentProps {
     onSelectProject?: (projectId: string | null) => void;
     onProjectInfo?: (projectId: string) => void;
     getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
+    hasDraftSession?: (sessionId: string) => boolean;
 }
 
 const SidebarContent = React.memo<SidebarContentProps>(({
@@ -53,6 +54,7 @@ const SidebarContent = React.memo<SidebarContentProps>(({
     handleSessionSwitch,
     isSessionActive,
     isSessionInFlight,
+    hasDraftSession,
     isInitialLoading = false,
     codeProjects = [],
     activeProjectId = null,
@@ -114,6 +116,7 @@ const SidebarContent = React.memo<SidebarContentProps>(({
                         onSelectProject={onSelectProject}
                         onProjectInfo={onProjectInfo}
                         getCachedMessages={getCachedMessages}
+                        hasDraftSession={hasDraftSession}
                     />
                 </div>
 

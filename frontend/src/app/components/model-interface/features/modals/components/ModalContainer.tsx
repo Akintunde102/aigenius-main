@@ -134,6 +134,7 @@ export function ModalContainer({
         onPickModel={(model) => {
           setSelectedModel(model);
           setShowModelDetailsModal(false);
+          setShowModelSelectionModal(false);
         }}
         wallet={wallet}
         onAddCredits={onAddCredits}

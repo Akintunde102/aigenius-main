@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronsRight } from "lucide-react";
+import { PanelLeftOpen } from "lucide-react";
 import { FiPlus } from "react-icons/fi";
 
 export interface SidebarCollapsedRailProps {
@@ -21,40 +21,38 @@ export const SidebarCollapsedRail = React.memo<SidebarCollapsedRailProps>(
     const letter = userInitials.trim().slice(0, 2).toUpperCase() || "U";
 
     return (
-      <div className="aigenius-desktop-sidebar-chrome flex h-full min-h-0 flex-col items-center py-3">
+      <div className="aigenius-desktop-sidebar-chrome flex h-full min-h-0 flex-col items-center px-3 py-2">
         <div className="flex shrink-0 flex-col items-center gap-2">
           <button
             type="button"
             data-mobile-toggle
             aria-label="Open sidebar"
             title="Show conversations (⌘B)"
-            className="flex h-8 w-9 shrink-0 items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 sm:h-7 sm:w-7"
             style={{
-              border: "1px solid var(--sidebar-icon-btn-border)",
-              backgroundColor: "var(--sidebar-icon-btn-bg)",
-              color: "var(--sidebar-fg)",
+              backgroundColor: "transparent",
+              color: "var(--sidebar-muted-fg)",
             }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-hover-bg)")}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-bg)")}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--sidebar-menu-row-hover)")}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
             onClick={onExpand}
           >
-            <ChevronsRight className="h-4 w-4" strokeWidth={2} aria-hidden />
+            <PanelLeftOpen className="h-[18px] w-[18px]" strokeWidth={1.5} aria-hidden />
           </button>
           <button
             type="button"
             aria-label="New chat"
             title="New chat"
-            className="flex h-8 w-9 shrink-0 items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 sm:h-7 sm:w-7"
             style={{
-              border: "1px solid var(--sidebar-icon-btn-border)",
-              backgroundColor: "var(--sidebar-icon-btn-bg)",
-              color: "var(--sidebar-fg)",
+              backgroundColor: "transparent",
+              color: "var(--sidebar-muted-fg)",
             }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-hover-bg)")}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-bg)")}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--sidebar-menu-row-hover)")}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
             onClick={onNewChat}
           >
-            <FiPlus className="h-4 w-4" aria-hidden />
+            <FiPlus size={18} strokeWidth={1.5} aria-hidden />
           </button>
         </div>
 
@@ -66,14 +64,13 @@ export const SidebarCollapsedRail = React.memo<SidebarCollapsedRailProps>(
             aria-label="Open account menu"
             aria-haspopup="menu"
             title="Account"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-normal transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 sm:h-7 sm:w-7"
             style={{
-              border: "1px solid var(--sidebar-icon-btn-border)",
-              backgroundColor: "var(--sidebar-icon-btn-bg)",
-              color: "var(--sidebar-fg)",
+              backgroundColor: "transparent",
+              color: "var(--sidebar-muted-fg)",
             }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-hover-bg)")}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-bg)")}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--sidebar-menu-row-hover)")}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
             onClick={(e) => {
               e.stopPropagation();
               onOpenAccountMenu();

@@ -489,6 +489,22 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
       ipcRenderer.removeListener('window-maximize-change', fn);
     };
   },
+  setWindowOpacity: (opacity: number): void => {
+    ipcRenderer.send('window-set-opacity', opacity);
+  },
+  getWindowOpacity: (): Promise<number> =>
+    ipcRenderer.invoke('window-get-opacity') as Promise<number>,
+  toggleWindowOpacity: (): Promise<number> =>
+    ipcRenderer.invoke('window-toggle-opacity') as Promise<number>,
+  onWindowOpacityChange: (handler: (opacity: number) => void) => {
+    const fn = (_event: unknown, opacity: number): void => {
+      handler(opacity);
+    };
+    ipcRenderer.on('window-opacity-change', fn);
+    return () => {
+      ipcRenderer.removeListener('window-opacity-change', fn);
+    };
+  },
 });
 
 // Audio Recorder API

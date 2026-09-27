@@ -123,6 +123,12 @@ export function useChatOperationsRefined({
         });
     }, []);
 
+    const hasDraftSession = useCallback((sessionId: string) => {
+        if (!sessionId) return false;
+        const val = inputMap[sessionId];
+        return typeof val === 'string' && val.trim().length > 0;
+    }, [inputMap]);
+
     const [wallet, setWallet] = useState<number | null>(null);
     const [assistantResponse, setAssistantResponse] = useState('');
     const [optimizationMessage, setOptimizationMessage] = useState<string>('');
@@ -499,5 +505,6 @@ export function useChatOperationsRefined({
         }, [setWallet]),
         canRetryLastSend: false,
         retryLastFailedSend: useCallback(async () => {}, []),
+        hasDraftSession,
     };
 }

@@ -12,6 +12,12 @@ import { resolveGoToDefinition } from '../search/go-to-definition.js';
 import { selectGrepEngine } from './resolve-ripgrep.js';
 import { blockInteractiveShellCommand } from './shell-interactive-block.js';
 import { hiddenSpawnOptions } from '../utils/hidden-child-process.js';
+import { killChildProcessTree } from '../utils/shell-process-tree.js';
+import {
+  effectiveBlockWaitMs,
+  resolveShellRunPolicy,
+  SHELL_KILL_GRACE_MS,
+} from './shell-run-policy.utils.js';
 
 const MAX_GIT_OUT = 256 * 1024;
 const MAX_READ_CHARS = 520 * 1024;
@@ -196,10 +202,24 @@ async function executeReadFile(args: Record<string, unknown>): Promise<ToolExecu
   }
 }
 
-function formatShellMarkdown(stdout: string, stderr: string, exitCode: number): string {
+function formatShellMarkdown(
+  stdout: string,
+  stderr: string,
+  exitCode: number | null,
+  extra?: { backgrounded?: boolean; pid?: number },
+): string {
   const escapeBackticks = (text: string) => text.replace(/```/g, '` ` `');
   let md = '### Shell output\n\n';
-  md += `- **Exit code**: ${exitCode}\n\n`;
+  if (extra?.backgrounded) {
+    const pidLabel = typeof extra.pid === 'number' ? ` (pid ${extra.pid})` : '';
+    md += `- **Status**: still running${pidLabel}\n`;
+    md += `- **Exit code**: (none — process was backgrounded)\n\n`;
+    md +=
+      'The command did not exit (typical for dev servers such as `npm run dev`). '
+      + 'It is still running. Output captured so far is below.\n\n';
+  } else {
+    md += `- **Exit code**: ${exitCode ?? '?'}\n\n`;
+  }
   if (stdout.trim()) {
     md += `**Stdout**\n\n\`\`\`\n${escapeBackticks(stdout.trim())}\n\`\`\`\n\n`;
   }
@@ -238,10 +258,8 @@ async function executeShell(args: Record<string, unknown>): Promise<ToolExecuteR
     return { ok: false, error: 'cwd does not exist or is not accessible' };
   }
 
-  const timeoutMs =
-    typeof args.timeout_ms === 'number' && args.timeout_ms >= 1000
-      ? Math.min(args.timeout_ms, 300_000)
-      : 60_000;
+  const policy = resolveShellRunPolicy(command, args);
+  const timeoutMs = policy.timeoutMs;
 
   const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
   const shellArgs = process.platform === 'win32' ? ['/c', command] : ['-c', command];
@@ -254,6 +272,7 @@ async function executeShell(args: Record<string, unknown>): Promise<ToolExecuteR
         cwd: cwdResolved,
         env: process.env,
         windowsVerbatimArguments: process.platform === 'win32',
+        stdio: ['ignore', 'pipe', 'pipe'],
       }),
     );
 
@@ -264,24 +283,81 @@ async function executeShell(args: Record<string, unknown>): Promise<ToolExecuteR
     let settled = false;
     let timedOut = false;
     let killedForLimit = false;
+    let backgrounded = false;
+    let killGrace: ReturnType<typeof setTimeout> | undefined;
+    let blockTimer: ReturnType<typeof setTimeout> | undefined;
+    let killTimer: ReturnType<typeof setTimeout> | undefined;
 
     const settle = (out: ToolExecuteResult): void => {
       if (settled) return;
       settled = true;
-      clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
+      if (blockTimer) clearTimeout(blockTimer);
+      if (killGrace) clearTimeout(killGrace);
       resolve(out);
     };
 
-    const timer = setTimeout(() => {
+    const flushTails = (): void => {
+      const tailOut = decOut.end();
+      const tailErr = decErr.end();
+      if (tailOut) accOut += tailOut;
+      if (tailErr) accErr += tailErr;
+    };
+
+    const timeoutError = (): ToolExecuteResult => {
+      const parts = [`Command timed out after ${Math.round(timeoutMs / 1000)}s and was stopped.`];
+      if (accOut.trim()) parts.push(`stdout:\n${accOut.trim()}`);
+      if (accErr.trim()) parts.push(`stderr:\n${accErr.trim()}`);
+      return { ok: false, error: parts.join('\n\n') };
+    };
+
+    const requestKill = (): void => {
       timedOut = true;
-      try {
-        child.kill('SIGTERM');
-      } catch {
-        /* ignore */
-      }
-    }, timeoutMs);
+      killChildProcessTree(child);
+      killGrace = setTimeout(() => {
+        if (settled) return;
+        flushTails();
+        try {
+          child.unref();
+        } catch {
+          /* ignore */
+        }
+        settle(timeoutError());
+      }, SHELL_KILL_GRACE_MS);
+    };
+
+    if (policy.blockUntilMs != null) {
+      blockTimer = setTimeout(() => {
+        if (settled) return;
+        backgrounded = true;
+        flushTails();
+        try {
+          child.unref();
+        } catch {
+          /* ignore */
+        }
+        const rawData = {
+          stdout: accOut,
+          stderr: accErr,
+          exit_code: null,
+          backgrounded: true,
+          pid: child.pid,
+        };
+        settle({
+          ok: true,
+          result: formatShellMarkdown(accOut, accErr, null, {
+            backgrounded: true,
+            pid: child.pid,
+          }),
+          rawData,
+        });
+      }, effectiveBlockWaitMs(policy.blockUntilMs));
+    } else {
+      killTimer = setTimeout(requestKill, timeoutMs);
+    }
 
     const onChunk = (kind: 'stdout' | 'stderr', buf: Buffer): void => {
+      if (settled) return;
       const dec = kind === 'stdout' ? decOut : decErr;
       const text = dec.write(buf);
       if (!text) return;
@@ -290,26 +366,20 @@ async function executeShell(args: Record<string, unknown>): Promise<ToolExecuteR
       const totalBytes = Buffer.byteLength(accOut, 'utf8') + Buffer.byteLength(accErr, 'utf8');
       if (totalBytes > MAX_SHELL_OUT) {
         killedForLimit = true;
-        try {
-          child.kill('SIGTERM');
-        } catch {
-          /* ignore */
-        }
+        killChildProcessTree(child);
       }
     };
 
     child.stdout?.on('data', (buf: Buffer) => onChunk('stdout', buf));
     child.stderr?.on('data', (buf: Buffer) => onChunk('stderr', buf));
     child.on('error', (err) => settle({ ok: false, error: err.message }));
-    child.on('close', (code, signal) => {
-      if (settled) return;
-      const tailOut = decOut.end();
-      const tailErr = decErr.end();
-      if (tailOut) accOut += tailOut;
-      if (tailErr) accErr += tailErr;
+
+    const onEnded = (code: number | null, signal: NodeJS.Signals | null): void => {
+      if (settled || backgrounded) return;
+      flushTails();
 
       if (timedOut) {
-        settle({ ok: false, error: 'Command timed out' });
+        settle(timeoutError());
         return;
       }
 
@@ -333,7 +403,10 @@ async function executeShell(args: Record<string, unknown>): Promise<ToolExecuteR
         result: formatShellMarkdown(accOut, stderrCombined, exitCode),
         rawData,
       });
-    });
+    };
+
+    child.on('exit', onEnded);
+    child.on('close', onEnded);
   });
 }
 

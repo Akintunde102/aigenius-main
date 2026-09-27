@@ -6,6 +6,12 @@ import {
   getProviderLabel,
 } from "@/app/components/model-interface/shared/utils";
 
+import {
+  getModelCreditBurnPercentage,
+  getModelCreditBurnWarning,
+  HIGH_CREDIT_BURN_THRESHOLD_PERCENT,
+} from "./modelWalletAffordance.utils";
+
 export type ModelMetaPill = {
   key: string;
   label: string;
@@ -15,6 +21,8 @@ export type ModelMetaPill = {
 export type ModelCardCostSlot = {
   label: string;
   isPaid: boolean;
+  burnPercentage?: number | null;
+  burnWarning?: string | null;
 };
 
 /** Layout slots for the picker card: identity left, tools center, price/actions right. */
@@ -61,6 +69,7 @@ function collectNonTextModalities(model: Model): string[] {
 export function buildModelCardSlots(
   model: Model,
   averageCost: number,
+  wallet?: number | null,
 ): ModelCardSlots {
   const provider = getProvider(model.id);
   const providerLabel = getProviderLabel(provider);
@@ -72,11 +81,24 @@ export function buildModelCardSlots(
 
   let cost: ModelCardCostSlot | undefined;
   if (Number.isFinite(averageCost)) {
+    const burnPercentage = getModelCreditBurnPercentage(
+      model,
+      wallet,
+      averageCost,
+    );
+    const isHighBurn =
+      burnPercentage !== null &&
+      burnPercentage >= HIGH_CREDIT_BURN_THRESHOLD_PERCENT;
+
     cost =
       averageCost > 0
         ? {
             label: `${formatNGN(averageCost, true)} / msg`,
             isPaid: true,
+            burnPercentage,
+            burnWarning: isHighBurn
+              ? getModelCreditBurnWarning(burnPercentage)
+              : null,
           }
         : { label: "Free", isPaid: false };
   }

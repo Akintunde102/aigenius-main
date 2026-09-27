@@ -94,16 +94,21 @@ export function shouldRouteToolViaSidecar(
 export async function executeSidecarTool(
   tool: string,
   args: Record<string, unknown>,
+  fetchTimeoutMs?: number,
 ): Promise<SidecarToolResponse | null> {
   if (!shouldRouteToolViaSidecar(tool, args)) {
     return null;
   }
   try {
-    const res = await sidecarFetch(`${SERVER_URL}/tools/execute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...sidecarAuthHeaders() },
-      body: JSON.stringify({ tool, arguments: args }),
-    });
+    const res = await sidecarFetch(
+      `${SERVER_URL}/tools/execute`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...sidecarAuthHeaders() },
+        body: JSON.stringify({ tool, arguments: args }),
+      },
+      fetchTimeoutMs,
+    );
     const data = (await res.json().catch(() => ({}))) as SidecarToolResponse & { error?: string };
     if (!res.ok) {
       console.warn(

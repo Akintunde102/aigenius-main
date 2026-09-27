@@ -16,7 +16,7 @@ jest.mock('@/lib/api/auth-client', () => ({
 const listCodeProjects = jest.fn(async () => [] as CodeProject[]);
 
 jest.mock('@/lib/calls/code-projects', () => ({
-  listCodeProjects: (...args: unknown[]) => listCodeProjects(...args),
+  listCodeProjects: () => listCodeProjects(),
   createCodeProject: jest.fn(),
   updateCodeProject: jest.fn(),
   deleteCodeProject: jest.fn(),

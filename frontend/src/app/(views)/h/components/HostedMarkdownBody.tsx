@@ -62,8 +62,8 @@ export function HostedMarkdownBody({ markdown }: { markdown: string }) {
             return hostedHeadingId(text);
         };
 
-        const heading = (Tag: 'h1' | 'h2' | 'h3'): NonNullable<Components['h1']> =>
-            function HostedHeading({ children, node: _node, ...props }) {
+        const heading = (Tag: 'h1' | 'h2' | 'h3'): NonNullable<Components['h1']> => {
+            const HeadingComponent: NonNullable<Components['h1']> = ({ children, node: _node, ...props }) => {
                 const id = idFor(children);
                 return (
                     <Tag {...props} id={id} className="scroll-mt-14">
@@ -73,6 +73,9 @@ export function HostedMarkdownBody({ markdown }: { markdown: string }) {
                     </Tag>
                 );
             };
+            HeadingComponent.displayName = `HostedMarkdownHeading_${Tag}`;
+            return HeadingComponent;
+        };
 
         return {
             h1: heading('h1'),

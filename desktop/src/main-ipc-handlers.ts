@@ -521,4 +521,29 @@ export function registerMainIpcHandlers(): void {
     return win && !win.isDestroyed() ? win.isMaximized() : false;
   });
 
+  ipcMain.on('window-set-opacity', (event, opacity: number) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed() && typeof opacity === 'number') {
+      const clamped = Math.max(0.15, Math.min(1.0, opacity));
+      win.setOpacity(clamped);
+      win.webContents.send('window-opacity-change', clamped);
+    }
+  });
+
+  ipcMain.handle('window-get-opacity', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return win && !win.isDestroyed() ? win.getOpacity() : 1.0;
+  });
+
+  ipcMain.handle('window-toggle-opacity', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) {
+      return 1.0;
+    }
+    const current = win.getOpacity();
+    const next = current < 0.95 ? 1.0 : 0.7;
+    win.setOpacity(next);
+    win.webContents.send('window-opacity-change', next);
+    return next;
+  });
 }

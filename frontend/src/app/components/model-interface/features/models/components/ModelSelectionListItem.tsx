@@ -2,6 +2,8 @@ import React, { memo, useMemo, useState } from 'react';
 import { FiBookmark, FiInfo } from 'react-icons/fi';
 import { Model } from '@/app/components/model-interface/shared/types';
 import { formatNGN } from '@/app/components/model-interface/shared/utils';
+import { getModelCreditBurnPercentage } from '../utils/modelWalletAffordance.utils';
+import { ModelCreditBurnIndicator } from './ModelCreditBurnIndicator';
 
 // Model list row for search tab
 type ModelSelectionListItemProps = {
@@ -15,6 +17,7 @@ type ModelSelectionListItemProps = {
     isSelected: boolean;
     isMobile?: boolean;
     isSortingByReleaseDate?: boolean;
+    wallet?: number | null;
 };
 
 const ModelSelectionListItem = memo(function ModelListItem({
@@ -28,6 +31,7 @@ const ModelSelectionListItem = memo(function ModelListItem({
     isSelected,
     isMobile = false,
     isSortingByReleaseDate = false,
+    wallet = null,
 }: ModelSelectionListItemProps) {
     const inputMods = useMemo(() => {
         const mods = (model.architecture?.input_modalities || []).filter((mod: string) => (mod || '').toLowerCase() !== 'text');
@@ -40,6 +44,11 @@ const ModelSelectionListItem = memo(function ModelListItem({
             .filter((mod: string) => (mod || '').toLowerCase() !== 'text')
             .slice(0, 1);
     }, [model]);
+
+    const burnPercentage = useMemo(
+        () => getModelCreditBurnPercentage(model, wallet, averageCost),
+        [model, wallet, averageCost],
+    );
 
     return (
         <div className={`flex flex-col border rounded-lg bg-white cursor-pointer hover:shadow-md transition-shadow relative ${isMobile ? 'gap-1 p-2' : 'gap-2 p-3'
@@ -77,6 +86,11 @@ const ModelSelectionListItem = memo(function ModelListItem({
                             <span className="text-blue-700">
                                 ~<span className="text-green-700">{formatNGN(averageCost, true)} credits/msg</span>
                             </span>
+                        )}
+                        {burnPercentage !== null && burnPercentage >= 60 && (
+                            <ModelCreditBurnIndicator
+                                burnPercentage={burnPercentage}
+                            />
                         )}
                         {inputMods.map((mod: string) => (
                             <span key={mod} className={`bg-blue-100 text-blue-700 rounded font-medium ${isMobile ? 'px-1 py-0.5 text-[9px]' : 'px-1 py-0.5'

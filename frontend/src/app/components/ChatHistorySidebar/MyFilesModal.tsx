@@ -67,24 +67,24 @@ const MyFilesModal: React.FC<MyFilesModalProps> = ({ onClose, library }) => {
             color: "var(--modal-fg)",
           }}
         >
-          <div className="flex-shrink-0 border-b" style={{ borderColor: "var(--modal-border)" }}>
+          <div className="shrink-0 border-b" style={{ borderColor: "var(--modal-border)" }}>
             <div
-              className={`flex items-center justify-between ${isMobile ? "px-3 py-2" : "px-4 py-3"}`}
+              className={`flex items-center justify-between ${isMobile ? "px-3 py-2" : "px-4 py-2.5"}`}
             >
               <h2
                 id="my-files-modal-title"
-                className={`font-semibold ${isMobile ? "text-base" : "text-lg"}`}
+                className={`font-semibold leading-none ${isMobile ? "text-base" : "text-base"}`}
               >
                 My files
               </h2>
               <button
                 type="button"
                 aria-label="Close"
-                className="rounded p-1 transition-colors hover:text-red-500"
+                className="flex h-7 w-7 items-center justify-center rounded-md p-1 transition-colors hover:text-red-500"
                 style={{ color: "var(--modal-muted-fg)" }}
                 onClick={onClose}
               >
-                <FiX size={isMobile ? 20 : 22} aria-hidden />
+                <FiX className="h-4 w-4" aria-hidden />
               </button>
             </div>
           </div>

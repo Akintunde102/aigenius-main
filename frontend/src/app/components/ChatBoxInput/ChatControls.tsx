@@ -5,6 +5,8 @@ import { ChatControlsProps } from './types';
 import { ModelQuickPickDropdown } from './ModelQuickPickDropdown';
 import type { Model } from '@/app/components/model-interface/shared/types';
 import { ModelWalletLockIndicator } from '@/app/components/model-interface/features/models/components/ModelWalletLockIndicator';
+import { ModelCreditBurnIndicator } from '@/app/components/model-interface/features/models/components/ModelCreditBurnIndicator';
+import { getModelCreditBurnPercentage } from '@/app/components/model-interface/features/models/utils/modelWalletAffordance.utils';
 
 // Left Controls Section Component
 const LeftControlsSection: React.FC<{
@@ -81,6 +83,7 @@ const LeftControlsSection: React.FC<{
         const modelDisabled = modelSelectorDisabled ?? disabled;
         const showComposerWalletHint =
             isInsufficientCredits && requiredWalletBalance > 0 && onAddCredits;
+        const selectedModelBurnPercentage = getModelCreditBurnPercentage(selectedModel, wallet);
 
         return (
             <div className="flex items-center gap-2">
@@ -106,12 +109,21 @@ const LeftControlsSection: React.FC<{
                             type="button"
                             onClick={onModelNameClick}
                             disabled={modelDisabled || !onModelNameClick}
-                            className={`inline-flex items-center gap-2 rounded-full border text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 [border-color:var(--chat-composer-border)] [background-color:color-mix(in_srgb,var(--chat-composer-bg)_88%,transparent)] [color:var(--sidebar-muted-fg)] hover:[color:var(--sidebar-fg)] hover:[background-color:var(--chat-composer-bg)] ${mini ? 'px-1.5 py-0.5' : 'px-2 py-0.5'}`}
+                            className={`inline-flex items-center gap-1.5 rounded-full border text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 [border-color:var(--chat-composer-border)] [background-color:color-mix(in_srgb,var(--chat-composer-bg)_88%,transparent)] [color:var(--sidebar-muted-fg)] hover:[color:var(--sidebar-fg)] hover:[background-color:var(--chat-composer-bg)] ${mini ? 'px-1.5 py-0.5' : 'px-2 py-0.5'}`}
                             title={selectedModel?.name ? `Model: ${selectedModel.name}` : 'Select model'}
                         >
                             <span className={`${mini ? 'text-[10px]' : 'text-xs'} font-medium truncate max-w-32`}>
                                 {selectedModel?.name ?? 'Select model'}
                             </span>
+                            {selectedModelBurnPercentage !== null && selectedModelBurnPercentage >= 60 && (
+                                <span
+                                    className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 text-[9px] font-semibold text-amber-700 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-400/15"
+                                    title={`A single message with ${selectedModel?.name || 'this model'} could consume ~${selectedModelBurnPercentage}% of your current credits.`}
+                                >
+                                    <span aria-hidden>🔥</span>
+                                    <span>~{selectedModelBurnPercentage}%</span>
+                                </span>
+                            )}
                         </button>
                     )}
                     {showComposerWalletHint ? (
@@ -125,6 +137,12 @@ const LeftControlsSection: React.FC<{
                                 wallet={wallet}
                             />
                         </button>
+                    ) : selectedModelBurnPercentage !== null && selectedModelBurnPercentage >= 60 ? (
+                        <div className="max-w-[11rem] text-left">
+                            <ModelCreditBurnIndicator
+                                burnPercentage={selectedModelBurnPercentage}
+                            />
+                        </div>
                     ) : null}
                     </div>
                 )}

@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from "react";
-import { FiInfo, FiPlus } from "react-icons/fi";
+import { FiPlus } from "react-icons/fi";
 import ChatHistoryListItem from "./ChatHistoryListItem";
 import { ChatSession } from '@/app/components/model-interface/shared/types';
 import type { ChatMessage } from '@/app/components/model-interface/shared/types';
@@ -7,6 +7,7 @@ import { ConfirmationModal } from './ChatHistoryListItem/components/Confirmation
 import { ChatLoadingIndicator } from "./model-interface/features/chat/components";
 import { groupSidebarSessionsByProject, sortSidebarSessions } from "./ChatHistoryList/chatHistoryListGrouping";
 import type { CodeProject } from "@/lib/calls/code-projects";
+import { loadComposerDraftMap } from "@/lib/utils/composerDraftStorage";
 
 /** Max conversations shown per sidebar section before "Open more". */
 const SIDEBAR_SESSION_PREVIEW_LIMIT = 5;
@@ -15,8 +16,8 @@ function SidebarSectionHeader({ label }: { label: string }) {
     return (
         <div className="px-3 pb-0.5 pt-2 first:pt-1">
             <span
-                className="sidebar-section-label font-medium uppercase"
-                style={{ color: "var(--sidebar-muted-fg)" }}
+                className="sidebar-section-label font-medium uppercase tracking-wide"
+                style={{ color: "var(--sidebar-muted-fg)", opacity: 0.65 }}
             >
                 {label}
             </span>
@@ -31,6 +32,7 @@ function ProjectSectionHeader({
     showInfo = false,
     conversationCount = 0,
     isCollapsed = false,
+    rootPath,
     onSelect,
     onToggleCollapse,
     onInfo,
@@ -43,16 +45,45 @@ function ProjectSectionHeader({
     showInfo?: boolean;
     conversationCount?: number;
     isCollapsed?: boolean;
+    rootPath?: string | null;
     onSelect?: () => void;
     onToggleCollapse?: () => void;
     onInfo?: () => void;
     onNewChat?: () => void;
 }) {
+    const [isHovered, setIsHovered] = React.useState(false);
+    const sectionRef = React.useRef<HTMLDivElement>(null);
+
+    // Show buttons when hovering anywhere in the project section (header + conversations)
+    React.useEffect(() => {
+        const section = sectionRef.current?.closest<HTMLElement>('[data-project-section]');
+        if (!section) return;
+        const enter = () => setIsHovered(true);
+        const leave = (e: MouseEvent) => {
+            if (!section.contains(e.relatedTarget as Node | null)) setIsHovered(false);
+        };
+        section.addEventListener("mouseenter", enter);
+        section.addEventListener("mouseleave", leave);
+        return () => {
+            section.removeEventListener("mouseenter", enter);
+            section.removeEventListener("mouseleave", leave);
+        };
+    }, []);
+
     const handleLabelClick = () => {
         onToggleCollapse?.();
     };
 
-    const countLabel = conversationCount === 1 ? '1 chat' : `${conversationCount} chats`;
+    const handleEnterFolder = () => {
+        if (!rootPath) return;
+        const bridge = (window as any).aigeniusDesktop;
+        if (bridge?.revealFileInFolder) {
+            void bridge.revealFileInFolder(rootPath);
+        } else {
+            // Fallback for non-desktop: open as file:// URL
+            window.open(`file://${rootPath}`, '_blank');
+        }
+    };
 
     const buildTitle = () => {
         if (isCollapsed) return `${label} — click to expand`;
@@ -61,57 +92,139 @@ function ProjectSectionHeader({
         return `${label} — click to collapse`;
     };
 
+    const showButtons = isHovered;
+
     return (
         <div
-            className="flex items-start gap-1 px-2 pb-0.5 pt-2 first:pt-1"
-            style={{
-                ...(isActive ? { backgroundColor: "var(--sidebar-icon-btn-hover-bg)" } : {}),
-                ...(hasActiveChat
-                    ? { borderLeft: "2px solid var(--sidebar-fg, #e2e8f0)", paddingLeft: "6px" }
-                    : {}),
-            }}
+            ref={sectionRef}
+            className="flex items-center gap-1 px-3 pb-0.5 pt-1.5 first:pt-1"
         >
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 flex items-center">
                 <button
                     type="button"
                     onClick={handleLabelClick}
-                    className="w-full truncate rounded px-1 py-0.5 text-left sidebar-section-label font-medium uppercase transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
-                    style={{ color: "var(--sidebar-muted-fg)" }}
+                    className="flex min-w-0 flex-1 items-center gap-1.5 rounded px-0.5 py-0.5 text-left sidebar-section-label font-medium uppercase tracking-wide transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+                    style={{
+                        color: isActive || hasActiveChat ? "var(--sidebar-fg, #1c1c1a)" : "var(--sidebar-muted-fg)",
+                        opacity: isActive || hasActiveChat ? 0.9 : "var(--sidebar-project-title-opacity, 1)",
+                    }}
                     title={buildTitle()}
                 >
-                    {label}
-                </button>
-                {isCollapsed ? (
-                    <p
-                        className="px-1 pb-0.5 text-[10px] leading-tight tabular-nums"
-                        style={{ color: "var(--sidebar-muted-fg)", opacity: 0.65 }}
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-3 w-3 shrink-0 transition-transform duration-150 ease-out"
+                        style={{
+                            transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)",
+                        }}
+                        aria-hidden
                     >
-                        {conversationCount > 0 ? countLabel : 'No chats'}
-                    </p>
-                ) : null}
+                        <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                    <span className="truncate uppercase">{label}</span>
+                </button>
             </div>
-            <div className="flex shrink-0 items-center gap-0.5 pt-0.5">
+            {/* Action buttons — fade in/out on section hover */}
+            <div className="flex shrink-0 items-center gap-0.5">
+                {/* Info button (stylish "i") */}
                 {showInfo && onInfo ? (
                     <button
                         type="button"
-                        aria-label={`${label} details`}
-                        title={`${label} details`}
-                        onClick={onInfo}
-                        className="rounded p-0.5 opacity-70 transition hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
-                        style={{ color: "var(--sidebar-muted-fg)" }}
+                        aria-label={`Project info for ${label}`}
+                        title="See info"
+                        onClick={(e) => { e.stopPropagation(); onInfo(); }}
+                        className="flex items-center justify-center rounded p-0.5 transition hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+                        style={{
+                            color: "var(--sidebar-muted-fg)",
+                            opacity: showButtons ? 0.8 : 0,
+                            pointerEvents: showButtons ? "auto" : "none",
+                            transition: "opacity 0.2s ease-out",
+                        }}
                     >
-                        <FiInfo className="h-3.5 w-3.5" aria-hidden />
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-3.5 w-3.5"
+                            aria-hidden
+                        >
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="16" x2="12" y2="12" />
+                            <line x1="12" y1="8" x2="12.01" y2="8" />
+                        </svg>
                     </button>
                 ) : null}
+
+                {/* Enter folder button (arrow facing right) */}
+                {showInfo && rootPath ? (
+                    <button
+                        type="button"
+                        aria-label={`Open folder for ${label}`}
+                        title="Enter folder"
+                        onClick={(e) => { e.stopPropagation(); handleEnterFolder(); }}
+                        className="flex items-center justify-center rounded p-0.5 transition hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+                        style={{
+                            color: "var(--sidebar-muted-fg)",
+                            opacity: showButtons ? 0.8 : 0,
+                            pointerEvents: showButtons ? "auto" : "none",
+                            transition: "opacity 0.2s ease-out",
+                        }}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-3.5 w-3.5"
+                            aria-hidden
+                        >
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" />
+                        </svg>
+                    </button>
+                ) : null}
+
+                {/* New Chat + button */}
                 {onNewChat ? (
                     <button
                         type="button"
                         aria-label={`New chat in ${label}`}
                         title={`New chat in ${label}`}
                         onClick={onNewChat}
-                        className="shrink-0 rounded p-0.5 text-sky-400 transition hover:text-sky-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+                        className="flex items-center justify-center shrink-0 rounded p-0.5 transition hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+                        style={{
+                            color: "var(--sidebar-fg, #e2e8f0)",
+                            opacity: showButtons ? 0.8 : 0,
+                            pointerEvents: showButtons ? "auto" : "none",
+                            transition: "opacity 0.2s ease-out",
+                        }}
                     >
-                        <FiPlus className="h-3.5 w-3.5" aria-hidden />
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-3.5 w-3.5"
+                            aria-hidden
+                        >
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
                     </button>
                 ) : null}
             </div>
@@ -153,6 +266,8 @@ interface ChatHistoryListProps {
     onSelectProject?: (projectId: string | null) => void;
     onProjectInfo?: (projectId: string) => void;
     getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
+    /** Returns true when a conversation has typed text in the composer that hasn't been sent. */
+    hasDraftSession?: (sessionId: string) => boolean;
 }
 
 const ChatHistoryList = React.memo<ChatHistoryListProps>(({
@@ -177,6 +292,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
     onSelectProject,
     onProjectInfo,
     getCachedMessages,
+    hasDraftSession,
 }) => {
     // Centralized Modal State
     const [actionSession, setActionSession] = useState<ChatSession | null>(null);
@@ -374,13 +490,27 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
         }
     };
 
+    const [hydratedDraftMap, setHydratedDraftMap] = useState<Record<string, string> | null>(null);
+
+    useEffect(() => {
+        if (!hasDraftSession) {
+            setHydratedDraftMap(loadComposerDraftMap());
+        }
+    }, [hasDraftSession]);
+
     const renderRow = (session: ChatSession, isActive: boolean) => {
         const sessionId = session.id || "";
+        const hasDraft = Boolean(
+            hasDraftSession
+                ? hasDraftSession(sessionId)
+                : hydratedDraftMap?.[sessionId]?.trim(),
+        );
         return (
             <ChatHistoryListItem
                 key={sessionId || `session-${session.title}`}
                 session={session}
                 isActive={isActive}
+                hasDraft={hasDraft}
                 isGenerating={rowIsGenerating(session)}
                 models={models}
                 onSelect={handleSelect}
@@ -451,14 +581,14 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
 
         return (
             <>
-                <ul className="m-0 list-none space-y-0 px-3 pb-1">
+                <ul className="m-0 list-none space-y-0.5 pl-6 pr-2 pb-1">
                     {visibleSessions.map((session) => renderRow(session, rowIsActive(session)))}
                 </ul>
                 {shouldTruncate && !isSessionsExpanded && hiddenCount > 0 ? (
                     <button
                         type="button"
                         onClick={() => toggleSessionsExpanded(sectionKey)}
-                        className="mb-1.5 w-full px-3 py-0.5 text-left text-[11px] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+                        className="mb-1.5 w-full pl-8 pr-2 py-0.5 text-left text-[11px] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
                         style={{ color: "var(--sidebar-muted-fg)", opacity: 0.8 }}
                     >
                         Open more ({hiddenCount})
@@ -492,12 +622,13 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                             : (collapsedSections[sectionKey] ?? true);
 
                         return (
-                        <div key={sectionKey} className="mb-1">
+                        <div key={sectionKey} className="mb-1" data-project-section>
                             <ProjectSectionHeader
                                 label={bucket.label}
                                 conversationCount={bucket.conversationCount}
                                 isCollapsed={isCollapsed}
                                 hasActiveChat={hasInlineActive}
+                                rootPath={bucket.rootPath}
                                 isActive={
                                     bucket.projectId
                                         ? hasInlineActive

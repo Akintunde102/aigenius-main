@@ -136,7 +136,7 @@
   align-items: stretch;
   gap: 1.25rem;
   overflow: hidden;
-  padding: 0 1.25rem 1.25rem 0;
+  padding: 0.75rem 1.25rem 1.25rem 0;
 }
 
 /* ── Left content ─────────────────────────────── */
@@ -164,6 +164,181 @@
   }
 }
 
+/* ── Stage for 3D Pet & Capability Banner (banner left-aligned with headline) ── */
+.home-root .hero-pet-banner-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+/* ── Real 3D cartoon standing mascot (skeletal GLB) ── */
+.home-root .pet-3d-stage {
+  position: relative;
+  width: 165px;
+  height: 160px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  align-self: flex-start;
+  margin-bottom: 0.25rem;
+  z-index: 14;
+}
+
+.home-root .pet-3d-stage:active {
+  cursor: grabbing;
+}
+
+.home-root .pet-3d-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+.home-root .pet-3d-stage:not(.pet-ready)::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  width: 72px;
+  height: 72px;
+  margin-left: -36px;
+  border-radius: 50%;
+  /* Fox orange-red glow for loading state */
+  background: radial-gradient(circle at 35% 30%, #fb923c 0%, #ea580c 55%, transparent 72%);
+  opacity: 0.38;
+  animation: pet3DLoadPulse 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pet3DLoadPulse {
+  0%, 100% { transform: scale(0.92); opacity: 0.28; }
+  50% { transform: scale(1.06); opacity: 0.48; }
+}
+
+
+/* Floating Speech Pill */
+.home-root .pet-speech-pill {
+  position: absolute;
+  top: 10px;
+  right: 4px;
+  background: rgba(24, 24, 27, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 9999px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fef08a;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px) scale(0.85);
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 15;
+}
+
+.home-root .pet-3d-stage:hover .pet-speech-pill,
+.home-root .pet-excited .pet-speech-pill {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+html[data-theme="light"] .home-root .pet-speech-pill,
+html:not(.dark):not([data-theme="dark"]) .home-root .pet-speech-pill {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #78350f;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Graceful Usage Animation Header ── */
+.home-root .usage-banner-wrapper,
+.home-root .cartoon-banner-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 0.5rem;
+  max-width: 100%;
+  min-height: 2.25rem;
+  z-index: 12;
+  overflow: hidden;
+}
+
+.home-root .usage-banner-header,
+.home-root .cartoon-banner-text {
+  display: inline-block;
+  font-size: clamp(1.2rem, 2.2vw, 1.55rem);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+  color: #f5f5f0;
+  user-select: none;
+  cursor: default;
+  will-change: transform, opacity, filter;
+  transform: translateY(0);
+  opacity: 1;
+  filter: blur(0px);
+}
+
+.home-root .usage-banner-header.usage-phase-idle,
+.home-root .usage-phase-idle {
+  transform: translateY(0);
+  opacity: 1;
+  filter: blur(0px);
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.home-root .usage-banner-header.usage-phase-exit,
+.home-root .usage-phase-exit {
+  transform: translateY(-12px);
+  opacity: 0;
+  filter: blur(4px);
+  transition: transform 0.38s cubic-bezier(0.4, 0, 1, 1),
+              opacity 0.38s cubic-bezier(0.4, 0, 1, 1),
+              filter 0.38s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.home-root .usage-banner-header.usage-phase-enter,
+.home-root .usage-phase-enter {
+  transform: translateY(14px);
+  opacity: 0;
+  filter: blur(4px);
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-root .usage-banner-header,
+  .home-root .cartoon-banner-text {
+    transform: none !important;
+    filter: none !important;
+  }
+  .home-root .usage-banner-header.usage-phase-idle,
+  .home-root .usage-phase-idle {
+    opacity: 1 !important;
+    transition: opacity 0.35s ease !important;
+  }
+  .home-root .usage-banner-header.usage-phase-exit,
+  .home-root .usage-phase-exit {
+    opacity: 0 !important;
+    transition: opacity 0.35s ease !important;
+  }
+  .home-root .usage-banner-header.usage-phase-enter,
+  .home-root .usage-phase-enter {
+    opacity: 0 !important;
+    transition: none !important;
+  }
+}
+
 .home-root .headline {
   font-size: clamp(1.75rem, 3.2vw, 2.75rem);
   font-weight: 700;
@@ -178,7 +353,7 @@
   line-height: 1.65;
   color: #71717a;
   margin-bottom: 1.75rem;
-  max-width: 34ch;
+  max-width: 42ch;
 }
 
 /* Download CTA */
@@ -334,7 +509,7 @@
   height: 0.65rem;
 }
 
-/* ── Right: product window on a colored stage ─── */
+/* ── Right: product window floating over a real landscape photo ─── */
 .home-root .mockup-wrap {
   position: relative;
   flex: 1;
@@ -345,31 +520,66 @@
   pointer-events: none;
   overflow: hidden;
   isolation: isolate;
-  /* Dark slate stage — cool counterpart to light sage */
-  background: #3a414c;
-  border-radius: 16px;
+  border-radius: 10px;
   padding: 2.25rem 2rem;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* Real photo background */
+.home-root .mockup-wrap::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/images/hero-bg-landscape.jpg");
+  background-size: cover;
+  background-position: center;
+  border-radius: inherit;
+  /* Dark mode: atmospheric deep tones */
+  filter: brightness(0.6) saturate(0.85);
+  transition: filter 0.3s ease;
+  z-index: 0;
+}
+
+/* Subtle overlay vignette for dark mode */
+.home-root .mockup-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at center,
+    rgba(14, 13, 12, 0.08) 0%,
+    rgba(14, 13, 12, 0.45) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
 }
 
 .home-root .window {
+  position: relative;
+  z-index: 2;
   width: 100%;
+  max-width: 90%;
+  margin: auto;
+  align-self: center;
   flex: 0 1 auto;
   max-height: 100%;
   display: flex;
   flex-direction: column;
   background: #1c1c1e;
-  border-radius: 12px;
+  /* Clean border-radius proportional to container */
+  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.12),
-    0 8px 24px rgba(0, 0, 0, 0.28),
-    0 28px 56px rgba(0, 0, 0, 0.32);
+    0 1px 2px rgba(0, 0, 0, 0.15),
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    0 24px 50px rgba(0, 0, 0, 0.4);
 }
 
 .home-root .window-bar {
   height: 38px;
-  background: #2a2a2c;
+  background: #252423;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
@@ -531,6 +741,13 @@ html:not(.dark):not([data-theme="dark"]) .home-root .theme-toggle {
   color: #71717a;
 }
 
+html[data-theme="light"] .home-root .usage-banner-header,
+html:not(.dark):not([data-theme="dark"]) .home-root .usage-banner-header,
+html[data-theme="light"] .home-root .cartoon-banner-text,
+html:not(.dark):not([data-theme="dark"]) .home-root .cartoon-banner-text {
+  color: #18181b;
+}
+
 html[data-theme="light"] .home-root .headline,
 html:not(.dark):not([data-theme="dark"]) .home-root .headline {
   color: #18181b;
@@ -538,22 +755,39 @@ html:not(.dark):not([data-theme="dark"]) .home-root .headline {
 
 html[data-theme="light"] .home-root .mockup-wrap,
 html:not(.dark):not([data-theme="dark"]) .home-root .mockup-wrap {
-  background: #c5c6b6;
+  background: transparent;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+/* Light mode: brighter photo, warm natural colors matching the reference painting feel */
+html[data-theme="light"] .home-root .mockup-wrap::before,
+html:not(.dark):not([data-theme="dark"]) .home-root .mockup-wrap::before {
+  filter: brightness(0.96) saturate(1.05);
+}
+
+/* Light mode: subtle soft radial overlay to ensure window contrast */
+html[data-theme="light"] .home-root .mockup-wrap::after,
+html:not(.dark):not([data-theme="dark"]) .home-root .mockup-wrap::after {
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(247, 246, 242, 0.3) 100%
+  );
 }
 
 html[data-theme="light"] .home-root .window,
 html:not(.dark):not([data-theme="dark"]) .home-root .window {
   background: #f7f6f2;
-  border-color: rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   box-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.04),
-    0 8px 24px rgba(0, 0, 0, 0.1),
-    0 24px 48px rgba(0, 0, 0, 0.12);
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 8px 20px rgba(0, 0, 0, 0.12),
+    0 24px 44px rgba(0, 0, 0, 0.16);
 }
 
 html[data-theme="light"] .home-root .window-bar,
 html:not(.dark):not([data-theme="dark"]) .home-root .window-bar {
-  background: #f3f2ee;
+  background: #f0efeb;
   border-color: rgba(0, 0, 0, 0.08);
 }
 

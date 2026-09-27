@@ -6,6 +6,7 @@ import {
     extractReasoningChunk,
     finalizeAllThinkingEvents,
     finalizeOpenThinkingEvent,
+    settleLoadingToolsOnStreamFailure,
 } from '../utils/thinkingEvent.utils';
 import {
     UseStreamingResponseProps,
@@ -560,6 +561,12 @@ export function useStreamingResponse({
 
             handleStreamResult(result, streamingSessionId, requestOverrides?.draftEpoch, requestOverrides?.sendGeneration);
         } catch (err) {
+            const message = err instanceof Error && err.message.trim()
+                ? err.message
+                : 'The connection dropped before this command finished.';
+            if (settleLoadingToolsOnStreamFailure(events, message)) {
+                patchEventsOnLastMessage();
+            }
             flushUiUpdate(true);
             persistStreamProgressLocally(true);
             syncSidebarHistory();

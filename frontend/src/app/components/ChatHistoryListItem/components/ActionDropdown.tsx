@@ -85,7 +85,8 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
     return (
         <div className="relative" ref={dropdownRef}>
             <button
-                className={`p-0.5 text-slate-400 opacity-0 transition hover:text-slate-100 group-hover:opacity-100 ${isProcessing ? "opacity-100" : ""}`}
+                className={`p-0.5 opacity-0 transition hover:opacity-100 group-hover:opacity-100 ${isProcessing || isOpen ? "opacity-100" : ""}`}
+                style={{ color: "var(--sidebar-muted-fg)" }}
                 onClick={handleDropdownToggle}
                 title="More actions"
                 disabled={isProcessing}

@@ -20,6 +20,13 @@ import {
 import { executeSidecarTool, sidecarToolsEnabled } from './sidecar-tools';
 import { blockInteractiveShellCommand } from './shell-interactive-block';
 import { hiddenSpawnOptions } from './utils/hidden-child-process';
+import { killChildProcessTree } from './utils/shell-process-tree';
+import {
+  effectiveBlockWaitMs,
+  resolveShellRunPolicy,
+  SHELL_KILL_GRACE_MS,
+  sidecarShellFetchTimeoutMs,
+} from './utils/shell-run-policy.utils';
 
 const MAX_CMD_LEN = 64_000;
 const MAX_SHELL_OUT = 512 * 1024;
@@ -133,9 +140,8 @@ export async function runShell(
     return { ok: false, error: 'cwd does not exist or is not accessible' };
   }
 
-  const timeoutMs = typeof args.timeout_ms === 'number' && args.timeout_ms >= 1000
-    ? Math.min(args.timeout_ms, 300_000)
-    : 60_000;
+  const policy = resolveShellRunPolicy(command, args);
+  const timeoutMs = policy.timeoutMs;
 
   const approved = await confirmLocalShellExecution(parent, command, cwdResolved, timeoutMs);
   if (!approved) {
@@ -144,11 +150,16 @@ export async function runShell(
 
   // Streaming shell output must stay in the main process (IPC chunks). Non-streaming runs in sidecar.
   if (sidecarToolsEnabled() && !streamId) {
-    const sidecar = await executeSidecarTool('local_shell', {
-      command,
-      cwd: cwdResolved,
-      timeout_ms: timeoutMs,
-    });
+    const sidecar = await executeSidecarTool(
+      'local_shell',
+      {
+        command,
+        cwd: cwdResolved,
+        timeout_ms: timeoutMs,
+        ...(policy.blockUntilMs != null ? { block_until_ms: policy.blockUntilMs } : {}),
+      },
+      sidecarShellFetchTimeoutMs(policy),
+    );
     if (sidecar) {
       return sidecar;
     }
@@ -179,6 +190,8 @@ export async function runShell(
         cwd: cwdResolved,
         env: process.env as NodeJS.ProcessEnv,
         windowsVerbatimArguments: process.platform === 'win32',
+        // Ignore stdin so CLIs cannot hang waiting for input that never arrives.
+        stdio: ['ignore', 'pipe', 'pipe'],
       }),
     );
 
@@ -189,30 +202,102 @@ export async function runShell(
     let settled = false;
     let timedOut = false;
     let killedForLimit = false;
+    let backgrounded = false;
+    let killGrace: ReturnType<typeof setTimeout> | undefined;
+    let blockTimer: ReturnType<typeof setTimeout> | undefined;
+    let killTimer: ReturnType<typeof setTimeout> | undefined;
 
     const settle = (out: { ok: true; result: string; rawData?: any } | { ok: false; error: string }): void => {
       if (settled) {
         return;
       }
       settled = true;
-      try {
-        clearTimeout(timer);
-      } catch {
-        /* ignore */
+      if (killTimer) {
+        clearTimeout(killTimer);
+      }
+      if (blockTimer) {
+        clearTimeout(blockTimer);
+      }
+      if (killGrace) {
+        clearTimeout(killGrace);
       }
       resolve(out);
     };
 
-    const timer = setTimeout(() => {
-      timedOut = true;
-      try {
-        child.kill('SIGTERM');
-      } catch {
-        /* ignore */
+    const flushTails = (): void => {
+      const tailOut = decOut.end();
+      const tailErr = decErr.end();
+      if (tailOut) {
+        accOut += tailOut;
+        sendChunk('stdout', tailOut);
       }
-    }, timeoutMs);
+      if (tailErr) {
+        accErr += tailErr;
+        sendChunk('stderr', tailErr);
+      }
+    };
+
+    const timeoutError = (): { ok: false; error: string } => {
+      const parts = [`Command timed out after ${Math.round(timeoutMs / 1000)}s and was stopped.`];
+      if (accOut.trim()) {
+        parts.push(`stdout:\n${accOut.trim()}`);
+      }
+      if (accErr.trim()) {
+        parts.push(`stderr:\n${accErr.trim()}`);
+      }
+      return { ok: false, error: parts.join('\n\n') };
+    };
+
+    const backgroundResult = (): { ok: true; result: string; rawData?: any } => {
+      const formatted = formatShellResult({
+        stdout: accOut,
+        stderr: accErr,
+        exit_code: null,
+        backgrounded: true,
+        pid: child.pid,
+      });
+      return { ok: true, result: formatted.result, rawData: formatted.rawData };
+    };
+
+    const requestKill = (): void => {
+      timedOut = true;
+      killChildProcessTree(child);
+      killGrace = setTimeout(() => {
+        if (settled) {
+          return;
+        }
+        flushTails();
+        try {
+          child.unref();
+        } catch {
+          /* ignore */
+        }
+        settle(timeoutError());
+      }, SHELL_KILL_GRACE_MS);
+    };
+
+    if (policy.blockUntilMs != null) {
+      blockTimer = setTimeout(() => {
+        if (settled) {
+          return;
+        }
+        backgrounded = true;
+        flushTails();
+        try {
+          child.unref();
+        } catch {
+          /* ignore */
+        }
+        settle(backgroundResult());
+      }, effectiveBlockWaitMs(policy.blockUntilMs));
+    } else {
+      killTimer = setTimeout(requestKill, timeoutMs);
+    }
 
     const onChunk = (kind: 'stdout' | 'stderr', buf: Buffer): void => {
+      if (settled) {
+        return;
+      }
       const dec = kind === 'stdout' ? decOut : decErr;
       const text = dec.write(buf);
       if (!text) {
@@ -226,11 +311,7 @@ export async function runShell(
       const totalBytes = Buffer.byteLength(accOut, 'utf8') + Buffer.byteLength(accErr, 'utf8');
       if (totalBytes > MAX_SHELL_OUT) {
         killedForLimit = true;
-        try {
-          child.kill('SIGTERM');
-        } catch {
-          /* ignore */
-        }
+        killChildProcessTree(child);
         return;
       }
       sendChunk(kind, text);
@@ -243,24 +324,15 @@ export async function runShell(
       settle({ ok: false, error: err.message });
     });
 
-    child.on('close', (code, signal) => {
-      if (settled) {
+    const onEnded = (code: number | null, signal: NodeJS.Signals | null): void => {
+      if (settled || backgrounded) {
         return;
       }
 
-      const tailOut = decOut.end();
-      const tailErr = decErr.end();
-      if (tailOut) {
-        accOut += tailOut;
-        sendChunk('stdout', tailOut);
-      }
-      if (tailErr) {
-        accErr += tailErr;
-        sendChunk('stderr', tailErr);
-      }
+      flushTails();
 
       if (timedOut) {
-        settle({ ok: false, error: 'Command timed out' });
+        settle(timeoutError());
         return;
       }
 
@@ -290,6 +362,9 @@ export async function runShell(
         result: formatted.result,
         rawData: formatted.rawData,
       });
-    });
+    };
+
+    child.on('exit', onEnded);
+    child.on('close', onEnded);
   });
 }
