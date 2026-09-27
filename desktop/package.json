@@ -1,10 +1,11 @@
 {
   "name": "aigenius-desktop",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "description": "AIGenius",
   "dependencies": {
-    "@vscode/ripgrep": "^1.18.0"
+    "@vscode/ripgrep": "^1.18.0",
+    "electron-updater": "^6.8.9"
   },
   "author": "AIGenius",
   "homepage": "https://aigenius.chat",
@@ -130,6 +131,14 @@
       {
         "from": "dist-resources/package-runtime.json",
         "to": "package-runtime.json"
+      },
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
+      },
+      {
+        "from": "build/aigenius_icon_final.png",
+        "to": "aigenius_icon_final.png"
       }
     ],
     "linux": {
@@ -175,10 +184,10 @@
     "win": {
       "target": [
         "nsis",
-        "zip",
-        "appx"
+        "zip"
       ],
       "icon": "build/icon.ico",
+      "artifactName": "AIGenius-Setup-${version}.${ext}",
       "signAndEditExecutable": false,
       "extraResources": [
         {
@@ -198,12 +207,18 @@
     },
     "appx": {
       "applicationId": "AIGenius",
-      "identityName": "YOUR_MS_STORE_IDENTITY_NAME",
-      "publisher": "CN=YOUR_MS_STORE_PUBLISHER_ID",
+      "identityName": "NoboxLabs.AIGenius",
+      "publisher": "CN=916712C8-9732-4073-BD32-F7B137B5DE9D",
       "publisherDisplayName": "Nobox Labs",
-      "displayName": "AIGenius",
-      "description": "Every top AI model in one workspace."
+      "displayName": "AIGenius"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Akintunde102",
+        "repo": "aigenius-main"
+      }
+    ],
     "compression": "normal"
   }
 }

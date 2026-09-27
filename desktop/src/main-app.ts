@@ -74,6 +74,7 @@ import { installDesktopUiProtocolHandler } from './desktop-ui-protocol';
 import path from 'path';
 import { DESKTOP_APP_USER_MODEL_ID, resolveDesktopUserDataDirName } from './desktop-app-identity';
 import { installVcRuntimeElevated, isVcRuntimeInstalled } from './vcredist-guard';
+import { setupAutoUpdater } from './main-auto-updater';
 
 if (process.platform === 'win32') {
   app.setAppUserModelId(DESKTOP_APP_USER_MODEL_ID);
@@ -197,6 +198,9 @@ if (!gotLock) {
     registerIpcHandlers();
 
     const mainWindow = createWindow({ deferAppLoad: true });
+    
+    // Initialize auto-updater
+    setupAutoUpdater(mainWindow);
 
     // Self-heal: the NSIS install step for the VC++ Redistributable requires admin approval and
     // can be declined/skipped. Without it, the mini-server crashes with an opaque health-check
