@@ -6,9 +6,9 @@ import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
 import { cn } from "@/lib/utils";
 
 const PLATFORMS = [
-  { id: "macos", label: "macOS", href: null },
-  { id: "windows", label: "Windows", href: "https://pub-77b8636a163e4485850be3c560433232.r2.dev/AIGenius-Setup-0.1.2.exe" },
-  { id: "linux", label: "Linux", href: "https://pub-77b8636a163e4485850be3c560433232.r2.dev/aigenius-desktop_0.1.2_arm64.deb" },
+  { id: "macos", label: "macOS", href: "/api/download/macos" },
+  { id: "windows", label: "Windows", href: "/api/download/windows" },
+  { id: "linux", label: "Linux", href: "/api/download/linux" },
 ] as const;
 
 /**
