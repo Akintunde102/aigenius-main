@@ -24,6 +24,7 @@ import {
     resolveStickyMarkerPosition,
     resolveStickyMarkerHighlightRects,
 } from '../../chat/hooks/orphanNoteAnchors';
+import { computeSelectionToolbarPosition } from '../../chat/hooks/selectionToolbarPosition.utils';
 import { OrphanNoteLayer } from './OrphanNoteLayer';
 import { AssistantTurnSegments } from './AssistantTurnSegments';
 import { shouldHideEmptyAssistantMessage } from '../utils/assistantMessageVisibility.utils';
@@ -32,7 +33,7 @@ import { useMessageContent, useCostCalculation, useSaveState } from '../hooks';
 // Message display components - direct imports to avoid circular dependency
 import { MessageHeader } from './MessageHeader';
 import { AssistantStreamStatus } from './AssistantStreamStatus';
-import { MessageActionsMenu } from './MessageActionsMenu';
+import { MessageActionsMenu, messageActionIconButtonClassName } from './MessageActionsMenu';
 import { CostDisplay } from './CostDisplay';
 import { UsageDetailsModal } from './UsageDetailsModal';
 
@@ -361,31 +362,42 @@ export function ChatMessage({
     const handleMouseUp = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
         if (msg.role !== 'assistant' || disableOrphanThreads) return;
 
+        const pointer = { x: event.clientX, y: event.clientY };
+
         // Small delay to allow selection to finalize
         setTimeout(() => {
+            const container = messageContainerRef.current;
             const selection = window.getSelection();
-            if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+            if (!container || !selection || selection.isCollapsed || !selection.toString().trim()) {
                 setSelectionTrigger(null);
                 return;
             }
 
             const range = selection.getRangeAt(0);
-            if (!messageContainerRef.current?.contains(range.commonAncestorContainer)) {
+            if (!container.contains(range.commonAncestorContainer)) {
                 setSelectionTrigger(null);
                 return;
             }
 
-            const rect = range.getBoundingClientRect();
-            const containerRect = messageContainerRef.current.getBoundingClientRect();
+            const titlebarOffset = Number.parseInt(
+                getComputedStyle(document.documentElement).getPropertyValue("--aigenius-desktop-titlebar-top") || "0",
+                10,
+            ) || 0;
 
-            const isBelow = rect.top < 60; // Avoid clipping at viewport top
+            const placement = computeSelectionToolbarPosition({
+                range,
+                overlayParent: container,
+                pointer,
+                viewportTopSafe: 56 + titlebarOffset,
+            });
+
+            if (!placement) {
+                setSelectionTrigger(null);
+                return;
+            }
 
             setSelectionTrigger({
-                left: rect.left + rect.width / 2 - containerRect.left,
-                top: isBelow
-                    ? rect.bottom - containerRect.top + 10
-                    : rect.top - containerRect.top - 40,
-                isBelow,
+                ...placement,
                 selection,
             });
         }, 10);
@@ -393,7 +405,7 @@ export function ChatMessage({
 
     useEffect(() => {
         if (disableOrphanThreads || !messageContainerRef.current || orphanMarkers.length === 0 || orphanMarkersHidden) {
-            setResolvedMarkerPositions([]);
+            setResolvedMarkerPositions((prev) => (prev.length === 0 ? prev : []));
             return;
         }
 
@@ -478,23 +490,15 @@ export function ChatMessage({
                     onPointerCancel={clearLongPress}
                     onMouseUp={handleMouseUp}
                 >
-                    {msg.role === "user" && !isEditing ? (
-                        <div
-                            className="group/replay absolute right-0.5 top-0.5 z-20 flex items-center justify-center"
-                            title="Replay message"
-                        >
-                            <button
-                                type="button"
-                                onClick={handleReplay}
-                                disabled={loading || streaming}
-                                tabIndex={-1}
-                                className="inline-flex h-5 w-5 items-center justify-center rounded bg-transparent text-[#64748B] opacity-0 transition-opacity duration-150 group-hover/replay:opacity-100 hover:text-[#0F172A] disabled:cursor-not-allowed group-hover/replay:disabled:opacity-40 dark:text-zinc-500 dark:hover:text-zinc-200"
-                                aria-label="Replay message"
-                            >
-                                <FiRepeat size={11} aria-hidden />
-                            </button>
-                        </div>
-                    ) : null}
+                    {!orphanMarkersHidden && !disableOrphanThreads && (
+                        <OrphanNoteLayer
+                            resolvedMarkerPositions={resolvedMarkerPositions}
+                            selectionTrigger={selectionTrigger}
+                            onOpenOrphanMarker={onOpenOrphanMarker}
+                            triggerAnchoredReply={triggerAnchoredReply}
+                            isSelectionActive={!!selectionTrigger}
+                        />
+                    )}
                     <div className="relative z-10">
                         {msg.role === 'assistant' && orphanMarkers.length > 0 && !disableOrphanThreads ? (
                             <button
@@ -508,15 +512,6 @@ export function ChatMessage({
                                     : `Hide ${orphanMarkers.length}`}
                             </button>
                         ) : null}
-                        {!orphanMarkersHidden && !disableOrphanThreads && (
-                            <OrphanNoteLayer
-                                resolvedMarkerPositions={resolvedMarkerPositions}
-                                selectionTrigger={selectionTrigger}
-                                onOpenOrphanMarker={onOpenOrphanMarker}
-                                triggerAnchoredReply={triggerAnchoredReply}
-                                isSelectionActive={!!selectionTrigger}
-                            />
-                        )}
                         {!(msg.role === 'user' && isEditing) ? (
                             <MessageHeader
                                 role={msg.role}
@@ -643,14 +638,57 @@ export function ChatMessage({
                             )}
                         </div>
 
-                        <div
-                            className={
-                                msg.role === "user"
-                                    ? "mt-2 flex items-start justify-end gap-2"
-                                    : "mt-2 flex items-start justify-between gap-2"
-                            }
-                        >
-                            {msg.role === "assistant" ? (
+                        {msg.role === "user" ? (
+                            <div className="mt-1.5 flex h-5 items-center justify-end gap-1">
+                                <div className="flex h-5 items-center">
+                                    <CostDisplay
+                                        msg={msg}
+                                        streaming={streaming}
+                                        showCosts={showCosts}
+                                        cost={cost}
+                                        formatCost={formatCost}
+                                    />
+                                </div>
+                                {!isEditing ? (
+                                    <div
+                                        role="group"
+                                        aria-label="User message actions"
+                                        className="flex h-5 shrink-0 items-center gap-0.5"
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                handleReplay();
+                                            }}
+                                            disabled={loading || streaming}
+                                            className={messageActionIconButtonClassName}
+                                            aria-label="Replay message"
+                                        >
+                                            <FiRepeat size={14} aria-hidden />
+                                        </button>
+                                        <MessageActionsMenu
+                                            align="end"
+                                            msg={msg}
+                                            idx={idx}
+                                            isSaved={isSaved}
+                                            justSaved={justSaved}
+                                            loading={loading}
+                                            streaming={streaming}
+                                            onDelete={onDelete}
+                                            onDeleteById={onDeleteById}
+                                            onCopy={handleCopy}
+                                            onSave={handleSave}
+                                            onReplay={handleReplay}
+                                            onStartOrphanReply={handleMenuOrphanReply}
+                                            onOpenUsageDetails={() => setShowUsageDetails(true)}
+                                            onOpenChange={setMessageActionsMenuOpen}
+                                        />
+                                    </div>
+                                ) : null}
+                            </div>
+                        ) : (
+                            <div className="mt-2 flex items-center justify-between gap-2">
                                 <div className="flex shrink-0 items-center gap-2">
                                     <MessageActionsMenu
                                         align="start"
@@ -681,70 +719,37 @@ export function ChatMessage({
                                         formatCost={formatCost}
                                     />
                                 </div>
-                            ) : null}
-                            <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
-                                <div className="flex flex-wrap items-center justify-end gap-2">
-                                    {msg.role === "assistant" ? (
-                                        <CostDisplay
-                                            variant="metaOnly"
-                                            msg={msg}
-                                            streaming={streaming}
-                                            showCosts={showCosts}
-                                            cost={cost}
-                                            formatCost={formatCost}
-                                            beforeTime={
-                                                <span
-                                                    className="inline-flex max-w-[14rem] items-center gap-1.5 truncate text-[11px] font-semibold text-slate-700"
-                                                    title={displayName}
-                                                >
-                                                    {assistantAvatarUrl ? (
-                                                        <img
-                                                            src={assistantAvatarUrl}
-                                                            alt=""
-                                                            className="h-3.5 w-3.5 shrink-0 rounded object-cover"
-                                                            width={14}
-                                                            height={14}
-                                                            loading="lazy"
-                                                            decoding="async"
-                                                        />
-                                                    ) : null}
-                                                    <span className="truncate">{displayName}</span>
-                                                </span>
-                                            }
-                                        />
-                                    ) : (
-                                        <CostDisplay
-                                            msg={msg}
-                                            streaming={streaming}
-                                            showCosts={showCosts}
-                                            cost={cost}
-                                            formatCost={formatCost}
-                                        />
-                                    )}
-                                </div>
-                            </div>
-                            {msg.role === "user" ? (
-                                <div className="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-                                    <MessageActionsMenu
-                                        align="end"
+                                <div className="flex min-w-0 flex-1 items-center justify-end">
+                                    <CostDisplay
+                                        variant="metaOnly"
                                         msg={msg}
-                                        idx={idx}
-                                        isSaved={isSaved}
-                                        justSaved={justSaved}
-                                        loading={loading}
                                         streaming={streaming}
-                                        onDelete={onDelete}
-                                        onDeleteById={onDeleteById}
-                                        onCopy={handleCopy}
-                                        onSave={handleSave}
-                                        onReplay={handleReplay}
-                                        onStartOrphanReply={handleMenuOrphanReply}
-                                        onOpenUsageDetails={() => setShowUsageDetails(true)}
-                                        onOpenChange={setMessageActionsMenuOpen}
+                                        showCosts={showCosts}
+                                        cost={cost}
+                                        formatCost={formatCost}
+                                        beforeTime={
+                                            <span
+                                                className="inline-flex max-w-[14rem] items-center gap-1.5 truncate text-[11px] font-semibold text-slate-700"
+                                                title={displayName}
+                                            >
+                                                {assistantAvatarUrl ? (
+                                                    <img
+                                                        src={assistantAvatarUrl}
+                                                        alt=""
+                                                        className="h-3.5 w-3.5 shrink-0 rounded object-cover"
+                                                        width={14}
+                                                        height={14}
+                                                        loading="lazy"
+                                                        decoding="async"
+                                                    />
+                                                ) : null}
+                                                <span className="truncate">{displayName}</span>
+                                            </span>
+                                        }
                                     />
                                 </div>
-                            ) : null}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

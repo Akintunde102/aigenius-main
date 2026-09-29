@@ -10,6 +10,7 @@ jest.mock('../ModelSelectionFiltersNew', () => ({
         <div data-testid="filters">
             <button onClick={() => props.setOrderBy('cost')}>Set Cost</button>
             <button onClick={() => props.setImageFilterOnly(!props.imageFilterOnly)}>Toggle Image</button>
+            <button onClick={() => props.setGroupByAffordability(!props.groupByAffordability)}>Toggle Affordability</button>
         </div>
     )
 }));
@@ -35,7 +36,19 @@ jest.mock('../ModelSelectionGrid', () => ({
 }));
 
 jest.mock('../RecentModelChips', () => ({
-    RecentModelChips: () => <div data-testid="recent-chips" />
+    RecentModelChips: ({ onPick, recentModels = [] }: any) => (
+        <div data-testid="recent-chips">
+            {recentModels.map((model: any) => (
+                <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => onPick(model)}
+                >
+                    {model.name}
+                </button>
+            ))}
+        </div>
+    )
 }));
 
 jest.mock('../FavoritesEmptyState', () => ({
@@ -191,7 +204,7 @@ describe('ModelSelectionModal', () => {
         render(<ModelSelectionModal {...defaultProps} />);
         
         // Use container query or check child relationship
-        expect(modalRoot).toContainElement(screen.getByText('Select Model'));
+        expect(modalRoot).toContainElement(screen.getByText('Models'));
         
         // Clean up
         document.body.removeChild(modalRoot);
@@ -218,19 +231,13 @@ describe('ModelSelectionModal', () => {
         );
 
         fireEvent.click(screen.getByRole('button', { name: 'All Models' }));
-
-        const toggle = screen.getByRole('switch', {
-            name: 'show me all models I can use',
-        });
-        expect(toggle).toBeInTheDocument();
-
-        fireEvent.click(toggle);
+        fireEvent.click(screen.getByText('Toggle Affordability'));
 
         expect(screen.getByText('Models you can use')).toBeInTheDocument();
         expect(screen.getByText('Need more credits')).toBeInTheDocument();
     });
 
-    it('shows affordability toggle on Quick picks when catalog has locked models', () => {
+    it('splits models by wallet affordability on Quick picks when filter is toggled', () => {
         const expensiveModel: Model = {
             ...mockModels[1],
             id: 'expensive',
@@ -254,8 +261,73 @@ describe('ModelSelectionModal', () => {
         expect(screen.getByRole('button', { name: 'Quick picks' })).toHaveClass(
             'app-tab-pill--active',
         );
-        expect(
-            screen.getByRole('switch', { name: 'show me all models I can use' }),
-        ).toBeInTheDocument();
+        fireEvent.click(screen.getByText('Toggle Affordability'));
+        expect(screen.getByText('Models you can use')).toBeInTheDocument();
+    });
+
+    it('labels the sidebar Models instead of Settings', () => {
+        render(<ModelSelectionModal {...defaultProps} />);
+
+        expect(screen.getByText('Models')).toBeInTheDocument();
+        expect(screen.queryByText('Settings')).not.toBeInTheDocument();
+    });
+
+    it('does not render the Select Model heading', () => {
+        render(<ModelSelectionModal {...defaultProps} />);
+
+        expect(screen.queryByText('Select Model')).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Models$/ })).toBeInTheDocument();
+    });
+
+    it('does not render Providers, Provide Feedback, or a user profile in the sidebar', () => {
+        render(
+            <ModelSelectionModal
+                {...defaultProps}
+                models={[
+                    { ...mockModels[0], id: 'google/gemini' },
+                    { ...mockModels[1], id: 'openai/gpt' },
+                ]}
+            />,
+        );
+
+        expect(screen.queryByText('Providers')).not.toBeInTheDocument();
+        expect(screen.queryByText('Provide Feedback')).not.toBeInTheDocument();
+        expect(screen.queryByText('Akintunde Jegede')).not.toBeInTheDocument();
+        expect(screen.queryByText('akintundejegede2025@gmail.com')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Google' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'OpenAI' })).not.toBeInTheDocument();
+    });
+
+    it('renders recently picked above the view title', () => {
+        render(
+            <ModelSelectionModal
+                {...defaultProps}
+                recentModels={[mockModels[0]]}
+            />,
+        );
+
+        const recent = screen.getByTestId('recent-chips');
+        const title = screen.getByRole('heading', { name: /Models$/ });
+
+        expect(recent.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('hides recently picked when there are no recent models', () => {
+        render(<ModelSelectionModal {...defaultProps} recentModels={[]} />);
+
+        expect(screen.queryByTestId('recent-chips')).not.toBeInTheDocument();
+    });
+
+    it('shows the info modal via handleShowModelDetails when a recently picked model is clicked', () => {
+        render(
+            <ModelSelectionModal
+                {...defaultProps}
+                recentModels={[mockModels[0]]}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Model A' }));
+
+        expect(defaultProps.handleShowModelDetails).toHaveBeenCalledWith(mockModels[0]);
     });
 });

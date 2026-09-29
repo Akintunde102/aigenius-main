@@ -7,9 +7,11 @@ import type { Model } from "@/app/components/model-interface/shared/types";
 import { getModelDisplayName } from "@/app/components/model-interface/shared/utils";
 import {
   computeModelRequiredBalance,
+  getModelCreditBurnPercentage,
   isModelPickLocked,
 } from "@/app/components/model-interface/features/models/utils/modelWalletAffordance.utils";
 import { ModelWalletLockIndicator } from "@/app/components/model-interface/features/models/components/ModelWalletLockIndicator";
+import { ModelCreditBurnIndicator } from "@/app/components/model-interface/features/models/components/ModelCreditBurnIndicator";
 import {
   QUICK_PICK_DROPDOWN_MAX_WIDTH,
   QUICK_PICK_DROPDOWN_MIN_WIDTH,
@@ -76,6 +78,7 @@ function QuickPickOption({
     modelId: model.id,
     selectedModelId,
   });
+  const burnPercentage = getModelCreditBurnPercentage(model, wallet);
 
   const handleClick = () => {
     if (isWalletLocked) {
@@ -105,6 +108,21 @@ function QuickPickOption({
             requiredBalance={requiredBalance}
             wallet={wallet}
           />
+        </>
+      ) : burnPercentage !== null && burnPercentage >= 60 ? (
+        <>
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <span className="min-w-0 truncate">{displayName}</span>
+            <ModelCreditBurnIndicator burnPercentage={burnPercentage} />
+          </div>
+          {isActive && (
+            <FiCheck
+              size={12}
+              className="shrink-0"
+              style={{ color: "var(--chat-accent)" }}
+              aria-hidden
+            />
+          )}
         </>
       ) : (
         <>
@@ -184,6 +202,11 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
   const displayName = displayModel
     ? getModelDisplayName(displayModel)
     : "Select model";
+
+  const selectedModelBurnPercentage = useMemo(
+    () => getModelCreditBurnPercentage(selectedModel, wallet),
+    [selectedModel, wallet],
+  );
 
   /** Active model is not listed in the dropdown menu (e.g. toggled off quick picks). */
   const activeOutsideQuickPicks =
@@ -322,6 +345,15 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
                 <span className="min-w-0 flex-1 truncate">
                   {getModelDisplayName(selectedModel)}
                 </span>
+                {selectedModelBurnPercentage !== null && selectedModelBurnPercentage >= 60 && (
+                  <span
+                    className="inline-flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-400/15"
+                    title={`A single message with this model could consume ~${selectedModelBurnPercentage}% of your current credits.`}
+                  >
+                    <span aria-hidden>🔥</span>
+                    <span>~{selectedModelBurnPercentage}%</span>
+                  </span>
+                )}
                 <FiCheck
                   size={12}
                   className="shrink-0"
@@ -397,6 +429,15 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
         >
           {displayName}
         </span>
+        {selectedModelBurnPercentage !== null && selectedModelBurnPercentage >= 60 && (
+          <span
+            className="inline-flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-400/15"
+            title={`A single message with ${displayName} could consume ~${selectedModelBurnPercentage}% of your current credits.`}
+          >
+            <span aria-hidden>🔥</span>
+            <span>~{selectedModelBurnPercentage}%</span>
+          </span>
+        )}
         <FiChevronDown
           size={mini ? 10 : 12}
           className={`shrink-0 opacity-70 transition-transform duration-200 ${open ? "rotate-180" : ""}`}

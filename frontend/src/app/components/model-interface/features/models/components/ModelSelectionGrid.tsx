@@ -196,7 +196,7 @@ export const ModelSelectionGrid = React.memo(({
   }
 
   if (totalModelCount === 0) {
-    return <div className="text-gray-400 dark:text-zinc-500 text-sm">No models found.</div>;
+    return <div className="text-sm" style={{ color: "var(--modal-muted-fg)" }}>No models found.</div>;
   }
 
   return (

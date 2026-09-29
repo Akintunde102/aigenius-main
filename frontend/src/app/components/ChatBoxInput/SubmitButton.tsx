@@ -16,8 +16,8 @@ export const SubmitButton: React.FC<SubmitButtonProps> = ({
             disabled={!isEnabled}
             onClick={onSubmit}
             className={`rounded-full p-1.5 transition-colors ${isEnabled
-                ? "text-white [background-color:var(--chat-accent)] hover:[background-color:var(--chat-accent-hover)]"
-                : "cursor-not-allowed [background-color:var(--chat-accent-muted)] [color:var(--chat-muted-fg)]"
+                ? "[background-color:var(--send-btn-bg,#ecece9)] [color:var(--send-btn-fg,#1c1c1a)] hover:opacity-85 dark:[background-color:var(--chat-accent)] dark:text-white dark:hover:[background-color:var(--chat-accent-hover)]"
+                : "cursor-not-allowed opacity-50 [background-color:var(--send-btn-bg,#ecece9)] [color:var(--send-btn-fg,#1c1c1a)] dark:opacity-100 dark:[background-color:var(--chat-accent-muted)] dark:[color:var(--chat-muted-fg)]"
                 }`}
             title="Send message"
         >

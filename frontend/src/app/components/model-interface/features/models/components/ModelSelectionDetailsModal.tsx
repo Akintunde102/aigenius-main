@@ -42,15 +42,21 @@ const ModelSelectionDetailsModal = memo(function ModelDetailsModal({
                 }}
             >
                 {/* Header */}
-                <div className="flex justify-between items-center p-4 border-b" style={{ borderColor: "var(--modal-border)" }}>
-                    <h3 className="text-lg font-bold">{getModelDisplayName(model)}</h3>
+                <div className="flex justify-between items-center px-5 py-3.5 border-b" style={{ borderColor: "var(--modal-border)" }}>
+                    <p
+                        role="heading"
+                        aria-level={2}
+                        style={{ color: "var(--modal-fg)", fontSize: "0.9375rem", fontWeight: 600, margin: 0 }}
+                    >
+                        {getModelDisplayName(model)}
+                    </p>
                     <button
-                        className="hover:text-red-500 transition-colors duration-200 p-1"
+                        className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-black/5 dark:hover:bg-white/10 hover:text-[var(--modal-fg)]"
                         style={{ color: "var(--modal-muted-fg)" }}
                         onClick={onClose}
                         title="Close details"
                     >
-                        <FiX size={24} />
+                        <FiX size={18} strokeWidth={2} />
                     </button>
                 </div>
 
@@ -59,7 +65,7 @@ const ModelSelectionDetailsModal = memo(function ModelDetailsModal({
                     {/* Basic Info */}
                     <div>
                         {model.subtitle && (
-                            <p className="text-lg mb-4" style={{ color: "var(--modal-fg)", opacity: 0.85 }}>{model.subtitle}</p>
+                            <p className="text-sm mb-4" style={{ color: "var(--modal-fg)", opacity: 0.85 }}>{model.subtitle}</p>
                         )}
                         {model.description && (
                             <p className="mb-4 text-sm leading-relaxed" style={{ color: "var(--modal-muted-fg)" }}>{model.description}</p>
@@ -69,20 +75,28 @@ const ModelSelectionDetailsModal = memo(function ModelDetailsModal({
                     {/* Modalities */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <h4 className="font-semibold mb-2 text-sm" style={{ color: "var(--modal-fg)" }}>Input Modalities</h4>
+                            <p className="font-semibold mb-2.5 text-[11px] uppercase tracking-wider" style={{ color: "var(--sidebar-muted-fg)" }}>Input Modalities</p>
                             <div className="space-y-1">
                                 {(model.architecture?.input_modalities || []).map((mod, index) => (
-                                    <span key={index} className="inline-block px-2.5 py-1 bg-blue-500/10 text-blue-500 rounded text-xs mr-2 mb-2 border border-blue-500/25">
+                                    <span
+                                        key={index}
+                                        className="inline-block px-2.5 py-1 rounded-md text-xs font-medium mr-2 mb-2"
+                                        style={{ background: "var(--surface-muted)", color: "var(--modal-fg)", border: "1px solid var(--modal-border)" }}
+                                    >
                                         {mod}
                                     </span>
                                 ))}
                             </div>
                         </div>
                         <div>
-                            <h4 className="font-semibold mb-2 text-sm" style={{ color: "var(--modal-fg)" }}>Output Modalities</h4>
+                            <p className="font-semibold mb-2.5 text-[11px] uppercase tracking-wider" style={{ color: "var(--sidebar-muted-fg)" }}>Output Modalities</p>
                             <div className="space-y-1">
                                 {(model.architecture?.output_modalities || []).map((mod, index) => (
-                                    <span key={index} className="inline-block px-2.5 py-1 bg-cyan-500/10 text-cyan-500 rounded text-xs mr-2 mb-2 border border-cyan-500/25">
+                                    <span
+                                        key={index}
+                                        className="inline-block px-2.5 py-1 rounded-md text-xs font-medium mr-2 mb-2"
+                                        style={{ background: "var(--surface-muted)", color: "var(--modal-fg)", border: "1px solid var(--modal-border)" }}
+                                    >
                                         {mod}
                                     </span>
                                 ))}
@@ -93,7 +107,7 @@ const ModelSelectionDetailsModal = memo(function ModelDetailsModal({
                     {/* Pricing */}
                     {hasPricing && (
                         <div>
-                            <h4 className="font-semibold mb-2 text-sm" style={{ color: "var(--modal-fg)" }}>Pricing</h4>
+                            <p className="font-semibold mb-2.5 text-[11px] uppercase tracking-wider" style={{ color: "var(--sidebar-muted-fg)" }}>Pricing</p>
                             <div className="rounded-lg p-4 border" style={{ background: "var(--modal-bg-muted)", borderColor: "var(--modal-border)" }}>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {scalarPricingEntries.map(([key, value]) => (
@@ -128,12 +142,15 @@ const ModelSelectionDetailsModal = memo(function ModelDetailsModal({
 
                     {/* Average Cost */}
                     {isFinite(averageCost) && averageCost > 0 && (
-                        <div className="rounded-lg p-4 border border-green-500/20 bg-green-500/10">
-                            <h4 className="font-semibold text-green-600 dark:text-green-400 mb-1 text-sm">Average Cost per Message</h4>
-                            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                                {formatNGN(averageCost)} credits
+                        <div
+                            className="rounded-lg p-4"
+                            style={{ background: "color-mix(in srgb, var(--chat-accent) 10%, var(--surface-muted))", border: "1px solid color-mix(in srgb, var(--chat-accent) 28%, var(--modal-border))" }}
+                        >
+                            <p className="font-medium mb-1 text-sm" style={{ color: "var(--chat-accent)" }}>Average Cost per Message</p>
+                            <div className="text-xl font-semibold tabular-nums" style={{ color: "var(--modal-fg)" }}>
+                                {formatNGN(averageCost)}
                             </div>
-                            <div className="text-sm opacity-80 text-green-600 dark:text-green-400">
+                            <div className="text-sm" style={{ color: "var(--modal-muted-fg)" }}>
                                 {formatUSD(averageCost)}
                             </div>
                         </div>

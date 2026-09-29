@@ -123,9 +123,10 @@ const nextConfig = {
             'date-fns',
             '@tanstack/react-query',
             'react-hook-form',
+            'three',
         ],
     },
-    transpilePackages: ['react-pdf', 'pdfjs-dist'],
+    transpilePackages: ['react-pdf', 'pdfjs-dist', 'three'],
 
     // Security headers
     async headers() {
@@ -133,7 +134,7 @@ const nextConfig = {
         const payazaApiOrigin = 'https://api.payaza.africa';
 
         const prodConnectSrc = [
-            "connect-src 'self'",
+            "connect-src 'self' blob: data:",
             ...configuredApiOrigins,
             ...desktopUpstreamOrigins,
             'https://*.up.railway.app',
@@ -169,7 +170,7 @@ const nextConfig = {
         ].join(' ');
 
         const devConnectSrc = [
-            "connect-src 'self'",
+            "connect-src 'self' blob: data:",
             ...configuredApiOrigins,
             ...desktopUpstreamOrigins,
             'https://*.up.railway.app',

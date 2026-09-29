@@ -72,4 +72,28 @@ describe('OrphanNoteLayer', () => {
         fireEvent.click(screen.getByRole('button', { name: /open side thread/i }));
         expect(onOpenOrphanMarker).toHaveBeenCalledWith(marker);
     });
+
+    it('sits the reply chip flush above the highlight via translate-y-full', () => {
+        render(
+            <div style={{ position: 'relative', width: 400, height: 200 }}>
+                <OrphanNoteLayer
+                    resolvedMarkerPositions={[]}
+                    selectionTrigger={{
+                        left: 80,
+                        top: 40,
+                        isBelow: false,
+                        selection: {} as Selection,
+                    }}
+                    onOpenOrphanMarker={jest.fn()}
+                    triggerAnchoredReply={jest.fn()}
+                    isSelectionActive
+                />
+            </div>,
+        );
+
+        const chip = screen.getByRole('button', { name: /reply in side thread/i }).parentElement?.parentElement;
+        expect(chip?.className).toContain('-translate-y-full');
+        expect(chip?.className).toContain('-translate-x-1/2');
+        expect(chip).toHaveStyle({ left: '80px', top: '40px' });
+    });
 });

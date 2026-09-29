@@ -52,17 +52,57 @@ export function createApplicationMenu(opts: {
           },
         },
         { type: 'separator' },
+        {
+          label: 'Toggle Opacity (Peek-through)',
+          accelerator: 'CmdOrCtrl+Shift+O',
+          click: () => {
+            const win = BrowserWindow.getFocusedWindow();
+            if (!win || win.isDestroyed()) return;
+            const current = win.getOpacity();
+            const next = current < 0.95 ? 1.0 : 0.7;
+            win.setOpacity(next);
+            win.webContents.send('window-opacity-change', next);
+          },
+        },
+        { type: 'separator' },
         { role: 'toggleDevTools' },
       ],
     },
     {
       label: 'AIGenius',
       submenu: [
-        { label: 'About', click: () => void shell.openExternal('https://aigenius.noboxlabs.xyz') },
+        { label: 'About AIGenius', click: () => void shell.openExternal('https://aigenius.noboxlabs.xyz') },
+        { label: 'Website', click: () => void shell.openExternal('https://aigenius.noboxlabs.xyz') },
+        { type: 'separator' },
+        { label: 'Contact Support', click: () => void shell.openExternal('mailto:nobox.hq@gmail.com?subject=AIGenius%20Desktop%20Support') },
+        { label: 'Terms of Service', click: () => void shell.openExternal('https://aigenius.noboxlabs.xyz/docs/terms-and-conditions') },
+        { label: 'Privacy Policy', click: () => void shell.openExternal('https://aigenius.noboxlabs.xyz/docs/privacy-policy') },
         { type: 'separator' },
         { label: 'Settings', enabled: false },
         { type: 'separator' },
         { role: 'quit' },
+      ],
+    },
+    {
+      role: 'help',
+      submenu: [
+        {
+          label: 'Contact Support & Report Issue',
+          click: () => void shell.openExternal('mailto:nobox.hq@gmail.com?subject=AIGenius%20Desktop%20Issue%20Report'),
+        },
+        { type: 'separator' },
+        {
+          label: 'AIGenius Website',
+          click: () => void shell.openExternal('https://aigenius.noboxlabs.xyz'),
+        },
+        {
+          label: 'Terms of Service',
+          click: () => void shell.openExternal('https://aigenius.noboxlabs.xyz/docs/terms-and-conditions'),
+        },
+        {
+          label: 'Privacy Policy',
+          click: () => void shell.openExternal('https://aigenius.noboxlabs.xyz/docs/privacy-policy'),
+        },
       ],
     },
   ];

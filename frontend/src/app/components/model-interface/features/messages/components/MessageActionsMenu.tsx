@@ -9,6 +9,10 @@ import type { ChatMessage as ChatMessageType } from "@/app/components/model-inte
 
 export type MessageActionsMenuAlign = "start" | "end";
 
+/** Shared hit-target so replay and overflow sit on the same optical row as the timestamp. */
+export const messageActionIconButtonClassName =
+  "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-200/80 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300";
+
 interface MessageActionsMenuProps {
   align: MessageActionsMenuAlign;
   msg: ChatMessageType;
@@ -129,16 +133,17 @@ export function MessageActionsMenu({
     <div className="relative shrink-0" ref={rootRef}>
       <button
         type="button"
-        className="rounded p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+        className={messageActionIconButtonClassName}
         aria-expanded={open}
         aria-haspopup="menu"
+        aria-label="Message actions"
         title="Message actions"
         onClick={(e) => {
           e.stopPropagation();
           setOpen((v) => !v);
         }}
       >
-        <MoreHorizontal className="h-4 w-4" strokeWidth={2} aria-hidden />
+        <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
       </button>
       {open ? (
         <div

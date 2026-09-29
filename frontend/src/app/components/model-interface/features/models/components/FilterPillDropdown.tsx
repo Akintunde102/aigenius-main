@@ -17,6 +17,7 @@ interface FilterPillDropdownProps {
   /** When true, trigger uses active pill styling even if value is empty. */
   forceActive?: boolean;
   className?: string;
+  labelClassName?: string;
 }
 
 type MenuPosition = {
@@ -62,6 +63,7 @@ export const FilterPillDropdown = React.memo(function FilterPillDropdown({
   ariaLabel,
   forceActive = false,
   className,
+  labelClassName,
 }: FilterPillDropdownProps) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -73,7 +75,7 @@ export const FilterPillDropdown = React.memo(function FilterPillDropdown({
 
   const selected = options.find((opt) => opt.value === value);
   const triggerLabel = selected && selected.value !== "" ? selected.label : placeholder;
-  const isActive = forceActive || Boolean(value);
+  const isActive = forceActive || (Boolean(value) && value !== "default");
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -197,7 +199,7 @@ export const FilterPillDropdown = React.memo(function FilterPillDropdown({
           isActive && "app-filter-pill--active",
         )}
       >
-        <span className="max-w-[7.5rem] truncate">{triggerLabel}</span>
+        <span className={cn(labelClassName || "max-w-[7.5rem]", "truncate")}>{triggerLabel}</span>
         <FiChevronDown
           size={12}
           className={cn(

@@ -1,4 +1,4 @@
-import type { ChatSession } from "@/app/components/model-interface/shared/types";
+﻿import type { ChatSession } from "@/app/components/model-interface/shared/types";
 import type { CodeProject } from "@/lib/calls/code-projects";
 import { resolveSessionLastMessageTimestamp } from "@/app/components/model-interface/conversation/sessionRecency";
 
@@ -51,6 +51,8 @@ export function groupSidebarSessions(
 export type ProjectSidebarBucket = {
   projectId: string | null;
   label: string;
+  /** Root filesystem path of the project (desktop only). */
+  rootPath?: string | null;
   /** Flat list sorted by recency (no nested section headers). */
   sessions: ChatSession[];
   /** Includes the open-now chat when it belongs to this project. */
@@ -142,7 +144,9 @@ export function groupSidebarSessionsByProject(
 
   for (const project of projects) {
     const list = byProject.get(project.id) ?? [];
-    buckets.push(toBucket(project.id, project.name, list));
+    const bucket = toBucket(project.id, project.name, list);
+    bucket.rootPath = project.rootPath ?? null;
+    buckets.push(bucket);
     byProject.delete(project.id);
   }
 

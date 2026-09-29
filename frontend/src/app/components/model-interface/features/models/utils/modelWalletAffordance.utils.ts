@@ -32,6 +32,56 @@ export function computeModelRequiredBalance(
   );
 }
 
+/** Threshold percentage of user's credits consumed by a single message above which a warning is displayed. */
+export const HIGH_CREDIT_BURN_THRESHOLD_PERCENT = 60;
+
+/** Computes the estimated percentage of the user's credits that a single request with this model would burn. */
+export function getModelCreditBurnPercentage(
+  model: Model | null,
+  wallet: number | null | undefined,
+  averageCostUsd?: number,
+): number | null {
+  if (
+    !model ||
+    wallet === null ||
+    wallet === undefined ||
+    !Number.isFinite(wallet) ||
+    wallet <= 0
+  ) {
+    return null;
+  }
+
+  const averageCostUSD =
+    averageCostUsd !== undefined &&
+    Number.isFinite(averageCostUsd) &&
+    averageCostUsd > 0
+      ? averageCostUsd
+      : getModelAverageRequestPrice(model);
+
+  const averageCostCredits = averageCostUSD * USD_TO_NGN;
+  if (!Number.isFinite(averageCostCredits) || averageCostCredits <= 0) {
+    return null;
+  }
+
+  return Math.round((averageCostCredits / wallet) * 100);
+}
+
+/** Returns true if the model's single request cost meets or exceeds the high burn threshold percentage of the user's wallet. */
+export function isHighCreditBurnModel(
+  model: Model | null,
+  wallet: number | null | undefined,
+  averageCostUsd?: number,
+  thresholdPercent = HIGH_CREDIT_BURN_THRESHOLD_PERCENT,
+): boolean {
+  const percentage = getModelCreditBurnPercentage(model, wallet, averageCostUsd);
+  return percentage !== null && percentage >= thresholdPercent;
+}
+
+/** Human-readable warning label displayed on model elements when credit burn is high. */
+export function getModelCreditBurnWarning(burnPercentage: number): string {
+  return `Burns ~${burnPercentage}% of credits`;
+}
+
 export function isModelWalletGatingEnabled(): boolean {
   return !isE2eBrowserWalletBypassEnabled();
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FiX } from 'react-icons/fi';
+import { FiX, FiCheck, FiLayers, FiDollarSign, FiMaximize2, FiCalendar, FiAlertCircle } from 'react-icons/fi';
 import { Model } from '@/app/components/model-interface/shared/types';
 import {
     getModelAverageRequestPrice,
@@ -9,6 +9,7 @@ import {
     getModelDisplayName,
     getProvider,
     getProviderLabel,
+    hasExtraToolingCapability,
 } from '@/app/components/model-interface/shared/utils';
 import {
     formatPricingAmount,
@@ -20,9 +21,11 @@ import {
 } from '../utils/modelPricingDisplay.utils';
 import {
     computeModelRequiredBalance,
+    getModelCreditBurnPercentage,
     getModelWalletLockShortHint,
     isModelPickLocked,
 } from '../utils/modelWalletAffordance.utils';
+import { ModelCreditBurnIndicator } from './ModelCreditBurnIndicator';
 
 interface ModelDetailsModalProps {
     isOpen: boolean;
@@ -34,13 +37,20 @@ interface ModelDetailsModalProps {
 }
 
 function formatContextLength(n: number): string {
-    if (!Number.isFinite(n)) return '—';
+    if (!Number.isFinite(n) || n <= 0) return '—';
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
     if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
     return String(n);
 }
 
-export function ModelDetailsModal({ isOpen, onClose, model, onPickModel, wallet = null, onAddCredits }: ModelDetailsModalProps) {
+export function ModelDetailsModal({
+    isOpen,
+    onClose,
+    model,
+    onPickModel,
+    wallet = null,
+    onAddCredits,
+}: ModelDetailsModalProps) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -65,9 +75,11 @@ export function ModelDetailsModal({ isOpen, onClose, model, onPickModel, wallet 
     const avgCost = getModelAverageRequestPrice(model);
     const showAvgCost = Number.isFinite(avgCost) && avgCost > 0;
     const requiredBalance = computeModelRequiredBalance(model, avgCost);
+    const burnPercentage = getModelCreditBurnPercentage(model, wallet, avgCost);
     const isWalletLocked = isModelPickLocked(wallet, requiredBalance, {
         modelId: model.id,
     });
+    const supportsTools = hasExtraToolingCapability(model);
     const inputMods = model.architecture?.input_modalities ?? [];
     const outputMods = model.architecture?.output_modalities ?? [];
     const hasModalities = inputMods.length > 0 || outputMods.length > 0;
@@ -75,7 +87,11 @@ export function ModelDetailsModal({ isOpen, onClose, model, onPickModel, wallet 
     const pricingOverrides = getPricingOverrides(model.pricing as Record<string, unknown> | undefined);
     const hasPricing = scalarPricingEntries.length > 0 || pricingOverrides.length > 0;
     const releaseDate = model?.created
-        ? new Date(model.created * 1000).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+        ? new Date(model.created * 1000).toLocaleDateString(undefined, {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+          })
         : null;
 
     const portalTarget =
@@ -87,64 +103,80 @@ export function ModelDetailsModal({ isOpen, onClose, model, onPickModel, wallet 
     return createPortal(
         (
             <div
-                className="fixed inset-0 z-[120] flex items-center justify-center p-4 transition-opacity duration-200"
-                style={{ background: "var(--modal-overlay)" }}
+                className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 md:p-6 backdrop-blur-sm transition-opacity duration-200"
+                style={{ background: 'var(--modal-overlay)' }}
                 onClick={onClose}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="model-details-title"
             >
                 <div
-                    className="app-modal-panel max-h-[90vh] w-full max-w-lg rounded-2xl shadow-2xl"
-                    onClick={e => e.stopPropagation()}
+                    className="relative flex flex-col w-full max-w-2xl max-h-[88vh] overflow-hidden rounded-2xl border shadow-2xl transition-all"
+                    style={{
+                        background: 'var(--modal-bg)',
+                        borderColor: 'var(--modal-border)',
+                        color: 'var(--modal-fg)',
+                        boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--modal-border)',
+                    }}
+                    onClick={(e) => e.stopPropagation()}
                 >
-                    {/* Header: title + Use model on one line, compact */}
-                    <div className="flex items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: "var(--modal-border)" }}>
-                        <div className="min-w-0 flex-1 flex items-center gap-2">
-                            <h2 id="model-details-title" className="text-lg font-semibold text-slate-900 dark:text-zinc-100 truncate">
-                                {getModelDisplayName(model)}
-                            </h2>
-                            <span className="inline-flex items-center rounded bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:text-zinc-300 shrink-0">
-                                {isFree ? 'Free' : providerLabel}
-                            </span>
-                            {model.context_length > 0 && (
-                                <span className="text-[10px] text-slate-500 dark:text-zinc-500 shrink-0">
-                                    {formatContextLength(model.context_length)} ctx
-                                </span>
-                            )}
-                            {releaseDate && (
-                                <span className="text-[10px] text-slate-400 dark:text-zinc-500 shrink-0 flex items-center gap-1">
-                                    <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-zinc-600" />
-                                    {releaseDate}
-                                </span>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                            {onPickModel && (
-                                <button
-                                    type="button"
-                                    className={`app-modal-btn-primary rounded-md px-2.5 py-1 text-xs ${isWalletLocked ? 'cursor-not-allowed opacity-50 grayscale' : ''}`}
-                                    onClick={() => {
-                                        if (isWalletLocked) {
-                                            onAddCredits?.();
-                                            return;
-                                        }
-                                        onPickModel(model);
-                                    }}
-                                    title={
-                                        isWalletLocked
-                                            ? getModelWalletLockShortHint(requiredBalance, wallet)
-                                            : 'Use this model'
-                                    }
+                    {/* Header Area */}
+                    <div
+                        className="flex-shrink-0 px-6 sm:px-7 pt-6 pb-4 border-b"
+                        style={{ borderColor: 'var(--modal-border)' }}
+                    >
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span
+                                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                                        style={{
+                                            background: isFree
+                                                ? 'color-mix(in srgb, #10b981 12%, transparent)'
+                                                : 'var(--surface-muted)',
+                                            color: isFree ? '#10b981' : 'var(--modal-fg)',
+                                            border: `1px solid ${isFree ? 'color-mix(in srgb, #10b981 30%, transparent)' : 'var(--modal-border)'}`,
+                                        }}
+                                    >
+                                        {isFree ? 'Free Model' : providerLabel}
+                                    </span>
+                                    {supportsTools && (
+                                        <span
+                                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                            style={{
+                                                background: 'color-mix(in srgb, var(--chat-accent) 8%, var(--surface-muted))',
+                                                color: 'var(--modal-fg)',
+                                                border: '1px solid var(--modal-border)',
+                                            }}
+                                        >
+                                            <FiLayers size={11} strokeWidth={2} />
+                                            Tooling Ready
+                                        </span>
+                                    )}
+                                </div>
+
+                                <h2
+                                    id="model-details-title"
+                                    className="text-xl sm:text-2xl font-bold tracking-tight mt-2.5 leading-snug truncate"
+                                    style={{ color: 'var(--modal-fg)' }}
                                 >
-                                    {isWalletLocked ? 'Load credits to use' : 'Use model'}
-                                </button>
-                            )}
+                                    {getModelDisplayName(model)}
+                                </h2>
+
+                                <p
+                                    className="text-xs font-mono mt-1 opacity-75 truncate select-all"
+                                    style={{ color: 'var(--modal-muted-fg)' }}
+                                >
+                                    {model.id}
+                                </p>
+                            </div>
+
                             <button
                                 type="button"
-                                className="rounded-md p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-zinc-500 dark:hover:text-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+                                className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors hover:bg-black/5 dark:hover:bg-white/10 shrink-0"
+                                style={{ color: 'var(--modal-muted-fg)' }}
                                 onClick={onClose}
-                                title="Close"
+                                title="Close details"
                                 aria-label="Close"
                             >
                                 <FiX size={18} strokeWidth={2} />
@@ -152,98 +184,344 @@ export function ModelDetailsModal({ isOpen, onClose, model, onPickModel, wallet 
                         </div>
                     </div>
 
-                    {/* Body: scrollable */}
-                    <div className="overflow-y-auto flex-1 px-5 pb-5 space-y-5">
-                        {/* Description */}
-                        <section>
-                            <p className="text-sm text-slate-600 dark:text-zinc-400 leading-relaxed whitespace-pre-line">
-                                {model.description || 'No description available.'}
-                            </p>
-                        </section>
+                    {/* Scrollable Body */}
+                    <div className="overflow-y-auto flex-1 px-6 sm:px-7 py-5 space-y-6">
+                        {/* Metrics Overview Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {/* Cost Metric */}
+                            <div
+                                className="p-3.5 rounded-xl border flex flex-col justify-between"
+                                style={{
+                                    background: 'var(--surface-muted)',
+                                    borderColor: 'var(--modal-border)',
+                                }}
+                            >
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <span
+                                        className="text-[11px] font-semibold uppercase tracking-wider"
+                                        style={{ color: 'var(--sidebar-muted-fg)' }}
+                                    >
+                                        Est. Cost / Msg
+                                    </span>
+                                    <FiDollarSign size={13} style={{ color: 'var(--sidebar-muted-fg)' }} />
+                                </div>
+                                <div>
+                                    <div
+                                        className="text-base font-semibold tabular-nums leading-tight"
+                                        style={{ color: 'var(--modal-fg)' }}
+                                    >
+                                        {showAvgCost ? formatNGN(avgCost) : isFree ? 'Free' : '—'}
+                                    </div>
+                                    <div
+                                        className="text-[11px] mt-0.5 truncate"
+                                        style={{ color: 'var(--modal-muted-fg)' }}
+                                    >
+                                        {showAvgCost ? `${formatUSD(avgCost)} USD` : isFree ? '0 credits' : 'Standard rates'}
+                                    </div>
+                                    {burnPercentage !== null && burnPercentage >= 60 ? (
+                                        <div className="mt-1.5">
+                                            <ModelCreditBurnIndicator
+                                                burnPercentage={burnPercentage}
+                                            />
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </div>
 
-                        {/* Modalities */}
+                            {/* Context Window Metric */}
+                            <div
+                                className="p-3.5 rounded-xl border flex flex-col justify-between"
+                                style={{
+                                    background: 'var(--surface-muted)',
+                                    borderColor: 'var(--modal-border)',
+                                }}
+                            >
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <span
+                                        className="text-[11px] font-semibold uppercase tracking-wider"
+                                        style={{ color: 'var(--sidebar-muted-fg)' }}
+                                    >
+                                        Context Window
+                                    </span>
+                                    <FiMaximize2 size={13} style={{ color: 'var(--sidebar-muted-fg)' }} />
+                                </div>
+                                <div>
+                                    <div
+                                        className="text-base font-semibold tabular-nums leading-tight"
+                                        style={{ color: 'var(--modal-fg)' }}
+                                    >
+                                        {model.context_length > 0
+                                            ? `${formatContextLength(model.context_length)} tokens`
+                                            : 'Standard'}
+                                    </div>
+                                    <div
+                                        className="text-[11px] mt-0.5 truncate"
+                                        style={{ color: 'var(--modal-muted-fg)' }}
+                                    >
+                                        Max prompt + reply
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Release / Provider Metric */}
+                            <div
+                                className="p-3.5 rounded-xl border flex flex-col justify-between"
+                                style={{
+                                    background: 'var(--surface-muted)',
+                                    borderColor: 'var(--modal-border)',
+                                }}
+                            >
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <span
+                                        className="text-[11px] font-semibold uppercase tracking-wider"
+                                        style={{ color: 'var(--sidebar-muted-fg)' }}
+                                    >
+                                        Release
+                                    </span>
+                                    <FiCalendar size={13} style={{ color: 'var(--sidebar-muted-fg)' }} />
+                                </div>
+                                <div>
+                                    <div
+                                        className="text-base font-semibold truncate leading-tight"
+                                        style={{ color: 'var(--modal-fg)' }}
+                                    >
+                                        {releaseDate || providerLabel}
+                                    </div>
+                                    <div
+                                        className="text-[11px] mt-0.5 truncate"
+                                        style={{ color: 'var(--modal-muted-fg)' }}
+                                    >
+                                        {releaseDate ? `${providerLabel}` : 'Active catalog'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                            <span
+                                className="block text-[11px] font-semibold uppercase tracking-widest mb-2"
+                                style={{ color: 'var(--sidebar-muted-fg)' }}
+                            >
+                                About Model
+                            </span>
+                            <p
+                                className="text-sm leading-relaxed whitespace-pre-line"
+                                style={{ color: 'var(--modal-muted-fg)' }}
+                            >
+                                {model.description || 'No detailed description available for this model.'}
+                            </p>
+                        </div>
+
+                        {/* Modalities / Capabilities */}
                         {hasModalities && (
-                            <section className="space-y-3">
-                                <h3 className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                                    Capabilities
-                                </h3>
+                            <div>
+                                <span
+                                    className="block text-[11px] font-semibold uppercase tracking-widest mb-2.5"
+                                    style={{ color: 'var(--sidebar-muted-fg)' }}
+                                >
+                                    Supported Modalities
+                                </span>
                                 <div className="flex flex-wrap gap-2">
-                                    {inputMods.map((m, i) => (
+                                    {inputMods.map((mod, i) => (
                                         <span
                                             key={`in-${i}`}
-                                            className="inline-flex rounded-md bg-slate-100 dark:bg-zinc-800 px-2 py-1 text-xs text-slate-600 dark:text-zinc-300"
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                                            style={{
+                                                background: 'var(--surface-muted)',
+                                                color: 'var(--modal-fg)',
+                                                border: '1px solid var(--modal-border)',
+                                            }}
                                         >
-                                            {m}
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                            Input: {mod}
                                         </span>
                                     ))}
-                                    {outputMods.map((m, i) => (
+                                    {outputMods.map((mod, i) => (
                                         <span
                                             key={`out-${i}`}
-                                            className="inline-flex rounded-md bg-slate-100 dark:bg-zinc-800 px-2 py-1 text-xs text-slate-600 dark:text-zinc-300"
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                                            style={{
+                                                background: 'var(--surface-muted)',
+                                                color: 'var(--modal-fg)',
+                                                border: '1px solid var(--modal-border)',
+                                            }}
                                         >
-                                            {m}
+                                            <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                                            Output: {mod}
                                         </span>
                                     ))}
                                 </div>
-                            </section>
+                            </div>
                         )}
 
-                        {/* Pricing */}
+                        {/* Pricing Breakdown Table */}
                         {hasPricing && (
-                            <section className="space-y-3">
-                                <h3 className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                                    Pricing
-                                </h3>
-                                <div className="rounded-xl bg-slate-50/80 border border-slate-100 dark:bg-zinc-800/80 dark:border-zinc-700 p-3 space-y-2">
-                                    {scalarPricingEntries.map(([key, value]) => (
-                                        <div key={key} className="flex justify-between items-baseline text-sm">
-                                            <span className="text-slate-600 dark:text-zinc-400">{pricingLabel(key)}</span>
-                                            <span className="font-mono text-slate-900 dark:text-zinc-100 tabular-nums">
+                            <div>
+                                <span
+                                    className="block text-[11px] font-semibold uppercase tracking-widest mb-2.5"
+                                    style={{ color: 'var(--sidebar-muted-fg)' }}
+                                >
+                                    Detailed Pricing Rates
+                                </span>
+                                <div
+                                    className="rounded-xl border overflow-hidden"
+                                    style={{
+                                        background: 'var(--modal-bg)',
+                                        borderColor: 'var(--modal-border)',
+                                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+                                    }}
+                                >
+                                    <div
+                                        className="grid grid-cols-2 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider border-b"
+                                        style={{
+                                            background: 'var(--surface-muted)',
+                                            borderColor: 'var(--modal-border)',
+                                            color: 'var(--sidebar-muted-fg)',
+                                        }}
+                                    >
+                                        <span>Item</span>
+                                        <span className="text-right">Rate</span>
+                                    </div>
+
+                                    {scalarPricingEntries.map(([key, value], idx) => (
+                                        <div
+                                            key={key}
+                                            className={`grid grid-cols-2 px-4 py-2.5 text-xs items-center ${
+                                                idx !== 0 ? 'border-t' : ''
+                                            }`}
+                                            style={{ borderColor: 'var(--modal-border)' }}
+                                        >
+                                            <span
+                                                className="font-medium truncate"
+                                                style={{ color: 'var(--modal-fg)' }}
+                                            >
+                                                {pricingLabel(key)}
+                                            </span>
+                                            <span
+                                                className="font-mono text-right tabular-nums font-medium"
+                                                style={{ color: 'var(--modal-muted-fg)' }}
+                                            >
                                                 {formatPricingAmount(key, value)}
                                             </span>
                                         </div>
                                     ))}
+
                                     {pricingOverrides.map((tier, index) => (
                                         <div
                                             key={`tier-${tier.min_prompt_tokens ?? index}`}
-                                            className="border-t border-slate-200/80 pt-2 mt-2 dark:border-zinc-700/80"
+                                            className="border-t"
+                                            style={{ borderColor: 'var(--modal-border)' }}
                                         >
-                                            <p className="text-xs font-medium text-slate-500 dark:text-zinc-400 mb-1.5">
+                                            <div
+                                                className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider"
+                                                style={{
+                                                    background: 'color-mix(in srgb, var(--surface-muted) 60%, transparent)',
+                                                    color: 'var(--sidebar-muted-fg)',
+                                                }}
+                                            >
                                                 {formatPricingTierLabel(tier.min_prompt_tokens)}
-                                            </p>
-                                            <div className="space-y-1.5">
-                                                {getTierPricingEntries(tier).map(([key, value]) => (
-                                                    <div key={key} className="flex justify-between items-baseline text-sm">
-                                                        <span className="text-slate-600 dark:text-zinc-400">{pricingLabel(key)}</span>
-                                                        <span className="font-mono text-slate-900 dark:text-zinc-100 tabular-nums">
-                                                            {formatPricingAmount(key, value)}
-                                                        </span>
-                                                    </div>
-                                                ))}
                                             </div>
+                                            {getTierPricingEntries(tier).map(([key, value]) => (
+                                                <div
+                                                    key={key}
+                                                    className="grid grid-cols-2 px-4 py-2.5 text-xs items-center border-t"
+                                                    style={{ borderColor: 'var(--modal-border)' }}
+                                                >
+                                                    <span
+                                                        className="font-medium truncate pl-2"
+                                                        style={{ color: 'var(--modal-fg)' }}
+                                                    >
+                                                        {pricingLabel(key)}
+                                                    </span>
+                                                    <span
+                                                        className="font-mono text-right tabular-nums font-medium"
+                                                        style={{ color: 'var(--modal-muted-fg)' }}
+                                                    >
+                                                        {formatPricingAmount(key, value)}
+                                                    </span>
+                                                </div>
+                                            ))}
                                         </div>
                                     ))}
                                 </div>
-                            </section>
-                        )}
-
-                        {/* Average cost */}
-                        {showAvgCost && (
-                            <section className="rounded-xl bg-emerald-50/80 border border-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800/70 p-3">
-                                <p className="text-xs font-medium text-emerald-800/90 dark:text-emerald-300 mb-0.5">
-                                    Est. cost per message
-                                </p>
-                                <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200 tabular-nums">
-                                    {formatNGN(avgCost)} credits
-                                </p>
-                                <p className="text-xs text-emerald-700/80 dark:text-emerald-400/90">
-                                    {formatUSD(avgCost)} USD
-                                </p>
-                            </section>
+                            </div>
                         )}
                     </div>
+
+                    {/* Action Bar Footer */}
+                    <div
+                        className="flex-shrink-0 px-6 sm:px-7 py-3.5 border-t flex flex-wrap items-center justify-between gap-3"
+                        style={{
+                            borderColor: 'var(--modal-border)',
+                            background: 'var(--modal-bg-muted)',
+                        }}
+                    >
+                        {/* Status / Balance Hint */}
+                        <div className="flex items-center gap-2 min-w-0">
+                            {isWalletLocked ? (
+                                <div className="flex items-center gap-1.5 text-xs text-amber-500">
+                                    <FiAlertCircle size={14} className="shrink-0" />
+                                    <span className="truncate">
+                                        {getModelWalletLockShortHint(requiredBalance, wallet)}
+                                    </span>
+                                    {onAddCredits && (
+                                        <button
+                                            type="button"
+                                            onClick={onAddCredits}
+                                            className="ml-1 underline font-semibold hover:opacity-85"
+                                        >
+                                            Add Credits
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1.5 text-xs text-[var(--modal-muted-fg)]">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                                    <span>Ready for active chat session</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Buttons */}
+                        <div className="flex items-center gap-2.5 shrink-0 ml-auto">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                                style={{ color: 'var(--modal-muted-fg)' }}
+                            >
+                                Close
+                            </button>
+
+                            {onPickModel && (
+                                <button
+                                    type="button"
+                                    disabled={isWalletLocked}
+                                    onClick={() => {
+                                        if (isWalletLocked) {
+                                            onAddCredits?.();
+                                            return;
+                                        }
+                                        onPickModel(model);
+                                    }}
+                                    className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 shadow-sm"
+                                    style={{
+                                        background: 'var(--chat-accent)',
+                                        color: 'var(--chat-canvas-bg)',
+                                    }}
+                                >
+                                    <FiCheck size={14} strokeWidth={2.5} />
+                                    Use Model
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
-            </div>) as any,
+            </div>
+        ) as any,
         portalTarget,
     );
-} 
+}
+
+export default ModelDetailsModal;

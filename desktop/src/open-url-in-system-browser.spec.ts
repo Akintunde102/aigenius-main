@@ -81,6 +81,24 @@ describe('openUrlInSystemBrowser', () => {
     expect(approvalDialog).not.toHaveBeenCalled();
   });
 
+  it('opens trusted official documentation URLs directly without approval', async () => {
+    const url = 'https://aigenius.noboxlabs.xyz/docs/terms-and-conditions';
+    const result = await openUrlInSystemBrowser(url);
+
+    expect(result).toEqual({ ok: true });
+    expect(shell.openExternal).toHaveBeenCalledWith(url, { activate: true });
+    expect(approvalDialog).not.toHaveBeenCalled();
+  });
+
+  it('opens mailto links directly in the system mail client without approval', async () => {
+    const url = 'mailto:nobox.hq@gmail.com?subject=Support';
+    const result = await openUrlInSystemBrowser(url);
+
+    expect(result).toEqual({ ok: true });
+    expect(shell.openExternal).toHaveBeenCalledWith(url, { activate: true });
+    expect(approvalDialog).not.toHaveBeenCalled();
+  });
+
   it('still asks before opening an unrelated external url', async () => {
     const url = 'https://example.com/docs';
     const result = await openUrlInSystemBrowser(url);

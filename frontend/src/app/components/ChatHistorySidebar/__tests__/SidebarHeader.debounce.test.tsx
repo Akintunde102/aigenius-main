@@ -24,8 +24,39 @@ jest.mock("lucide-react", () => {
   return {
     Search: () => <span data-testid="icon-search" />,
     PanelLeft: () => <span data-testid="icon-panel" />,
+    PanelLeftClose: () => <span data-testid="icon-panel-close" />,
   };
 });
+
+function renderHeader(
+  overrides: Partial<React.ComponentProps<typeof SidebarHeader>> = {},
+) {
+  const setHistorySearch = jest.fn();
+  const result = render(
+    <SidebarHeader
+      isMobile={false}
+      mobileSidebarOpen={false}
+      setMobileSidebarOpen={jest.fn()}
+      historySearch=""
+      setHistorySearch={setHistorySearch}
+      {...overrides}
+    />,
+  );
+  return { ...result, setHistorySearch };
+}
+
+function openHistorySearch() {
+  const existing = screen.queryByRole("searchbox", {
+    name: /search conversations/i,
+  });
+  if (existing) return existing;
+  fireEvent.click(
+    screen.getByRole("button", { name: /search conversations/i }),
+  );
+  return screen.getByRole("searchbox", {
+    name: /search conversations/i,
+  });
+}
 
 describe("SidebarHeader (history search debounce)", () => {
   beforeEach(() => {
@@ -36,21 +67,18 @@ describe("SidebarHeader (history search debounce)", () => {
     jest.useRealTimers();
   });
 
-  it("updates the draft immediately but pushes to parent only after debounce", () => {
-    const setHistorySearch = jest.fn();
-    render(
-      <SidebarHeader
-        isMobile={false}
-        mobileSidebarOpen={false}
-        setMobileSidebarOpen={jest.fn()}
-        historySearch=""
-        setHistorySearch={setHistorySearch}
-      />,
-    );
+  it("uses compact sidebar type so the search placeholder matches conversation titles", () => {
+    renderHeader();
+    const input = openHistorySearch();
 
-    const input = screen.getByRole("searchbox", {
-      name: /search conversations/i,
-    });
+    expect(input).toHaveClass("text-xs");
+    expect(input.className).not.toMatch(/text-\[14\.5px\]/);
+  });
+
+  it("updates the draft immediately but pushes to parent only after debounce", () => {
+    const { setHistorySearch } = renderHeader();
+
+    const input = openHistorySearch();
     fireEvent.change(input, { target: { value: "resume" } });
 
     expect(input).toHaveValue("resume");
@@ -65,20 +93,9 @@ describe("SidebarHeader (history search debounce)", () => {
   });
 
   it("syncs draft when parent historySearch changes", () => {
-    const setHistorySearch = jest.fn();
-    const { rerender } = render(
-      <SidebarHeader
-        isMobile={false}
-        mobileSidebarOpen={false}
-        setMobileSidebarOpen={jest.fn()}
-        historySearch=""
-        setHistorySearch={setHistorySearch}
-      />,
-    );
+    const { rerender, setHistorySearch } = renderHeader();
 
-    const input = screen.getByRole("searchbox", {
-      name: /search conversations/i,
-    });
+    const input = openHistorySearch();
 
     rerender(
       <SidebarHeader

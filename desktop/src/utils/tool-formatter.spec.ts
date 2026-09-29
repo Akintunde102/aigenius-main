@@ -46,6 +46,21 @@ describe('tool-formatter', () => {
 
       expect(result).toContain('*Command produced no output.*');
     });
+
+    it('describes a backgrounded long-running process without an exit code', () => {
+      const { result } = formatShellResult({
+        stdout: 'Ready on http://localhost:3000',
+        stderr: '',
+        exit_code: null,
+        backgrounded: true,
+        pid: 4321,
+      });
+
+      expect(result).toContain('still running (pid 4321)');
+      expect(result).toContain('process was backgrounded');
+      expect(result).toContain('Ready on http://localhost:3000');
+      expect(result).not.toContain('- **Exit code**: 0');
+    });
   });
 
   describe('formatReadFile', () => {

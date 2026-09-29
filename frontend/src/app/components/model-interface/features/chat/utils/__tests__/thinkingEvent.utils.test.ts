@@ -4,6 +4,7 @@ import {
     enrichEventsWithLegacyThinking,
     extractReasoningChunk,
     finalizeOpenThinkingEvent,
+    settleLoadingToolsOnStreamFailure,
 } from '../thinkingEvent.utils';
 import type { MessageEvent } from '@/app/components/model-interface/shared/types';
 
@@ -62,5 +63,42 @@ describe('thinkingEvent.utils', () => {
         expect(events).toHaveLength(2);
         expect(events[0]).toMatchObject({ type: 'thinking', content: 'Legacy thought', loading: false, timestamp: 42 });
         expect(events[1]).toMatchObject({ type: 'text', content: 'Answer' });
+    });
+});
+
+describe('settleLoadingToolsOnStreamFailure', () => {
+    it('marks a still-running tool as failed when the stream drops', () => {
+        const events: MessageEvent[] = [
+            {
+                type: 'tool',
+                tool: 'local_shell',
+                displayName: 'Local terminal',
+                arguments: { command: 'npm run dev' },
+                logs: [],
+                loading: true,
+                timestamp: 1,
+            },
+        ];
+        expect(settleLoadingToolsOnStreamFailure(events, 'Could not reach the server')).toBe(true);
+        expect(events[0]).toMatchObject({ loading: false, success: false });
+        expect((events[0] as { result?: string }).result).toContain('Could not reach the server');
+    });
+
+    it('leaves a finished tool result in place', () => {
+        const events: MessageEvent[] = [
+            {
+                type: 'tool',
+                tool: 'local_shell',
+                displayName: 'Local terminal',
+                arguments: {},
+                logs: [],
+                loading: false,
+                success: true,
+                result: '### Shell output',
+                timestamp: 1,
+            },
+        ];
+        expect(settleLoadingToolsOnStreamFailure(events, 'dropped')).toBe(false);
+        expect((events[0] as { result?: string }).result).toBe('### Shell output');
     });
 });

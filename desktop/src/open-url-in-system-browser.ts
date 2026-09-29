@@ -7,15 +7,55 @@ export type OpenUrlInSystemBrowserResult =
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
 
-function normalizeHttpUrl(url: unknown): string | null {
+function normalizeExternalUrl(url: unknown): string | null {
   if (typeof url !== 'string') {
     return null;
   }
   const trimmed = url.trim();
+  if (trimmed.startsWith('mailto:')) {
+    return trimmed;
+  }
   if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
     return null;
   }
   return trimmed;
+}
+
+function normalizeHttpUrl(url: unknown): string | null {
+  return normalizeExternalUrl(url);
+}
+
+/**
+ * Trusted domains (official documentation, marketing pages, mailto, and Github repo)
+ * that should open directly in the system browser without an approval modal dialog.
+ */
+export function isTrustedDirectExternalUrl(url: string): boolean {
+  if (url.startsWith('mailto:')) {
+    return true;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return false;
+  }
+  const host = parsed.hostname.toLowerCase();
+  if (
+    host === 'aigenius.noboxlabs.xyz' ||
+    host.endsWith('.noboxlabs.xyz') ||
+    host === 'noboxlabs.xyz' ||
+    host === 'aigenius.chat' ||
+    host.endsWith('.aigenius.chat')
+  ) {
+    return true;
+  }
+  if (host === 'github.com' && parsed.pathname.toLowerCase().startsWith('/noboxlabs')) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -46,7 +86,7 @@ export function isLoopbackPublishedConversationUrl(url: string): boolean {
 export async function openWalletCheckoutInSystemBrowser(
   url: unknown,
 ): Promise<OpenUrlInSystemBrowserResult> {
-  const normalized = normalizeHttpUrl(url);
+  const normalized = normalizeExternalUrl(url);
   if (!normalized) {
     return { ok: false, error: 'invalid_url' };
   }
@@ -68,19 +108,23 @@ export async function openWalletCheckoutInSystemBrowser(
 }
 
 /**
- * Opens http(s) URLs in the OS default browser.
- * Hosted wallet checkouts skip the approval dialog (same as OAuth handoff).
+ * Opens http(s) and mailto URLs in the OS default browser / client.
+ * Hosted wallet checkouts, trusted official domains, and mailto skip the approval dialog.
  */
 export async function openUrlInSystemBrowser(
   url: unknown,
   parent?: BrowserWindow,
 ): Promise<OpenUrlInSystemBrowserResult> {
-  const normalized = normalizeHttpUrl(url);
+  const normalized = normalizeExternalUrl(url);
   if (!normalized) {
     return { ok: false, error: 'invalid_url' };
   }
 
-  if (isHostedPaymentUrl(normalized) || isLoopbackPublishedConversationUrl(normalized)) {
+  if (
+    isHostedPaymentUrl(normalized) ||
+    isLoopbackPublishedConversationUrl(normalized) ||
+    isTrustedDirectExternalUrl(normalized)
+  ) {
     try {
       await shell.openExternal(normalized, { activate: true });
       return { ok: true };
