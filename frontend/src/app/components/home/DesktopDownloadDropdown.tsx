@@ -5,11 +5,11 @@ import { ChevronDown, Download } from "lucide-react";
 import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
 import { cn } from "@/lib/utils";
 
-const PLATFORMS = [
-  { id: "macos", label: "macOS", href: null },
-  { id: "windows", label: "Windows", href: "https://pub-77b8636a163e4485850be3c560433232.r2.dev/AIGenius%20Setup%200.1.0.exe" },
-  { id: "linux", label: "Linux", href: "https://pub-77b8636a163e4485850be3c560433232.r2.dev/aigenius-desktop_0.1.0_arm64.deb" },
-] as const;
+const PLATFORMS: { id: string; label: string; href: string | null }[] = [
+  { id: "macos", label: "macOS", href: "/api/download/macos" },
+  { id: "windows", label: "Windows", href: "/api/download/windows" },
+  { id: "linux", label: "Linux", href: "/api/download/linux" },
+];
 
 /**
  * Primary desktop download CTA — platform picker (macOS, Windows, Linux)

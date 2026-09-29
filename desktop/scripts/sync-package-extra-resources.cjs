@@ -34,6 +34,14 @@ const shared = [
     from: 'dist-resources/package-runtime.json',
     to: 'package-runtime.json',
   },
+  {
+    from: 'build/icon.ico',
+    to: 'icon.ico',
+  },
+  {
+    from: 'build/aigenius_icon_final.png',
+    to: 'aigenius_icon_final.png',
+  },
 ];
 
 if (shouldBundlePythonVenv()) {
