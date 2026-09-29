@@ -18,16 +18,16 @@ import CartoonCapabilityBanner from "./CartoonCapabilityBanner";
 import "./home.css";
 
 const PLATFORMS = [
-  { id: "macos" as const, label: "macOS", href: null as string | null },
+  { id: "macos" as const, label: "macOS", href: "/api/download/macos" },
   {
     id: "windows" as const,
     label: "Windows",
-    href: "https://pub-77b8636a163e4485850be3c560433232.r2.dev/AIGenius%20Setup%200.1.0.exe",
+    href: "/api/download/windows",
   },
   {
     id: "linux" as const,
     label: "Linux",
-    href: "https://pub-77b8636a163e4485850be3c560433232.r2.dev/aigenius-desktop_0.1.0_arm64.deb",
+    href: "/api/download/linux",
   },
 ] as const;
 

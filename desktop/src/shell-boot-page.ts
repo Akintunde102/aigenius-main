@@ -10,6 +10,7 @@ html,body{margin:0;height:100%;background:#0c0d0f;color:#d4d4d8;font-family:syst
 @keyframes r{to{transform:rotate(360deg)}}
 p{font-size:14px;font-weight:500;color:#d4d4d8;margin:0}
 .sub{font-size:12px;line-height:1.5;color:#71717a;margin-top:8px;max-width:18rem}
+@media(prefers-color-scheme:light){html,body{background:#ffffff;color:#18181b}p{color:#18181b}.sub{color:#52525b}}
 </style></head><body><div class="wrap"><div class="spin" role="status" aria-label="Loading"></div><p>Opening AIGenius…</p>${subtitle}</div></body></html>`;
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 }

@@ -1,13 +1,13 @@
 import {
   buildDesktopGoogleOAuthUrl,
-  clearDesktopHandoffSession,
+  clearDesktopHandoff,
   readStoredDesktopApiRoot,
   readStoredDesktopCallback,
   readStoredDesktopPkceChallenge,
   resolveDesktopGoogleOAuthUrl,
   shouldPersistDesktopApiRoot,
   storeDesktopApiRoot,
-  storeDesktopHandoffSession,
+  storeDesktopHandoff,
 } from './desktop-google-auth-url';
 
 describe('buildDesktopGoogleOAuthUrl', () => {
@@ -58,38 +58,38 @@ describe('desktop handoff session storage', () => {
   });
 
   it('stores callback and pkce challenge for browser desktop sign-in', () => {
-    storeDesktopHandoffSession({
-      callback: 'http://127.0.0.1:49201/',
-      pkceChallenge: 'challenge-123',
-    });
+    storeDesktopHandoff(
+      'http://127.0.0.1:49201/',
+      'challenge-123',
+    );
     expect(readStoredDesktopCallback()).toBe('http://127.0.0.1:49201/');
     expect(readStoredDesktopPkceChallenge()).toBe('challenge-123');
   });
 
   it('clears desktop handoff session keys together', () => {
-    storeDesktopHandoffSession({
-      callback: 'http://127.0.0.1:49201/',
-      pkceChallenge: 'challenge-123',
-    });
-    clearDesktopHandoffSession();
+    storeDesktopHandoff(
+      'http://127.0.0.1:49201/',
+      'challenge-123',
+    );
+    clearDesktopHandoff();
     expect(readStoredDesktopCallback()).toBeNull();
     expect(readStoredDesktopPkceChallenge()).toBeNull();
   });
 
   it('removes stale pkce challenge when storing a callback without one', () => {
-    storeDesktopHandoffSession({
-      callback: 'http://127.0.0.1:49201/',
-      pkceChallenge: 'old-challenge',
-    });
-    storeDesktopHandoffSession({
-      callback: 'http://127.0.0.1:49201/',
-      pkceChallenge: null,
-    });
+    storeDesktopHandoff(
+      'http://127.0.0.1:49201/',
+      'old-challenge',
+    );
+    storeDesktopHandoff(
+      'http://127.0.0.1:49201/',
+      null,
+    );
     expect(readStoredDesktopPkceChallenge()).toBeNull();
   });
 
   it('ignores blank callbacks', () => {
-    storeDesktopHandoffSession({ callback: '   ', pkceChallenge: 'challenge-123' });
+    storeDesktopHandoff('   ', 'challenge-123');
     expect(readStoredDesktopCallback()).toBeNull();
   });
 
@@ -110,7 +110,7 @@ describe('desktop handoff session storage', () => {
     });
     expect(readStoredDesktopCallback()).toBeNull();
     expect(readStoredDesktopPkceChallenge()).toBeNull();
-    clearDesktopHandoffSession();
+    clearDesktopHandoff();
   });
 
   it('uses stored api root and pkce when resolving desktop OAuth URL', () => {
