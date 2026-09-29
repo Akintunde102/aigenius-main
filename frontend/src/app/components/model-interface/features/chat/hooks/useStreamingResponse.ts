@@ -17,6 +17,8 @@ import {
     ReasoningDetailChunk,
 } from './chatOperations.types';
 import { DRAFT_SESSION_KEY } from './chatOperations.constants';
+import { getClientDraftSessionId } from '@/app/components/model-interface/conversation/clientDraftSession';
+import { migrateAbortControllerKey } from './abortControllerMap.utils';
 import {
     contentToDisplayText,
     contentToMarkdownText,
@@ -193,8 +195,11 @@ export function useStreamingResponse({
 
         // null for new chats — used for guard comparisons and API conversationId.
         const streamingSessionId = resolveRequestConversationId(requestOverrides, currentSessionId);
+        const clientDraftKeyAtDispatch = requestOverrides?.clientDraftMapKey
+            ?? (streamingSessionId === null ? getClientDraftSessionId() : undefined);
         // Always a string — used as the chatMap slot key.
-        let chatMapKey = streamingSessionId ?? DRAFT_SESSION_KEY;
+        let chatMapKey = streamingSessionId ?? clientDraftKeyAtDispatch ?? DRAFT_SESSION_KEY;
+        const abortMapKeyAtStart = chatMapKey;
 
         const existingController = abortControllersRef.current.get(chatMapKey);
         if (existingController) {
@@ -248,10 +253,15 @@ export function useStreamingResponse({
             const scopeId = getChatProjectScopeId();
             const title = deriveChatSessionTitle(sessionMessages[0]?.content);
             if (streamingSessionId === null) {
+                migrateAbortControllerKey(
+                    abortControllersRef.current,
+                    abortMapKeyAtStart,
+                    conversationId,
+                );
                 chatMapKey = conversationId;
                 setActiveRouteConversationTarget(conversationId);
                 setChatForSession(conversationId, sessionMessages);
-                onDraftMaterialized?.(conversationId);
+                onDraftMaterialized?.(conversationId, abortMapKeyAtStart);
             }
             updateSessionMessages?.(conversationId, sessionMessages, {
                 modelId: modelForRequest.id,
@@ -267,7 +277,7 @@ export function useStreamingResponse({
         };
 
         const persistStreamProgressLocally = (force = false) => {
-            if (chatMapKey === DRAFT_SESSION_KEY || !streamStillOwnsDraftSlot()) {
+            if ((streamingSessionId === null && !materializedConversationId) || !streamStillOwnsDraftSlot()) {
                 return;
             }
             const now = Date.now();
@@ -286,7 +296,7 @@ export function useStreamingResponse({
             if (sidebarSynced || !streamStillOwnsDraftSlot()) {
                 return;
             }
-            if (chatMapKey !== DRAFT_SESSION_KEY && updateSessionMessages) {
+            if (streamingSessionId !== null && updateSessionMessages) {
                 updateSessionMessages(chatMapKey, sessionMessages, {
                     modelId: modelForRequest.id,
                     title: deriveChatSessionTitle(sessionMessages[0]?.content) || 'New chat',
@@ -559,7 +569,13 @@ export function useStreamingResponse({
                 });
             }
 
-            handleStreamResult(result, streamingSessionId, requestOverrides?.draftEpoch, requestOverrides?.sendGeneration);
+            handleStreamResult(
+                result,
+                streamingSessionId,
+                requestOverrides?.draftEpoch,
+                requestOverrides?.sendGeneration,
+                clientDraftKeyAtDispatch,
+            );
         } catch (err) {
             const message = err instanceof Error && err.message.trim()
                 ? err.message

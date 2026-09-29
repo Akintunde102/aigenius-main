@@ -56,6 +56,8 @@ export type DetailModalTab = "overview" | "preview" | "json";
 
 export type PreviewBlob =
   | { kind: "image"; mimeType: string; url: string }
+  | { kind: "video"; mimeType: string; url: string }
+  | { kind: "audio"; mimeType: string; url: string }
   | { kind: "text"; text: string };
 
 export type IndexerHealth = {

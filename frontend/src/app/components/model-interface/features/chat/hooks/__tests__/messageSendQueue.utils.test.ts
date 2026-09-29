@@ -7,6 +7,7 @@ import {
     unshiftQueuedMessage,
 } from '../messageSendQueue.utils';
 import { DRAFT_SESSION_KEY } from '../chatOperations.constants';
+import { createClientDraftSessionId } from '@/app/components/model-interface/conversation/clientDraftSession';
 
 describe('messageSendQueue.utils', () => {
     const model = {
@@ -38,6 +39,20 @@ describe('messageSendQueue.utils', () => {
         expect(migrateMessageSendQueueMap(map, 'conv-real')).toEqual({
             [DRAFT_SESSION_KEY]: [],
             'conv-real': map[DRAFT_SESSION_KEY],
+        });
+    });
+
+    it('migrates from an explicit client draft key', () => {
+        const clientDraftKey = createClientDraftSessionId();
+        const map = {
+            [clientDraftKey]: [
+                createQueuedComposerMessage({ text: 'client draft queued', model }),
+            ],
+        };
+
+        expect(migrateMessageSendQueueMap(map, 'conv-real', clientDraftKey)).toEqual({
+            [clientDraftKey]: [],
+            'conv-real': map[clientDraftKey],
         });
     });
 

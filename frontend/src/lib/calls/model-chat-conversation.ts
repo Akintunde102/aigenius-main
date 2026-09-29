@@ -15,6 +15,9 @@ export interface ConversationMetadata {
     totalTokens?: number;
     lastAccessed?: string | Date;
     orphanAnchor?: OrphanReplyAnchor;
+    spawnedBy?: string;
+    subagentDepth?: number;
+    subagentRunStatus?: 'running' | 'completed';
 }
 
 /** Mirrors gateway `ModelChatConversation` row for client-side use. */
@@ -236,6 +239,23 @@ export const addOrUpdateChatHistory = async (
         authorized: true,
     });
     return response.dataReturned;
+};
+
+const CONVERSATION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Stops a subagent running in this conversation. Other chats get `{ aborted: false }`. */
+export const abortSubagentConversation = async (conversationId: string): Promise<boolean> => {
+    if (!CONVERSATION_ID_PATTERN.test(conversationId)) {
+        return false;
+    }
+    const response = await serverCall({
+        serverCallProps: {
+            call: serverCalls.postGatewayModelChatsAbortConversation,
+        },
+        pathArgs: { id: conversationId },
+        authorized: true,
+    });
+    return response.dataReturned?.aborted === true;
 };
 
 export const updateConversationMessages = async (

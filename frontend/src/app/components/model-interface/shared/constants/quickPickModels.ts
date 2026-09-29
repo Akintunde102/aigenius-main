@@ -1,4 +1,8 @@
 import type { Model } from "@/app/components/model-interface/shared/types";
+import {
+  filterConversationPickableModelIds,
+  isConversationPickableModel,
+} from "@/app/components/model-interface/features/models/utils/modelConversationEligibility.utils";
 
 /**
  * Curated new-user defaults — keep in sync with backend FEATURED_MODEL_IDS.
@@ -57,18 +61,19 @@ export function resolveDefaultQuickPickModelIds(models: Model[]): string[] {
   const resolved: string[] = [];
 
   for (const id of PREFERRED_QUICK_PICK_MODEL_IDS) {
-    if (availableIds.has(id) && !resolved.includes(id)) {
+    const match = models.find((model) => model.id === id);
+    if (match && isConversationPickableModel(match) && !resolved.includes(id)) {
       resolved.push(id);
     }
   }
 
   for (const model of models) {
-    if (model.featured && !resolved.includes(model.id)) {
+    if (model.featured && !resolved.includes(model.id) && isConversationPickableModel(model)) {
       resolved.push(model.id);
     }
   }
 
-  return resolved.slice(0, MAX_QUICK_PICK_COUNT);
+  return filterConversationPickableModelIds(models, resolved).slice(0, MAX_QUICK_PICK_COUNT);
 }
 
 /** First-time composer selection: curated default, then first featured, then first catalog model. */
@@ -80,7 +85,11 @@ export function resolveDefaultActiveModel(models: Model[]): Model | null {
     if (match) return match;
   }
 
-  return models.find((model) => model.featured === true) ?? models[0] ?? null;
+  const featured = models.find(
+    (model) => model.featured === true && isConversationPickableModel(model),
+  );
+  if (featured) return featured;
+  return models.find((model) => isConversationPickableModel(model)) ?? null;
 }
 
 /**
@@ -140,7 +149,7 @@ export function mergeQuickPickIdsForDisplay(
   }
 
   const enabledDefaults = defaults.filter((id) => savedIds.includes(id));
-  return [...enabledDefaults, ...extras];
+  return filterConversationPickableModelIds(models, [...enabledDefaults, ...extras]);
 }
 
 /**
@@ -189,15 +198,15 @@ export function resolveFallbackActiveModel(
   );
   for (const id of displayIds) {
     const match = models.find((m) => m.id === id);
-    if (match) return match;
+    if (match && isConversationPickableModel(match)) return match;
   }
 
   for (const id of resolveDefaultQuickPickModelIds(models)) {
     const match = models.find((m) => m.id === id);
-    if (match) return match;
+    if (match && isConversationPickableModel(match)) return match;
   }
 
-  return models[0] ?? null;
+  return models.find((m) => isConversationPickableModel(m)) ?? null;
 }
 
 /**
@@ -214,7 +223,14 @@ export function reconcileActiveModelSelection(
   }
 
   if (isModelInCatalog(models, active.id)) {
-    return { model: active, replacedUnavailable: false };
+    if (isConversationPickableModel(active)) {
+      return { model: active, replacedUnavailable: false };
+    }
+    const fallback = resolveFallbackActiveModel(models, savedIds, favoritesLoaded);
+    return {
+      model: fallback,
+      replacedUnavailable: fallback != null && fallback.id !== active.id,
+    };
   }
 
   const fallback = resolveFallbackActiveModel(models, savedIds, favoritesLoaded);

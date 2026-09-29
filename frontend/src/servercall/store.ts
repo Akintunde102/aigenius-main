@@ -96,6 +96,7 @@ export type ServerCallsKeyType =
     | "getGatewayModelChatsResources"
     | "getGatewayModelChatsConversationById"
     | "postGatewayModelChatsUpdateConversationMessages"
+    | "postGatewayModelChatsAbortConversation"
     | "getGatewayModelChatsConversationOrphans"
     | "getGatewayModelChatsConversationMessageOrphans"
     | "getGatewayModelChatsAgentRunById"
@@ -561,6 +562,11 @@ export const serverCalls: ServerCallsType<ServerCallsKeyType> = {
     postGatewayModelChatsUpdateConversationMessages: {
         path: (args: { id: string }) => `/gateway/*/model-chats/conversation/${args.id}/messages`,
         name: "postGatewayModelChatsUpdateConversationMessages",
+        verb: ServerCallVerbs.Post,
+    },
+    postGatewayModelChatsAbortConversation: {
+        path: (args: { id: string }) => `/gateway/*/model-chats/conversation/${args.id}/abort`,
+        name: "postGatewayModelChatsAbortConversation",
         verb: ServerCallVerbs.Post,
     },
     getGatewayModelChatsConversationOrphans: {

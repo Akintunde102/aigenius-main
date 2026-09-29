@@ -9,6 +9,8 @@ import {
 } from "@/app/components/model-interface/shared/utils";
 import { mergeQuickPickIdsForDisplay } from "@/app/components/model-interface/shared/constants/quickPickModels";
 
+export type ModelCatalogFilter = "all" | "default" | "ollama";
+
 interface UseModelSelectionProps {
   models: Model[];
   pinnedModelIds: string[];
@@ -30,6 +32,32 @@ interface UseModelSelectionProps {
   initialOrderDir?: ModelOrderDir;
 }
 
+function partitionQuickPicksFirst(
+  sorted: Model[],
+  quickPickIds: string[],
+  catalogFilter: ModelCatalogFilter,
+): { quickPickModelsSorted: Model[]; otherModelsSorted: Model[] } {
+  const quickPickSet = new Set(quickPickIds);
+  const sortedById = new Map(sorted.map((m) => [m.id, m]));
+
+  if (catalogFilter === "default") {
+    const quickPickModelsSorted = quickPickIds
+      .map((id) => sortedById.get(id))
+      .filter((m): m is Model => m != null);
+    return { quickPickModelsSorted, otherModelsSorted: [] };
+  }
+
+  if (catalogFilter === "ollama") {
+    return { quickPickModelsSorted: [], otherModelsSorted: sorted };
+  }
+
+  const quickPickModelsSorted = quickPickIds
+    .map((id) => sortedById.get(id))
+    .filter((m): m is Model => m != null);
+  const otherModelsSorted = sorted.filter((m) => !quickPickSet.has(m.id));
+  return { quickPickModelsSorted, otherModelsSorted };
+}
+
 export function useModelSelection({
   models,
   pinnedModelIds,
@@ -48,7 +76,7 @@ export function useModelSelection({
   initialOrderBy = "default",
   initialOrderDir = "asc",
 }: UseModelSelectionProps) {
-  const [activeTab, setActiveTab] = useState<"favorites" | "all" | "ollama">("favorites");
+  const [catalogFilter, setCatalogFilter] = useState<ModelCatalogFilter>("all");
 
   // Internal state for uncontrolled mode
   const [internalSearch, setInternalSearch] = useState("");
@@ -71,6 +99,21 @@ export function useModelSelection({
 
   // Use deferred value for search to keep filtering non-blocking and snappy
   const deferredSearch = useDeferredValue(search);
+
+  const effectiveQuickPickIds = useMemo(
+    () => mergeQuickPickIdsForDisplay(models, pinnedModelIds),
+    [models, pinnedModelIds],
+  );
+
+  const defaultModelsCount = useMemo(() => {
+    const idSet = new Set(effectiveQuickPickIds);
+    return models.filter((m) => idSet.has(m.id)).length;
+  }, [models, effectiveQuickPickIds]);
+
+  const ollamaModelsCount = useMemo(
+    () => models.filter((m) => m.id.startsWith("ollama:")).length,
+    [models],
+  );
 
   // Wrapped setters
   const handleSetSearch = useCallback((v: string) => {
@@ -119,6 +162,10 @@ export function useModelSelection({
     setShowWebSearchProp?.(v);
   }, [setShowWebSearchProp]);
 
+  const handleSetCatalogFilter = useCallback((v: ModelCatalogFilter) => {
+    setCatalogFilter(v);
+  }, []);
+
   // Memoized mapping of model cost
   const avgCostById = useMemo(() => {
     const m = new Map<string, number>();
@@ -127,63 +174,42 @@ export function useModelSelection({
     return m;
   }, [models]);
 
-  // Quick picks: same effective list as the composer dropdown (defaults + saved).
-  // Search and All Models filters are intentionally skipped — the list is short and
-  // a lingering search from another tab would hide every pick.
-  const favoritesSorted = useMemo(() => {
-    if (activeTab !== "favorites") return [];
-
-    const effectiveIds = mergeQuickPickIdsForDisplay(models, pinnedModelIds);
-    const byId = new Map(models.map((m) => [m.id, m]));
-    const ordered = effectiveIds
-      .map((id) => byId.get(id))
-      .filter((m): m is Model => m != null);
-
-    return sortModelsNew(ordered, orderBy, orderDir);
-  }, [models, pinnedModelIds, orderBy, orderDir, activeTab]);
-
-  // Ollama Models: filtered and sorted locally
-  const ollamaModelsSorted = useMemo(() => {
-    if (activeTab !== "ollama") return [];
-
-    const baseOllama = models.filter((m) => m.id.startsWith("ollama:"));
-
-    const filtered = filterModelsNew(
-      baseOllama,
-      deferredSearch,
-      selectedProviders,
-      imageFilterOnly,
-      showWebSearch
-    );
-    return sortModelsNew(filtered, orderBy, orderDir);
-  }, [models, deferredSearch, selectedProviders, imageFilterOnly, showWebSearch, orderBy, orderDir, activeTab]);
-
-  // All Models: filtered, sorted, then split into main vs others
-  const { mainModelsSorted, otherModelsSorted } = useMemo(() => {
-    if (activeTab !== "all") {
-      return { mainModelsSorted: [] as Model[], otherModelsSorted: [] as Model[] };
+  const { quickPickModelsSorted, otherModelsSorted } = useMemo(() => {
+    let base = models;
+    if (catalogFilter === "default") {
+      const idSet = new Set(effectiveQuickPickIds);
+      base = models.filter((m) => idSet.has(m.id));
+    } else if (catalogFilter === "ollama") {
+      base = models.filter((m) => m.id.startsWith("ollama:"));
     }
 
     const filtered = filterModelsNew(
-      models,
+      base,
       deferredSearch,
       selectedProviders,
       imageFilterOnly,
       showWebSearch,
     );
     const sorted = sortModelsNew(filtered, orderBy, orderDir);
-    const mainModelsSorted = sorted.filter((m) => m.main === true);
-    const otherModelsSorted = sorted.filter((m) => m.main !== true);
-    return { mainModelsSorted, otherModelsSorted };
-  }, [models, deferredSearch, selectedProviders, imageFilterOnly, showWebSearch, orderBy, orderDir, activeTab]);
-
-  const handleTabChange = useCallback((tab: "favorites" | "all" | "ollama") => {
-    setActiveTab(tab);
-  }, []);
+    return partitionQuickPicksFirst(sorted, effectiveQuickPickIds, catalogFilter);
+  }, [
+    models,
+    effectiveQuickPickIds,
+    catalogFilter,
+    deferredSearch,
+    selectedProviders,
+    imageFilterOnly,
+    showWebSearch,
+    orderBy,
+    orderDir,
+  ]);
 
   return {
-    activeTab,
-    setActiveTab: handleTabChange,
+    catalogFilter,
+    setCatalogFilter: handleSetCatalogFilter,
+    defaultModelsCount,
+    ollamaModelsCount,
+    effectiveQuickPickIds,
     search,
     setSearch: handleSetSearch,
     orderBy,
@@ -197,9 +223,7 @@ export function useModelSelection({
     showWebSearch,
     setShowWebSearch: handleSetShowWebSearch,
     avgCostById,
-    favoritesSorted,
-    ollamaModelsSorted,
-    mainModelsSorted,
+    quickPickModelsSorted,
     otherModelsSorted,
   };
 }

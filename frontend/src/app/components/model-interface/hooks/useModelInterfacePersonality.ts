@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { setConversationPersonality } from "@/lib/calls/model-chat-conversation";
 import type { Personality as PersonaType } from "@/lib/calls/model-chat-conversation";
 import type { ChatMessage, ChatSession } from "../shared/types";
-import { DRAFT_SESSION_KEY } from "../features/chat/hooks/chatOperations.constants";
+import { resolveActiveChatMapKey } from "../conversation/clientDraftSession";
 
 type SetChatForSession = (
   sessionKey: string,
@@ -142,7 +142,7 @@ export function useModelInterfacePersonality({
     setSelectedPersonalityName(undefined);
     setSelectedPersonalityIconUrl(undefined);
 
-    const sessionKey = currentSessionId ?? DRAFT_SESSION_KEY;
+    const sessionKey = resolveActiveChatMapKey(currentSessionId);
     setChatForSession(sessionKey, (prev) =>
       prev.filter((message) => message.role !== "system"),
     );

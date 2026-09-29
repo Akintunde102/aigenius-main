@@ -162,14 +162,59 @@ export function normalizeChatMessages<T extends { content?: unknown; cost?: unkn
     });
 }
 
+type AssistantMergeable = {
+    role?: string;
+    content?: unknown;
+    events?: unknown[];
+    tool_usage_charges?: unknown[];
+    modelId?: string;
+    timestamp?: number;
+};
+
+/** Legacy subagent runs stored one assistant row per model round; merge for one-turn UI. */
+export function coalesceContiguousAssistantMessages<T extends AssistantMergeable>(messages: T[]): T[] {
+    if (!Array.isArray(messages) || messages.length < 2) {
+        return messages;
+    }
+    const out: T[] = [];
+    for (const msg of messages) {
+        const prev = out[out.length - 1];
+        if (msg.role === 'assistant' && prev?.role === 'assistant') {
+            const prevEvents = Array.isArray(prev.events) ? prev.events : [];
+            const msgEvents = Array.isArray(msg.events) ? msg.events : [];
+            const mergedEvents = [...prevEvents, ...msgEvents];
+            const prevText = typeof prev.content === 'string' ? prev.content.trim() : '';
+            const msgText = typeof msg.content === 'string' ? msg.content.trim() : '';
+            const mergedContent = [prevText, msgText].filter(Boolean).join('\n\n');
+            const prevCharges = prev.tool_usage_charges ?? [];
+            const msgCharges = msg.tool_usage_charges ?? [];
+            out[out.length - 1] = {
+                ...prev,
+                content: mergedContent,
+                ...(mergedEvents.length ? { events: mergedEvents } : {}),
+                ...(prevCharges.length || msgCharges.length
+                    ? { tool_usage_charges: [...prevCharges, ...msgCharges] }
+                    : {}),
+            };
+            continue;
+        }
+        out.push({ ...msg });
+    }
+    return out;
+}
+
 /** Normalize a session's messages in place (mutates and returns session). */
-export function normalizeSessionMessages<T extends SessionWithMessages>(
+export function normalizeSessionMessages<T extends SessionWithMessages & { metadata?: { spawnedBy?: string } }>(
     session: T
 ): T {
     if (!session?.messages) return session;
+    const merged =
+        session.metadata?.spawnedBy === 'subagent'
+            ? coalesceContiguousAssistantMessages(session.messages)
+            : session.messages;
     return {
         ...session,
-        messages: normalizeChatMessages(session.messages, session.modelId),
+        messages: normalizeChatMessages(merged, session.modelId),
     };
 }
 

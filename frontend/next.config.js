@@ -250,7 +250,7 @@ const nextConfig = {
                             "img-src 'self' blob: data: https:",
                             "font-src 'self' data:",
                             "worker-src 'self' blob:",
-                            "frame-src 'self' blob: data: https://checkout.paystack.com https://checkout-v2.payaza.africa",
+                            "frame-src 'self' blob: data: https://checkout.paystack.com https://checkout-v2.payaza.africa https://www.youtube.com https://www.youtube-nocookie.com",
                             "media-src 'self' blob:",
                             process.env.NODE_ENV === 'development'
                                 ? // Include Next dev HMR websockets on loopback; Electron loads http://localhost:<port>.

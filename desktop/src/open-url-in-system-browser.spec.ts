@@ -2,6 +2,7 @@ import { shell } from 'electron';
 import { showExternalLinkApprovalDialog } from './external-link-approval-dialog';
 import {
   isLoopbackPublishedConversationUrl,
+  openClickedHttpUrlInSystemBrowser,
   openUrlInSystemBrowser,
   openWalletCheckoutInSystemBrowser,
 } from './open-url-in-system-browser';
@@ -60,6 +61,37 @@ describe('isLoopbackPublishedConversationUrl', () => {
 
   it('rejects other loopback paths', () => {
     expect(isLoopbackPublishedConversationUrl('http://127.0.0.1:23001/chat')).toBe(false);
+  });
+});
+
+describe('openClickedHttpUrlInSystemBrowser', () => {
+  const approvalDialog = showExternalLinkApprovalDialog as jest.MockedFunction<
+    typeof showExternalLinkApprovalDialog
+  >;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('opens a clicked https link in the system browser without approval', async () => {
+    const url = 'https://example.com/docs?q=1';
+    const result = await openClickedHttpUrlInSystemBrowser(`  ${url}  `);
+
+    expect(result).toEqual({ ok: true });
+    expect(shell.openExternal).toHaveBeenCalledWith(url, { activate: true });
+    expect(approvalDialog).not.toHaveBeenCalled();
+  });
+
+  it('rejects javascript and mailto urls', async () => {
+    expect(await openClickedHttpUrlInSystemBrowser('javascript:alert(1)')).toEqual({
+      ok: false,
+      error: 'invalid_url',
+    });
+    expect(await openClickedHttpUrlInSystemBrowser('mailto:nobox.hq@gmail.com')).toEqual({
+      ok: false,
+      error: 'invalid_url',
+    });
+    expect(shell.openExternal).not.toHaveBeenCalled();
   });
 });
 

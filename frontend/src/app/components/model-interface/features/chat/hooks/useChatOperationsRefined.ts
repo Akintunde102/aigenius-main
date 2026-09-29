@@ -27,11 +27,18 @@ import {
     resolveViewSessionId,
     setActiveRouteConversationTarget,
 } from '@/app/components/model-interface/conversation/conversationViewSession';
+import {
+    getClientDraftSessionId,
+    isClientDraftSessionId,
+    migrateLegacyDraftStorageKey,
+    resolveActiveChatMapKey,
+} from '@/app/components/model-interface/conversation/clientDraftSession';
 import { enforceOutgoingChatProjectScope } from '@/lib/code-projects/apply-chat-project-scope';
 import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
 import type { HandleSendQueueOptions } from './messageSendQueue.types';
 import { notifyBackgroundConversationReady } from '@/lib/utils/background-conversation-notify';
 import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
+import { abortSubagentConversation } from '@/lib/calls/model-chat-conversation';
 
 /**
  * Send/stop orchestration: wallet validation, composer drafts, message shaping for the API,
@@ -86,8 +93,8 @@ export function useChatOperationsRefined({
 
     // Per-session input drafts — switching sessions restores the in-progress text.
     // Hydrate from sessionStorage so drafts survive reloads (WhatsApp-style).
-    const [inputMap, setInputMap] = useState<Record<string, string>>(
-        () => loadComposerDraftMap(),
+    const [inputMap, setInputMap] = useState<Record<string, string>>(() =>
+        migrateLegacyDraftStorageKey(loadComposerDraftMap(), (v) => !v.trim()),
     );
     const schedulePersistDraftsRef = useRef(
         createDebouncedDraftPersist(),
@@ -96,7 +103,7 @@ export function useChatOperationsRefined({
         schedulePersistDraftsRef.current(inputMap);
     }, [inputMap]);
 
-    const activeKey = viewSessionId ?? DRAFT_SESSION_KEY;
+    const activeKey = resolveActiveChatMapKey(viewSessionId);
     const input = inputMap[activeKey] ?? '';
     const setInput = useCallback((val: string | ((prev: string) => string)) => {
         setInputMap(prev => ({
@@ -109,15 +116,17 @@ export function useChatOperationsRefined({
         setInputMap((prev) => ({ ...prev, [key]: val }));
     }, []);
 
-    const migrateDraftComposerToSession = useCallback((realId: string) => {
+    const migrateDraftComposerToSession = useCallback((realId: string, fromDraftKey?: string) => {
         setInputMap((prev) => {
-            const draftText = prev[DRAFT_SESSION_KEY] ?? '';
+            const sourceKey = fromDraftKey ?? getClientDraftSessionId();
+            const draftText = prev[sourceKey] ?? prev[DRAFT_SESSION_KEY] ?? '';
             if (!draftText || (prev[realId] ?? '').length > 0) {
                 return prev;
             }
             return {
                 ...prev,
                 [realId]: draftText,
+                [sourceKey]: '',
                 [DRAFT_SESSION_KEY]: '',
             };
         });
@@ -151,21 +160,21 @@ export function useChatOperationsRefined({
         activeViewSessionId,
         updateSessionMessages,
         isAudioModeRef,
-        onDraftMaterialized: (realId) => {
+        onDraftMaterialized: (realId, clientDraftMapKey) => {
             currentMaterializedIdRef.current = realId;
             setActiveRouteConversationTarget(realId);
-            const draftGen = sessionSendGenerationRef.current.get(DRAFT_SESSION_KEY) ?? 0;
+            const draftGen = sessionSendGenerationRef.current.get(clientDraftMapKey) ?? 0;
             sessionSendGenerationRef.current.set(realId, draftGen);
             setStreamingForSession(realId, true);
             setLoadingForSession(realId, true);
-            setStreamingForSession(DRAFT_SESSION_KEY, false);
-            setLoadingForSession(DRAFT_SESSION_KEY, false);
-            setChatForSession(DRAFT_SESSION_KEY, []);
-            migrateDraftComposerToSession(realId);
-            onDraftSessionMaterialized?.(realId);
+            setStreamingForSession(clientDraftMapKey, false);
+            setLoadingForSession(clientDraftMapKey, false);
+            setChatForSession(clientDraftMapKey, []);
+            migrateDraftComposerToSession(realId, clientDraftMapKey);
+            onDraftSessionMaterialized?.(realId, clientDraftMapKey);
             setCurrentSessionId?.(realId);
         },
-        handleStreamResult: (result, streamingSessionId, draftEpoch, sendGeneration) => {
+        handleStreamResult: (result, streamingSessionId, draftEpoch, sendGeneration, clientDraftMapKey) => {
             // streamingSessionId is null for new chats, string for existing sessions.
             updateWalletFromResponse(result.wallet);
 
@@ -183,7 +192,7 @@ export function useChatOperationsRefined({
                 result.conversationId,
             );
 
-            const chatMapKey = streamingSessionId ?? DRAFT_SESSION_KEY;
+            const chatMapKey = streamingSessionId ?? clientDraftMapKey ?? getClientDraftSessionId();
             const ownsSendGeneration = sendGeneration !== undefined
                 ? (sessionSendGenerationRef.current.get(chatMapKey) === sendGeneration ||
                    (result.conversationId && sessionSendGenerationRef.current.get(result.conversationId) === sendGeneration))
@@ -207,9 +216,10 @@ export function useChatOperationsRefined({
                     // New chat: the stream already materialized the full transcript
                     // under the real id — just clear the draft slot and switch the key.
                     // (Re-writing from the committed view here could drop the final chunk.)
-                    setChatForSession(DRAFT_SESSION_KEY, []);
-                    migrateDraftComposerToSession(result.conversationId);
-                    onDraftSessionMaterialized?.(result.conversationId);
+                    const fromDraftKey = clientDraftMapKey ?? getClientDraftSessionId();
+                    setChatForSession(fromDraftKey, []);
+                    migrateDraftComposerToSession(result.conversationId, fromDraftKey);
+                    onDraftSessionMaterialized?.(result.conversationId, fromDraftKey);
                 }
                 setCurrentSessionId(result.conversationId);
             }
@@ -259,12 +269,13 @@ export function useChatOperationsRefined({
         activeViewSessionId,
         updateSessionMessages,
         setCurrentSessionId,
-        onDraftCompleted: (realId) => {
+        onDraftCompleted: (realId, _assistantMsg, clientDraftMapKey) => {
             // The response handler already persisted the full transcript under the
             // real id — just clear the draft slot and switch the session pointer.
-            setChatForSession(DRAFT_SESSION_KEY, []);
-            migrateDraftComposerToSession(realId);
-            onDraftSessionMaterialized?.(realId);
+            const fromDraftKey = clientDraftMapKey ?? getClientDraftSessionId();
+            setChatForSession(fromDraftKey, []);
+            migrateDraftComposerToSession(realId, fromDraftKey);
+            onDraftSessionMaterialized?.(realId, fromDraftKey);
             setCurrentSessionId?.(realId);
         },
         setWallet,
@@ -313,10 +324,13 @@ export function useChatOperationsRefined({
         setError('');
 
         const sendingViewId = sendOptions?.targetSessionKey !== undefined
-            ? (sendOptions.targetSessionKey === DRAFT_SESSION_KEY ? null : sendOptions.targetSessionKey)
+            ? (sendOptions.targetSessionKey === DRAFT_SESSION_KEY || isClientDraftSessionId(sendOptions.targetSessionKey)
+                ? null
+                : sendOptions.targetSessionKey)
             : resolveViewSessionId(routeConversationId, currentSessionId ?? null);
-        const sendingSessionId = sendingViewId ?? DRAFT_SESSION_KEY;
-        const activeComposerKey = viewSessionId ?? DRAFT_SESSION_KEY;
+        const sendingSessionId = sendingViewId ?? getClientDraftSessionId();
+        const activeComposerKey = resolveActiveChatMapKey(viewSessionId);
+        const clientDraftMapKey = sendingViewId === null ? sendingSessionId : undefined;
         const isBackgroundSend = sendOptions?.targetSessionKey !== undefined
             && sendOptions.targetSessionKey !== activeComposerKey;
         // Build from the captured session slot, not whichever transcript is
@@ -385,6 +399,7 @@ export function useChatOperationsRefined({
             const requestOverrides = {
                 conversationId: sendingViewId,
                 sendGeneration,
+                ...(clientDraftMapKey ? { clientDraftMapKey } : {}),
                 ...(draftEpochAtSend !== undefined ? { draftEpoch: draftEpochAtSend } : {}),
                 ...(pendingOrphanReply ? { orphanReply: pendingOrphanReply } : {}),
                 ...(sendOptions?.modelOverride ? { modelOverride: sendOptions.modelOverride } : {}),
@@ -467,19 +482,48 @@ export function useChatOperationsRefined({
     ]);
 
     const handleStop = useCallback(() => {
-        const sid = resolveViewSessionId(routeConversationId, currentSessionId ?? null) ?? DRAFT_SESSION_KEY;
+        const sid = resolveActiveChatMapKey(
+            resolveViewSessionId(routeConversationId, currentSessionId ?? null),
+        );
+        const isViewingDraftOrMaterialized =
+            !sid
+            || isClientDraftSessionId(sid)
+            || sid === DRAFT_SESSION_KEY
+            || sid === currentMaterializedIdRef.current;
         abortStreamingRequest(sid);
         abortNonStreamingRequest(sid);
         setLoadingForSession(sid, false);
         setStreamingForSession(sid, false);
-        if (currentMaterializedIdRef.current) {
+        if (isViewingDraftOrMaterialized && currentMaterializedIdRef.current) {
             abortStreamingRequest(currentMaterializedIdRef.current);
             abortNonStreamingRequest(currentMaterializedIdRef.current);
             setLoadingForSession(currentMaterializedIdRef.current, false);
             setStreamingForSession(currentMaterializedIdRef.current, false);
         }
+        const abortIds = new Set<string>();
+        if (sid && !isClientDraftSessionId(sid) && sid !== DRAFT_SESSION_KEY) {
+            abortIds.add(sid);
+        }
+        if (isViewingDraftOrMaterialized && currentMaterializedIdRef.current) {
+            abortIds.add(currentMaterializedIdRef.current);
+        }
+        if (setChatHistory && abortIds.size > 0) {
+            setChatHistory((prev) =>
+                prev.map((session) =>
+                    session.id && abortIds.has(session.id) && session.metadata?.subagentRunStatus === 'running'
+                        ? {
+                            ...session,
+                            metadata: { ...session.metadata, subagentRunStatus: 'completed' },
+                        }
+                        : session,
+                ),
+            );
+        }
+        abortIds.forEach((conversationId) => {
+            void abortSubagentConversation(conversationId).catch(() => undefined);
+        });
         setAssistantResponse('');
-    }, [abortStreamingRequest, abortNonStreamingRequest, currentSessionId, routeConversationId, setLoadingForSession, setStreamingForSession]);
+    }, [abortStreamingRequest, abortNonStreamingRequest, currentSessionId, routeConversationId, setChatHistory, setLoadingForSession, setStreamingForSession]);
 
     return {
         input,
