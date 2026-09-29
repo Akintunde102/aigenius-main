@@ -28,6 +28,9 @@ describe("normalizeChatConversationOpenPath", () => {
 
   it("rejects draft, new, and unsafe paths", () => {
     expect(normalizeChatConversationOpenPath("/chat/__draft__", origin)).toBeNull();
+    expect(
+      normalizeChatConversationOpenPath("/chat/cd_00000000-0000-4000-8000-000000000000", origin),
+    ).toBeNull();
     expect(normalizeChatConversationOpenPath("/chat/new", origin)).toBeNull();
     expect(normalizeChatConversationOpenPath("//evil.com/chat/x", origin)).toBeNull();
     expect(normalizeChatConversationOpenPath("https://evil.com/chat/x", origin)).toBeNull();

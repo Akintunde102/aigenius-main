@@ -10,37 +10,16 @@ const makeModel = (id: string, main?: boolean): Model => ({
   main,
 });
 
-describe("useModelSelection main split", () => {
+describe("useModelSelection catalog ordering", () => {
   const models = [
     makeModel("main-a", true),
     makeModel("main-b", true),
     makeModel("other-a", false),
     makeModel("other-b"),
+    makeModel("ollama:llama", false),
   ];
 
-  it("splits All Models tab into main and other lists", () => {
-    const { result } = renderHook(() =>
-      useModelSelection({
-        models,
-        pinnedModelIds: [],
-      }),
-    );
-
-    act(() => {
-      result.current.setActiveTab("all");
-    });
-
-    expect(result.current.mainModelsSorted.map((m) => m.id)).toEqual([
-      "main-a",
-      "main-b",
-    ]);
-    expect(result.current.otherModelsSorted.map((m) => m.id)).toEqual([
-      "other-a",
-      "other-b",
-    ]);
-  });
-
-  it("shows curated defaults on Quick picks when saved list is empty", () => {
+  it("lists default quick picks before other models on the unified catalog", () => {
     const catalog: Model[] = [
       { ...makeModel("openrouter/free"), featured: true },
       { ...makeModel("openai/gpt-4o"), featured: true },
@@ -51,17 +30,56 @@ describe("useModelSelection main split", () => {
       useModelSelection({
         models: catalog,
         pinnedModelIds: [],
-        search: "custom",
+      }),
+    );
+
+    expect(result.current.quickPickModelsSorted.map((m) => m.id)).toEqual([
+      "openrouter/free",
+      "openai/gpt-4o",
+    ]);
+    expect(result.current.otherModelsSorted.map((m) => m.id)).toEqual([
+      "custom/model",
+    ]);
+  });
+
+  it("filters to default models when catalog filter is default", () => {
+    const catalog: Model[] = [
+      { ...makeModel("openrouter/free"), featured: true },
+      makeModel("custom/model"),
+    ];
+
+    const { result } = renderHook(() =>
+      useModelSelection({
+        models: catalog,
+        pinnedModelIds: [],
       }),
     );
 
     act(() => {
-      result.current.setActiveTab("favorites");
+      result.current.setCatalogFilter("default");
     });
 
-    expect(result.current.favoritesSorted.map((m) => m.id)).toEqual([
+    expect(result.current.quickPickModelsSorted.map((m) => m.id)).toEqual([
       "openrouter/free",
-      "openai/gpt-4o",
+    ]);
+    expect(result.current.otherModelsSorted).toEqual([]);
+  });
+
+  it("filters to ollama models when catalog filter is ollama", () => {
+    const { result } = renderHook(() =>
+      useModelSelection({
+        models,
+        pinnedModelIds: [],
+      }),
+    );
+
+    act(() => {
+      result.current.setCatalogFilter("ollama");
+    });
+
+    expect(result.current.quickPickModelsSorted).toEqual([]);
+    expect(result.current.otherModelsSorted.map((m) => m.id)).toEqual([
+      "ollama:llama",
     ]);
   });
 });

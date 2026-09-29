@@ -323,6 +323,8 @@ export type AigeniusDesktopBridgeSurface = {
     filePath: string,
   ) => Promise<
     | { ok: true; kind: "image"; mimeType: string; base64: string }
+    | { ok: true; kind: "video"; mimeType: string; base64: string }
+    | { ok: true; kind: "audio"; mimeType: string; base64: string }
     | { ok: true; kind: "text"; mimeType: string; text: string }
     | { ok: false; error: string; maxBytes?: number }
   >;

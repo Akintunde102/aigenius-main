@@ -6,6 +6,7 @@ import { isAigeniusDesktopRuntime, getAigeniusDesktopBridgeFromBrowsingContext }
 import { waitForAccessToken } from '@/lib/api/wait-for-access-token';
 import { subscribeToTokenRefresh } from '@/lib/api/auth-client';
 import { resolveDefaultActiveModel } from '@/app/components/model-interface/shared/constants/quickPickModels';
+import { filterModelsForChatUiCatalog } from '@/app/components/model-interface/features/models/utils/modelConversationEligibility.utils';
 
 let inflightModelsPromise: Promise<any> | null = null;
 let cachedModels: any[] | null = null;
@@ -206,6 +207,8 @@ export function useModelData() {
                 if (!isAigeniusDesktopRuntime()) {
                     list = list.filter((m: any) => m.provider !== 'ollama' && !(m.id && m.id.startsWith('ollama:')));
                 }
+
+                list = filterModelsForChatUiCatalog(list as Model[]);
 
                 if (!cancelled) setModels(list);
 

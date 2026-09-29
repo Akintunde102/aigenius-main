@@ -26,6 +26,35 @@ const DOCUMENT_EXT = /\.(pdf|docx?|xlsx?|pptx?|txt|csv|md|rtf|zip|json|xml)$/i;
 const AUDIO_EXT = /\.(mp3|wav|ogg|m4a|aac|flac|webm|mp4)$/i;
 const URL_ONLY = /^https?:\/\/\S+$/;
 
+/**
+ * Bust browser HTTP cache for remote attachment URLs when message content changes.
+ * Skips data/blob/local-file URLs.
+ */
+export function withConversationAttachmentCacheBust(
+    url: string,
+    cacheSeed?: string | number | null,
+): string {
+    if (!url || cacheSeed === undefined || cacheSeed === null || cacheSeed === '') {
+        return url;
+    }
+    if (
+        url.startsWith('data:')
+        || url.startsWith('blob:')
+        || url.startsWith('local-file://')
+    ) {
+        return url;
+    }
+    const seed = String(cacheSeed);
+    try {
+        const parsed = new URL(url);
+        parsed.searchParams.set('_cb', seed);
+        return parsed.toString();
+    } catch {
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}_cb=${encodeURIComponent(seed)}`;
+    }
+}
+
 export function fileExtensionLabel(fileName: string): string {
     const parts = fileName.split('.');
     if (parts.length < 2) {

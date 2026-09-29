@@ -7,7 +7,8 @@ import React, { createContext, useContext, ReactNode, useState, useCallback, use
 import { useChatContext } from './ChatContext';
 import { useModelContext } from './ModelContext';
 import { useChatOperationsRefined } from '../features/chat/hooks/useChatOperationsRefined';
-import { DRAFT_SESSION_KEY } from '../features/chat/hooks/chatOperations.constants';
+import { resolveActiveChatMapKey } from '../conversation/clientDraftSession';
+import { resolveViewSessionId } from '../conversation/conversationViewSession';
 import { usePersonalityContext } from './PersonalityContext';
 import { PendingOrphanReply } from '../shared/types';
 import { ChatMessage } from '../shared/types';
@@ -61,7 +62,9 @@ export function ChatOperationsProvider({ children }: { children: ReactNode }) {
 
   // In the real migration, we hook this up to useChatOperationsRefined
   // We need to pass the active chat array
-  const activeKey = currentSessionId ?? DRAFT_SESSION_KEY;
+  const activeKey = resolveActiveChatMapKey(
+    resolveViewSessionId(null, currentSessionId),
+  );
   const chat = chatMap[activeKey] || [];
 
   const setChat = useCallback((updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {

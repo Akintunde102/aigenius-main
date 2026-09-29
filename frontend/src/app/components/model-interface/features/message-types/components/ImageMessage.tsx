@@ -45,6 +45,7 @@ interface StructuredMessageProps {
     imagePreview: string | null;
     setImagePreview: (url: string | null) => void;
     streaming?: boolean;
+    attachmentCacheSeed?: string | number | null;
 }
 
 export const StructuredMessage: React.FC<StructuredMessageProps> = ({
@@ -52,6 +53,7 @@ export const StructuredMessage: React.FC<StructuredMessageProps> = ({
     onImagePreview,
     setImagePreview,
     streaming = false,
+    attachmentCacheSeed,
 }) => {
     const segments = mergeAttachmentSegments(segmentStructuredContent(content));
     const attachmentSegments = segments.filter((segment) => segment.type === "attachments");
@@ -81,6 +83,7 @@ export const StructuredMessage: React.FC<StructuredMessageProps> = ({
                                 kind={item.kind}
                                 fileName={item.fileName}
                                 fileUrl={item.fileUrl}
+                                attachmentCacheSeed={attachmentCacheSeed}
                                 onPreview={(target) => {
                                     onImagePreview(target as any);
                                     setImagePreview(target as any);
@@ -105,17 +108,20 @@ interface ImageMessageProps {
     onImagePreview: (url: string) => void;
     imagePreview: string | null;
     setImagePreview: (url: string | null) => void;
+    attachmentCacheSeed?: string | number | null;
 }
 
 export const ImageMessage: React.FC<ImageMessageProps> = ({
     imageUrl,
     onImagePreview,
     setImagePreview,
+    attachmentCacheSeed,
 }) => (
   <MessageAttachmentCard
     kind="image"
     fileName="Image"
     fileUrl={imageUrl}
+    attachmentCacheSeed={attachmentCacheSeed}
     onPreview={(target) => {
       onImagePreview(target as any);
       setImagePreview(target as any);

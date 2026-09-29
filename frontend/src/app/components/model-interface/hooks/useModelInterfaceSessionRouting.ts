@@ -36,7 +36,10 @@ import {
   setActiveRouteConversationTarget,
   setPendingDraftMode,
 } from "../conversation/conversationViewSession";
-import { DRAFT_SESSION_KEY } from "../features/chat/hooks";
+import {
+  getClientDraftSessionId,
+  renewClientDraftSessionId,
+} from "../conversation/clientDraftSession";
 import type { AttachmentIndexItem, UploadedFileEntry } from "../ModelInterface.helpers";
 import type { ChatMessage, ChatSession, Model } from "../shared/types";
 import { getConversationIdFromPath } from "../ModelInterface.types";
@@ -176,6 +179,7 @@ export function useModelInterfaceSessionRouting({
     // Invalidate any in-flight draft sends so their completion callbacks
     // cannot hijack the fresh draft (see conversationViewSession draft epoch).
     bumpDraftConversationEpoch();
+    renewClientDraftSessionId();
     setPendingDraftMode(false);
 
     // Only clear the UI state for the current session if we actually stopped it.
@@ -192,7 +196,7 @@ export function useModelInterfaceSessionRouting({
     setSelectedSystemPrompt(undefined);
     setSelectedPersonalityName(undefined);
     setSelectedPersonalityIconUrl(undefined);
-    setChatForSession(DRAFT_SESSION_KEY, []);
+    setChatForSession(getClientDraftSessionId(), []);
     setAttachmentIndex([]);
     setTotalSpent(0);
     setError(null);
@@ -566,6 +570,7 @@ export function useModelInterfaceSessionRouting({
           publishedAt: conversation.publishedAt,
           publishedTitle: conversation.publishedTitle,
           publishedDescription: conversation.publishedDescription,
+          parentConversationId: conversation.parentConversationId ?? null,
         }) as ChatSession;
 
         applySessionPersonalityState(normalizedSession);

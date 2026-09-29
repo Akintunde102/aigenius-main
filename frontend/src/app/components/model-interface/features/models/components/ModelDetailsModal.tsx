@@ -26,6 +26,7 @@ import {
     isModelPickLocked,
 } from '../utils/modelWalletAffordance.utils';
 import { ModelCreditBurnIndicator } from './ModelCreditBurnIndicator';
+import { isConversationPickableModel } from '../utils/modelConversationEligibility.utils';
 
 interface ModelDetailsModalProps {
     isOpen: boolean;
@@ -79,6 +80,7 @@ export function ModelDetailsModal({
     const isWalletLocked = isModelPickLocked(wallet, requiredBalance, {
         modelId: model.id,
     });
+    const canPickForChat = isConversationPickableModel(model);
     const supportsTools = hasExtraToolingCapability(model);
     const inputMods = model.architecture?.input_modalities ?? [];
     const outputMods = model.architecture?.output_modalities ?? [];
@@ -475,6 +477,11 @@ export function ModelDetailsModal({
                                         </button>
                                     )}
                                 </div>
+                            ) : !canPickForChat ? (
+                                <div className="flex items-center gap-1.5 text-xs text-[var(--modal-muted-fg)]">
+                                    <FiAlertCircle size={14} className="shrink-0 opacity-80" />
+                                    <span>Catalog preview only — not available for text chat</span>
+                                </div>
                             ) : (
                                 <div className="flex items-center gap-1.5 text-xs text-[var(--modal-muted-fg)]">
                                     <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
@@ -494,7 +501,7 @@ export function ModelDetailsModal({
                                 Close
                             </button>
 
-                            {onPickModel && (
+                            {onPickModel && canPickForChat && (
                                 <button
                                     type="button"
                                     disabled={isWalletLocked}

@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { FiLoader } from 'react-icons/fi';
 
 const JsonSyntaxBlock = dynamic(
@@ -72,6 +73,14 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
 
     return rawStr.replace(/\\n/g, '\n').replace(/\\r/g, '').trim();
   }, [parsedResult]);
+
+  const subagentConversationId =
+    tool === 'subagent' &&
+      parsedResult &&
+      typeof parsedResult === 'object' &&
+      typeof (parsedResult as { conversation_id?: unknown }).conversation_id === 'string'
+      ? (parsedResult as { conversation_id: string }).conversation_id
+      : null;
 
   const workflowAgentRunId =
     (tool === 'workflow_agent' || tool === 'workflow_intent') &&
@@ -329,6 +338,17 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
                   Open workflow in studio
                 </button>
               ))}
+            </div>
+          )}
+
+          {subagentConversationId && success !== false && (
+            <div className="border-t border-slate-200/70 pt-2 dark:border-zinc-700/80">
+              <Link
+                href={`/chat/${subagentConversationId}`}
+                className="text-[10px] font-medium text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
+              >
+                Open subagent conversation
+              </Link>
             </div>
           )}
 

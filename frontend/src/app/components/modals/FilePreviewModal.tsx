@@ -453,12 +453,19 @@ export const FilePreviewModal: React.FC = () => {
                 }
             };
             fetchCode();
-        } else if ((payload.type === 'image' || payload.type === 'pdf') && payload.localPath && (payload.url === '' || payload.url.startsWith('local-file://'))) {
+        } else if (
+            (payload.type === 'image' ||
+                payload.type === 'pdf' ||
+                payload.type === 'video' ||
+                payload.type === 'audio') &&
+            payload.localPath &&
+            (payload.url === '' || payload.url.startsWith('local-file://'))
+        ) {
             const fetchMedia = async () => {
                 try {
                     if (!payload.localPath) return;
                     const res = await bridge.readLocalFilePreview(payload.localPath);
-                    if (res.ok) {
+                    if (res.ok && 'base64' in res) {
                         const b64toBlob = (b64Data: string, contentType: string) => {
                             const byteCharacters = atob(b64Data);
                             const byteArrays = [];
@@ -518,6 +525,33 @@ export const FilePreviewModal: React.FC = () => {
                     <div className="flex-1 w-full flex flex-col overflow-hidden" style={{ background: 'var(--surface-muted)' }}>
                         {!payload.url ? <div className="flex-1 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div> : (
                             <iframe src={payload.url} className="w-full h-full border-none" style={{ background: 'var(--modal-bg)' }} title={payload.name} />
+                        )}
+                    </div>
+                );
+            case 'video':
+                return (
+                    <div className="flex-1 flex items-center justify-center overflow-auto p-4 bg-black/40">
+                        {!payload.url ? (
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+                        ) : (
+                            <video
+                                src={payload.url}
+                                controls
+                                playsInline
+                                preload="metadata"
+                                className="max-w-full max-h-full rounded-lg shadow-2xl"
+                                title={payload.name}
+                            />
+                        )}
+                    </div>
+                );
+            case 'audio':
+                return (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-4 overflow-auto p-8" style={{ background: 'var(--modal-bg)' }}>
+                        {!payload.url ? (
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+                        ) : (
+                            <audio src={payload.url} controls preload="metadata" className="w-full max-w-lg" title={payload.name} />
                         )}
                     </div>
                 );

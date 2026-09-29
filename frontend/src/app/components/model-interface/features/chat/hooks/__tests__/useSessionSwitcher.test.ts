@@ -72,7 +72,10 @@ describe('useSessionSwitcher', () => {
         });
 
         expect(setCurrentSessionId).toHaveBeenCalledWith(null);
-        expect(setChatForSession).toHaveBeenCalledWith('__draft__', []);
+        expect(setChatForSession).toHaveBeenCalledWith(
+            expect.stringMatching(/^cd_/),
+            [],
+        );
     });
 
     it('switchToSession immediately sets currentSessionId (synchronous key change)', () => {

@@ -11,6 +11,11 @@ jest.mock('../ModelSelectionFiltersNew', () => ({
             <button onClick={() => props.setOrderBy('cost')}>Set Cost</button>
             <button onClick={() => props.setImageFilterOnly(!props.imageFilterOnly)}>Toggle Image</button>
             <button onClick={() => props.setGroupByAffordability(!props.groupByAffordability)}>Toggle Affordability</button>
+            {props.onToggleCatalogFilter && (
+                <button type="button" onClick={() => props.onToggleCatalogFilter('default')}>
+                    Toggle Default Catalog
+                </button>
+            )}
         </div>
     )
 }));
@@ -49,10 +54,6 @@ jest.mock('../RecentModelChips', () => ({
             ))}
         </div>
     )
-}));
-
-jest.mock('../FavoritesEmptyState', () => ({
-    FavoritesEmptyState: () => <div data-testid="favorites-empty" />
 }));
 
 const mockModels: Model[] = [
@@ -102,27 +103,17 @@ describe('ModelSelectionModal', () => {
         jest.clearAllMocks();
     });
 
-    it('renders and switches between tabs', () => {
+    it('renders the unified model catalog with filters in the sidebar', () => {
         render(<ModelSelectionModal {...defaultProps} />);
-        
-        const favTab = screen.getByRole('button', { name: /Quick picks/i });
-        const allTab = screen.getByRole('button', { name: /All Models/i });
-        
-        expect(favTab).toBeInTheDocument();
-        expect(allTab).toBeInTheDocument();
 
-        // Switch to All Models
-        fireEvent.click(allTab);
         expect(screen.getByTestId('filters')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /All Models/i })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Quick picks/i })).not.toBeInTheDocument();
     });
 
     it('syncs sort changes back to parent props via hook', () => {
         render(<ModelSelectionModal {...defaultProps} />);
-        
-        // Go to All Models to see filters
-        fireEvent.click(screen.getByRole('button', { name: /All Models/i }));
 
-        // Click the mocked sort button from our mock ModelSelectionFiltersNew
         fireEvent.click(screen.getByText('Set Cost'));
 
         expect(defaultProps.setOrderBy).toHaveBeenCalledWith('cost');
@@ -130,17 +121,13 @@ describe('ModelSelectionModal', () => {
 
     it('syncs filter changes back to parent props via hook', () => {
         render(<ModelSelectionModal {...defaultProps} />);
-        
-        fireEvent.click(screen.getByRole('button', { name: /All Models/i }));
         fireEvent.click(screen.getByText('Toggle Image'));
 
         expect(defaultProps.setImageFilterOnly).toHaveBeenCalled();
     });
 
-    it('lists all models on the All Models tab using hook sort order', () => {
+    it('lists all models using hook sort order', () => {
         render(<ModelSelectionModal {...defaultProps} />);
-
-        fireEvent.click(screen.getByRole('button', { name: /All Models/i }));
 
         const items = screen.getAllByTestId('model-item');
         expect(items[0]).toHaveTextContent('Model A');
@@ -158,42 +145,19 @@ describe('ModelSelectionModal', () => {
         );
 
         expect(screen.getByRole('status', { name: /loading models/i })).toBeInTheDocument();
-        expect(screen.queryByTestId('favorites-empty')).not.toBeInTheDocument();
         expect(screen.queryByText('No models found.')).not.toBeInTheDocument();
     });
 
-    it('shows a loading sign on Quick picks while favorites are still fetching', () => {
-        render(
-            <ModelSelectionModal
-                {...defaultProps}
-                pinnedModelIds={[]}
-                favoritesLoaded={false}
-            />,
-        );
-
-        expect(screen.getByRole('status', { name: /loading models/i })).toBeInTheDocument();
-        expect(screen.queryByTestId('favorites-empty')).not.toBeInTheDocument();
-    });
-
-    it('still lists the catalog on All Models while favorites are fetching', () => {
+    it('still lists the catalog while favorites metadata is fetching', () => {
         render(
             <ModelSelectionModal
                 {...defaultProps}
                 favoritesLoaded={false}
             />,
         );
-
-        fireEvent.click(screen.getByRole('button', { name: /All Models/i }));
 
         expect(screen.queryByRole('status', { name: /loading models/i })).not.toBeInTheDocument();
         expect(screen.getAllByTestId('model-item')).toHaveLength(2);
-    });
-
-    it('renders FavoritesEmptyState when favorites have loaded and none exist', () => {
-        render(<ModelSelectionModal {...defaultProps} pinnedModelIds={[]} favoritesLoaded />);
-        fireEvent.click(screen.getByRole('button', { name: /Quick picks/i }));
-        expect(screen.getByTestId('favorites-empty')).toBeInTheDocument();
-        expect(screen.queryByRole('status', { name: /loading models/i })).not.toBeInTheDocument();
     });
 
     it('renders inside the portal if modal-root exists', () => {
@@ -203,10 +167,8 @@ describe('ModelSelectionModal', () => {
         
         render(<ModelSelectionModal {...defaultProps} />);
         
-        // Use container query or check child relationship
-        expect(modalRoot).toContainElement(screen.getByText('Models'));
+        expect(modalRoot).toContainElement(screen.getByRole('heading', { name: /All Models/i }));
         
-        // Clean up
         document.body.removeChild(modalRoot);
     });
 
@@ -230,53 +192,17 @@ describe('ModelSelectionModal', () => {
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'All Models' }));
         fireEvent.click(screen.getByText('Toggle Affordability'));
 
         expect(screen.getByText('Models you can use')).toBeInTheDocument();
         expect(screen.getByText('Need more credits')).toBeInTheDocument();
     });
 
-    it('splits models by wallet affordability on Quick picks when filter is toggled', () => {
-        const expensiveModel: Model = {
-            ...mockModels[1],
-            id: 'expensive',
-            name: 'Model Expensive',
-            pricing: {
-                prompt: '0.05',
-                completion: '0.05',
-            },
-        };
-
-        render(
-            <ModelSelectionModal
-                {...defaultProps}
-                models={[mockModels[0], expensiveModel]}
-                pinnedModelIds={[mockModels[0].id]}
-                wallet={10}
-                favoritesLoaded
-            />,
-        );
-
-        expect(screen.getByRole('button', { name: 'Quick picks' })).toHaveClass(
-            'app-tab-pill--active',
-        );
-        fireEvent.click(screen.getByText('Toggle Affordability'));
-        expect(screen.getByText('Models you can use')).toBeInTheDocument();
-    });
-
-    it('labels the sidebar Models instead of Settings', () => {
-        render(<ModelSelectionModal {...defaultProps} />);
-
-        expect(screen.getByText('Models')).toBeInTheDocument();
-        expect(screen.queryByText('Settings')).not.toBeInTheDocument();
-    });
-
     it('does not render the Select Model heading', () => {
         render(<ModelSelectionModal {...defaultProps} />);
 
         expect(screen.queryByText('Select Model')).not.toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: /Models$/ })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /All Models/i })).toBeInTheDocument();
     });
 
     it('does not render Providers, Provide Feedback, or a user profile in the sidebar', () => {
@@ -307,7 +233,7 @@ describe('ModelSelectionModal', () => {
         );
 
         const recent = screen.getByTestId('recent-chips');
-        const title = screen.getByRole('heading', { name: /Models$/ });
+        const title = screen.getByRole('heading', { name: /All Models/i });
 
         expect(recent.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });

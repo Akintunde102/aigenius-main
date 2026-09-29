@@ -19,10 +19,12 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
     host_markdown: 'Host Markdown',
     convert_to_pdf_and_upload: 'Convert to PDF',
     web_fetch: 'Fetch web page',
+    youtube_get_transcript: 'YouTube transcript',
     serper_google_search: 'Google search',
     serper_google_images: 'Google image search',
     get_wallet_balance: 'Wallet balance',
     workflow_agent: 'Workflow agent',
+    subagent: 'Subagent',
     call_model: 'Call model (non-streaming)',
     workflow_intent: 'Workflow agent',
     workflow_inner_create: 'Create workflow (agent)',
@@ -154,6 +156,14 @@ export function getToolActivityHint(
                 }
             }
             return 'Fetching page…';
+        }
+        case 'youtube_get_transcript': {
+            const video = args.video;
+            if (typeof video === 'string' && video.trim()) {
+                const id = video.trim();
+                return id.length <= 20 ? `Fetching YouTube transcript ${id}…` : 'Fetching YouTube transcript…';
+            }
+            return 'Fetching YouTube transcript…';
         }
         case 'call_model': {
             const mid = args.model_id;

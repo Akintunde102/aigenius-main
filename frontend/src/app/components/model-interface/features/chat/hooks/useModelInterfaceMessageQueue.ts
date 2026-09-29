@@ -3,7 +3,7 @@ import type { Model } from '@/app/components/model-interface/shared/types';
 import type { ChatMessage } from '@/app/components/model-interface/shared/types';
 import type { AudioStatus } from './audioMode.utils';
 import type { HandleSendQueueOptions } from './messageSendQueue.types';
-import { DRAFT_SESSION_KEY } from './chatOperations.constants';
+import { clearClientDraftStorageKeys } from '@/app/components/model-interface/conversation/clientDraftSession';
 import { useMessageSendQueue } from './useMessageSendQueue';
 import { useMessageSendQueueProcessor } from './useMessageSendQueueProcessor';
 
@@ -23,7 +23,9 @@ interface UseModelInterfaceMessageQueueParams {
         chatSnapshot?: ChatMessage[],
         sendOptions?: HandleSendQueueOptions,
     ) => Promise<boolean>;
-    onDraftSessionMaterializedRef: React.MutableRefObject<(realId: string) => void>;
+    onDraftSessionMaterializedRef: React.MutableRefObject<
+        (realId: string, clientDraftMapKey?: string) => void
+    >;
     onClearDraftQueueRef: React.MutableRefObject<() => void>;
 }
 
@@ -47,7 +49,9 @@ export function useModelInterfaceMessageQueue({
     }, [onDraftSessionMaterializedRef, queue.migrateDraftQueueToSession]);
 
     useEffect(() => {
-        onClearDraftQueueRef.current = () => queue.clearSessionMessageQueue(DRAFT_SESSION_KEY);
+        onClearDraftQueueRef.current = () => {
+            clearClientDraftStorageKeys((key) => queue.clearSessionMessageQueue(key));
+        };
     }, [onClearDraftQueueRef, queue.clearSessionMessageQueue]);
 
     const handleQueueMessage = useCallback((text: string) => {

@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { FiGlobe, FiCheckCircle, FiRotateCcw } from "react-icons/fi";
+import { FiGlobe, FiCheckCircle, FiRotateCcw, FiZap, FiCpu } from "react-icons/fi";
+import type { ModelCatalogFilter } from "@/app/components/model-interface/shared/hooks/useModelSelection";
 import { FaRegImage } from "react-icons/fa";
 import {
   ModelOrderBy,
@@ -31,6 +32,55 @@ interface ModelSelectionFiltersNewProps {
   isMobile?: boolean;
   onResetAll?: () => void;
   activeFiltersCount?: number;
+  catalogFilter?: ModelCatalogFilter;
+  onToggleCatalogFilter?: (filter: ModelCatalogFilter) => void;
+  defaultModelsCount?: number;
+  ollamaModelsCount?: number;
+  showOllamaCatalogFilter?: boolean;
+}
+
+function CatalogFilterPill({
+  active,
+  onClick,
+  ariaLabel,
+  icon,
+  label,
+  count,
+  activeClassName,
+}: {
+  active: boolean;
+  onClick: () => void;
+  ariaLabel: string;
+  icon: React.ReactNode;
+  label: string;
+  count: number;
+  activeClassName?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      aria-pressed={active}
+      className={`app-filter-pill inline-flex items-center gap-1.5 h-7 px-2.5 text-[11px] font-medium tabular-nums ${
+        active ? (activeClassName ?? "app-filter-pill--active") : ""
+      }`}
+    >
+      <span className="opacity-80 shrink-0" aria-hidden>{icon}</span>
+      <span className="truncate">{label}</span>
+      <span
+        className="text-[10px] font-semibold px-1 py-0.5 rounded-md leading-none"
+        style={{
+          background: active
+            ? "color-mix(in srgb, currentColor 14%, transparent)"
+            : "color-mix(in srgb, var(--modal-fg) 7%, transparent)",
+          color: active ? "inherit" : "var(--sidebar-muted-fg)",
+        }}
+      >
+        {count}
+      </span>
+    </button>
+  );
 }
 
 const SORT_OPTIONS: FilterPillOption[] = [
@@ -94,6 +144,11 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
   isMobile = false,
   onResetAll,
   activeFiltersCount,
+  catalogFilter = "all",
+  onToggleCatalogFilter,
+  defaultModelsCount = 0,
+  ollamaModelsCount = 0,
+  showOllamaCatalogFilter = false,
 }: ModelSelectionFiltersNewProps) {
   const selectedProvider = selectedProviders[0] ?? "";
 
@@ -113,7 +168,39 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
     imageFilterOnly ||
     selectedProviders.length > 0 ||
     showWebSearch ||
-    Boolean(groupByAffordability);
+    Boolean(groupByAffordability) ||
+    catalogFilter !== "all";
+
+  const showCollectionPills =
+    onToggleCatalogFilter &&
+    (defaultModelsCount > 0 || (showOllamaCatalogFilter && ollamaModelsCount > 0));
+
+  const collectionPills = showCollectionPills ? (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {defaultModelsCount > 0 && (
+        <CatalogFilterPill
+          active={catalogFilter === "default"}
+          onClick={() => onToggleCatalogFilter!("default")}
+          ariaLabel={`Filter to default models, ${defaultModelsCount} available`}
+          icon={<FiZap size={11} className="text-amber-500" />}
+          label="Default models"
+          count={defaultModelsCount}
+          activeClassName="app-filter-pill--default-catalog-active"
+        />
+      )}
+      {showOllamaCatalogFilter && ollamaModelsCount > 0 && (
+        <CatalogFilterPill
+          active={catalogFilter === "ollama"}
+          onClick={() => onToggleCatalogFilter!("ollama")}
+          ariaLabel={`Filter to Ollama models, ${ollamaModelsCount} available`}
+          icon={<FiCpu size={11} className="text-teal-600 dark:text-teal-400" />}
+          label="Ollama"
+          count={ollamaModelsCount}
+          activeClassName="app-filter-pill--ollama-catalog-active"
+        />
+      )}
+    </div>
+  ) : null;
 
   const handleResetFilters = () => {
     if (onResetAll) {
@@ -132,6 +219,7 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
   if (isMobile) {
     return (
       <div className="flex flex-col gap-2 pt-1 pb-1">
+        {collectionPills}
         <div className="flex items-center gap-1.5 flex-wrap">
           <FilterPillDropdown
             value={orderBy}
@@ -225,6 +313,17 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
   // Desktop sidebar rendering: beautifully grouped vertical sections
   return (
     <div className="space-y-4 pt-1">
+      {showCollectionPills && (
+        <div className="space-y-1.5">
+          <div className="px-1">
+            <span className="text-[10px] font-semibold text-[var(--sidebar-muted-fg)] uppercase tracking-wider">
+              Collections
+            </span>
+          </div>
+          {collectionPills}
+        </div>
+      )}
+
       {/* Filters Section Header */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-1.5">

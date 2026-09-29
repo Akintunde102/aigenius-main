@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FiX, FiSearch, FiZap, FiGrid, FiCpu, FiSliders, FiGlobe, FiCheckCircle, FiRotateCcw } from "react-icons/fi";
+import { FiX, FiSearch, FiSliders, FiGlobe, FiCheckCircle, FiRotateCcw } from "react-icons/fi";
 import { FaRegImage } from "react-icons/fa";
 import { Model } from "@/app/components/model-interface/shared/types";
 import {
@@ -14,14 +14,9 @@ import { ModelSelectionFiltersNew } from "./ModelSelectionFiltersNew";
 import { useModelSelection } from "@/app/components/model-interface/shared/hooks/useModelSelection";
 import { RecentModelChips } from "./RecentModelChips";
 import { ModelSelectionGrid } from "./ModelSelectionGrid";
-import { FavoritesEmptyState } from "./FavoritesEmptyState";
-import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
-import {
-  isActiveModelOutsideQuickPicks,
-  isModelInCatalog,
-  mergeQuickPickIdsForDisplay,
-} from "@/app/components/model-interface/shared/constants/quickPickModels";
+import type { ModelCatalogFilter } from "@/app/components/model-interface/shared/hooks/useModelSelection";
 import { partitionModelsByWalletAffordance } from "@/app/components/model-interface/features/models/utils/modelWalletAffordance.utils";
+import { isConversationPickableModel } from "@/app/components/model-interface/features/models/utils/modelConversationEligibility.utils";
 import type { ModelSelectionSection } from "./ModelSelectionGrid";
 
 const MODEL_PICKER_GROUP_BY_AFFORDABILITY_KEY =
@@ -160,7 +155,6 @@ export const ModelSelectionModal = React.memo(({
     [],
   );
 
-  const hasAutoSwitchedRef = React.useRef(false);
   const parentRef = React.useRef<HTMLDivElement>(null);
   const searchRef = React.useRef<HTMLInputElement>(null);
 
@@ -170,8 +164,10 @@ export const ModelSelectionModal = React.memo(({
 
   // Use the custom hook to manage tab state, filtering and sorting
   const {
-    activeTab,
-    setActiveTab,
+    catalogFilter,
+    setCatalogFilter,
+    defaultModelsCount,
+    ollamaModelsCount,
     orderBy,
     setOrderBy,
     orderDir,
@@ -183,9 +179,7 @@ export const ModelSelectionModal = React.memo(({
     showWebSearch,
     setShowWebSearch,
     avgCostById,
-    favoritesSorted,
-    ollamaModelsSorted,
-    mainModelsSorted,
+    quickPickModelsSorted,
     otherModelsSorted,
   } = useModelSelection({
     models,
@@ -243,15 +237,14 @@ export const ModelSelectionModal = React.memo(({
     return () => window.removeEventListener("keydown", handleSlash);
   }, [isOpen]);
 
-  const effectiveQuickPickIds = useMemo(
-    () => mergeQuickPickIdsForDisplay(models, pinnedModelIds),
-    [models, pinnedModelIds],
-  );
-
   const sharedCardProps = useMemo(() => ({
     isModelPinned,
     togglePinModel,
     onSelect: (model: Model) => {
+      if (!isConversationPickableModel(model)) {
+        handleShowModelDetails(model);
+        return;
+      }
       setSelectedModel(model);
       onClose();
     },
@@ -298,12 +291,9 @@ export const ModelSelectionModal = React.memo(({
     onClose();
   }, [onClose, setSelectedModelForDetails]);
 
-  const filteredMainModels = mainModelsSorted;
-  const filteredOtherModels = otherModelsSorted;
-
   const allModelsFlat = useMemo(() => {
-    return [...filteredMainModels, ...filteredOtherModels];
-  }, [filteredMainModels, filteredOtherModels]);
+    return [...quickPickModelsSorted, ...otherModelsSorted];
+  }, [quickPickModelsSorted, otherModelsSorted]);
 
   const buildAffordabilitySections = useCallback(
     (modelsToSplit: Model[]): ModelSelectionSection[] => {
@@ -331,103 +321,26 @@ export const ModelSelectionModal = React.memo(({
     }
 
     const sections: ModelSelectionSection[] = [];
-    if (filteredMainModels.length > 0) {
-      sections.push({ title: "Main models", models: filteredMainModels });
-    }
-    if (filteredOtherModels.length > 0) {
-      sections.push({
-        title: filteredMainModels.length > 0 ? "Others" : "",
-        models: filteredOtherModels,
-      });
+    if (allModelsFlat.length > 0) {
+      sections.push({ title: "", models: allModelsFlat });
     }
     return sections;
   }, [
     groupByAffordability,
     buildAffordabilitySections,
     allModelsFlat,
-    filteredMainModels,
-    filteredOtherModels,
+    quickPickModelsSorted,
+    otherModelsSorted,
+    catalogFilter,
   ]);
 
-  const favoritesGridSections = useMemo(() => {
-    if (activeTab !== "favorites") return undefined;
+  const showModelsLoading = modelsLoading && models.length === 0;
 
-    const sections: { title: string; models: Model[] }[] = [];
-    const showActiveOutside =
-      selectedModel != null &&
-      isModelInCatalog(models, selectedModel.id) &&
-      isActiveModelOutsideQuickPicks(selectedModel, effectiveQuickPickIds);
-
-    if (showActiveOutside && selectedModel) {
-      sections.push({ title: "Currently in use", models: [selectedModel] });
-    }
-
-    if (favoritesSorted.length > 0) {
-      if (groupByAffordability) {
-        sections.push(...buildAffordabilitySections(favoritesSorted));
-      } else {
-        sections.push({
-          title: showActiveOutside ? "Quick picks" : "",
-          models: favoritesSorted,
-        });
-      }
-    }
-
-    return sections.length > 0 ? sections : undefined;
-  }, [
-    activeTab,
-    selectedModel,
-    effectiveQuickPickIds,
-    models,
-    favoritesSorted,
-    groupByAffordability,
-    buildAffordabilitySections,
-  ]);
-
-  const ollamaModelSections = useMemo(() => {
-    if (activeTab !== "ollama" || !groupByAffordability) {
-      return undefined;
-    }
-    return buildAffordabilitySections(ollamaModelsSorted);
-  }, [activeTab, groupByAffordability, ollamaModelsSorted, buildAffordabilitySections]);
-
-  const showModelsLoading =
-    (modelsLoading && models.length === 0) ||
-    (activeTab === "favorites" && favoritesLoaded === false);
-
-  // Set initial tab once when the modal opens
   useEffect(() => {
-    if (!isOpen) {
-      hasAutoSwitchedRef.current = false;
-      return;
-    }
-
-    if (favoritesLoaded === false) {
-      return;
-    }
-
-    if (hasAutoSwitchedRef.current) {
-      return;
-    }
-
-    hasAutoSwitchedRef.current = true;
-
-    if (effectiveQuickPickIds.length > 0) {
-      setActiveTab("favorites");
-    } else {
-      setActiveTab("all");
-    }
-    setShowFilterSortRow(true);
-  }, [isOpen, favoritesLoaded, effectiveQuickPickIds.length, setActiveTab]);
-
-  // Fallback: auto-switch to "all" if favorites are empty while still on favorites tab
-  useEffect(() => {
-    if (!hasAutoSwitchedRef.current && favoritesLoaded && effectiveQuickPickIds.length === 0 && activeTab === "favorites") {
-      hasAutoSwitchedRef.current = true;
-      setActiveTab("all");
+    if (isOpen) {
       setShowFilterSortRow(true);
     }
-  }, [favoritesLoaded, effectiveQuickPickIds.length, activeTab, setActiveTab]);
+  }, [isOpen]);
 
   // Handle Esc and Cmd/Ctrl + K to close
   useEffect(() => {
@@ -443,24 +356,24 @@ export const ModelSelectionModal = React.memo(({
   }, [isOpen, handleClose]);
 
   const currentViewTitle = useMemo(() => {
-    if (activeTab === "favorites") return "Quick Models";
     if (selectedProviders.length > 0) return `${getProviderLabel(selectedProviders[0])} Models`;
-    if (activeTab === "ollama") return "Ollama Models";
+    if (catalogFilter === "default") return "Default Models";
+    if (catalogFilter === "ollama") return "Ollama Models";
     return "All Models";
-  }, [activeTab, selectedProviders]);
+  }, [catalogFilter, selectedProviders]);
 
   const currentViewSubtitle = useMemo(() => {
-    if (activeTab === "favorites") {
-      return "Curated fast models for everyday tasks and quick iterations.";
-    }
     if (selectedProviders.length > 0) {
       return `Models developed and hosted by ${getProviderLabel(selectedProviders[0])}.`;
     }
-    if (activeTab === "ollama") {
-      return "Locally installed and running models on your machine via Ollama.";
+    if (catalogFilter === "default") {
+      return "Your curated quick-pick models for everyday chat.";
     }
-    return "Browse and select from all available AI models.";
-  }, [activeTab, selectedProviders]);
+    if (catalogFilter === "ollama") {
+      return "Locally installed models running on your machine via Ollama.";
+    }
+    return "Browse and select from all available AI models. Default picks appear first.";
+  }, [catalogFilter, selectedProviders]);
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
@@ -470,8 +383,9 @@ export const ModelSelectionModal = React.memo(({
     if (selectedProviders.length > 0) count++;
     if (showWebSearch) count++;
     if (groupByAffordability) count++;
+    if (catalogFilter !== "all") count++;
     return count;
-  }, [localSearch, orderBy, imageFilterOnly, selectedProviders.length, showWebSearch, groupByAffordability]);
+  }, [localSearch, orderBy, imageFilterOnly, selectedProviders.length, showWebSearch, groupByAffordability, catalogFilter]);
 
   const hasAnyFilterActive = activeFiltersCount > 0;
 
@@ -484,26 +398,24 @@ export const ModelSelectionModal = React.memo(({
     setSelectedProviders([]);
     setShowWebSearch(false);
     setGroupByAffordabilityPersisted(false);
-  }, [setSearchProp, setOrderBy, setOrderDir, setImageFilterOnly, setSelectedProviders, setShowWebSearch, setGroupByAffordabilityPersisted]);
+    setCatalogFilter("all");
+  }, [setSearchProp, setOrderBy, setOrderDir, setImageFilterOnly, setSelectedProviders, setShowWebSearch, setGroupByAffordabilityPersisted, setCatalogFilter]);
 
   const displayedModelCount = useMemo(() => {
-    if (activeTab === "favorites") {
-      if (favoritesGridSections) {
-        return favoritesGridSections.reduce((sum, s) => sum + s.models.length, 0);
-      }
-      return favoritesSorted.length;
-    }
-    if (activeTab === "ollama") {
-      if (ollamaModelSections) {
-        return ollamaModelSections.reduce((sum, s) => sum + s.models.length, 0);
-      }
-      return ollamaModelsSorted.length;
-    }
     if (allModelSections) {
       return allModelSections.reduce((sum, s) => sum + s.models.length, 0);
     }
     return allModelsFlat.length;
-  }, [activeTab, favoritesGridSections, favoritesSorted.length, ollamaModelSections, ollamaModelsSorted.length, allModelSections, allModelsFlat.length]);
+  }, [allModelSections, allModelsFlat.length]);
+
+  const showOllamaCatalogFilter = ollamaModelsCount > 0;
+
+  const toggleCatalogFilter = useCallback(
+    (next: ModelCatalogFilter) => {
+      setCatalogFilter(catalogFilter === next ? "all" : next);
+    },
+    [setCatalogFilter, catalogFilter],
+  );
 
   if (!isOpen || !mounted) {
     if (!mounted) return null;
@@ -604,56 +516,6 @@ export const ModelSelectionModal = React.memo(({
                 </button>
               </div>
 
-              {/* Tab pills row */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("favorites");
-                    if (selectedProviders.length > 0) setSelectedProviders([]);
-                  }}
-                  aria-label="Quick picks"
-                  className={`app-tab-pill flex items-center gap-1.5 py-1 px-2.5 text-xs whitespace-nowrap ${
-                    activeTab === "favorites" && selectedProviders.length === 0 ? "app-tab-pill--active" : ""
-                  }`}
-                >
-                  <FiZap size={13} className="text-amber-500 shrink-0" />
-                  <span>Quick Models ({effectiveQuickPickIds.length})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("all");
-                    if (selectedProviders.length > 0) setSelectedProviders([]);
-                  }}
-                  aria-label="All Models"
-                  className={`app-tab-pill flex items-center gap-1.5 py-1 px-2.5 text-xs whitespace-nowrap ${
-                    activeTab === "all" && selectedProviders.length === 0 ? "app-tab-pill--active" : ""
-                  }`}
-                >
-                  <FiGrid size={13} className="text-sky-400 shrink-0" />
-                  <span>All Models ({models.length})</span>
-                </button>
-
-                {isAigeniusDesktopRuntime() && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab("ollama");
-                      if (selectedProviders.length > 0) setSelectedProviders([]);
-                    }}
-                    aria-label="Ollama"
-                    className={`app-tab-pill flex items-center gap-1.5 py-1 px-2.5 text-xs whitespace-nowrap ${
-                      activeTab === "ollama" ? "app-tab-pill--active" : ""
-                    }`}
-                  >
-                    <FiCpu size={13} className="text-purple-400 shrink-0" />
-                    <span>Ollama</span>
-                  </button>
-                )}
-              </div>
-
               {/* Collapsible Mobile Filters Drawer */}
               {showMobileFilters && (
                 <div className="pt-2 border-t mt-1" style={{ borderColor: "var(--modal-border)" }}>
@@ -676,6 +538,11 @@ export const ModelSelectionModal = React.memo(({
                     setGroupByAffordability={setGroupByAffordabilityPersisted}
                     onResetAll={handleResetAllFilters}
                     activeFiltersCount={activeFiltersCount}
+                    catalogFilter={catalogFilter}
+                    onToggleCatalogFilter={toggleCatalogFilter}
+                    defaultModelsCount={defaultModelsCount}
+                    ollamaModelsCount={ollamaModelsCount}
+                    showOllamaCatalogFilter={showOllamaCatalogFilter}
                   />
                 </div>
               )}
@@ -744,114 +611,6 @@ export const ModelSelectionModal = React.memo(({
 
               {/* Sidebar Navigation & Filters */}
               <div className="flex-1 overflow-y-auto p-3 space-y-4 [scrollbar-width:thin]">
-                {/* Models Navigation Section */}
-                <div className="space-y-1">
-                  <div className="px-1 pb-1">
-                    <span className="text-[10px] font-semibold text-[var(--sidebar-muted-fg)] uppercase tracking-wider">
-                      Models
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-0.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab("favorites");
-                        if (selectedProviders.length > 0) {
-                          setSelectedProviders([]);
-                        }
-                      }}
-                      aria-label="Quick picks"
-                      className={`app-tab-pill flex items-center justify-between py-1.5 px-2.5 text-xs w-full text-left transition-colors ${
-                        activeTab === "favorites" && selectedProviders.length === 0
-                          ? "app-tab-pill--active"
-                          : ""
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FiZap size={14} className="shrink-0 text-amber-500" />
-                        <span className="truncate">Quick Models</span>
-                      </div>
-                      <span
-                        className="text-[10px] px-1.5 py-0.2 rounded-full font-medium"
-                        style={{
-                          background: "color-mix(in srgb, var(--modal-fg) 6%, transparent)",
-                          color: "var(--sidebar-muted-fg)",
-                        }}
-                      >
-                        {effectiveQuickPickIds.length}
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab("all");
-                        if (selectedProviders.length > 0) {
-                          setSelectedProviders([]);
-                        }
-                      }}
-                      aria-label="All Models"
-                      className={`app-tab-pill flex items-center justify-between py-1.5 px-2.5 text-xs w-full text-left transition-colors ${
-                        activeTab === "all" && selectedProviders.length === 0
-                          ? "app-tab-pill--active"
-                          : ""
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FiGrid size={14} className="shrink-0 text-sky-400" />
-                        <span className="truncate">All Models</span>
-                      </div>
-                      <span
-                        className="text-[10px] px-1.5 py-0.2 rounded-full font-medium"
-                        style={{
-                          background: "color-mix(in srgb, var(--modal-fg) 6%, transparent)",
-                          color: "var(--sidebar-muted-fg)",
-                        }}
-                      >
-                        {models.length}
-                      </span>
-                    </button>
-
-                    {isAigeniusDesktopRuntime() && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveTab("ollama");
-                          if (selectedProviders.length > 0) {
-                            setSelectedProviders([]);
-                          }
-                        }}
-                        aria-label="Ollama"
-                        className={`app-tab-pill flex items-center justify-between py-1.5 px-2.5 text-xs w-full text-left transition-colors ${
-                          activeTab === "ollama" ? "app-tab-pill--active" : ""
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FiCpu size={14} className="shrink-0 text-purple-400" />
-                          <span className="truncate">Ollama</span>
-                        </div>
-                        <span
-                          className="text-[10px] px-1.5 py-0.2 rounded-full font-medium"
-                          style={{
-                            background: "color-mix(in srgb, var(--modal-fg) 6%, transparent)",
-                            color: "var(--sidebar-muted-fg)",
-                          }}
-                        >
-                          {models.filter((m) => m.id.startsWith("ollama:")).length}
-                        </span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Subtle Divider */}
-                <div
-                  className="border-t mx-0.5"
-                  style={{ borderColor: "var(--modal-border)" }}
-                />
-
-                {/* Filter & Sort Controls */}
                 <ModelSelectionFiltersNew
                   showFilterSortRow={showFilterSortRow}
                   setShowFilterSortRow={setShowFilterSortRow}
@@ -871,6 +630,11 @@ export const ModelSelectionModal = React.memo(({
                   isMobile={false}
                   onResetAll={handleResetAllFilters}
                   activeFiltersCount={activeFiltersCount}
+                  catalogFilter={catalogFilter}
+                  onToggleCatalogFilter={toggleCatalogFilter}
+                  defaultModelsCount={defaultModelsCount}
+                  ollamaModelsCount={ollamaModelsCount}
+                  showOllamaCatalogFilter={showOllamaCatalogFilter}
                 />
               </div>
 
@@ -1053,6 +817,34 @@ export const ModelSelectionModal = React.memo(({
                 </span>
               )}
 
+              {catalogFilter === "default" && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300">
+                  <span>Default models</span>
+                  <button
+                    type="button"
+                    onClick={() => setCatalogFilter("all")}
+                    className="hover:text-red-500 rounded p-0.5 transition-colors"
+                    title="Show all models"
+                  >
+                    <FiX size={11} />
+                  </button>
+                </span>
+              )}
+
+              {catalogFilter === "ollama" && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-teal-500/10 border border-teal-500/20 text-teal-800 dark:text-teal-300">
+                  <span>Ollama</span>
+                  <button
+                    type="button"
+                    onClick={() => setCatalogFilter("all")}
+                    className="hover:text-red-500 rounded p-0.5 transition-colors"
+                    title="Show all models"
+                  >
+                    <FiX size={11} />
+                  </button>
+                </span>
+              )}
+
               <button
                 type="button"
                 onClick={handleResetAllFilters}
@@ -1076,38 +868,10 @@ export const ModelSelectionModal = React.memo(({
                 <ModelSelectionGrid
                   parentRef={parentRef}
                   hasLeadingControl={false}
-                  listKey={`${activeTab}-${selectedProviders.join(",")}-${groupByAffordability ? "afford" : "all"}`}
-                  models={
-                    activeTab === "favorites"
-                      ? favoritesGridSections
-                        ? undefined
-                        : favoritesSorted
-                      : activeTab === "ollama"
-                        ? ollamaModelSections
-                          ? undefined
-                          : ollamaModelsSorted
-                        : undefined
-                  }
-                  sections={
-                    activeTab === "all"
-                      ? allModelSections
-                        ? allModelSections
-                        : undefined
-                      : activeTab === "favorites"
-                        ? favoritesGridSections
-                        : activeTab === "ollama"
-                          ? ollamaModelSections
-                          : undefined
-                  }
+                  listKey={`${catalogFilter}-${selectedProviders.join(",")}-${groupByAffordability ? "afford" : "all"}`}
+                  sections={allModelSections.length > 0 ? allModelSections : undefined}
                   emptyState={
-                    activeTab === "favorites" && !favoritesGridSections && !hasAnyFilterActive
-                      ? (
-                        <FavoritesEmptyState onBrowse={() => {
-                          setActiveTab("all");
-                          setSelectedProviders([]);
-                        }} />
-                      )
-                      : hasAnyFilterActive && displayedModelCount === 0
+                    hasAnyFilterActive && displayedModelCount === 0
                         ? (
                           <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                             <div

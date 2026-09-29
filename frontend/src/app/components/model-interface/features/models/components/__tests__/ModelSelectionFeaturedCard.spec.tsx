@@ -117,4 +117,32 @@ describe("ModelSelectionFeaturedCard layout", () => {
     expect(onAddCredits).toHaveBeenCalled();
     expect(onSelect).not.toHaveBeenCalled();
   });
+
+  it("opens details instead of selecting catalog-only models", () => {
+    const onSelect = jest.fn();
+    const onShowDetails = jest.fn();
+    const imageModel: Model = {
+      ...model,
+      id: "recraft/recraft-v4",
+      architecture: { output_modalities: ["image"] },
+    };
+    const { container } = render(
+      <ModelSelectionFeaturedCard
+        model={imageModel}
+        isPinned={false}
+        onTogglePin={jest.fn()}
+        onSelect={onSelect}
+        averageCost={0}
+        isSelected={false}
+        onShowDetails={onShowDetails}
+      />,
+    );
+
+    expect(container.textContent).toMatch(/Catalog only/i);
+    container.querySelector(".app-model-card")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    expect(onShowDetails).toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
 });

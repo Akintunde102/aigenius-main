@@ -1,4 +1,5 @@
 import { DRAFT_SESSION_KEY } from './chatOperations.constants';
+import { getClientDraftSessionId } from '@/app/components/model-interface/conversation/clientDraftSession';
 import type { EnqueueComposerMessageInput, MessageSendQueueMap, QueuedComposerMessage } from './messageSendQueue.types';
 
 export function createQueuedComposerMessage(
@@ -16,8 +17,13 @@ export function createQueuedComposerMessage(
 export function migrateMessageSendQueueMap(
     map: MessageSendQueueMap,
     realSessionId: string,
+    fromDraftKey?: string,
 ): MessageSendQueueMap {
-    const draftQueue = map[DRAFT_SESSION_KEY];
+    const preferredKey = fromDraftKey ?? getClientDraftSessionId();
+    const fromPreferred = map[preferredKey];
+    const fromLegacy = map[DRAFT_SESSION_KEY];
+    const effectiveKey = fromPreferred?.length ? preferredKey : DRAFT_SESSION_KEY;
+    const draftQueue = fromPreferred?.length ? fromPreferred : fromLegacy;
     if (!draftQueue?.length || (map[realSessionId]?.length ?? 0) > 0) {
         return map;
     }
@@ -25,7 +31,7 @@ export function migrateMessageSendQueueMap(
     return {
         ...map,
         [realSessionId]: draftQueue,
-        [DRAFT_SESSION_KEY]: [],
+        [effectiveKey]: [],
     };
 }
 

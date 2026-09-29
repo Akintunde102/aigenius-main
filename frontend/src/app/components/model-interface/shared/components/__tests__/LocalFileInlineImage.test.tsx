@@ -76,4 +76,35 @@ describe('LocalFileInlineImage', () => {
             expect(screen.getByText('missing (click to preview)')).toBeInTheDocument();
         });
     });
+
+    it('re-reads disk when the same path returns new image bytes', async () => {
+        const readLocalFilePreview = jest
+            .fn()
+            .mockResolvedValueOnce({
+                ok: true,
+                kind: 'image',
+                mimeType: 'image/png',
+                base64: 'ZmFrZS1wbmc=',
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                kind: 'image',
+                mimeType: 'image/png',
+                base64: 'bmV3LXNob3Q=',
+            });
+
+        mockGetBridge.mockReturnValue({ readLocalFilePreview } as never);
+
+        const { unmount } = render(<LocalFileInlineImage path="/tmp/shot.png" alt="shot" />);
+        await waitFor(() => {
+            expect(screen.getByRole('img', { name: 'shot' })).toBeInTheDocument();
+        });
+        expect(readLocalFilePreview).toHaveBeenCalledTimes(1);
+
+        unmount();
+        render(<LocalFileInlineImage path="/tmp/shot.png" alt="shot" />);
+        await waitFor(() => {
+            expect(readLocalFilePreview).toHaveBeenCalledTimes(2);
+        });
+    });
 });
