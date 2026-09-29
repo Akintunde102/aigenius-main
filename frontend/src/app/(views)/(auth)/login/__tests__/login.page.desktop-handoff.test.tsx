@@ -2,10 +2,10 @@ import React from 'react';
 import { render, waitFor } from '@testing-library/react';
 import Login from '../page';
 import {
-  clearDesktopHandoffSession,
+  clearDesktopHandoff,
   resolveDesktopGoogleOAuthUrl,
   storeDesktopApiRoot,
-  storeDesktopHandoffSession,
+  storeDesktopHandoff,
 } from '@/lib/utils/desktop-google-auth-url';
 import { storage } from '@/lib/utils/store';
 import { storageConstants } from '@/lib/constants';
@@ -20,8 +20,8 @@ jest.mock('@/lib/hooks/use-redirect-desktop-from-web-auth', () => ({
 
 jest.mock('@/lib/utils/desktop-google-auth-url', () => ({
   ...jest.requireActual('@/lib/utils/desktop-google-auth-url'),
-  storeDesktopHandoffSession: jest.fn(),
-  clearDesktopHandoffSession: jest.fn(),
+  storeDesktopHandoff: jest.fn(),
+  clearDesktopHandoff: jest.fn(),
   storeDesktopApiRoot: jest.fn(),
   resolveDesktopGoogleOAuthUrl: jest.fn(
     (callback: string, apiRoot: string, pkce?: string | null) =>
@@ -50,10 +50,10 @@ describe('Login page desktop handoff', () => {
     render(<Login />);
 
     await waitFor(() => {
-      expect(storeDesktopHandoff).toHaveBeenCalledWith({
-        callback: 'http://127.0.0.1:49201/',
-        pkceChallenge: 'challenge-123',
-      });
+      expect(storeDesktopHandoff).toHaveBeenCalledWith(
+        'http://127.0.0.1:49201/',
+        'challenge-123',
+      );
     });
   });
 
@@ -93,7 +93,7 @@ describe('Login page desktop handoff', () => {
     await waitFor(() => {
       expect(clearDesktopHandoff).toHaveBeenCalled();
     });
-    expect(storeDesktopHandoffSession).not.toHaveBeenCalled();
+    expect(storeDesktopHandoff).not.toHaveBeenCalled();
   });
 
   it('auto-starts Google OAuth for loopback desktop handoffs without auto=google', async () => {
@@ -102,9 +102,9 @@ describe('Login page desktop handoff', () => {
     render(<Login />);
 
     await waitFor(() => {
-      expect(storeDesktopHandoffSession).toHaveBeenCalled();
+      expect(storeDesktopHandoff).toHaveBeenCalled();
     });
-    expect(clearDesktopHandoffSession).not.toHaveBeenCalled();
+    expect(clearDesktopHandoff).not.toHaveBeenCalled();
     expect(resolveDesktopGoogleOAuthUrl).toHaveBeenCalledWith(
       'http://127.0.0.1:49201/',
       'https://api.example.com',

@@ -5,11 +5,11 @@ import { ChevronDown, Download } from "lucide-react";
 import { FOCUS_RING } from "@/app/components/public-page-shell.constants";
 import { cn } from "@/lib/utils";
 
-const PLATFORMS = [
+const PLATFORMS: { id: string; label: string; href: string | null }[] = [
   { id: "macos", label: "macOS", href: "/api/download/macos" },
   { id: "windows", label: "Windows", href: "/api/download/windows" },
   { id: "linux", label: "Linux", href: "/api/download/linux" },
-] as const;
+];
 
 /**
  * Primary desktop download CTA — platform picker (macOS, Windows, Linux)
