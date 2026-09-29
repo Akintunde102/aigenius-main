@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-msix:
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
       - name: Checkout Code
@@ -14,13 +14,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
 
       - name: Install Dependencies
-        run: yarn install
+        run: yarn install --ignore-engines
 
       - name: Build MSIX
         run: yarn workspace aigenius-desktop run package:win:appx
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload MSIX Artifact
         uses: actions/upload-artifact@v4
