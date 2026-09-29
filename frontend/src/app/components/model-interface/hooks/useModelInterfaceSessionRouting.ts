@@ -177,6 +177,15 @@ export function useModelInterfaceSessionRouting({
     // cannot hijack the fresh draft (see conversationViewSession draft epoch).
     bumpDraftConversationEpoch();
     setPendingDraftMode(false);
+
+    // Only clear the UI state for the current session if we actually stopped it.
+    // If it's continuing in the background, we want it to show as loading/streaming
+    // when the user switches back to it.
+    if (options?.stopCurrentSession !== false) {
+      setLoading(false);
+      setStreaming(false);
+    }
+    
     setCurrentSessionId(null);
     lastInitiatedSwitchIdRef.current = null;
     setSelectedPersonalityId(undefined);
@@ -187,8 +196,6 @@ export function useModelInterfaceSessionRouting({
     setAttachmentIndex([]);
     setTotalSpent(0);
     setError(null);
-    setLoading(false);
-    setStreaming(false);
     setUploading(false);
     setShowTyping(false);
     onClearDraftQueue?.();
@@ -425,7 +432,10 @@ export function useModelInterfaceSessionRouting({
 
   const handleSessionSwitch = useCallback(
     (session: ChatSession) => {
-      handleStop();
+      // Do NOT call handleStop() here — switching conversations should not abort
+      // a running stream. The stream transcript guard (shouldApplyStreamToOpenTranscript /
+      // activeViewSessionIdRef) keeps background chunks out of the new session's UI,
+      // and notifyBackgroundConversationReady notifies the user when it finishes.
       pendingDraftModeRef.current = false;
       setPendingDraftMode(false);
       persistCurrentConversationScroll();
@@ -451,7 +461,6 @@ export function useModelInterfaceSessionRouting({
       }
     },
     [
-      handleStop,
       applySessionPersonalityState,
       currentSessionId,
       persistCurrentConversationScroll,
@@ -487,7 +496,7 @@ export function useModelInterfaceSessionRouting({
           setPendingDraftMode(false);
           return;
         case "reset_stale_session_on_root":
-          resetDraftConversation();
+          resetDraftConversation({ stopCurrentSession: false });
           return;
         case "noop":
           return;

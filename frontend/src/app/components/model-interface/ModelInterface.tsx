@@ -150,7 +150,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     applySessionPersonalityState,
     clearConversationPersonality,
   } = personalityState;
-  const { input, setInput, composerSessionKey, commitComposerDraftForKey, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, assistantResponse, chatMap, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, persistSessionMessages, isPassiveSyncBlocked, showTyping, setShowTyping, showScrollToBottom, queuedMessages, handleQueueMessage, removeQueuedMessage } = chatState;
+  const { input, setInput, hasDraftSession, composerSessionKey, commitComposerDraftForKey, chat, setChat, pendingOrphanReply, clearPendingOrphanReply, setChatForSession, assistantResponse, chatMap, chatHistory, setChatHistory, isInitialLoading, savedChats, currentSessionId, viewSessionId, setCurrentSessionId, updateSessionMessages, persistSessionMessages, isPassiveSyncBlocked, showTyping, setShowTyping, showScrollToBottom, queuedMessages, handleQueueMessage, removeQueuedMessage } = chatState;
 
   const getCachedMessages = useCallback(
     (sessionId: string) => chatMap[sessionId],
@@ -564,6 +564,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     onLogout={handleLogout}
                     userInitials={getSidebarUserInitials(currentUser)}
                     getCachedMessages={getCachedMessages}
+                    hasDraftSession={hasDraftSession}
                   />
                   <ModelInterfaceChatColumn
                     chat={chat}

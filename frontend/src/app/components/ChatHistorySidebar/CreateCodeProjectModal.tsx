@@ -185,7 +185,7 @@ export function CreateCodeProjectModal({
               >
                 <FiFolderPlus className="h-4 w-4" />
               </div>
-              <h2 id="create-code-project-title" className="text-base font-semibold">
+              <h2 id="create-code-project-title" className="text-base font-semibold leading-none">
                 New project
               </h2>
             </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ChatMessage } from '../ChatMessage';
 import type { ChatMessage as ChatMessageType, ToolEvent } from '@/app/components/model-interface/shared/types';
 
@@ -104,6 +104,14 @@ describe('ChatMessage', () => {
         expect(textMessages[0]).toHaveTextContent('As a test, I will create...');
         expect(textMessages[1]).toHaveTextContent('### Plan');
         expect(textMessages[1]).toHaveTextContent('1. Search Gmail');
+
+        // Work summary accordion summarizes tools between text blocks:
+        expect(screen.getByRole('region', { name: /assistant work summary/i })).toBeInTheDocument();
+        expect(screen.getByText('1 email search')).toBeInTheDocument();
+
+        // Expanding work summary and row reveals the tool card:
+        fireEvent.click(screen.getByRole('button', { name: /1 email search/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Gmail Search/i }));
         expect(screen.getAllByTestId('tool-card')).toHaveLength(1);
     });
 
@@ -140,7 +148,7 @@ describe('ChatMessage', () => {
         expect(textMessages[1]).toHaveAttribute('data-streaming', 'yes');
     });
 
-    it('starts an orphan reply on assistant shift-click', () => {
+    it('does not start an orphan reply on assistant shift-click (shift-click disabled)', () => {
         const onStartOrphanReply = jest.fn();
         render(
             <ChatMessage
@@ -168,18 +176,7 @@ describe('ChatMessage', () => {
             { shiftKey: true },
         );
 
-        expect(onStartOrphanReply).toHaveBeenCalledWith(
-            expect.objectContaining({
-                message: expect.objectContaining({
-                    id: 'assistant-1',
-                    role: 'assistant',
-                }),
-                anchor: expect.objectContaining({
-                    surface: 'chat_transcript',
-                    anchorZone: 'chat_area',
-                }),
-            }),
-        );
+        expect(onStartOrphanReply).not.toHaveBeenCalled();
     });
 
     it('does not start an orphan reply on a normal assistant click', () => {
@@ -208,5 +205,69 @@ describe('ChatMessage', () => {
         fireEvent.click(screen.getByText('Open a side thread from here'));
 
         expect(onStartOrphanReply).not.toHaveBeenCalled();
+    });
+
+    it('groups user replay and overflow menu in one aligned action cluster', () => {
+        const onReplay = jest.fn();
+        render(
+            <ChatMessage
+                msg={{
+                    id: 'user-1',
+                    role: 'user',
+                    content: 'Tilt up',
+                    timestamp: Date.now(),
+                }}
+                idx={0}
+                selectedModel={null}
+                showCosts={false}
+                onDelete={jest.fn()}
+                onSave={jest.fn()}
+                onCopy={jest.fn()}
+                onReplay={onReplay}
+                onImagePreview={jest.fn()}
+                imagePreview={null}
+                setImagePreview={jest.fn()}
+                formatCost={jest.fn().mockReturnValue('$0')}
+            />,
+        );
+
+        const actions = screen.getByRole('group', { name: 'User message actions' });
+        const replay = within(actions).getByRole('button', { name: 'Replay message' });
+        const overflow = within(actions).getByRole('button', { name: 'Message actions' });
+
+        expect(actions).toContainElement(replay);
+        expect(actions).toContainElement(overflow);
+        expect(actions).toHaveClass('flex', 'items-center', 'h-5');
+
+        fireEvent.click(replay);
+        expect(onReplay).toHaveBeenCalledTimes(1);
+    });
+
+    it('hides the user action cluster while the bubble is being edited', () => {
+        render(
+            <ChatMessage
+                msg={{
+                    id: 'user-1',
+                    role: 'user',
+                    content: 'Tilt up',
+                    timestamp: Date.now(),
+                }}
+                idx={0}
+                editingIdx={0}
+                selectedModel={null}
+                showCosts={false}
+                onDelete={jest.fn()}
+                onSave={jest.fn()}
+                onCopy={jest.fn()}
+                onReplay={jest.fn()}
+                onImagePreview={jest.fn()}
+                imagePreview={null}
+                setImagePreview={jest.fn()}
+                formatCost={jest.fn().mockReturnValue('$0')}
+            />,
+        );
+
+        expect(screen.queryByRole('group', { name: 'User message actions' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Replay message' })).not.toBeInTheDocument();
     });
 });

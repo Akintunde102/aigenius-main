@@ -119,3 +119,18 @@ export function applyStreamingTurnUpdate(
 
     return next;
 }
+
+/** When the SSE connection dies mid-tool, stop the spinner and surface the failure on the card. */
+export function settleLoadingToolsOnStreamFailure(events: MessageEvent[], message: string): boolean {
+    let changed = false;
+    for (const ev of events) {
+        if (ev.type !== 'tool' || !ev.loading) continue;
+        ev.loading = false;
+        ev.success = false;
+        if (!ev.result) {
+            ev.result = JSON.stringify({ error: message, success: false });
+        }
+        changed = true;
+    }
+    return changed;
+}

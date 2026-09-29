@@ -288,6 +288,7 @@ export function useModelInterface(options?: {
         handleStop,
         canRetryLastSend,
         retryLastFailedSend,
+        hasDraftSession,
     } = useChatOperationsRefined({
     selectedModel,
     chat,
@@ -598,6 +599,7 @@ export function useModelInterface(options?: {
     chatState: {
       input,
       setInput,
+      hasDraftSession,
       composerSessionKey,
       commitComposerDraftForKey,
       chat,

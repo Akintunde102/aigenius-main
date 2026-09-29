@@ -2,7 +2,7 @@
 
 import React from "react";
 import { FiHome, FiPlus, FiX } from "react-icons/fi";
-import { FolderPlus, PanelLeft, Search } from "lucide-react";
+import { FolderPlus, PanelLeft, PanelLeftClose, Search } from "lucide-react";
 import ChatHistorySearchBar from "../ChatHistorySearchBar";
 import { useRouter } from "next/navigation";
 import { LINKS } from "@/lib/links";
@@ -42,21 +42,19 @@ function SidebarIconButton({
       className={
         isMobile
           ? "flex shrink-0 touch-manipulation items-center justify-center rounded p-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
-          : "flex h-8 w-9 shrink-0 items-center justify-center rounded-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 sm:h-7"
+          : "flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 sm:h-7 sm:w-7"
       }
-      style={isMobile
-        ? { minWidth: 40, minHeight: 40, color: "var(--sidebar-muted-fg)" }
-        : {
-          border: "1px solid var(--sidebar-icon-btn-border)",
-          backgroundColor: "var(--sidebar-icon-btn-bg)",
-          color: "var(--sidebar-fg)",
-        }
-      }
+      style={{
+        minWidth: isMobile ? 40 : undefined,
+        minHeight: isMobile ? 40 : undefined,
+        backgroundColor: "transparent",
+        color: "var(--sidebar-muted-fg)",
+      }}
       onMouseEnter={e => {
-        if (!isMobile) e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-hover-bg)";
+        if (!isMobile) e.currentTarget.style.backgroundColor = "var(--sidebar-menu-row-hover)";
       }}
       onMouseLeave={e => {
-        if (!isMobile) e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-bg)";
+        if (!isMobile) e.currentTarget.style.backgroundColor = "transparent";
       }}
     >
       {children}
@@ -80,10 +78,12 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
 
     const [draftHistorySearch, setDraftHistorySearch] =
       React.useState(historySearch);
+    const [isSearchOpen, setIsSearchOpen] = React.useState(Boolean(historySearch));
     const skipDebouncedPushRef = React.useRef(true);
 
     React.useEffect(() => {
       setDraftHistorySearch(historySearch);
+      if (historySearch) setIsSearchOpen(true);
     }, [historySearch]);
 
     React.useEffect(() => {
@@ -102,23 +102,29 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
       router.push(LINKS.internalPages.login.github);
     }, [router]);
 
+    const handleCloseSearch = React.useCallback(() => {
+      setDraftHistorySearch("");
+      setHistorySearch("");
+      setIsSearchOpen(false);
+    }, [setHistorySearch]);
+
+    const showSearchInput = isSearchOpen || Boolean(draftHistorySearch);
+
     return (
       <header
         className="aigenius-desktop-sidebar-chrome sticky top-0 z-30 w-full shrink-0"
         style={{
           backgroundColor: "var(--sidebar-bg)",
-          borderBottom: "1px solid var(--sidebar-border)",
           color: "var(--sidebar-fg)",
-          boxShadow: "0 1px 0 0 rgba(0,0,0,0.08)",
         }}
       >
-        <div className="flex min-h-9 flex-nowrap items-center gap-x-1.5 px-2 py-2 sm:min-h-10 sm:px-2.5">
+        <div className="flex min-h-9 flex-nowrap items-center gap-x-1 px-3 py-2 sm:min-h-10">
           {isMobile && setMobileSidebarOpen ? (
             <button
               aria-label="Close Sidebar"
               type="button"
-              className="flex shrink-0 touch-manipulation items-center justify-center rounded p-2 text-slate-400 transition hover:bg-white/10 hover:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
-              style={{ minWidth: 40, minHeight: 40 }}
+              className="flex shrink-0 touch-manipulation items-center justify-center rounded p-2 transition hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
+              style={{ minWidth: 40, minHeight: 40, color: "var(--sidebar-muted-fg)" }}
               onClick={() => setMobileSidebarOpen(false)}
             >
               <FiX size={20} />
@@ -126,22 +132,18 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
           ) : null}
 
           {!isMobile && setMobileSidebarOpen ? (
-            <button
-              type="button"
-              aria-label="Close sidebar"
+            <SidebarIconButton
+              isMobile={isMobile}
+              ariaLabel="Close sidebar"
               title="Close sidebar (⌘B)"
-              className="flex h-8 w-9 shrink-0 items-center justify-center rounded-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 sm:h-7"
-              style={{
-                border: "1px solid var(--sidebar-icon-btn-border)",
-                backgroundColor: "var(--sidebar-icon-btn-bg)",
-                color: "var(--sidebar-fg)",
-              }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-hover-bg)")}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = "var(--sidebar-icon-btn-bg)")}
               onClick={() => setMobileSidebarOpen(false)}
             >
-              <PanelLeft className="h-4 w-4" strokeWidth={2} aria-hidden />
-            </button>
+              <PanelLeftClose
+                className={isMobile ? "h-5 w-5" : "h-[18px] w-[18px]"}
+                strokeWidth={1.5}
+                aria-hidden
+              />
+            </SidebarIconButton>
           ) : null}
 
           {onNewChat ? (
@@ -151,7 +153,7 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
               title="New chat"
               onClick={onNewChat}
             >
-              <FiPlus size={isMobile ? 20 : 18} strokeWidth={2} aria-hidden />
+              <FiPlus size={isMobile ? 20 : 18} strokeWidth={1.5} aria-hidden />
             </SidebarIconButton>
           ) : null}
 
@@ -164,29 +166,57 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
             >
               <FolderPlus
                 className={isMobile ? "h-5 w-5" : "h-[18px] w-[18px]"}
-                strokeWidth={2}
+                strokeWidth={1.5}
                 aria-hidden
               />
             </SidebarIconButton>
           ) : null}
 
-          <div className="relative min-h-8 min-w-0 flex-1 sm:min-h-7">
-            <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
-              style={{ color: "var(--sidebar-muted-fg)" }}
-              aria-hidden
-            />
-            <ChatHistorySearchBar
-              value={draftHistorySearch}
-              onChange={setDraftHistorySearch}
-              className="h-8 w-full rounded-md py-1.5 pl-8 pr-2.5 text-[12px] outline-none ring-0 focus:ring-1 focus:ring-sky-500/30 sm:h-7"
-              style={{
-                backgroundColor: "var(--sidebar-search-bg)",
-                border: "1px solid var(--sidebar-search-border)",
-                color: "var(--sidebar-search-fg)",
-              }}
-            />
-          </div>
+          {showSearchInput ? (
+            <div className="relative min-h-8 min-w-0 flex-1 sm:min-h-7 flex items-center gap-1">
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
+                  style={{ color: "var(--sidebar-muted-fg)" }}
+                  strokeWidth={1.5}
+                  aria-hidden
+                />
+                <ChatHistorySearchBar
+                  value={draftHistorySearch}
+                  onChange={setDraftHistorySearch}
+                  className="h-8 w-full rounded-md py-1.5 pl-8 pr-7 text-xs outline-none ring-0 placeholder:text-[color:var(--sidebar-muted-fg)] focus:ring-1 focus:ring-sky-500/30 sm:h-7"
+                  style={{
+                    backgroundColor: "var(--sidebar-search-bg)",
+                    border: "1px solid var(--sidebar-search-border)",
+                    color: "var(--sidebar-search-fg)",
+                  }}
+                />
+                <button
+                  type="button"
+                  aria-label="Close search"
+                  title="Close search"
+                  onClick={handleCloseSearch}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded transition hover:opacity-80"
+                  style={{ color: "var(--sidebar-muted-fg)" }}
+                >
+                  <FiX size={13} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <SidebarIconButton
+              isMobile={isMobile}
+              ariaLabel="Search conversations"
+              title="Search conversations"
+              onClick={() => setIsSearchOpen(true)}
+            >
+              <Search
+                className={isMobile ? "h-5 w-5" : "h-[18px] w-[18px]"}
+                strokeWidth={1.5}
+                aria-hidden
+              />
+            </SidebarIconButton>
+          )}
 
           {isMobile && setMobileSidebarOpen ? (
             <a
@@ -199,8 +229,8 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
               <button
                 aria-label="Home"
                 type="button"
-                className="flex items-center justify-center rounded-md p-2 text-slate-400 transition hover:bg-white/10 hover:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
-                style={{ width: 40, height: 40 }}
+                className="flex items-center justify-center rounded-md p-2 transition hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
+                style={{ width: 40, height: 40, color: "var(--sidebar-muted-fg)" }}
               >
                 <FiHome size={18} />
               </button>

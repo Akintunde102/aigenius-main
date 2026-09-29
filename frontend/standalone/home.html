@@ -119,8 +119,10 @@
       position: relative;
       z-index: 10;
       display: flex;
-      align-items: flex-end;
+      align-items: stretch;
+      gap: 1.25rem;
       overflow: hidden;
+      padding: 0.75rem 1.25rem 1.25rem 0;
     }
 
     /* ── Left content ─────────────────────────────── */
@@ -128,14 +130,371 @@
       position: relative;
       z-index: 10;
       flex-shrink: 0;
-      width: 42%;
-      padding: 0 2.5rem 3rem 2.5rem;
+      width: 36%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 0 1.5rem 2.25rem 2.5rem;
       animation: fadeUp 0.6s ease both;
     }
 
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(16px); }
       to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Stage for 3D Pet & Capability Banner (banner left-aligned with headline) ── */
+    .hero-pet-banner-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      width: 100%;
+      margin-bottom: 1rem;
+      text-align: left;
+    }
+
+    /* ── Lifelike 3D Dancing Puppy Pet ── */
+    .pet-3d-stage {
+      position: relative;
+      width: 135px;
+      height: 135px;
+      perspective: 900px;
+      perspective-origin: 50% 65%;
+      cursor: pointer;
+      user-select: none;
+      align-self: center;
+      margin-bottom: 0.25rem;
+      z-index: 14;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .pet-3d-stage:hover {
+      transform: scale(1.08);
+    }
+
+    .pet-3d-scene {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+    }
+
+    .pet-3d-body-wrap {
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transform-origin: 85px 145px;
+      animation: pet3DDanceGroove 1.6s ease-in-out infinite;
+    }
+
+    .pet-excited .pet-3d-body-wrap {
+      animation: pet3DTurboDance 0.5s ease-in-out infinite;
+    }
+
+    .pet-3d-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.25));
+    }
+
+    /* ── 3D Pet Groove & Step Keyframes ── */
+    @keyframes pet3DDanceGroove {
+      0%, 100% {
+        transform: translateY(0px) rotateY(0deg) rotateX(4deg) scale(1, 1);
+      }
+      20% {
+        transform: translateY(-11px) rotateY(-22deg) rotateZ(-5deg) rotateX(8deg) scale(0.96, 1.05);
+      }
+      45% {
+        transform: translateY(2px) rotateY(0deg) rotateX(2deg) scale(1.05, 0.94);
+      }
+      70% {
+        transform: translateY(-11px) rotateY(22deg) rotateZ(5deg) rotateX(8deg) scale(0.96, 1.05);
+      }
+      85% {
+        transform: translateY(-3px) rotateY(0deg) rotateX(5deg) scale(0.98, 1.02);
+      }
+    }
+
+    @keyframes pet3DTurboDance {
+      0%, 100% {
+        transform: translateY(0px) rotateY(-18deg) rotateZ(-6deg) scale(1.05, 0.95);
+      }
+      50% {
+        transform: translateY(-16px) rotateY(18deg) rotateZ(6deg) scale(0.93, 1.07);
+      }
+    }
+
+    /* Fluffy Tail 3D Wag */
+    .pet-tail-group {
+      transform-origin: 112px 118px;
+      animation: petTailWag3D 0.45s ease-in-out infinite alternate;
+    }
+
+    @keyframes petTailWag3D {
+      0% { transform: rotate(-18deg) rotateY(35deg) scale(1); }
+      100% { transform: rotate(24deg) rotateY(-25deg) scale(1.06); }
+    }
+
+    /* Floppy Ears Secondary Bounce */
+    .pet-ear-left {
+      transform-origin: 56px 60px;
+      animation: petEarFlopLeft 1.6s ease-in-out infinite;
+    }
+
+    .pet-ear-right {
+      transform-origin: 114px 60px;
+      animation: petEarFlopRight 1.6s ease-in-out infinite;
+    }
+
+    @keyframes petEarFlopLeft {
+      0%, 100% { transform: rotate(0deg); }
+      20% { transform: rotate(-16deg) translateY(2px); }
+      45% { transform: rotate(4deg); }
+      70% { transform: rotate(12deg); }
+    }
+
+    @keyframes petEarFlopRight {
+      0%, 100% { transform: rotate(0deg); }
+      20% { transform: rotate(-12deg); }
+      45% { transform: rotate(4deg); }
+      70% { transform: rotate(16deg) translateY(2px); }
+    }
+
+    /* Front Paws 3D Stepping (Tippy-taps) */
+    .pet-paw-left {
+      transform-origin: 65px 114px;
+      animation: petPawStepLeft 1.6s ease-in-out infinite;
+    }
+
+    .pet-paw-right {
+      transform-origin: 105px 114px;
+      animation: petPawStepRight 1.6s ease-in-out infinite;
+    }
+
+    @keyframes petPawStepLeft {
+      0%, 45%, 100% { transform: translateY(0) translateZ(0); }
+      20% { transform: translateY(-9px) translateZ(26px) rotate(-14deg); }
+    }
+
+    @keyframes petPawStepRight {
+      0%, 45%, 100% { transform: translateY(0) translateZ(0); }
+      70% { transform: translateY(-9px) translateZ(26px) rotate(14deg); }
+    }
+
+    /* Soulful Eye Blinking */
+    .pet-eye {
+      transform-origin: center;
+      animation: petEyeBlink 4s ease-in-out infinite;
+    }
+
+    @keyframes petEyeBlink {
+      0%, 93%, 97%, 100% { transform: scaleY(1); }
+      95% { transform: scaleY(0.08); }
+    }
+
+    /* Happy Panting Tongue */
+    .pet-tongue {
+      transform-origin: 85px 85px;
+      animation: petTonguePant 0.55s ease-in-out infinite alternate;
+    }
+
+    @keyframes petTonguePant {
+      0% { transform: scale(1) translateY(0); }
+      100% { transform: scale(1.15, 1.25) translateY(1.5px); }
+    }
+
+    /* 3D Realistic Ground Shadow */
+    .pet-ground-shadow-wrap {
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90px;
+      height: 18px;
+      pointer-events: none;
+    }
+
+    .pet-ground-shadow {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.15) 50%, transparent 75%);
+      animation: petShadow3D 0.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes petShadow3D {
+      0% { transform: scale(1.15); opacity: 0.7; }
+      100% { transform: scale(0.85); opacity: 0.3; }
+    }
+
+    /* Floating Ambience (Sparks & Paws) */
+    .pet-ambience-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .pet-sparkle,
+    .pet-note {
+      position: absolute;
+      font-size: 0.9rem;
+      line-height: 1;
+    }
+
+    .pet-sparkle-1 { top: 30px; left: 10px; animation: petFloatSparkle1 2.2s ease-out infinite; }
+    .pet-note-1 { top: 25px; right: 12px; animation: petFloatNote1 2.6s ease-out infinite 0.5s; }
+    .pet-sparkle-2 { top: 65px; left: 6px; animation: petFloatSparkle2 2.8s ease-out infinite 1s; }
+    .pet-note-2 { top: 70px; right: 8px; animation: petFloatNote2 2.4s ease-out infinite 1.4s; }
+
+    @keyframes petFloatSparkle1 {
+      0% { transform: translateY(8px) scale(0.5); opacity: 0; }
+      40% { opacity: 0.9; }
+      100% { transform: translateY(-24px) scale(1.1) rotate(15deg); opacity: 0; }
+    }
+
+    @keyframes petFloatNote1 {
+      0% { transform: translateY(8px) scale(0.5); opacity: 0; }
+      40% { opacity: 0.9; }
+      100% { transform: translateY(-28px) scale(1.1) rotate(-15deg); opacity: 0; }
+    }
+
+    @keyframes petFloatSparkle2 {
+      0% { transform: translateY(8px) scale(0.5); opacity: 0; }
+      40% { opacity: 0.9; }
+      100% { transform: translateY(-22px) scale(1.1) rotate(-20deg); opacity: 0; }
+    }
+
+    @keyframes petFloatNote2 {
+      0% { transform: translateY(8px) scale(0.5); opacity: 0; }
+      40% { opacity: 0.9; }
+      100% { transform: translateY(-26px) scale(1.1) rotate(20deg); opacity: 0; }
+    }
+
+    /* Floating Speech Pill */
+    .pet-speech-pill {
+      position: absolute;
+      top: 2px;
+      right: -64px;
+      background: rgba(24, 24, 27, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 9999px;
+      padding: 0.25rem 0.65rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #fef08a;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(6px) scale(0.85);
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 15;
+    }
+
+    .pet-3d-stage:hover .pet-speech-pill,
+    .pet-excited .pet-speech-pill {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    html:not([data-theme="dark"]) .pet-speech-pill {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(0, 0, 0, 0.12);
+      color: #78350f;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    /* ── Cartoon Capability Banner (Tom & Jerry style) ── */
+    /* ── Graceful Usage Animation Header ── */
+    .usage-banner-wrapper,
+    .cartoon-banner-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      margin-bottom: 0.5rem;
+      max-width: 100%;
+      min-height: 2.25rem;
+      z-index: 12;
+      overflow: hidden;
+    }
+
+    .usage-banner-header,
+    .cartoon-banner-text {
+      display: inline-block;
+      font-size: clamp(1.2rem, 2.2vw, 1.55rem);
+      font-weight: 700;
+      line-height: 1.3;
+      letter-spacing: -0.025em;
+      color: #f5f5f0;
+      user-select: none;
+      cursor: default;
+      will-change: transform, opacity, filter;
+      transform: translateY(0);
+      opacity: 1;
+      filter: blur(0px);
+    }
+
+    .usage-banner-header.usage-phase-idle,
+    .usage-phase-idle {
+      transform: translateY(0);
+      opacity: 1;
+      filter: blur(0px);
+      transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+                  filter 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .usage-banner-header.usage-phase-exit,
+    .usage-phase-exit {
+      transform: translateY(-12px);
+      opacity: 0;
+      filter: blur(4px);
+      transition: transform 0.38s cubic-bezier(0.4, 0, 1, 1),
+                  opacity 0.38s cubic-bezier(0.4, 0, 1, 1),
+                  filter 0.38s cubic-bezier(0.4, 0, 1, 1);
+    }
+
+    .usage-banner-header.usage-phase-enter,
+    .usage-phase-enter {
+      transform: translateY(14px);
+      opacity: 0;
+      filter: blur(4px);
+      transition: none !important;
+    }
+
+    html:not([data-theme="dark"]) .usage-banner-header,
+    html:not([data-theme="dark"]) .cartoon-banner-text {
+      color: #18181b;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .usage-banner-header,
+      .cartoon-banner-text {
+        transform: none !important;
+        filter: none !important;
+      }
+      .usage-banner-header.usage-phase-idle,
+      .usage-phase-idle {
+        opacity: 1 !important;
+        transition: opacity 0.35s ease !important;
+      }
+      .usage-banner-header.usage-phase-exit,
+      .usage-phase-exit {
+        opacity: 0 !important;
+        transition: opacity 0.35s ease !important;
+      }
+      .usage-banner-header.usage-phase-enter,
+      .usage-phase-enter {
+        opacity: 0 !important;
+        transition: none !important;
+      }
     }
 
     .headline {
@@ -284,36 +643,77 @@
 
     .platform-pill svg { width: 0.65rem; height: 0.65rem; }
 
-    /* ── Right: App window mockup ─────────────────── */
+    /* ── Right: App window mockup on landscape stage ─── */
     .mockup-wrap {
-      position: absolute;
-      right: -3%;
-      top: -2%;
-      bottom: -5%;
-      width: 64%;
+      position: relative;
+      flex: 1;
+      min-width: 0;
       display: flex;
-      align-items: flex-start;
-      justify-content: flex-start;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      overflow: hidden;
+      isolation: isolate;
+      border-radius: 10px;
+      padding: 2.25rem 2rem;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    /* Real landscape photo background */
+    .mockup-wrap::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: url("images/hero-bg-landscape.jpg");
+      background-size: cover;
+      background-position: center;
+      border-radius: inherit;
+      filter: brightness(0.6) saturate(0.85);
+      transition: filter 0.3s ease;
+      z-index: 0;
+    }
+
+    /* Subtle radial overlay */
+    .mockup-wrap::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(
+        circle at center,
+        rgba(14, 13, 12, 0.08) 0%,
+        rgba(14, 13, 12, 0.45) 100%
+      );
+      z-index: 1;
       pointer-events: none;
     }
 
     .window {
+      position: relative;
+      z-index: 2;
       width: 100%;
-      height: 100%;
-      background: #1a1916;
-      border-radius: 14px 14px 0 0;
+      max-width: 90%;
+      margin: auto;
+      align-self: center;
+      flex: 0 1 auto;
+      max-height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: #1c1c1e;
+      border-radius: 8px;
       overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       box-shadow:
-        0 0 0 1px rgba(255,255,255,0.07),
-        0 60px 120px rgba(0,0,0,0.7),
-        0 20px 40px rgba(0,0,0,0.4);
+        0 1px 2px rgba(0, 0, 0, 0.15),
+        0 8px 24px rgba(0, 0, 0, 0.35),
+        0 24px 50px rgba(0, 0, 0, 0.4);
     }
 
     /* macOS window bar */
     .window-bar {
       height: 38px;
       background: #252420;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       display: flex;
       align-items: center;
       padding: 0 14px;
@@ -336,34 +736,24 @@
       flex: 1;
       text-align: center;
       font-size: 0.75rem;
-      color: #52525b;
+      color: #8a8a90;
       font-weight: 500;
       letter-spacing: 0.01em;
-      margin-right: 36px; /* offset from dots */
+      margin-right: 44px; /* offset from dots */
     }
 
     .window-body {
       width: 100%;
-      height: calc(100% - 38px);
+      line-height: 0;
       overflow: hidden;
       position: relative;
+      background: #111113;
     }
 
     .window-body img {
       width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: left top;
+      height: auto;
       display: block;
-    }
-
-    /* Fade bottom of window into page */
-    .window-body::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to bottom, transparent 55%, #0e0d0c 100%);
-      pointer-events: none;
     }
 
     /* ── Footer ───────────────────────────────────── */
@@ -423,10 +813,16 @@
 
       <!-- Left text + CTA -->
       <div class="content">
-        <h1 class="headline">Chat with every AI<br>model, in one place.</h1>
+        <!-- Centered Stage for 3D Pet & Capability Banner -->
+        <div class="hero-pet-banner-stage">
+          <!-- Usage Animation Header -->
+          <div class="usage-banner-wrapper cartoon-banner-wrapper" id="cartoon-banner-wrapper" aria-live="polite">
+            <div class="usage-banner-header usage-phase-idle" id="cartoon-banner-text">Draft winning client proposals in seconds</div>
+          </div>
+        </div>
+        <h1 class="headline">All the best AI models.<br>In one simple app.</h1>
         <p class="subtext">
-          Switch between GPT, Claude, Gemini and more — without juggling tabs or subscriptions.
-          Bring files, voice, and projects. Pay only for what you use.
+          Switch instantly between Claude, GPT, and Gemini with direct access to your local files, code, and projects. Start getting work done for as low as $1 with zero platform lock-in — no $20/mo subscriptions required.
         </p>
 
         <div class="cta-wrap">
@@ -483,7 +879,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
               Linux
             </span>
-            <span>· Free to start</span>
+            <span>· Free to start · Start from $1 · Zero lock-in</span>
           </div>
         </div>
       </div>
@@ -498,8 +894,8 @@
             <span class="window-title">AIGenius</span>
           </div>
           <div class="window-body">
-            <img class="hero-light" src="images/home-hero-light.png" alt="" />
-            <img class="hero-dark"  src="images/home-hero-dark.png"  alt="" />
+            <img class="hero-light" src="images/home-hero-screenshot-light.png" alt="AIGenius app interface in light mode" />
+            <img class="hero-dark"  src="images/home-hero-screenshot-dark.png"  alt="AIGenius app interface in dark mode" />
           </div>
         </div>
       </div>
@@ -519,12 +915,18 @@
 
   <style>
     /* Hero image theme switching */
-    .hero-light { display: block; }
-    .hero-dark  { display: none;  }
-    html[data-theme="dark"]  .hero-light { display: none;  }
-    html[data-theme="dark"]  .hero-dark  { display: block; }
-    html:not([data-theme="dark"]) .window { background: #f0efeb; }
-    html:not([data-theme="dark"]) .window-bar { background: #e5e4e0; border-color: rgba(0,0,0,0.08); }
+    .hero-light { display: none !important; }
+    .hero-dark  { display: block !important; }
+    html[data-theme="dark"]  .hero-light { display: none !important; }
+    html[data-theme="dark"]  .hero-dark  { display: block !important; }
+    html:not([data-theme="dark"]) .hero-light { display: block !important; }
+    html:not([data-theme="dark"]) .hero-dark  { display: none !important; }
+    /* Light mode — photo background stays, warm and vibrant */
+    html:not([data-theme="dark"]) .mockup-wrap { box-shadow: 0 0 0 1px rgba(0,0,0,0.08); }
+    html:not([data-theme="dark"]) .mockup-wrap::before { filter: brightness(0.96) saturate(1.05); }
+    html:not([data-theme="dark"]) .mockup-wrap::after { background: radial-gradient(circle at center, rgba(255,255,255,0.04) 0%, rgba(247,246,242,0.3) 100%); }
+    html:not([data-theme="dark"]) .window { background: #f7f6f2; border: 1px solid rgba(0,0,0,0.1); box-shadow: 0 1px 2px rgba(0,0,0,0.05), 0 8px 20px rgba(0,0,0,0.12), 0 24px 44px rgba(0,0,0,0.16); }
+    html:not([data-theme="dark"]) .window-bar { background: #f0efeb; border-color: rgba(0,0,0,0.08); }
     html:not([data-theme="dark"]) body { background: #f7f6f2; color: #18181b; }
     html:not([data-theme="dark"]) .page::before { opacity: 0.1; }
     html:not([data-theme="dark"]) .nav-logo { color: #18181b; }
@@ -535,10 +937,8 @@
     html:not([data-theme="dark"]) .nav-signin { border-color: rgba(0,0,0,0.1) !important; color: #3f3f46 !important; }
     html:not([data-theme="dark"]) .theme-toggle { border-color: rgba(0,0,0,0.1); color: #71717a; }
     html:not([data-theme="dark"]) .headline { color: #18181b; }
-    html:not([data-theme="dark"]) .window { box-shadow: 0 0 0 1px rgba(0,0,0,0.08), 0 60px 120px rgba(0,0,0,0.18), 0 20px 40px rgba(0,0,0,0.1); }
-    html:not([data-theme="dark"]) .window-body::after { background: linear-gradient(to bottom, transparent 55%, #f7f6f2 100%); }
     html:not([data-theme="dark"]) .footer { border-color: rgba(0,0,0,0.06); color: #a1a1aa; }
-    html:not([data-theme="dark"]) .dropdown { background: #18181b; }
+    html:not([data-theme="dark"]) .dropdown { background: #ffffff; border-color: rgba(0,0,0,0.08); box-shadow: 0 12px 32px rgba(0,0,0,0.1); }
   </style>
 
   <script>
@@ -581,6 +981,58 @@
         btn.setAttribute("aria-expanded", "false");
       }
     });
+
+    // ── Cartoon Capability Rotator (Tom & Jerry style) ──
+    const capabilities = [
+      "Draft winning client proposals in seconds",
+      "Build a website directly on your PC",
+      "Update excel sheets without knowing excel",
+      "Organize project files & folders seamlessly",
+      "Conduct in-depth research stresslessly",
+      "Turn messy meeting notes into clear actions",
+      "Write & debug clean code without the headache",
+      "Summarize 100-page PDF reports in seconds",
+      "Automate repetitive daily desktop workflows",
+      "Analyze complex data using plain English"
+    ];
+
+    const textEl = document.getElementById("cartoon-banner-text");
+
+    if (textEl) {
+      let capIdx = 0;
+
+      function runGracefulCycle() {
+        textEl.className = "usage-banner-header cartoon-banner-text usage-phase-exit";
+
+        setTimeout(() => {
+          capIdx = (capIdx + 1) % capabilities.length;
+          textEl.textContent = capabilities[capIdx];
+          textEl.className = "usage-banner-header cartoon-banner-text usage-phase-enter";
+
+          setTimeout(() => {
+            textEl.className = "usage-banner-header cartoon-banner-text usage-phase-idle";
+            setTimeout(runGracefulCycle, 3800);
+          }, 40);
+        }, 380);
+      }
+
+      setTimeout(runGracefulCycle, 3800);
+    }, 400);
+          }, 300);
+        }, 360);
+      }
+
+      setTimeout(runCartoonCycle, 3000);
+    }
+
+    // ── Dancing Mascot Click Interaction ──
+    const mascotContainer = document.getElementById("dancing-mascot-container");
+    if (mascotContainer) {
+      mascotContainer.addEventListener("click", () => {
+        mascotContainer.classList.add("mascot-excited");
+        setTimeout(() => mascotContainer.classList.remove("mascot-excited"), 1200);
+      });
+    }
   </script>
 </body>
 </html>

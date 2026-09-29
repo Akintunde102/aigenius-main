@@ -62,6 +62,8 @@ export function LocalShellToolCard({ streaming_tool, result, arguments: toolArgs
 
     if (typeof parsedResult !== 'object') {
       rawStr = valueToDisplayString(parsedResult);
+    } else if (typeof parsedResult.error === 'string' && parsedResult.error.trim()) {
+      rawStr = parsedResult.error;
     } else if (parsedResult.error) {
       rawStr = ERROR_MESSAGES.TOOL_EXECUTION_FAILED;
     } else if (parsedResult.message) {

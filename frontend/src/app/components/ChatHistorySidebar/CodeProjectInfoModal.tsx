@@ -204,27 +204,27 @@ export function CodeProjectInfoModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 px-4 pt-2 pb-1.5">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex shrink-0 items-center justify-between gap-2.5 px-4 pt-3 pb-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <div
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
               style={{
                 background: "color-mix(in srgb, var(--chat-accent) 12%, transparent)",
                 color: "var(--chat-accent)",
               }}
               aria-hidden
             >
-              <FolderKanban className="h-3 w-3" />
+              <FolderKanban className="h-3.5 w-3.5" />
             </div>
 
-            <div className="relative min-h-[1.375rem] min-w-0 flex-1">
+            <div className="relative flex h-7 min-w-0 flex-1 items-center">
               <div
-                className={`flex min-w-0 items-center gap-1 ${editingName ? "invisible" : ""}`}
+                className={`flex h-full min-w-0 flex-1 items-center gap-1.5 ${editingName ? "invisible" : ""}`}
                 aria-hidden={editingName}
               >
                 <h2
                   id="code-project-info-title"
-                  className="truncate text-sm font-semibold leading-snug"
+                  className="truncate text-sm font-semibold leading-none"
                 >
                   {project.name}
                 </h2>
@@ -232,16 +232,16 @@ export function CodeProjectInfoModal({
                   <button
                     type="button"
                     onClick={() => setEditingName(true)}
-                    className="shrink-0 rounded p-0.5 transition-colors hover:bg-[color-mix(in_srgb,var(--surface-muted)_80%,transparent)]"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors hover:bg-[color-mix(in_srgb,var(--surface-muted)_80%,transparent)]"
                     style={{ color: "var(--modal-muted-fg)" }}
                     aria-label="Edit project name"
                   >
-                    <Pencil className="h-2.5 w-2.5" />
+                    <Pencil className="h-3 w-3" />
                   </button>
                 ) : null}
                 {isActive ? (
                   <span
-                    className="shrink-0 rounded-full px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide"
+                    className="shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide leading-none"
                     style={{
                       background: "color-mix(in srgb, var(--chat-accent) 14%, transparent)",
                       color: "var(--chat-accent)",
@@ -265,7 +265,7 @@ export function CodeProjectInfoModal({
                     }
                   }}
                   disabled={savingName}
-                  className="app-modal-input absolute inset-0 h-full min-w-0 px-1.5 py-0 text-sm font-semibold leading-snug"
+                  className="app-modal-input absolute inset-0 h-full w-full min-w-0 rounded-md px-2 py-0 text-sm font-semibold leading-none"
                   aria-label="Project name"
                 />
               ) : null}
@@ -275,11 +275,11 @@ export function CodeProjectInfoModal({
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-md p-1 transition-colors hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
             style={{ color: "var(--modal-muted-fg)" }}
             aria-label="Close"
           >
-            <FiX className="h-3.5 w-3.5" />
+            <FiX className="h-4 w-4" />
           </button>
         </div>
 

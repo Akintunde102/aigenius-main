@@ -6,7 +6,7 @@ export const getListItemClassName = (
 ): string => {
     // Adjusted to match Claude aesthetics: compact py, larger px, and more gap.
     const base =
-        "group flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-0.5 transition-colors duration-100 ease-out motion-reduce:transition-none";
+        "group flex cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1 text-xs transition-colors duration-100 ease-out motion-reduce:transition-none";
     const state = isActive
         ? "hover:[background-color:var(--sidebar-row-active)] [background-color:var(--sidebar-row-active)]"
         : "bg-transparent hover:[background-color:var(--sidebar-row-hover)]";

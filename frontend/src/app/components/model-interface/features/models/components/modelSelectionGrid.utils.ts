@@ -1,12 +1,12 @@
-export const MODEL_CARD_GAP_PX = 0;
+export const MODEL_CARD_GAP_PX = 3;
 
 /** 11px label × 1.3 line-height */
 export const MODEL_PICKER_LABEL_LINE_PX = 15;
 export const MODEL_PICKER_SECTION_FIRST_TOP_PX = 4;
-export const MODEL_PICKER_SECTION_TOP_PX = 8;
+export const MODEL_PICKER_SECTION_TOP_PX = 6;
 export const MODEL_PICKER_SECTION_BOTTOM_PX = 2;
 export const MODEL_PICKER_COLLAPSED_COUNT_PX = 13;
-export const MODEL_PICKER_MODEL_ROW_GAP_PX = 2;
+export const MODEL_PICKER_MODEL_ROW_GAP_PX = 3;
 
 /** Sections that start collapsed in the model picker (matches sidebar project sections). */
 export const DEFAULT_COLLAPSED_MODEL_SECTION_TITLES = new Set([
@@ -18,8 +18,8 @@ export const DEFAULT_COLLAPSED_MODEL_SECTION_TITLES = new Set([
  * Keep this close to the painted height so virtualization does not leave gaps.
  */
 export const MODEL_CARD_ROW_ESTIMATE_PX = {
-  mobile: 46,
-  desktop: 48,
+  mobile: 38,
+  desktop: 38,
 } as const;
 
 export type ModelSelectionVirtualRow =

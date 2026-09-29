@@ -59,6 +59,13 @@ function detectGlobalNpmInstall(command: string): boolean {
     || /\bnpm\s+(-g|--global)\s+(install|i)\b/i.test(command);
 }
 
+/** Killing every node.exe also kills the API, Next.js, and the sidecar, so the tool result can never return. */
+function detectKillsAllNodeProcesses(command: string): boolean {
+  return /\bStop-Process\b[\s\S]{0,160}-Name\b[\s\S]{0,40}\bnode\b/i.test(command)
+    || /\btaskkill\b[\s\S]{0,160}\bnode\.exe\b/i.test(command)
+    || /\b(killall|pkill)\b[\s\S]{0,40}\bnode\b/.test(command);
+}
+
 /**
  * Returns an error message when the command should not run in local_shell, else null.
  */
@@ -75,6 +82,14 @@ export function blockInteractiveShellCommand(
     return installGuidance(
       platform,
       'Global npm installs (`npm i -g`) are blocked in the app shell.',
+    );
+  }
+
+  if (detectKillsAllNodeProcesses(trimmed)) {
+    return (
+      'This command stops every Node process, including the AIGenius API. '
+      + 'The chat connection would drop and this tool could not return a result. '
+      + 'Stop one process by PID instead (for example Stop-Process -Id <pid>).'
     );
   }
 

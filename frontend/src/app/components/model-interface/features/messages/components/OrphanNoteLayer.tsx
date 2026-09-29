@@ -10,12 +10,54 @@ function markerChipTitle(marker: StickyThreadMarker): string {
     return 'Open side thread';
 }
 
+interface SelectionTriggerPosition {
+    left: number;
+    top: number;
+    isBelow?: boolean;
+    selection: Selection;
+}
+
 interface OrphanNoteLayerProps {
     resolvedMarkerPositions: any[];
-    selectionTrigger: any | null;
+    selectionTrigger: SelectionTriggerPosition | null;
     onOpenOrphanMarker?: (marker: StickyThreadMarker) => void;
-    triggerAnchoredReply: (params?: any) => void;
+    triggerAnchoredReply: (params?: { selection?: Selection | null }) => void;
     isSelectionActive?: boolean;
+}
+
+function SelectionTriggerChip({
+    left,
+    top,
+    isBelow,
+    onClick,
+}: {
+    left: number;
+    top: number;
+    isBelow?: boolean;
+    onClick: () => void;
+}) {
+    return (
+        <div
+            className={`absolute z-[100] -translate-x-1/2 ${isBelow ? "" : "-translate-y-full"}`}
+            style={{ left, top }}
+        >
+            <div className="relative animate-in fade-in zoom-in duration-200">
+                <button
+                    type="button"
+                    onClick={onClick}
+                    className="flex items-center gap-2 whitespace-nowrap rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white shadow-lg hover:bg-slate-800"
+                >
+                    <FiRepeat className="h-3 w-3" />
+                    Reply in side thread
+                </button>
+                {isBelow ? (
+                    <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900" />
+                ) : (
+                    <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900" />
+                )}
+            </div>
+        </div>
+    );
 }
 
 export const OrphanNoteLayer: React.FC<OrphanNoteLayerProps> = ({
@@ -29,24 +71,12 @@ export const OrphanNoteLayer: React.FC<OrphanNoteLayerProps> = ({
     if (isSelectionActive && selectionTrigger) {
         // We still return the selectionTrigger UI itself
         return (
-            <div 
-                className="absolute z-[100] -translate-x-1/2 animate-in fade-in zoom-in duration-200"
-                style={{ left: selectionTrigger.left, top: selectionTrigger.top }}
-            >
-                <button
-                    type="button"
-                    onClick={() => triggerAnchoredReply({ selection: selectionTrigger.selection })}
-                    className="flex items-center gap-2 whitespace-nowrap rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white shadow-lg hover:bg-slate-800"
-                >
-                    <FiRepeat className="h-3 w-3" />
-                    Reply in side thread
-                </button>
-                {selectionTrigger.isBelow ? (
-                    <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900" />
-                ) : (
-                    <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900" />
-                )}
-            </div>
+            <SelectionTriggerChip
+                left={selectionTrigger.left}
+                top={selectionTrigger.top}
+                isBelow={selectionTrigger.isBelow}
+                onClick={() => triggerAnchoredReply({ selection: selectionTrigger.selection })}
+            />
         );
     }
     return (
@@ -99,24 +129,12 @@ export const OrphanNoteLayer: React.FC<OrphanNoteLayerProps> = ({
 
             {/* Text Selection Trigger */}
             {selectionTrigger && (
-                <div 
-                    className="absolute z-[100] -translate-x-1/2 animate-in fade-in zoom-in duration-200"
-                    style={{ left: selectionTrigger.left, top: selectionTrigger.top }}
-                >
-                    <button
-                        type="button"
-                        onClick={() => triggerAnchoredReply({ selection: selectionTrigger.selection })}
-                        className="flex items-center gap-2 whitespace-nowrap rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white shadow-lg hover:bg-slate-800"
-                    >
-                        <FiRepeat className="h-3 w-3" />
-                        Reply in side thread
-                    </button>
-                    {selectionTrigger.isBelow ? (
-                        <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900" />
-                    ) : (
-                        <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900" />
-                    )}
-                </div>
+                <SelectionTriggerChip
+                    left={selectionTrigger.left}
+                    top={selectionTrigger.top}
+                    isBelow={selectionTrigger.isBelow}
+                    onClick={() => triggerAnchoredReply({ selection: selectionTrigger.selection })}
+                />
             )}
         </>
     );

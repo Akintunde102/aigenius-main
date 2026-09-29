@@ -387,7 +387,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 id="integrations-modal-title" className="text-base font-semibold">
+                  <h2 id="integrations-modal-title" className="text-base font-semibold leading-none">
                     Integrations
                   </h2>
                   {loading && (
@@ -396,17 +396,17 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-xs" style={{ color: "var(--modal-muted-fg)" }}>Connect external accounts for tools</p>
+                <p className="mt-1 text-xs" style={{ color: "var(--modal-muted-fg)" }}>Connect external accounts for tools</p>
               </div>
             </div>
             <button
               type="button"
               aria-label="Close"
-              className="shrink-0 rounded-lg p-2 transition-colors hover:bg-red-500/10 focus:outline-none"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md p-1 transition-colors hover:bg-red-500/10 focus:outline-none"
               style={{ color: "var(--modal-muted-fg)" }}
               onClick={onClose}
             >
-              <FiX size={18} />
+              <FiX className="h-4 w-4" />
             </button>
           </div>
         </div>

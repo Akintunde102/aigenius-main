@@ -119,20 +119,21 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
                     color: "var(--modal-fg)",
                 }}
             >
-                <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: "var(--modal-border)" }}>
+                <div className="flex shrink-0 items-center justify-between p-4 border-b" style={{ borderColor: "var(--modal-border)" }}>
                     <div className="flex items-center gap-2">
-                        <FiGlobe className="text-blue-500" size={20} />
-                        <h2 className="text-lg font-semibold">
+                        <FiGlobe className="text-blue-500 shrink-0" size={20} />
+                        <h2 className="text-lg font-semibold leading-none">
                             {isRepublishing ? 'Republish Conversation' : 'Publish Conversation'}
                         </h2>
                     </div>
                     <button
                         onClick={handleClose}
                         disabled={isPublishing}
-                        className="hover:text-red-500 disabled:opacity-50 transition-colors"
+                        className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-[var(--sidebar-row-hover)] hover:text-red-500 disabled:opacity-50 transition-colors"
                         style={{ color: "var(--modal-muted-fg)" }}
+                        aria-label="Close"
                     >
-                        <FiX size={20} />
+                        <FiX size={18} />
                     </button>
                 </div>
 

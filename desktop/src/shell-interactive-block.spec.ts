@@ -67,6 +67,20 @@ describe('blockInteractiveShellCommand', () => {
     it('allows npm test', () => {
       expect(blockInteractiveShellCommand('npm test', platform)).toBeNull();
     });
+
+    it('blocks Stop-Process -Name node because that kills the API', () => {
+      const msg = blockInteractiveShellCommand(
+        'powershell -Command "Stop-Process -Name \'node\' -Force; Stop-Process -Id 23700 -Force"',
+        platform,
+      );
+      expect(msg).toMatch(/every Node process/i);
+    });
+
+    it('allows stopping a single PID', () => {
+      expect(
+        blockInteractiveShellCommand('powershell -Command "Stop-Process -Id 23700 -Force"', platform),
+      ).toBeNull();
+    });
   });
 
   describe('all platforms', () => {

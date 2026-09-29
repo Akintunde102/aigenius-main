@@ -682,10 +682,19 @@ function summarizeBatchItemStatus(item: {
  */
 export function formatShellResult(data: any): FormattedToolResult {
   if (!data || typeof data !== 'object') return { result: String(data), rawData: data };
-  const { stdout, stderr, exit_code } = data;
+  const { stdout, stderr, exit_code, backgrounded, pid } = data;
 
   let md = `### Shell output\n\n`;
-  md += `- **Exit code**: ${exit_code ?? '?'}\n\n`;
+  if (backgrounded === true) {
+    const pidLabel = typeof pid === 'number' ? ` (pid ${pid})` : '';
+    md += `- **Status**: still running${pidLabel}\n`;
+    md += `- **Exit code**: (none — process was backgrounded)\n\n`;
+    md +=
+      'The command did not exit (typical for dev servers such as `npm run dev`). '
+      + 'It is still running. Output captured so far is below.\n\n';
+  } else {
+    md += `- **Exit code**: ${exit_code ?? '?'}\n\n`;
+  }
 
   if (stdout && stdout.trim()) {
     md += `**Stdout**\n\n\`\`\`\n${escapeBackticks(stdout.trim())}\n\`\`\`\n\n`;

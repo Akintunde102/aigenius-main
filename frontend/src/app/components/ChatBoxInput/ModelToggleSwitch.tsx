@@ -40,7 +40,7 @@ export const ModelToggleSwitch: React.FC<ModelToggleSwitchProps> = ({
 
   const uncheckedClass = isQuiet
     ? "border-transparent bg-[color-mix(in_srgb,var(--modal-fg)_8%,transparent)]"
-    : "border-gray-300 bg-gray-200 dark:border-zinc-600 dark:bg-zinc-700";
+    : "border-[color:var(--modal-border)] bg-[color:var(--surface-muted)]";
 
   const knobClassExtra = isQuiet
     ? "bg-[color-mix(in_srgb,var(--modal-fg)_88%,white)] shadow-none ring-0 opacity-90"

@@ -91,6 +91,10 @@ declare global {
       closeWindow?: () => void;
       isWindowMaximized?: () => Promise<boolean>;
       onWindowMaximizeChange?: (handler: (isMaximized: boolean) => void) => () => void;
+      setWindowOpacity?: (opacity: number) => void;
+      getWindowOpacity?: () => Promise<number>;
+      toggleWindowOpacity?: () => Promise<number>;
+      onWindowOpacityChange?: (handler: (opacity: number) => void) => () => void;
       [key: string]: any;
     };
   }
