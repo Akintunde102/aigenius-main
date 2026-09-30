@@ -19,6 +19,7 @@ import { ChatShellLoadingSkeleton } from "@/app/components/ChatShellLoadingSkele
 import { importModelInterfaceWithRetry } from "@/app/components/model-interface/modelInterfaceDynamicImport";
 import { ToolApprovalProvider } from "@/lib/tool-permissions/ToolApprovalProvider";
 import AutoUpdaterNotification from "@/app/components/AutoUpdaterNotification";
+import { trackAuthCompleted } from "@/lib/analytics/product-events";
 
 const ModelInterface = dynamic(importModelInterfaceWithRetry, {
   ssr: false,
@@ -83,6 +84,11 @@ export default function AuthenticatedChatPage({
           setAuthReady(true);
           return;
         }
+
+        trackAuthCompleted({
+          method: 'google',
+          isNewUser: signupWelcomeInUrl === '1',
+        });
 
         setToken("authenticated");
         setLoading(false);

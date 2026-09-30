@@ -5,6 +5,7 @@ import {
     copyPublishedConversationUrl,
     openPublishedConversationUrl,
 } from '../utils/publishedConversationLink.utils';
+import { trackConversationPublished } from '@/lib/analytics/product-events';
 
 interface PublishConversationModalProps {
     isOpen: boolean;
@@ -71,6 +72,10 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
             const url = `${window.location.origin}/published-conversations/${conversationId}`;
             setPublishedUrl(url);
             setIsPublished(true);
+            trackConversationPublished({
+                conversationId,
+                isRepublishing,
+            });
         } catch (error) {
             console.error('Failed to publish conversation:', error);
         } finally {

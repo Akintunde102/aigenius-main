@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { IntegrationCallbackStatus } from '../../components/IntegrationCallbackStatus';
+import { trackIntegrationConnected } from '@/lib/analytics/product-events';
 
 const GMAIL_CONNECT_RESULT_KEY = 'gmail_connect_result';
 
@@ -22,6 +23,8 @@ export default function GmailCallbackPage() {
       const params = new URLSearchParams(window.location.search);
       const success = params.get('success') === 'true';
       const error = params.get('error') || undefined;
+
+      trackIntegrationConnected({ integration: 'gmail', success });
 
       if (window.opener && !window.opener.closed) {
         const msg = { type: 'gmail-integration-callback', success, error };

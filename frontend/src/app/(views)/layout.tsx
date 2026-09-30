@@ -13,9 +13,11 @@ import {
 import React from "react";
 import ErrorBoundary from "@/app/components/ErrorBoundary";
 import { WorkflowNavigationProgress } from "@/app/components/workflows/WorkflowNavigationProgress";
+import { useAnalyticsPageView } from "@/lib/analytics/useAnalyticsPageView";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathName = usePathname();
+  useAnalyticsPageView(pathName);
 
   const isNonAuthProtectedPage = pathName === "/" ||
     pathName === "/desktop-welcome" ||
