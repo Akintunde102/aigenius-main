@@ -14,7 +14,7 @@ let notificationIcon: NativeImage | string | undefined;
 
 export function configureDesktopNotificationBranding(): void {
   app.setName(AIGENIUS_NOTIFICATION_BRAND);
-  if (process.platform === 'win32') {
+  if (process.platform === 'win32' && !process.windowsStore) {
     app.setAppUserModelId(AIGENIUS_APP_USER_MODEL_ID);
   }
 }
