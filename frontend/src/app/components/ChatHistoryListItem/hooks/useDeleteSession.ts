@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { trackConversationDeleted } from '@/lib/analytics/product-events';
 
 interface UseDeleteSessionProps {
     sessionId?: string;
@@ -25,10 +26,14 @@ export const useDeleteSession = ({
         onDeleteStart?.();
 
         try {
+            let deleted = false;
             if (sessionId && removeChatHistorySessionById) {
-                await removeChatHistorySessionById(sessionId);
+                deleted = await removeChatHistorySessionById(sessionId);
             } else if (sessionId) {
-                await removeChatHistorySession(sessionId);
+                deleted = await removeChatHistorySession(sessionId);
+            }
+            if (deleted && sessionId) {
+                trackConversationDeleted(sessionId);
             }
         } finally {
             setIsDeleting(false);

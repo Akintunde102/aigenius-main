@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import AddToWallet from "../modals/AddToWallet";
 import { clearUserDetailsCache } from "@/lib/calls/get-logged-user-details";
 import { WalletPaymentSuccessOptions } from "@/lib/wallet-payment-return";
+import { trackWalletModalOpened } from "@/lib/analytics/product-events";
 
 interface WalletModalProps {
     showWalletModal: boolean;
@@ -18,6 +19,12 @@ const WalletModal: React.FC<WalletModalProps> = ({
     paymentModalLoading,
     setPaymentModalLoading,
 }) => {
+    useEffect(() => {
+        if (showWalletModal) {
+            trackWalletModalOpened();
+        }
+    }, [showWalletModal]);
+
     // Handler for successful payment - refresh wallet and close modal
     const handlePaymentSuccess = async (
         amountInNaira: string,

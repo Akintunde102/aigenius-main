@@ -18,6 +18,7 @@ import type { ModelCatalogFilter } from "@/app/components/model-interface/shared
 import { partitionModelsByWalletAffordance } from "@/app/components/model-interface/features/models/utils/modelWalletAffordance.utils";
 import { isConversationPickableModel } from "@/app/components/model-interface/features/models/utils/modelConversationEligibility.utils";
 import type { ModelSelectionSection } from "./ModelSelectionGrid";
+import { trackModelSelected } from "@/lib/analytics/product-events";
 
 const MODEL_PICKER_GROUP_BY_AFFORDABILITY_KEY =
   "nobox-model-picker-group-by-affordability";

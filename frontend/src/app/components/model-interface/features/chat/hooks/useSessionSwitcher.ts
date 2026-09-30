@@ -13,6 +13,10 @@ import {
 import { applyChatProjectScopeFromSession } from '@/lib/code-projects/apply-chat-project-scope';
 import { shouldAcceptRemoteConversationSync } from '@/lib/utils/conversationScrollMemory';
 import { mergeSidebarSessionRecord } from '@/app/components/model-interface/conversation/sessionRecency';
+import {
+  trackConversationCreated,
+  trackConversationOpened,
+} from '@/lib/analytics/product-events';
 
 interface UseSessionSwitcherOptions {
     currentSessionId: string | null;
@@ -68,6 +72,8 @@ export function useSessionSwitcher({
         setChatHistory?: React.Dispatch<React.SetStateAction<ChatSession[]>>
     ) => {
         if (!session.id) return;
+
+        trackConversationOpened(session.id);
 
         applyChatProjectScopeFromSession(session.codeProjectId);
 

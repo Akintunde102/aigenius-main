@@ -19,6 +19,7 @@ import {
     resolveAuthApiRootUrlAsync,
 } from "@/lib/utils/resolve-auth-api-root";
 import { DevLoginButton } from "@/app/components/auth/DevLoginButton";
+import { trackAuthCompleted, trackAuthGoogleStarted } from "@/lib/analytics/product-events";
 
 export type DesktopAuthFlowPhase = "idle" | "awaiting-browser" | "completing";
 
@@ -50,6 +51,8 @@ export const GoogleSignIn = ({
     };
 
     const handleGoogleSignIn = async () => {
+        trackAuthGoogleStarted(variant);
+
         const likelyDesktop =
             typeof window !== 'undefined'
             && (isAigeniusDesktopRuntime() || window.aigeniusDesktop?.startOAuthSignIn);
@@ -88,6 +91,7 @@ export const GoogleSignIn = ({
                         setIsDesktopSigningIn(false);
                         return;
                     }
+                    trackAuthCompleted({ method: 'google', variant });
                     syncAuthSessionCookiesFromStorage();
                     const target = resolveAuthenticatedDesktopShellRedirect(
                         window.location.pathname,

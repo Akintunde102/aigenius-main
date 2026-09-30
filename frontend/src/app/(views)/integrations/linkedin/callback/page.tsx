@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { IntegrationCallbackStatus } from '../../components/IntegrationCallbackStatus';
+import { trackIntegrationConnected } from '@/lib/analytics/product-events';
 
 const LINKEDIN_CONNECT_RESULT_KEY = 'linkedin_connect_result';
 
@@ -22,6 +23,8 @@ export default function LinkedInCallbackPage() {
       const params = new URLSearchParams(window.location.search);
       const success = params.get('success') === 'true';
       const error = params.get('error') || undefined;
+
+      trackIntegrationConnected({ integration: 'linkedin', success });
 
       if (window.opener && !window.opener.closed) {
         const msg = { type: 'linkedin-integration-callback', success, error };

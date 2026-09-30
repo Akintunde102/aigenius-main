@@ -20,12 +20,17 @@ import {
 } from '@/lib/wallet-payment-return';
 import {
     markPendingWalletCheckoutStarted,
+    readPendingPaymentFromStorage,
     reconcilePaymentWithBackend,
     type WalletPaymentVerification,
 } from '@/lib/wallet-pending-payment-poll';
 import { LandingAmbientBackground } from '@/app/components/ui';
 import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
 import { cn } from '@/lib/utils';
+import {
+  trackWalletTopUpCompleted,
+  trackWalletTopUpFailed,
+} from '@/lib/analytics/product-events';
 
 type VerifyPaymentResponse = WalletPaymentVerification;
 
@@ -192,6 +197,8 @@ export default function PaymentCallbackClient() {
                 markPendingWalletCheckoutStarted(reference);
             }
             const returnState = readWalletTopUpReturnState();
+            const pendingPayment = readPendingPaymentFromStorage();
+            const paymentProvider = pendingPayment?.provider;
             const returnTo = resolveWalletPaymentReturnTarget(
                 searchParams.get('returnTo') || returnState?.returnTo,
             );
@@ -238,6 +245,10 @@ export default function PaymentCallbackClient() {
                         verifiedAt: Date.now(),
                         reopenTarget: returnState?.reopenTarget,
                     });
+                    trackWalletTopUpFailed({
+                        provider: paymentProvider,
+                        reason: 'missing_reference',
+                    });
                     if (mounted) {
                         setStatus('failed');
                         toast.error('Payment verification failed.');
@@ -274,6 +285,11 @@ export default function PaymentCallbackClient() {
                     reopenTarget: returnState?.reopenTarget,
                 });
 
+                trackWalletTopUpCompleted({
+                    provider: paymentProvider,
+                    reference,
+                });
+
                 setStatus('success');
                 if (isAigeniusDesktopRuntime()) {
                     toast.success('Payment verified. Return to the app to see your updated balance.');
@@ -294,6 +310,10 @@ export default function PaymentCallbackClient() {
                     message: resolveMissingReferenceMessage(),
                     verifiedAt: Date.now(),
                     reopenTarget: returnState?.reopenTarget,
+                });
+                trackWalletTopUpFailed({
+                    provider: paymentProvider,
+                    reason: 'missing_reference',
                 });
                 if (mounted) {
                     setStatus('failed');
@@ -431,6 +451,12 @@ export default function PaymentCallbackClient() {
                     message,
                     verifiedAt: Date.now(),
                     reopenTarget: returnState?.reopenTarget,
+                });
+
+                trackWalletTopUpFailed({
+                    provider: paymentProvider,
+                    reference,
+                    reason: message,
                 });
 
                 setStatus('failed');
