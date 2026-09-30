@@ -185,6 +185,22 @@ export function DetailModal(props: DetailModalProps) {
                   />
                   <figcaption className="font-mono text-[11px] text-zinc-500">{previewBlob.mimeType}</figcaption>
                 </figure>
+              ) : previewBlob?.kind === "video" ? (
+                <figure className="mx-auto flex max-h-[72vh] max-w-full flex-col gap-3">
+                  <video
+                    src={previewBlob.url}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="max-h-[62vh] w-full max-w-full rounded-xl border border-zinc-700/80 bg-black object-contain"
+                  />
+                  <figcaption className="font-mono text-[11px] text-zinc-500">{previewBlob.mimeType}</figcaption>
+                </figure>
+              ) : previewBlob?.kind === "audio" ? (
+                <figure className="mx-auto flex w-full max-w-lg flex-col gap-3">
+                  <audio src={previewBlob.url} controls preload="metadata" className="w-full" />
+                  <figcaption className="font-mono text-[11px] text-zinc-500">{previewBlob.mimeType}</figcaption>
+                </figure>
               ) : previewBlob?.kind === "text" ? (
                 <pre
                   className={cn(

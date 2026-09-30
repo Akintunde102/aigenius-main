@@ -1,13 +1,11 @@
-function isDevBuild(): boolean {
-  return process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test";
-}
-
 /**
- * Product feature gates — opt-in via `NEXT_PUBLIC_ENABLE_*=true` in production.
- * In local dev/test, workflows default on unless explicitly set to `false`.
+ * Product feature gates — opt-in via `NEXT_PUBLIC_ENABLE_*=true`.
  */
 export const FEATURE_FLAGS = {
-  /** Phone icon + conversational audio overlay. */
+  /**
+   * Phone icon + conversational audio overlay.
+   * Hidden until NEXT_PUBLIC_ENABLE_AUDIO_CONVERSATION=true.
+   */
   AUDIO_CONVERSATION:
     process.env.NEXT_PUBLIC_ENABLE_AUDIO_CONVERSATION === "true",
 

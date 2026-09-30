@@ -1,15 +1,31 @@
 type CachedImage = {
     objectUrl: string;
     refCount: number;
+    fingerprint: string;
 };
 
 const cache = new Map<string, CachedImage>();
 
-export function getCachedLocalFileImageUrl(path: string): string | null {
-    return cache.get(path)?.objectUrl ?? null;
+/** Cheap fingerprint so cache entries invalidate when file bytes change. */
+export function fingerprintLocalFileImageBase64(base64: string): string {
+    if (!base64) return '0';
+    const len = base64.length;
+    if (len <= 128) return `${len}:${base64}`;
+    return `${len}:${base64.slice(0, 64)}:${base64.slice(-64)}`;
 }
 
-export function retainCachedLocalFileImageUrl(path: string, objectUrl: string): void {
+export function getCachedLocalFileImageUrl(path: string, fingerprint?: string): string | null {
+    const entry = cache.get(path);
+    if (!entry) return null;
+    if (fingerprint && entry.fingerprint !== fingerprint) return null;
+    return entry.objectUrl;
+}
+
+export function retainCachedLocalFileImageUrl(
+    path: string,
+    objectUrl: string,
+    fingerprint: string,
+): void {
     const existing = cache.get(path);
     if (existing) {
         if (existing.objectUrl !== objectUrl) {
@@ -17,11 +33,12 @@ export function retainCachedLocalFileImageUrl(path: string, objectUrl: string): 
                 URL.revokeObjectURL(existing.objectUrl);
             }
             existing.objectUrl = objectUrl;
+            existing.fingerprint = fingerprint;
         }
         existing.refCount += 1;
         return;
     }
-    cache.set(path, { objectUrl, refCount: 1 });
+    cache.set(path, { objectUrl, refCount: 1, fingerprint });
 }
 
 export function releaseCachedLocalFileImageUrl(path: string): void {

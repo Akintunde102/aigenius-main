@@ -1,5 +1,6 @@
 import { ChatCompletionRequestOverrides } from './chatOperations.types';
 import { isPendingDraftMode } from '@/app/components/model-interface/conversation/conversationViewSession';
+import { isClientDraftSessionId } from '@/app/components/model-interface/conversation/clientDraftSession';
 
 export function resolveRequestConversationId(
     requestOverrides: ChatCompletionRequestOverrides | undefined,
@@ -11,6 +12,10 @@ export function resolveRequestConversationId(
 
     if (requestOverrides && Object.prototype.hasOwnProperty.call(requestOverrides, 'conversationId')) {
         return requestOverrides.conversationId ?? null;
+    }
+
+    if (currentSessionId && isClientDraftSessionId(currentSessionId)) {
+        return null;
     }
 
     return currentSessionId ?? null;

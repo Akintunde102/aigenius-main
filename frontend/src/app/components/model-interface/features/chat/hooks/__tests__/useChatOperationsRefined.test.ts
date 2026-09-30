@@ -10,12 +10,17 @@ import {
     setPendingDraftMode,
 } from '@/app/components/model-interface/conversation/conversationViewSession';
 import getNoboxFunctions from '@/lib/calls/get-nobox-functions';
+import { abortSubagentConversation } from '@/lib/calls/model-chat-conversation';
 import { useStreamingResponse } from '../useStreamingResponse';
 import { useNonStreamingResponse } from '../useNonStreamingResponse';
 
 jest.mock('@/lib/calls/get-nobox-functions', () => ({
     __esModule: true,
     default: jest.fn(),
+}));
+
+jest.mock('@/lib/calls/model-chat-conversation', () => ({
+    abortSubagentConversation: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('@/lib/calls/get-logged-user-details', () => ({
@@ -247,6 +252,7 @@ describe('useChatOperationsRefined', () => {
         expect(handleStreamingResponse).toHaveBeenCalledTimes(1);
         expect(handleStreamingResponse.mock.calls[0][3]).toEqual({
             conversationId: null,
+            clientDraftMapKey: expect.stringMatching(/^cd_/),
             draftEpoch: expect.any(Number),
             sendGeneration: expect.any(Number),
         });
@@ -262,6 +268,7 @@ describe('useChatOperationsRefined', () => {
         expect(handleNonStreamingResponse).toHaveBeenCalledTimes(1);
         expect(handleNonStreamingResponse.mock.calls[0][3]).toEqual({
             conversationId: null,
+            clientDraftMapKey: expect.stringMatching(/^cd_/),
             draftEpoch: expect.any(Number),
             sendGeneration: expect.any(Number),
         });
@@ -282,6 +289,7 @@ describe('useChatOperationsRefined', () => {
         expect(handleStreamingResponse).toHaveBeenCalledTimes(1);
         expect(handleStreamingResponse.mock.calls[0][3]).toEqual({
             conversationId: null,
+            clientDraftMapKey: expect.stringMatching(/^cd_/),
             draftEpoch: expect.any(Number),
             sendGeneration: expect.any(Number),
         });
@@ -461,4 +469,66 @@ describe('useChatOperationsRefined', () => {
 
         expect(clearPendingOrphanReply).not.toHaveBeenCalled();
     });
+
+    it('aborts only the viewed subagent conversation and not the materialized parent conversation on stop', () => {
+        let sessionProps: { currentSessionId: string | null; routeConversationId: string | null } = {
+            currentSessionId: null,
+            routeConversationId: null,
+        };
+
+        function Wrapper() {
+            const result = useChatOperationsRefined({
+                selectedModel: model,
+                chat: baseChat,
+                setChat,
+                setChatForSession,
+                getChatForSession: () => baseChat,
+                streaming: true,
+                setStreamingForSession,
+                setLoadingForSession,
+                setError,
+                streamingEnabled: true,
+                chatEndRef,
+                refreshChatHistory: undefined,
+                currentSessionId: sessionProps.currentSessionId,
+                routeConversationId: sessionProps.routeConversationId,
+                setCurrentSessionId,
+                setChatHistory,
+                updateSessionMessages,
+                selectedPersonalityName: undefined,
+                selectedPersonalityIconUrl: undefined,
+            });
+            resultRef.current = result;
+            return null;
+        }
+
+        root = createRoot(container);
+        act(() => {
+            root.render(React.createElement(Wrapper));
+        });
+
+        const streamingProps = (useStreamingResponse as jest.Mock).mock.calls.at(-1)![0];
+        const epochAtSend = getDraftConversationEpoch();
+
+        act(() => {
+            streamingProps.handleStreamResult({ conversationId: 'parent-conv' }, null, epochAtSend);
+        });
+
+        // User switches to the spawned subagent conversation and clicks Stop.
+        sessionProps = {
+            currentSessionId: 'subagent-conv',
+            routeConversationId: 'subagent-conv',
+        };
+        act(() => {
+            root.render(React.createElement(Wrapper));
+        });
+
+        act(() => {
+            resultRef.current!.handleStop();
+        });
+
+        expect(abortSubagentConversation).toHaveBeenCalledTimes(1);
+        expect(abortSubagentConversation).toHaveBeenCalledWith('subagent-conv');
+    });
 });
+

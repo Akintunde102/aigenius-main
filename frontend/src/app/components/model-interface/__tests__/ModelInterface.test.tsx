@@ -378,7 +378,10 @@ describe('ModelInterface', () => {
         });
 
         expect(mockValues.__spies.setCurrentSessionId).toHaveBeenCalledWith(null);
-        expect(mockValues.__spies.setChatForSession).toHaveBeenCalledWith('__draft__', []);
+        expect(mockValues.__spies.setChatForSession).toHaveBeenCalledWith(
+            expect.stringMatching(/^cd_/),
+            [],
+        );
         expect(mockValues.__spies.setTotalSpent).toHaveBeenCalledWith(0);
         expect(mockValues.__spies.setError).toHaveBeenCalledWith(null);
         expect(mockValues.__spies.createNewSessionAndSwitch).not.toHaveBeenCalled();

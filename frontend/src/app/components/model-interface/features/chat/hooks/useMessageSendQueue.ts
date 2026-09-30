@@ -47,8 +47,8 @@ export function useMessageSendQueue({ activeSessionKey }: UseMessageSendQueuePar
         setQueueMap((prev) => clearSessionQueue(prev, sessionKey));
     }, [activeSessionKey]);
 
-    const migrateDraftQueueToSession = useCallback((realSessionId: string) => {
-        setQueueMap((prev) => migrateMessageSendQueueMap(prev, realSessionId));
+    const migrateDraftQueueToSession = useCallback((realSessionId: string, fromDraftKey?: string) => {
+        setQueueMap((prev) => migrateMessageSendQueueMap(prev, realSessionId, fromDraftKey));
     }, []);
 
     const peekQueuedMessage = useCallback((sessionKey: string): QueuedComposerMessage | null => {

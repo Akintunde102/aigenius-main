@@ -1,6 +1,7 @@
 import { ChatMessage, ChatSession } from '@/app/components/model-interface/shared/types';
 import { resolveSessionLastMessageTimestamp } from '@/app/components/model-interface/conversation/sessionRecency';
 import { DRAFT_SESSION_KEY } from './chatOperations.constants';
+import { getClientDraftSessionId } from '@/app/components/model-interface/conversation/clientDraftSession';
 
 /** Max conversation transcripts kept in React state (LRU); others reload on switch. */
 export const CHAT_MAP_MAX_RETAINED_SESSIONS = 8;
@@ -40,6 +41,7 @@ export function evictChatMapSessions(
   maxSessions = CHAT_MAP_MAX_RETAINED_SESSIONS,
 ): { map: Record<string, ChatMessage[]>; touchOrder: string[] } {
   const pins = new Set(pinSessionIds);
+  pins.add(getClientDraftSessionId());
   pins.add(DRAFT_SESSION_KEY);
 
   const nextMap = { ...map };

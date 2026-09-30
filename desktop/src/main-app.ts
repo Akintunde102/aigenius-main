@@ -76,7 +76,7 @@ import { DESKTOP_APP_USER_MODEL_ID, resolveDesktopUserDataDirName } from './desk
 import { installVcRuntimeElevated, isVcRuntimeInstalled } from './vcredist-guard';
 import { setupAutoUpdater } from './main-auto-updater';
 
-if (process.platform === 'win32') {
+if (process.platform === 'win32' && !process.windowsStore) {
   app.setAppUserModelId(DESKTOP_APP_USER_MODEL_ID);
 }
 

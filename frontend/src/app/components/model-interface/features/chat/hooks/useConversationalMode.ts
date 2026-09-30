@@ -1,3 +1,7 @@
+/**
+ * Legacy phone-mode loop (desktop HTTP STT, socket chunks, VAD).
+ * The live phone button uses `useVoiceConversation` instead.
+ */
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { MutableRefObject } from 'react';
 import type { Socket } from 'socket.io-client';

@@ -13,6 +13,10 @@ import {
 } from "../../features/chat/hooks";
 import { DRAFT_SESSION_KEY } from "../../features/chat/hooks/chatOperations.constants";
 import {
+  getClientDraftSessionId,
+  resolveActiveChatMapKey,
+} from "../../conversation/clientDraftSession";
+import {
   normalizeChatUiError,
   type ChatUiError,
 } from "../../features/chat/hooks/chatUiError";
@@ -23,7 +27,7 @@ import { useModelInterfacePersonality } from "../../hooks/useModelInterfacePerso
 import {
   AudioStatus,
 } from "../../features/chat/hooks/audioMode.utils";
-import { useConversationalMode } from "../../features/chat/hooks/useConversationalMode";
+import { useVoiceConversation } from "../../features/voice-conversation/useVoiceConversation";
 import { useSentenceStreaming } from "../../features/chat/hooks/useSentenceStreaming";
 import { useAudioSTT } from "../../features/chat/hooks/useAudioSTT";
 import { useAudioSocket } from "../../features/chat/hooks/useAudioSocket";
@@ -143,6 +147,7 @@ export function useModelInterface(options?: {
     if (routeConversationId) {
       ids.add(routeConversationId);
     }
+    ids.add(getClientDraftSessionId());
     ids.add(DRAFT_SESSION_KEY);
     for (const [sessionId, active] of Object.entries(streamingMap)) {
       if (active) ids.add(sessionId);
@@ -169,10 +174,17 @@ export function useModelInterface(options?: {
   });
 
   const viewSessionId = resolveViewSessionId(routeConversationId, currentSessionId);
-  const activeKey = viewSessionId ?? DRAFT_SESSION_KEY;
+  const activeKey = resolveActiveChatMapKey(viewSessionId);
   const chat = chatMap[activeKey] || [];
   const loading = loadingMap[activeKey] || false;
   const streaming = streamingMap[activeKey] || false;
+
+  useConversationEvents(setChatHistory, (session) => {
+    if (!session.id || isPassiveSyncBlocked(session.id) || !session.messages?.length) {
+      return;
+    }
+    setChatForSession(session.id, session.messages, { passive: true });
+  });
 
   useActiveConversationSync({
     conversationId: viewSessionId,
@@ -272,7 +284,9 @@ export function useModelInterface(options?: {
   });
 
     const isAudioModeRef = useRef(false);
-    const onDraftSessionMaterializedRef = useRef<(realId: string) => void>(() => {});
+    const onDraftSessionMaterializedRef = useRef<
+      (realId: string, clientDraftMapKey?: string) => void
+    >(() => {});
     const onClearDraftQueueRef = useRef<() => void>(() => {});
 
     const {
@@ -322,7 +336,6 @@ export function useModelInterface(options?: {
 
   const audioSession = useAudioSocket();
 
-  const dictationMicLiveRef = useRef(false);
   const conversationalMicLiveRef = useRef(false);
 
   const {
@@ -332,7 +345,6 @@ export function useModelInterface(options?: {
     cancelSTT,
     confirmSTT,
     exitDictation,
-    isRecording: isDictationRecording,
   } = useAudioSTT({
     input,
     setInput,
@@ -359,7 +371,7 @@ export function useModelInterface(options?: {
     analyzer,
     isConversationalRecording,
     streamFlushPendingRef,
-  } = useConversationalMode({
+  } = useVoiceConversation({
     onTranscriptionComplete: async (text: string) => {
       await handleSend(text);
     },
@@ -367,17 +379,11 @@ export function useModelInterface(options?: {
     isStreaming: streaming,
     audioSession,
     onEnterAudioMode: exitDictation,
-    onBargeIn: handleStop,
-    peerMicSuppressRef: dictationMicLiveRef,
   });
 
   useLayoutEffect(() => {
     isAudioModeRef.current = isAudioMode;
   }, [isAudioMode]);
-
-  useLayoutEffect(() => {
-    dictationMicLiveRef.current = isSTTActive && isDictationRecording;
-  }, [isSTTActive, isDictationRecording]);
 
   useLayoutEffect(() => {
     conversationalMicLiveRef.current = isAudioMode && isConversationalRecording;
@@ -479,8 +485,14 @@ export function useModelInterface(options?: {
   );
 
   const isSessionInFlight = useCallback(
-    (sessionId: string) => checkSessionInFlight(sessionId, loadingMap, streamingMap),
-    [loadingMap, streamingMap],
+    (sessionId: string) => {
+      if (checkSessionInFlight(sessionId, loadingMap, streamingMap)) {
+        return true;
+      }
+      const session = chatHistory.find((row) => row.id === sessionId);
+      return session?.metadata?.subagentRunStatus === 'running';
+    },
+    [chatHistory, loadingMap, streamingMap],
   );
 
   // Methods

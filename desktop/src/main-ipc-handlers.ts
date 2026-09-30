@@ -30,6 +30,7 @@ import {
   storeDesktopRefreshToken,
 } from './desktop-auth-store';
 import {
+  openClickedHttpUrlInSystemBrowser,
   openUrlInSystemBrowser,
   openWalletCheckoutInSystemBrowser,
 } from './open-url-in-system-browser';
@@ -75,6 +76,10 @@ export function registerMainIpcHandlers(): void {
   ipcMain.handle('open-external-url', async (event, url: string) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     return openUrlInSystemBrowser(url, win ?? undefined);
+  });
+
+  ipcMain.handle('open-clicked-http-url', async (_event, url: string) => {
+    return openClickedHttpUrlInSystemBrowser(url);
   });
 
   ipcMain.on('open-external', (e, url: string) => {
@@ -127,6 +132,7 @@ export function registerMainIpcHandlers(): void {
 
   ipcMain.handle('read-local-file-preview', async (_event, filePath: string) => {
     const PREVIEW_IMAGE_MAX = 16 * 1024 * 1024;
+    const PREVIEW_MEDIA_MAX = 128 * 1024 * 1024;
     const PREVIEW_TEXT_MAX = 520 * 1024;
     const PROBE_UTF8_MAX = 400 * 1024;
 
@@ -197,6 +203,82 @@ export function registerMainIpcHandlers(): void {
         '.eslintrc',
         '.editorconfig',
       ]);
+
+      const videoExt = new Set([
+        '.mp4',
+        '.webm',
+        '.ogg',
+        '.ogv',
+        '.mov',
+        '.m4v',
+        '.mkv',
+        '.avi',
+        '.wmv',
+        '.flv',
+        '.3gp',
+        '.ts',
+        '.m3u8',
+      ]);
+      const audioExt = new Set(['.mp3', '.wav', '.m4a', '.aac', '.flac', '.opus', '.oga']);
+
+      const mediaMime = (mediaExt: string): string => {
+        switch (mediaExt) {
+          case '.mp4':
+          case '.m4v':
+            return 'video/mp4';
+          case '.webm':
+            return 'video/webm';
+          case '.ogg':
+          case '.ogv':
+            return 'video/ogg';
+          case '.mov':
+            return 'video/quicktime';
+          case '.mkv':
+            return 'video/x-matroska';
+          case '.avi':
+            return 'video/x-msvideo';
+          case '.wmv':
+            return 'video/x-ms-wmv';
+          case '.flv':
+            return 'video/x-flv';
+          case '.3gp':
+            return 'video/3gpp';
+          case '.ts':
+            return 'video/mp2t';
+          case '.m3u8':
+            return 'application/vnd.apple.mpegurl';
+          case '.mp3':
+            return 'audio/mpeg';
+          case '.wav':
+            return 'audio/wav';
+          case '.m4a':
+            return 'audio/mp4';
+          case '.aac':
+            return 'audio/aac';
+          case '.flac':
+            return 'audio/flac';
+          case '.opus':
+            return 'audio/opus';
+          case '.oga':
+            return 'audio/ogg';
+          default:
+            return 'application/octet-stream';
+        }
+      };
+
+      if (videoExt.has(ext) || audioExt.has(ext)) {
+        if (st.size > PREVIEW_MEDIA_MAX) {
+          return { ok: false as const, error: 'too_large', maxBytes: PREVIEW_MEDIA_MAX };
+        }
+        const buf = await fs.promises.readFile(p);
+        const kind = audioExt.has(ext) ? ('audio' as const) : ('video' as const);
+        return {
+          ok: true as const,
+          kind,
+          mimeType: mediaMime(ext),
+          base64: buf.toString('base64'),
+        };
+      }
 
       const isPdf = ext === '.pdf';
       if (imageExt.has(ext) || isPdf) {

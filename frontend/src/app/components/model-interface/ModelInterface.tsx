@@ -39,6 +39,7 @@ import { useWalletTopUpReturn } from "@/lib/hooks/useWalletTopUpReturn";
 import { useWalletManagement } from "./features/chat/hooks";
 import { useKeyboardShortcuts } from "./shared/hooks";
 import { ChatMessage, Model } from "./shared/types";
+import { isConversationPickableModel } from "./features/models/utils/modelConversationEligibility.utils";
 import { ERROR_MESSAGES } from "./features/chat/hooks/chatOperations.constants";
 import { clearAuthSession } from "@/lib/utils/auth-session";
 import type { ChatContainerHandle } from "./features/chat/components/ChatContainer";
@@ -377,6 +378,11 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     const resolved = model
       ? models.find((m) => m.id === model.id) ?? model
       : null;
+
+    if (resolved && !isConversationPickableModel(resolved)) {
+      handleShowModelDetails(resolved);
+      return;
+    }
 
     setSelectedModel(resolved);
 
@@ -725,6 +731,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                 }}
                 onPickLibrary={() => {
                   setShowAttachmentSourcePicker(false);
+                  void attachmentLibrary.refresh({ silent: true });
                   setShowAttachmentLibrary(true);
                 }}
               />

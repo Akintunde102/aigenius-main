@@ -16,7 +16,8 @@ export async function runConversationEventsSubscription(
     url: string,
     getToken: () => string | undefined,
     setChatHistoryRef: { current: SetChatHistory | undefined },
-    signal: AbortSignal
+    signal: AbortSignal,
+    onSession?: (session: ChatSession) => void,
 ): Promise<void> {
     const jwtToken = getToken();
     if (!jwtToken) return;
@@ -47,6 +48,7 @@ export async function runConversationEventsSubscription(
                 modelId: data.modelId,
                 codeProjectId: data.codeProjectId ?? null,
                 metadata: data.metadata,
+                parentConversationId: data.parentConversationId ?? null,
                 personalityId: data.personalityId,
                 systemPrompt: data.systemPrompt,
                 starred: data.starred,
@@ -87,6 +89,8 @@ export async function runConversationEventsSubscription(
                 sessionForList.title
             );
 
+            onSession?.(normalized as ChatSession);
+
             const actionLabel = eventType === 'conversation_created' ? 'Saved' : 'Updated';
             console.log(`[Conversation] ${actionLabel}: ${sessionForList.title}`);
         } catch (_) {
@@ -125,13 +129,19 @@ export async function runConversationEventsSubscription(
 
 /**
  * Subscribe to SSE conversation_created / conversation_updated events from the backend.
- * Updates IndexedDB and sidebar (setChatHistory) on each event — do not overwrite the open chat messages (§2.6).
+ * Updates IndexedDB and the sidebar history list. `onSession` can refresh an open transcript
+ * that this tab is not already streaming.
  */
 const SSE_MAX_RECONNECT_ATTEMPTS = 8;
 
-export function useConversationEvents(setChatHistory?: SetChatHistory): void {
+export function useConversationEvents(
+    setChatHistory?: SetChatHistory,
+    onSession?: (session: ChatSession) => void,
+): void {
     const setChatHistoryRef = useRef(setChatHistory);
     setChatHistoryRef.current = setChatHistory;
+    const onSessionRef = useRef(onSession);
+    onSessionRef.current = onSession;
 
     useEffect(() => {
         if (!setChatHistory) return;
@@ -179,6 +189,7 @@ export function useConversationEvents(setChatHistory?: SetChatHistory): void {
                     () => getValidAccessToken(),
                     setChatHistoryRef,
                     controller.signal,
+                    (session) => onSessionRef.current?.(session),
                 );
                 reconnectAttempt = 0;
                 if (!disposed && !controller.signal.aborted) {

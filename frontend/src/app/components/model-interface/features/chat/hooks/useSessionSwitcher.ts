@@ -5,8 +5,11 @@ import { normalizeSessionMessages } from '@/lib/utils/messageContentUtils';
 import { getConversationById } from '@/lib/calls/model-chat-conversation';
 import { CHAT_CONVERSATION_STALE_MS, chatQueryKeys } from '@/lib/hooks/chat-query-keys';
 import { SetChatForSession } from './chatOperations.types';
-import { DRAFT_SESSION_KEY } from './chatOperations.constants';
 import { bumpDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
+import {
+    getClientDraftSessionId,
+    renewClientDraftSessionId,
+} from '@/app/components/model-interface/conversation/clientDraftSession';
 import { applyChatProjectScopeFromSession } from '@/lib/code-projects/apply-chat-project-scope';
 import { shouldAcceptRemoteConversationSync } from '@/lib/utils/conversationScrollMemory';
 import { mergeSidebarSessionRecord } from '@/app/components/model-interface/conversation/sessionRecency';
@@ -143,9 +146,9 @@ export function useSessionSwitcher({
         setCurrentSessionId: (id: string | null) => void
     ) => {
         bumpDraftConversationEpoch();
-        trackConversationCreated();
+        renewClientDraftSessionId();
         setCurrentSessionId(null);
-        setChatForSession(DRAFT_SESSION_KEY, []);
+        setChatForSession(getClientDraftSessionId(), []);
     }, [setChatForSession]);
 
     const isSessionActive = useCallback(
@@ -177,6 +180,7 @@ function conversationToSession(
         publishedAt: conversation.publishedAt,
         publishedTitle: conversation.publishedTitle,
         publishedDescription: conversation.publishedDescription,
+        parentConversationId: conversation.parentConversationId ?? null,
     };
 }
 

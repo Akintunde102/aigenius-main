@@ -85,7 +85,12 @@ export function normalizeChatConversationOpenPath(
   }
 
   const conversationId = match[1]?.trim();
-  if (!conversationId || conversationId === "__draft__" || conversationId === "new") {
+  if (
+    !conversationId
+    || conversationId === "__draft__"
+    || conversationId === "new"
+    || conversationId.startsWith("cd_")
+  ) {
     return null;
   }
 

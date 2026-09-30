@@ -17,7 +17,7 @@
 
 import React, { createContext, useContext, useState, useCallback, ReactNode, useMemo } from 'react';
 import { ChatMessage, ChatSession } from '../shared/types';
-import { DRAFT_SESSION_KEY } from '../features/chat/hooks/chatOperations.constants';
+import { resolveActiveChatMapKey } from '../conversation/clientDraftSession';
 
 // ============================================================================
 // Types
@@ -115,7 +115,7 @@ export function ChatProvider({
   const [streamingMap, setStreamingMap] = useState<Record<string, boolean>>({});
 
   // Current session key (draft if no session selected)
-  const activeKey = currentSessionId || DRAFT_SESSION_KEY;
+  const activeKey = resolveActiveChatMapKey(currentSessionId);
   
   // Current session messages
   const messages = chatMap[activeKey] || [];

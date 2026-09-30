@@ -177,6 +177,8 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     ipcRenderer.invoke('open-wallet-checkout-url', url) as Promise<{ ok: boolean; error?: string }>,
   openExternalUrl: (url: string): Promise<{ ok: boolean; error?: string }> =>
     ipcRenderer.invoke('open-external-url', url) as Promise<{ ok: boolean; error?: string }>,
+  openClickedHttpUrl: (url: string): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('open-clicked-http-url', url) as Promise<{ ok: boolean; error?: string }>,
   openExternal: (url: string) => {
     void ipcRenderer.invoke('open-external-url', url);
   },
@@ -409,6 +411,18 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
       kind: 'text';
       mimeType: string;
       text: string;
+    }
+    | {
+      ok: true;
+      kind: 'video';
+      mimeType: string;
+      base64: string;
+    }
+    | {
+      ok: true;
+      kind: 'audio';
+      mimeType: string;
+      base64: string;
     }
     | { ok: false; error: string; maxBytes?: number }
   > => ipcRenderer.invoke('read-local-file-preview', path),

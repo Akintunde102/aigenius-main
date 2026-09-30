@@ -7,6 +7,7 @@ import { buildLocalFilePreviewPayload } from '@/lib/utils/local-file-link';
 import { openFilePreview } from '@/app/components/modals/FilePreviewManager';
 import { getAigeniusDesktopBridgeFromBrowsingContext, isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
 import {
+    fingerprintLocalFileImageBase64,
     getCachedLocalFileImageUrl,
     releaseCachedLocalFileImageUrl,
     retainCachedLocalFileImageUrl,
@@ -34,35 +35,24 @@ export interface LocalFileInlineImageProps {
 }
 
 export function LocalFileInlineImage({ path, alt, className }: LocalFileInlineImageProps) {
-    const cachedOnMount = getCachedLocalFileImageUrl(path);
-    const [objectUrl, setObjectUrl] = useState<string | null>(cachedOnMount);
+    const [objectUrl, setObjectUrl] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(!cachedOnMount);
+    const [loading, setLoading] = useState(true);
     const retainedRef = useRef(false);
 
     useEffect(() => {
         let cancelled = false;
 
-        const retain = (url: string) => {
+        const retain = (url: string, fingerprint: string) => {
             if (!retainedRef.current) {
-                retainCachedLocalFileImageUrl(path, url);
+                retainCachedLocalFileImageUrl(path, url, fingerprint);
                 retainedRef.current = true;
             }
         };
 
         const load = async () => {
-            const cached = getCachedLocalFileImageUrl(path);
-            if (cached) {
-                retain(cached);
-                setObjectUrl(cached);
-                setError(null);
-                setLoading(false);
-                return;
-            }
-
             setLoading(true);
             setError(null);
-            setObjectUrl(null);
 
             if (!path.trim()) {
                 setError('Missing file path');
@@ -100,8 +90,10 @@ export function LocalFileInlineImage({ path, alt, className }: LocalFileInlineIm
                     return;
                 }
 
-                const url = base64ToObjectUrl(res.base64, res.mimeType);
-                retain(url);
+                const fingerprint = fingerprintLocalFileImageBase64(res.base64);
+                const cached = getCachedLocalFileImageUrl(path, fingerprint);
+                const url = cached ?? base64ToObjectUrl(res.base64, res.mimeType);
+                retain(url, fingerprint);
                 setObjectUrl(url);
                 setLoading(false);
             } catch (e) {

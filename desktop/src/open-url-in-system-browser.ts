@@ -108,6 +108,32 @@ export async function openWalletCheckoutInSystemBrowser(
 }
 
 /**
+ * Opens an http(s) URL in the OS browser after the user clicked a model link.
+ * The chat UI already shows the destination on hover, so this click leaves the app
+ * without a second confirmation dialog. Non-http URLs are rejected.
+ */
+export async function openClickedHttpUrlInSystemBrowser(
+  url: unknown,
+): Promise<OpenUrlInSystemBrowserResult> {
+  const normalized = normalizeExternalUrl(url);
+  if (!normalized || normalized.startsWith('mailto:')) {
+    return { ok: false, error: 'invalid_url' };
+  }
+
+  try {
+    await shell.openExternal(normalized, { activate: true });
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[aigenius-desktop] openClickedHttpUrlInSystemBrowser failed', {
+      url: normalized,
+      message,
+    });
+    return { ok: false, error: message };
+  }
+}
+
+/**
  * Opens http(s) and mailto URLs in the OS default browser / client.
  * Hosted wallet checkouts, trusted official domains, and mailto skip the approval dialog.
  */
