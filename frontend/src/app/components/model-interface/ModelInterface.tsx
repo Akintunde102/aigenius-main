@@ -731,6 +731,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                 }}
                 onPickLibrary={() => {
                   setShowAttachmentSourcePicker(false);
+                  void attachmentLibrary.refresh({ silent: true });
                   setShowAttachmentLibrary(true);
                 }}
               />
