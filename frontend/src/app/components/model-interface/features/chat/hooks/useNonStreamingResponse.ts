@@ -3,6 +3,8 @@ import { ChatMessage } from '@/app/components/model-interface/shared/types';
 import { OpenRouterMessage } from '@/nobox-client/functions/access-model';
 import { ChatCompletionRequestOverrides, UseNonStreamingResponseProps, AccessModelFn } from './chatOperations.types';
 import { DRAFT_SESSION_KEY } from './chatOperations.constants';
+import { getClientDraftSessionId } from '@/app/components/model-interface/conversation/clientDraftSession';
+import { migrateAbortControllerKey } from './abortControllerMap.utils';
 import { createChatMessage, processBackendContent, generateMessageId } from './contentProcessing.utils';
 import { addOrMergeSessionToLocalHistory } from '@/lib/utils/modelChatConversationUtils';
 import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interface/conversation/streamTranscriptGuard';
@@ -65,8 +67,12 @@ export function useNonStreamingResponse({
 
         // null for new chats — used for guard comparisons and API conversationId.
         const requestSessionId = resolveRequestConversationId(requestOverrides, currentSessionId);
+        const clientDraftKeyAtDispatch = requestOverrides?.clientDraftMapKey
+            ?? (requestSessionId === null ? getClientDraftSessionId() : undefined);
         // Always a string — used as the chatMap slot key.
-        const chatMapKey = requestSessionId ?? DRAFT_SESSION_KEY;
+        const chatMapKey = requestSessionId ?? clientDraftKeyAtDispatch ?? DRAFT_SESSION_KEY;
+        const abortMapKeyAtStart = chatMapKey;
+        let abortCleanupKey = chatMapKey;
 
         const existingController = abortControllersRef.current.get(chatMapKey);
         if (existingController) {
@@ -135,6 +141,12 @@ export function useNonStreamingResponse({
                 })), assistantMsg];
 
             if (requestSessionId === null && result.conversationId) {
+                migrateAbortControllerKey(
+                    abortControllersRef.current,
+                    abortMapKeyAtStart,
+                    result.conversationId,
+                );
+                abortCleanupKey = result.conversationId;
                 setActiveRouteConversationTarget(result.conversationId);
                 const scopeId = getChatProjectScopeId();
                 // Always persist draft completions under the real id so they are visible
@@ -153,7 +165,7 @@ export function useNonStreamingResponse({
 
                 // If the user is still on this draft view, perform UI migration/switch.
                 if (ownsView) {
-                    onDraftCompleted?.(result.conversationId, assistantMsg);
+                    onDraftCompleted?.(result.conversationId, assistantMsg, clientDraftKeyAtDispatch);
                 }
             } else if (requestSessionId !== null || sameDraftGeneration) {
                 // Existing session (or background new chat — write to draft slot and
@@ -198,9 +210,9 @@ export function useNonStreamingResponse({
 
             logMetrics(result.usage, result.cost);
         } finally {
-            const currentController = abortControllersRef.current.get(chatMapKey);
+            const currentController = abortControllersRef.current.get(abortCleanupKey);
             if (currentController === abortController) {
-                abortControllersRef.current.delete(chatMapKey);
+                abortControllersRef.current.delete(abortCleanupKey);
             }
         }
     }, [

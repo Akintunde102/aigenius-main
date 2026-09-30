@@ -764,6 +764,36 @@
     }
   }
 
+  .app-filter-pill--default-catalog-active {
+    border-color: color-mix(in srgb, #d97706 45%, var(--modal-border));
+    background: color-mix(in srgb, #f59e0b 12%, var(--surface-muted));
+    color: #92400e;
+
+    :is(.dark &) {
+      color: #fcd34d;
+    }
+
+    &:hover {
+      border-color: color-mix(in srgb, #d97706 55%, var(--modal-border));
+      background: color-mix(in srgb, #f59e0b 18%, var(--surface-muted));
+    }
+  }
+
+  .app-filter-pill--ollama-catalog-active {
+    border-color: color-mix(in srgb, #0d9488 45%, var(--modal-border));
+    background: color-mix(in srgb, #14b8a6 12%, var(--surface-muted));
+    color: #0f766e;
+
+    :is(.dark &) {
+      color: #5eead4;
+    }
+
+    &:hover {
+      border-color: color-mix(in srgb, #0d9488 55%, var(--modal-border));
+      background: color-mix(in srgb, #14b8a6 18%, var(--surface-muted));
+    }
+  }
+
   .app-filter-pill--affordability-active {
     border-color: color-mix(in srgb, #10b981 55%, var(--modal-border));
     background: color-mix(in srgb, #10b981 16%, var(--surface-muted));

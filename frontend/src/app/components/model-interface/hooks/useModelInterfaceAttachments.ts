@@ -20,7 +20,10 @@ import {
   isImageCloudFile,
 } from "@/app/components/user-files/user-files.utils";
 
-import { DRAFT_SESSION_KEY } from "../features/chat/hooks/chatOperations.constants";
+import {
+  migrateLegacyDraftStorageKey,
+  resolveActiveChatMapKey,
+} from "../conversation/clientDraftSession";
 import {
   loadComposerFilesMap,
   persistComposerFilesMap,
@@ -48,12 +51,15 @@ export function useModelInterfaceAttachments({
   setError,
   chatContainerRef,
 }: Params) {
-  const activeSessionKey = currentSessionId ?? DRAFT_SESSION_KEY;
+  const activeSessionKey = resolveActiveChatMapKey(currentSessionId);
   const activeSessionKeyRef = useRef(activeSessionKey);
   activeSessionKeyRef.current = activeSessionKey;
 
   const [filesMap, setFilesMap] = useState<Record<string, UploadedFileEntry[]>>(() => {
-    const loaded = loadComposerFilesMap();
+    const loaded = migrateLegacyDraftStorageKey(
+      loadComposerFilesMap(),
+      (list) => !Array.isArray(list) || list.length === 0,
+    );
     const result: Record<string, UploadedFileEntry[]> = {};
     for (const [k, list] of Object.entries(loaded)) {
       if (Array.isArray(list)) {

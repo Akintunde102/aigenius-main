@@ -406,6 +406,50 @@ describe('conversationId in access-model', () => {
             expect(result.wallet).toBe(999);
         });
 
+        it('does not paint nested subagent tool events on the parent stream', async () => {
+            const onToolStreamEvent = jest.fn();
+            const body = {
+                getReader: () => ({
+                    read: jest
+                        .fn()
+                        .mockResolvedValueOnce({
+                            done: false,
+                            value: Buffer.from(
+                                'data: {"choices":[{"delta":{"tool_stream_event":{"type":"log","tag":"stdout","message":"child output","nested":true}}}]}\n',
+                                'utf8',
+                            ),
+                        })
+                        .mockResolvedValueOnce({
+                            done: false,
+                            value: Buffer.from(
+                                'data: {"choices":[{"delta":{"tool_stream_event":{"type":"end","tool":"local_shell","success":true,"result":"ok","nested":true}}}]}\n',
+                                'utf8',
+                            ),
+                        })
+                        .mockResolvedValueOnce({ done: false, value: Buffer.from('data: [DONE]\n', 'utf8') })
+                        .mockResolvedValueOnce({ done: true, value: undefined }),
+                    releaseLock: jest.fn(),
+                }),
+            };
+
+            mockFetch.mockResolvedValue({
+                ok: true,
+                headers: new Headers({ 'X-Conversation-Id': 'stream-conv-nested-1' }),
+                body,
+            } as unknown as Response);
+
+            const { accessModelStream } = await import('../access-model');
+            await accessModelStream({
+                body: { messages: [{ role: 'user', content: 'Hello' }] },
+                options: { model: 'gpt-4' },
+                config: mockConfig as any,
+                onData: jest.fn(),
+                onToolStreamEvent,
+            });
+
+            expect(onToolStreamEvent).not.toHaveBeenCalled();
+        });
+
         it('preserves newline-only streaming chunks for live markdown formatting', async () => {
             const onData = jest.fn();
             const body = {

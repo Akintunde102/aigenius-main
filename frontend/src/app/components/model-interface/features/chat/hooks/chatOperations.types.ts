@@ -90,7 +90,7 @@ export interface UseChatOperationsRefinedProps {
     setChatHistory?: React.Dispatch<React.SetStateAction<ChatSession[]>>;
     chatHistory?: ChatSession[];
     updateSessionMessages?: (sessionId: string, messages: ChatMessage[], sessionData?: Partial<ChatSession>) => void;
-    onDraftMaterialized?: (id: string) => void;
+    onDraftMaterialized?: (id: string, clientDraftMapKey: string) => void;
 
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;
@@ -106,7 +106,7 @@ export interface UseChatOperationsRefinedProps {
     /** Ref read during streaming — avoids reordering hooks for audio mode. */
     isAudioModeRef?: React.MutableRefObject<boolean>;
     /** Called when a draft chat receives its first real conversation id. */
-    onDraftSessionMaterialized?: (realId: string) => void;
+    onDraftSessionMaterialized?: (realId: string, clientDraftMapKey?: string) => void;
 }
 
 export type LastFailedSendPayload = {
@@ -159,10 +159,12 @@ export interface UseStreamingResponseProps {
         draftEpoch?: number,
         /** Per-session send generation captured at dispatch. */
         sendGeneration?: number,
+        /** Client draft chatMap key captured at dispatch (draft sends only). */
+        clientDraftMapKey?: string,
     ) => void;
     handleSendError: (error: unknown) => void;
     onPrefetchConversationRoute?: (conversationId: string) => void;
-    onDraftMaterialized?: (id: string) => void;
+    onDraftMaterialized?: (id: string, clientDraftMapKey: string) => void;
 
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;
@@ -182,6 +184,8 @@ export interface ChatCompletionRequestOverrides {
     sendGeneration?: number;
     /** Model snapshot for queued/background sends. */
     modelOverride?: Model;
+    /** Client-only draft chatMap key captured at dispatch (unsaved chats). */
+    clientDraftMapKey?: string;
 }
 
 // Props for non-streaming response handler
@@ -194,11 +198,11 @@ export interface UseNonStreamingResponseProps {
     setCurrentSessionId?: (id: string | null) => void;
     /** Called when a brand-new (draft) chat receives its first real conversation ID.
      *  The caller is responsible for migrating chatMap and updating currentSessionId. */
-    onDraftCompleted?: (realId: string, assistantMsg: ChatMessage) => void;
+    onDraftCompleted?: (realId: string, assistantMsg: ChatMessage, clientDraftMapKey?: string) => void;
     setWallet: React.Dispatch<React.SetStateAction<number | null>>;
     wallet: number | null;
     logMetrics: (usage?: UsageInfo, cost?: number) => void;
-    onDraftMaterialized?: (id: string) => void;
+    onDraftMaterialized?: (id: string, clientDraftMapKey: string) => void;
 
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;

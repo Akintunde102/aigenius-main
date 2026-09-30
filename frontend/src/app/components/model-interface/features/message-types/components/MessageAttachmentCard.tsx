@@ -2,7 +2,11 @@
 
 import React from 'react';
 import { FileText, Loader2, Music2, X, Eye } from 'lucide-react';
-import { fileExtensionLabel, type AttachmentKind } from './messageAttachment.utils';
+import {
+    fileExtensionLabel,
+    withConversationAttachmentCacheBust,
+    type AttachmentKind,
+} from './messageAttachment.utils';
 
 export type MessageAttachmentCardProps = {
     kind: AttachmentKind;
@@ -14,6 +18,8 @@ export type MessageAttachmentCardProps = {
     isLoading?: boolean;
     statusLabel?: string;
     disabled?: boolean;
+    /** Changes when parent message content changes — avoids stale browser image cache. */
+    attachmentCacheSeed?: string | number | null;
 };
 
 export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
@@ -26,18 +32,23 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
     isLoading = false,
     statusLabel,
     disabled = false,
+    attachmentCacheSeed,
 }) => {
     const ext = fileExtensionLabel(fileName);
+    const displayFileUrl = fileUrl
+        ? withConversationAttachmentCacheBust(fileUrl, attachmentCacheSeed)
+        : fileUrl;
 
     const handleCardClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!fileUrl) return;
+        const previewUrl = displayFileUrl ?? fileUrl;
         if (onPreview) {
             e.preventDefault();
-            onPreview({ fileUrl, fileName, kind });
+            onPreview({ fileUrl: previewUrl, fileName, kind });
         } else if (onImagePreview) {
             e.preventDefault();
-            onImagePreview(fileUrl, fileName, kind);
+            onImagePreview(previewUrl, fileName, kind);
         }
     };
 
@@ -58,7 +69,7 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
                     aria-label={`Open image ${fileName}`}
                 >
                     <img
-                        src={fileUrl}
+                        src={displayFileUrl}
                         alt={fileName}
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         loading="lazy"

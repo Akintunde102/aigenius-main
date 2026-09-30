@@ -1,4 +1,5 @@
 import React, { forwardRef, useRef, useImperativeHandle, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { ArrowUp, Loader2, Maximize2, Mic, Phone, MessageSquare } from 'lucide-react';
 import { AudioModeOverlay } from './AudioModeOverlay';
 import { ChatArea } from './ChatArea';
@@ -214,11 +215,21 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     const orphanInputRef = useRef<HTMLTextAreaElement>(null);
 
     const currentSession = chatHistory?.find((s) => s.id === currentSessionId);
+    const subagentParentId =
+        currentSession?.metadata?.spawnedBy === 'subagent' && currentSession.parentConversationId
+            ? currentSession.parentConversationId
+            : null;
+    const subagentParentTitle = subagentParentId
+        ? chatHistory?.find((session) => session.id === subagentParentId)?.title
+        : undefined;
     const activeSummary = conversationSummary || (currentSession?.metadata as any)?.conversationSummary;
     const activeSummaryTime = lastSummarizedAt || (currentSession?.metadata as any)?.lastSummarizedAt;
 
+    const subagentRunInProgress = currentSession?.metadata?.subagentRunStatus === 'running';
     const streamVisibleInChat =
-        streaming || (Boolean(isAudioMode) && audioStatus === 'speaking');
+        streaming
+        || subagentRunInProgress
+        || (Boolean(isAudioMode) && audioStatus === 'speaking');
     const responseInProgress = loading || streamVisibleInChat;
     const {
         markersByMessageId,
@@ -378,6 +389,16 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                          ${browserInfo?.isAndroid && isKeyboardOpen ? styles.keyboardOpenAndroid : ''} chat-area-container flex-1 pt-2`}
                     style={chatAreaStyle}
                 >
+                    {subagentParentId ? (
+                        <div className="px-4 pb-1">
+                            <Link
+                                href={`/chat/${subagentParentId}`}
+                                className="inline-flex max-w-full truncate text-[12px] text-[var(--chat-accent)] underline-offset-2 hover:underline"
+                            >
+                                From: {subagentParentTitle || 'parent conversation'}
+                            </Link>
+                        </div>
+                    ) : null}
                     <ChatArea
                         chat={chat}
                         selectedModel={selectedModel}

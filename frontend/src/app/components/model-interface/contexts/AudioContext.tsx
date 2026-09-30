@@ -8,7 +8,7 @@
 import React, { createContext, useContext, ReactNode, useCallback } from 'react';
 import { useAudioSocket } from '../features/chat/hooks/useAudioSocket';
 import { useAudioSTT } from '../features/chat/hooks/useAudioSTT';
-import { useConversationalMode } from '../features/chat/hooks/useConversationalMode';
+import { useVoiceConversation } from '../features/voice-conversation/useVoiceConversation';
 import { useSentenceStreaming } from '../features/chat/hooks/useSentenceStreaming';
 import { useChatOperationsContext } from './ChatOperationsContext';
 import { useChatContext } from './ChatContext';
@@ -38,7 +38,6 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     input,
     setInput,
     handleSend,
-    handleStop,
     assistantResponse
   } = useChatOperationsContext();
 
@@ -72,7 +71,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     socket: audioSocket,
     analyzer,
     streamFlushPendingRef,
-  } = useConversationalMode({
+  } = useVoiceConversation({
     onTranscriptionComplete: async (text: string) => {
       await handleSend(text);
     },
@@ -80,7 +79,6 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     isStreaming: isStreaming,
     audioSession,
     onEnterAudioMode: exitDictation,
-    onBargeIn: handleStop,
   });
 
   useSentenceStreaming({

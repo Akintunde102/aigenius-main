@@ -7,7 +7,8 @@ import React, { createContext, useContext, ReactNode, useState, useEffect, useCa
 import { ChatMessage } from '../shared/types';
 import { getSavedChatItems, saveChatItem, removeSavedChatItemById } from '@/lib/utils/modelChatConversationUtils';
 import { useChatContext } from './ChatContext';
-import { DRAFT_SESSION_KEY } from '../features/chat/hooks/chatOperations.constants';
+import { resolveActiveChatMapKey } from '../conversation/clientDraftSession';
+import { resolveViewSessionId } from '../conversation/conversationViewSession';
 
 export interface SavedChatContextValue {
   savedChats: ChatMessage[];
@@ -26,7 +27,9 @@ export function SavedChatProvider({ children }: { children: ReactNode }) {
   const [savedFullChats, setSavedFullChats] = useState<ChatMessage[]>([]);
 
   const { setMessagesForSession, currentSessionId } = useChatContext();
-  const activeKey = currentSessionId ?? DRAFT_SESSION_KEY;
+  const activeKey = resolveActiveChatMapKey(
+    resolveViewSessionId(null, currentSessionId),
+  );
 
   useEffect(() => {
     void (async () => {

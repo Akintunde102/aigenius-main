@@ -166,6 +166,13 @@ export function ChatMessage({
     // Custom hooks - must be called before any early returns
     const messageContent = useMessageContent(msg.content);
 
+    const attachmentCacheSeed = useMemo(() => {
+        const contentKey = typeof msg.content === 'string'
+            ? msg.content
+            : JSON.stringify(msg.content);
+        return `${msg.timestamp}-${contentKey.length}`;
+    }, [msg.content, msg.timestamp]);
+
     const cost = useCostCalculation(msg, showCosts);
     const { isSaved, justSaved, handleSave } = useSaveState(msg, savedChats, onSave);
 
@@ -555,6 +562,7 @@ export function ChatMessage({
                                             onImagePreview={onImagePreview}
                                             imagePreview={imagePreview}
                                             setImagePreview={setImagePreview}
+                                            attachmentCacheSeed={attachmentCacheSeed}
                                         />
                                     ) : messageContent.isAudioMsg ? (
                                         <AudioMessage
@@ -577,6 +585,7 @@ export function ChatMessage({
                                             onImagePreview={onImagePreview}
                                             imagePreview={imagePreview}
                                             setImagePreview={setImagePreview}
+                                            attachmentCacheSeed={attachmentCacheSeed}
                                             streaming={streaming}
                                         />
                                     ) : typeof msg.content === 'string' ? (

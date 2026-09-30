@@ -1,6 +1,7 @@
 'use client';
 
 import type { CSSProperties } from "react";
+import Image from "next/image";
 import {
   Bug,
   Check,
@@ -16,7 +17,6 @@ import {
   Mail,
   ShieldCheck,
   Sliders,
-  Sparkles,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -450,9 +450,6 @@ export default function DesktopTitleBarActions() {
           WebkitAppRegion: "no-drag",
         } as ElectronCaptionStyle}
       >
-        <span className="flex h-3.5 w-3.5 items-center justify-center rounded-xs bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-xs">
-          <Sparkles className="h-2.5 w-2.5" strokeWidth={2.5} />
-        </span>
         <span className="font-semibold text-zinc-900 dark:text-zinc-100">AIGenius</span>
         <ChevronDown
           className={`h-3 w-3 text-zinc-500 dark:text-zinc-400 transition-transform duration-200 ${
@@ -479,9 +476,14 @@ export default function DesktopTitleBarActions() {
           {/* Header Banner */}
           <div className="flex items-center justify-between pb-2.5 border-b border-zinc-100 dark:border-zinc-800/80">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-md shadow-blue-500/20">
-                <Sparkles className="h-4 w-4" strokeWidth={2.2} />
-              </div>
+              <Image
+                src="/logo.png"
+                alt=""
+                width={32}
+                height={32}
+                className="h-8 w-8 shrink-0 rounded-xl shadow-md shadow-blue-500/20"
+                priority
+              />
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 leading-none">

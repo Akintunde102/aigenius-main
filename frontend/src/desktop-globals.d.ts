@@ -15,6 +15,8 @@ declare global {
       /** Present on full preload; optional for partial test doubles. */
       openWalletCheckoutUrl?: (url: string) => Promise<{ ok: boolean; error?: string }>;
       openExternalUrl?: (url: string) => Promise<{ ok: boolean; error?: string }>;
+      /** Model-link click: open http(s) in the OS browser without the approval dialog. */
+      openClickedHttpUrl?: (url: string) => Promise<{ ok: boolean; error?: string }>;
       openExternal?: (url: string) => void;
       /** Fires when the Electron main window regains OS focus (e.g. after system-browser payment). */
       onMainWindowFocus?: (handler: () => void) => () => void;

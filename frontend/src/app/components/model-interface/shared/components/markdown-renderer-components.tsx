@@ -14,6 +14,36 @@ import {
 } from './markdown-code-widgets';
 import { MermaidRenderer } from './MermaidRenderer';
 import { LocalFileInlineImage } from './LocalFileInlineImage';
+import { MarkdownYoutubeEmbed } from './MarkdownYoutubeEmbed';
+import { MarkdownVideoPlayer } from './MarkdownVideoPlayer';
+import { LocalFileInlineMedia } from './LocalFileInlineMedia';
+import {
+    isYoutubeWatchUrl,
+    shouldEmbedYoutubeMarkdownLink,
+} from '@/lib/utils/youtube-embed.utils';
+import {
+    isEmbeddableMediaFileUrl,
+    shouldEmbedMediaMarkdownLink,
+} from '@/lib/utils/markdown-media-embed.utils';
+import { inferLocalFilePreviewType, localFileLinkLabel } from '@/lib/utils/local-file-link';
+import { MarkdownExternalLink } from './MarkdownExternalLink';
+import { externalLinkPreview } from './markdown-external-link.utils';
+
+function reactNodeToPlainText(node: React.ReactNode): string {
+    if (node == null || typeof node === 'boolean') {
+        return '';
+    }
+    if (typeof node === 'string' || typeof node === 'number') {
+        return String(node);
+    }
+    if (Array.isArray(node)) {
+        return node.map(reactNodeToPlainText).join('');
+    }
+    if (React.isValidElement(node)) {
+        return reactNodeToPlainText(node.props.children);
+    }
+    return '';
+}
 
 type MarkdownCodeElementProps = React.HTMLAttributes<HTMLElement> & {
     node?: unknown;
@@ -24,6 +54,24 @@ function pageOrigin(): string | undefined {
     return typeof window !== 'undefined' ? window.location.origin : undefined;
 }
 
+const PREVIEW_MEDIA_LABEL_RE = /^(preview|watch(\s+video)?|video|play|▶|▶️)$/i;
+
+function shouldEmbedLocalFileMedia(path: string, href: string, linkText: string): boolean {
+    const type = inferLocalFilePreviewType(path);
+    if (type !== 'video' && type !== 'audio') {
+        return false;
+    }
+    const text = linkText.trim();
+    const name = localFileLinkLabel(path);
+    if (!text || PREVIEW_MEDIA_LABEL_RE.test(text)) {
+        return true;
+    }
+    if (text === name || text === path || text === href) {
+        return true;
+    }
+    return false;
+}
+
 export function MarkdownAnchor({
     node,
     ...props
@@ -32,8 +80,31 @@ export function MarkdownAnchor({
     const router = useRouter();
     const href = typeof props.href === 'string' ? props.href : undefined;
 
+    if (href && isYoutubeWatchUrl(href)) {
+        const linkText = reactNodeToPlainText(props.children);
+        if (shouldEmbedYoutubeMarkdownLink(href, linkText)) {
+            return <MarkdownYoutubeEmbed watchUrl={href} title={linkText || undefined} />;
+        }
+    }
+
+    if (href && isEmbeddableMediaFileUrl(href)) {
+        const linkText = reactNodeToPlainText(props.children);
+        if (shouldEmbedMediaMarkdownLink(href, linkText)) {
+            return <MarkdownVideoPlayer src={href} title={linkText || undefined} />;
+        }
+    }
+
     if (href?.startsWith('local-file://')) {
         const filePath = href.slice('local-file://'.length);
+        const decodedPath = decodeURIComponent(filePath);
+        const localType = inferLocalFilePreviewType(decodedPath);
+        const linkText = reactNodeToPlainText(props.children);
+        if (
+            (localType === 'video' || localType === 'audio') &&
+            shouldEmbedLocalFileMedia(decodedPath, href, linkText)
+        ) {
+            return <LocalFileInlineMedia path={decodedPath} kind={localType} alt={linkText || undefined} />;
+        }
         return (
             <a
                 {...props}
@@ -41,7 +112,6 @@ export function MarkdownAnchor({
                 onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    const decodedPath = decodeURIComponent(filePath);
                     openFilePreview(buildLocalFilePreviewPayload(decodedPath));
                 }}
                 title={`Preview file: ${filePath}`}
@@ -79,6 +149,19 @@ export function MarkdownAnchor({
     const isExternal = href && (href.startsWith('http://') || href.startsWith('https://')) &&
         (!origin || !href.startsWith(origin));
     const openBesideChat = href ? isWorkflowShellPath(href, origin) : false;
+    const externalPreview = href && isExternal && !openBesideChat ? externalLinkPreview(href) : null;
+    if (externalPreview) {
+        return (
+            <MarkdownExternalLink
+                href={externalPreview.url}
+                host={externalPreview.host}
+                className={props.className}
+                onClick={props.onClick}
+            >
+                {props.children}
+            </MarkdownExternalLink>
+        );
+    }
     const newTab = isExternal || openBesideChat;
     return (
         <a
@@ -110,8 +193,18 @@ export function MarkdownImage({
 }: React.ImgHTMLAttributes<HTMLImageElement> & { node?: unknown }) {
     void node;
     const imageSrc = typeof src === 'string' ? src : undefined;
+    if (imageSrc && isYoutubeWatchUrl(imageSrc)) {
+        return <MarkdownYoutubeEmbed watchUrl={imageSrc} title={typeof alt === 'string' ? alt : undefined} />;
+    }
+    if (imageSrc && isEmbeddableMediaFileUrl(imageSrc)) {
+        return <MarkdownVideoPlayer src={imageSrc} title={typeof alt === 'string' ? alt : undefined} />;
+    }
     if (imageSrc?.startsWith('local-file://')) {
         const filePath = decodeURIComponent(imageSrc.slice('local-file://'.length));
+        const localType = inferLocalFilePreviewType(filePath);
+        if (localType === 'video' || localType === 'audio') {
+            return <LocalFileInlineMedia path={filePath} kind={localType} alt={alt} />;
+        }
         return <LocalFileInlineImage path={filePath} alt={alt} />;
     }
     // eslint-disable-next-line @next/next/no-img-element -- remote markdown images use standard img tags.

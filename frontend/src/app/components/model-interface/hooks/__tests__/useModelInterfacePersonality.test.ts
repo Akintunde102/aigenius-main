@@ -94,7 +94,7 @@ describe("useModelInterfacePersonality", () => {
     });
 
     expect(setChatForSession).toHaveBeenCalledWith(
-      "__draft__",
+      expect.stringMatching(/^cd_/),
       expect.any(Function),
     );
     await waitFor(() => {

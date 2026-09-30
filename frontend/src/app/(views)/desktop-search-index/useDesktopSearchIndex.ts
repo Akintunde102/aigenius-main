@@ -537,14 +537,16 @@ export function useDesktopSearchIndex() {
         setPreviewError(err);
         return;
       }
-      if (res.kind === "image") {
+      if (res.kind === "image" || res.kind === "video" || res.kind === "audio") {
         const blob = Uint8Array.from(atob(res.base64), (cc) => cc.charCodeAt(0));
         const b = new Blob([blob], { type: res.mimeType });
         const url = URL.createObjectURL(b);
         previewObjectUrlRef.current = url;
-        setPreviewBlob({ kind: "image", mimeType: res.mimeType, url });
-      } else {
+        setPreviewBlob({ kind: res.kind, mimeType: res.mimeType, url });
+      } else if (res.kind === "text") {
         setPreviewBlob({ kind: "text", text: res.text });
+      } else {
+        setPreviewError("No built-in preview for this file type.");
       }
     } catch {
       setPreviewError("Preview failed unexpectedly.");

@@ -108,6 +108,52 @@ describe('ChatContainer', () => {
         });
     });
 
+    it('shows a link back to the parent when this chat was started by a subagent', () => {
+        render(
+            <ChatContainer
+                {...mockProps}
+                chatHistory={[
+                    {
+                        id: 'parent-1',
+                        title: 'Original chat',
+                        modelId: 'test-model',
+                        messages: [],
+                    },
+                    {
+                        id: 'session-1',
+                        title: 'Research databases',
+                        modelId: 'test-model',
+                        messages: [],
+                        parentConversationId: 'parent-1',
+                        metadata: { spawnedBy: 'subagent' },
+                    },
+                ]}
+            />,
+        );
+
+        const link = screen.getByRole('link', { name: /From: Original chat/i });
+        expect(link).toHaveAttribute('href', '/chat/parent-1');
+    });
+
+    it('hides the parent link on a normal conversation', () => {
+        render(
+            <ChatContainer
+                {...mockProps}
+                chatHistory={[
+                    {
+                        id: 'session-1',
+                        title: 'Normal chat',
+                        modelId: 'test-model',
+                        messages: [],
+                        parentConversationId: 'parent-1',
+                    },
+                ]}
+            />,
+        );
+
+        expect(screen.queryByRole('link', { name: /From:/i })).not.toBeInTheDocument();
+    });
+
     it('renders with correct layout styles from hooks', () => {
         const { container } = render(<ChatContainer {...mockProps} />);
         const chatContainer = container.firstChild as HTMLElement;

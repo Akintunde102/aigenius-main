@@ -101,18 +101,19 @@ export function useSentenceStreaming({
       return nextPromise;
     }
 
-    // ── Browser (unchanged): cloud socket TTS + optional native speech API ──
+    // Browser native speech does not need the cloud /audio socket.
+    if (
+      typeof window !== 'undefined' &&
+      AUDIO_CONSTANTS.BROWSER_TTS_ENGINE === 'native'
+    ) {
+      voiceObs('sentenceStreaming', 'native_synthesize_begin', { charCount: normalized.length });
+      speakTextNative(normalized);
+      return Promise.resolve();
+    }
+
     if (!socket?.connected) return Promise.resolve();
 
     try {
-      if (
-        typeof window !== 'undefined' &&
-        AUDIO_CONSTANTS.BROWSER_TTS_ENGINE === 'native'
-      ) {
-        voiceObs('sentenceStreaming', 'native_synthesize_begin', { charCount: normalized.length });
-        speakTextNative(normalized);
-        return Promise.resolve();
-      }
 
       console.log('[SentenceStreaming] Emitting audio:synthesize',
         JSON.stringify({

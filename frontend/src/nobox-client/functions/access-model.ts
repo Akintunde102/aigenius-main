@@ -15,6 +15,7 @@ import {
 import {
   isToolApprovalExempt,
   promptToolApproval,
+  readToolPermissionPreferences,
   shouldRequireToolApproval,
 } from '@/lib/tool-permissions';
 import { activeEditorForRuntime } from '@/lib/code-projects/active-editor-context';
@@ -977,12 +978,18 @@ async function processStreamingChunk(
 
     if (delta) {
       const toolStreamEvent = delta.tool_stream_event as ToolStreamEvent | undefined;
-      if (toolStreamEvent && onToolStreamEvent) {
+      const nestedToolEvent = toolStreamEvent?.nested === true;
+      if (toolStreamEvent && onToolStreamEvent && !nestedToolEvent) {
         onToolStreamEvent(toolStreamEvent);
       }
 
       if (toolStreamEvent?.type === 'client_delegate') {
-        await fulfillDesktopToolDelegate(toolStreamEvent, config, signal, onToolStreamEvent);
+        await fulfillDesktopToolDelegate(
+          toolStreamEvent,
+          config,
+          signal,
+          nestedToolEvent ? undefined : onToolStreamEvent,
+        );
       }
 
       if (toolStreamEvent?.type === 'approval_request') {
@@ -1284,6 +1291,7 @@ export const _accessModel = async <T>(args: AccessModelArgs<T> & { signal?: Abor
     const requestBody = {
       model,
       messages: body.messages,
+      autoApproveAll: readToolPermissionPreferences().autoApproveAll === true,
       ...(body.conversationId && { conversationId: body.conversationId }),
       ...(body.conversationKind && { conversationKind: body.conversationKind }),
       ...(body.parentConversationId && { parentConversationId: body.parentConversationId }),
@@ -1352,7 +1360,7 @@ export interface StreamingResult {
 }
 
 /** Tool stream event sent during tool execution for live UI updates */
-export type ToolStreamEvent =
+export type ToolStreamEvent = (
   | { type: 'start'; tool: string; displayName: string; arguments?: Record<string, unknown> }
   | { type: 'log'; tag: string; message: string; data?: Record<string, unknown> }
   | {
@@ -1370,7 +1378,14 @@ export type ToolStreamEvent =
     displayName: string;
     arguments?: Record<string, unknown>;
   }
-  | { type: 'end'; tool: string; success: boolean; result?: string; invokeCode?: string };
+  | { type: 'end'; tool: string; success: boolean; result?: string; invokeCode?: string }
+) & {
+  /**
+   * Set when a subagent calls a tool. The desktop client still runs `client_delegate`,
+   * but the main chat does not paint this event on the parent message.
+   */
+  nested?: boolean;
+};
 
 /**
  * Accesses an AI model with streaming responses via the gateway API.
@@ -1449,6 +1464,7 @@ export const accessModelStream = async <T>(args: AccessModelArgs<T> & {
   const requestBody = {
     model,
     messages: body.messages,
+    autoApproveAll: readToolPermissionPreferences().autoApproveAll === true,
     ...(body.conversationId && { conversationId: body.conversationId }),
     ...(body.conversationKind && { conversationKind: body.conversationKind }),
     ...(body.parentConversationId && { parentConversationId: body.parentConversationId }),

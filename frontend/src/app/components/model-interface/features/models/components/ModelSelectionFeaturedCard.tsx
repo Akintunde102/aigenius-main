@@ -8,6 +8,7 @@ import {
     computeModelRequiredBalance,
     isModelPickLocked,
 } from '../utils/modelWalletAffordance.utils';
+import { isConversationPickableModel } from '../utils/modelConversationEligibility.utils';
 import { ModelWalletLockIndicator } from './ModelWalletLockIndicator';
 import { ModelCreditBurnIndicator } from './ModelCreditBurnIndicator';
 
@@ -61,6 +62,8 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
             }),
         [wallet, requiredBalance, model.id, selectedModelId],
     );
+    const isCatalogOnly = !isConversationPickableModel(model);
+    const isPrimaryDisabled = isWalletLocked || isCatalogOnly;
     const slots = useMemo(
         () => buildModelCardSlots(model, averageCost, wallet),
         [model, averageCost, wallet],
@@ -69,6 +72,10 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
     const handlePrimaryAction = () => {
         if (isWalletLocked) {
             onAddCredits?.();
+            return;
+        }
+        if (isCatalogOnly) {
+            onShowDetails?.();
             return;
         }
         onSelect();
@@ -82,8 +89,8 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
     return (
         <div
             role="button"
-            tabIndex={isWalletLocked ? -1 : 0}
-            className={`group app-model-card relative w-full ${isMobile ? 'px-2.5 py-1.5' : 'px-3 py-1.5'} ${isSelected ? 'app-model-card--selected' : ''} ${isPreviewedRecent ? 'app-model-card--previewed-recent' : ''} ${isWalletLocked ? 'app-model-card--wallet-locked mb-1 cursor-not-allowed [background-color:color-mix(in_srgb,var(--modal-fg)_8%,transparent)]' : 'cursor-pointer'}`}
+            tabIndex={isPrimaryDisabled && !isCatalogOnly ? -1 : 0}
+            className={`group app-model-card relative w-full ${isMobile ? 'px-2.5 py-1.5' : 'px-3 py-1.5'} ${isSelected ? 'app-model-card--selected' : ''} ${isPreviewedRecent && !isCatalogOnly ? 'app-model-card--previewed-recent' : ''} ${isWalletLocked ? 'app-model-card--wallet-locked mb-1 cursor-not-allowed [background-color:color-mix(in_srgb,var(--modal-fg)_8%,transparent)]' : isCatalogOnly ? 'cursor-pointer opacity-90' : 'cursor-pointer'}`}
             onClick={handlePrimaryAction}
             onKeyDown={(e) => {
                 if (isWalletLocked) return;
@@ -93,6 +100,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                 }
             }}
             aria-disabled={isWalletLocked}
+            aria-label={isCatalogOnly ? `${displayName} — catalog preview, not for text chat` : undefined}
         >
             <div className="app-model-card__layout">
                 <div className="min-w-0 flex-1">
@@ -120,6 +128,10 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                             burnPercentage={slots.cost.burnPercentage}
                             className="mt-1"
                         />
+                    ) : isCatalogOnly ? (
+                        <span className="block truncate app-model-card__cost text-[var(--sidebar-muted-fg)]">
+                            Catalog only — not for text chat
+                        </span>
                     ) : slots.cost ? (
                         <span className="block truncate app-model-card__cost">
                             {slots.cost.label}
@@ -138,7 +150,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                     </span>
                 )}
 
-                {isPreviewedRecent && (
+                {isPreviewedRecent && !isCatalogOnly && (
                     <span
                         className="app-model-card__previewed-cta shrink-0"
                         aria-label="Click to use this model for chat"
@@ -163,13 +175,15 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                             <FiInfo size={12} strokeWidth={1.75} />
                         </button>
                     )}
-                    <ModelToggleSwitch
-                        checked={isPinned}
-                        onChange={onTogglePin}
-                        label={isPinned ? `Remove ${displayName} from quick picks` : `Add ${displayName} to quick picks`}
-                        size="xs"
-                        variant={isPinned ? "default" : "quiet"}
-                    />
+                    {!isCatalogOnly ? (
+                        <ModelToggleSwitch
+                            checked={isPinned}
+                            onChange={onTogglePin}
+                            label={isPinned ? `Remove ${displayName} from quick picks` : `Add ${displayName} to quick picks`}
+                            size="xs"
+                            variant={isPinned ? "default" : "quiet"}
+                        />
+                    ) : null}
                 </div>
             </div>
         </div>

@@ -20,6 +20,8 @@ export interface Model {
     featured?: boolean;
     /** When true, listed under "Main models" in the All Models tab. */
     main?: boolean;
+    /** Product folder from API; only `text` models are pickable for chat. */
+    catalog_modality?: string | null;
     [key: string]: any;
 }
 
@@ -246,6 +248,10 @@ export interface ChatSession {
         /** Denormalized from the last message when sidebar strips message bodies. */
         lastMessageAt?: number;
         orphanAnchor?: OrphanReplyAnchor;
+        spawnedBy?: string;
+        subagentDepth?: number;
+        /** Server-owned: subagent child is still running on the API. */
+        subagentRunStatus?: 'running' | 'completed';
     };
 }
 

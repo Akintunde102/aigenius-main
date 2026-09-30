@@ -790,3 +790,140 @@ html.dark .markdown-chat-body.markdown-body .markdown-code-block-pre code.hljs,
 .dark .markdown-chat-body.markdown-body a.local-file-link:hover {
   color: #93c5fd;
 }
+
+.markdown-chat-body.markdown-body .markdown-youtube-embed {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  margin: 0.75rem 0;
+  padding: 0;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid var(--borderColor-default, #d1d9e0);
+  background: #111;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.markdown-chat-body.markdown-body div.markdown-youtube-embed {
+  cursor: default;
+}
+
+.markdown-chat-body.markdown-body .markdown-youtube-embed__poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #111;
+}
+
+.markdown-chat-body.markdown-body .markdown-youtube-embed__play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4.25rem;
+  height: 3rem;
+  transform: translate(-50%, -50%);
+  border-radius: 0.7rem;
+  background: rgba(0, 0, 0, 0.72);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+.markdown-chat-body.markdown-body .markdown-youtube-embed__play::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-40%, -50%);
+  border-style: solid;
+  border-width: 9px 0 9px 16px;
+  border-color: transparent transparent transparent #fff;
+}
+
+.markdown-chat-body.markdown-body .markdown-youtube-embed:hover .markdown-youtube-embed__play,
+.markdown-chat-body.markdown-body .markdown-youtube-embed:focus-visible .markdown-youtube-embed__play {
+  background: rgba(0, 0, 0, 0.84);
+}
+
+.markdown-chat-body.markdown-body .markdown-youtube-embed:focus-visible {
+  outline: 2px solid var(--chat-accent, #2563eb);
+  outline-offset: 2px;
+}
+
+.markdown-chat-body.markdown-body .markdown-youtube-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.markdown-chat-body.markdown-body .markdown-media-embed--video {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  margin: 0.75rem 0;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid var(--borderColor-default, #d1d9e0);
+  background: #000;
+}
+
+.markdown-chat-body.markdown-body .markdown-media-embed--video video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  object-fit: contain;
+  background: #000;
+}
+
+.markdown-chat-body.markdown-body .markdown-media-embed--audio {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  margin: 0.75rem 0;
+}
+
+.markdown-link-preview {
+  position: fixed;
+  z-index: 80;
+  width: max-content;
+  max-width: min(22rem, calc(100vw - 16px));
+  padding: 8px 10px;
+  border: 1px solid var(--modal-border);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  color: var(--modal-fg);
+  box-shadow: var(--app-shadow-card);
+  pointer-events: none;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.markdown-link-preview__host {
+  font-weight: 600;
+}
+
+.markdown-link-preview__url {
+  margin-top: 2px;
+  color: var(--modal-muted-fg);
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
+  font-size: 11px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-height: 7.5rem;
+  overflow: auto;
+}
+
+.markdown-link-preview__hint {
+  margin-top: 6px;
+  color: var(--modal-muted-fg);
+  font-size: 11px;
+}
