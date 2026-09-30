@@ -2,6 +2,9 @@ const path = require('path');
 
 /** @vercel/analytics (client-only in Electron — see ClientAnalytics.tsx). */
 const vercelAnalyticsOrigin = 'https://va.vercel-scripts.com';
+/** PostHog US cloud ingest + assets (see lib/analytics/config.ts). */
+const posthogUsIngestOrigin = 'https://us.i.posthog.com';
+const posthogUsAssetsOrigin = 'https://us-assets.i.posthog.com';
 
 function readDevPortsApiUrl() {
     try {
@@ -167,6 +170,8 @@ const nextConfig = {
             'wss://api.aigenius.noboxlabs.xyz',
             'wss://ai-genius-copy-production.up.railway.app',
             vercelAnalyticsOrigin,
+            posthogUsIngestOrigin,
+            posthogUsAssetsOrigin,
         ].join(' ');
 
         const devConnectSrc = [
@@ -202,6 +207,8 @@ const nextConfig = {
             'https://*.storage.googleapis.com',
             'wss://api.aigenius.noboxlabs.xyz',
             vercelAnalyticsOrigin,
+            posthogUsIngestOrigin,
+            posthogUsAssetsOrigin,
         ].join(' ');
 
         const scriptSrc = [
@@ -213,6 +220,8 @@ const nextConfig = {
             payazaCheckoutOrigin,
             'https://cdn.jsdelivr.net',
             vercelAnalyticsOrigin,
+            posthogUsIngestOrigin,
+            posthogUsAssetsOrigin,
         ].join(' ');
 
         return [

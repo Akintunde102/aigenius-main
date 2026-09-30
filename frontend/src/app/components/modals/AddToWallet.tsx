@@ -32,6 +32,7 @@ import {
   WALLET_PAYMENT_CURRENCY,
 } from "@/lib/credits";
 import { notifyWalletCreditsUpdated } from "@/lib/wallet-credits-migration";
+import { trackWalletTopUpStarted } from "@/lib/analytics/product-events";
 import { serverCall } from "@/servercall/init";
 import { serverCalls } from "@/servercall/store";
 import React, { useEffect, useRef, useState } from "react";
@@ -492,6 +493,7 @@ const AddToWallet = ({
           checkout,
           redirectUrl,
         });
+        trackWalletTopUpStarted({ provider: 'payaza', credits: Number.parseInt(credits, 10) });
         if (isAigeniusDesktopRuntime()) {
           setPendingCheckoutUrl(checkoutUrl);
           toast(
@@ -536,6 +538,7 @@ const AddToWallet = ({
         // We open the link directly — Flutterwave will redirect back after payment.
         const checkoutUrl = openFlutterwaveHostedWalletCheckout(checkoutLink);
         void redirectUrl; // acknowledged — used server-side
+        trackWalletTopUpStarted({ provider: 'flutterwave', credits: Number.parseInt(credits, 10) });
         if (isAigeniusDesktopRuntime()) {
           setPendingCheckoutUrl(checkoutUrl);
           toast(
@@ -571,6 +574,7 @@ const AddToWallet = ({
         }
         setUpdating(false);
         const checkoutUrl = openWalletPaymentCheckout(data.authorization_url);
+        trackWalletTopUpStarted({ provider: 'paystack', credits: Number.parseInt(credits, 10) });
         if (isAigeniusDesktopRuntime()) {
           setPendingCheckoutUrl(checkoutUrl);
           toast(

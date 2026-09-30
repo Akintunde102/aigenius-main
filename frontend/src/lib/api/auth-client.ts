@@ -265,6 +265,10 @@ export function setAccessToken(token: string) {
 }
 
 export function clearStoredAuthSession() {
+    void import('@/lib/analytics/track').then(({ resetAnalytics }) => {
+        resetAnalytics();
+    });
+
     storage(storageConstants.NOBOX_TOKEN).removeItem();
     storage(storageConstants.NOBOX_CLIENT_TOKEN).removeItem();
     storage(storageConstants.LOGGED_USER_DETAILS).removeItem();

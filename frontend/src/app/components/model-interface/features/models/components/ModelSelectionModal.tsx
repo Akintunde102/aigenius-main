@@ -23,6 +23,7 @@ import {
 } from "@/app/components/model-interface/shared/constants/quickPickModels";
 import { partitionModelsByWalletAffordance } from "@/app/components/model-interface/features/models/utils/modelWalletAffordance.utils";
 import type { ModelSelectionSection } from "./ModelSelectionGrid";
+import { trackModelSelected } from "@/lib/analytics/product-events";
 
 const MODEL_PICKER_GROUP_BY_AFFORDABILITY_KEY =
   "nobox-model-picker-group-by-affordability";
@@ -252,6 +253,7 @@ export const ModelSelectionModal = React.memo(({
     isModelPinned,
     togglePinModel,
     onSelect: (model: Model) => {
+      trackModelSelected({ model, source: 'model_picker' });
       setSelectedModel(model);
       onClose();
     },

@@ -149,24 +149,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const appTree = (
-    <ThemeProvider>
-      <EarlyDesktopAuthCookieSync />
-      <ViewportHeightSetter />
-      <ErrorBoundary>
-        <ReactQueryProvider>
-          {children}
-        </ReactQueryProvider>
-        <ScheduleNotificationListener />
-        <GlobalToaster />
-        <FilePreviewModal />
-        <DesktopToolApprovalHost />
-      </ErrorBoundary>
-      <div id="modal-root" />
-      <ClientAnalytics />
-    </ThemeProvider>
-  );
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -179,7 +161,23 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning={true} className={Euclid.className}>
         <DesktopShellDocumentFlag />
-        <DesktopShellChrome>{appTree}</DesktopShellChrome>
+        <ThemeProvider>
+          <DesktopShellChrome>
+            <EarlyDesktopAuthCookieSync />
+            <ViewportHeightSetter />
+            <ErrorBoundary>
+              <ReactQueryProvider>
+                {children}
+              </ReactQueryProvider>
+              <ScheduleNotificationListener />
+              <GlobalToaster />
+              <FilePreviewModal />
+              <DesktopToolApprovalHost />
+            </ErrorBoundary>
+            <div id="modal-root" />
+          </DesktopShellChrome>
+          <ClientAnalytics />
+        </ThemeProvider>
       </body>
     </html>
   );

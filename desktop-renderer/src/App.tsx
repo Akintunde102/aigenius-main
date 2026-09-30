@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import DesktopLoginPage from '@/app/(views)/desktop-login/page';
 import DesktopWelcomePage from '@/app/(views)/desktop-welcome/page';
 import DesktopSearchIndexPage from '@/app/(views)/desktop-search-index/page';
@@ -18,11 +18,18 @@ import { ColorModeBootstrapScript } from '@/app/components/ColorModeBootstrapScr
 import ReactQueryProvider from '@/lib/providers/ReactQueryProvider';
 import { ThemeProvider } from '@/lib/providers/ThemeProvider';
 import { ChatAuthGate } from './ChatAuthGate';
+import { useAnalyticsPageView } from '@/lib/analytics/useAnalyticsPageView';
 
 import './fonts/desktop-fonts.css';
 import '@/app/styles/globals.scss';
 import '@/app/styles/x-forms.scss';
 import '@/app/styles/animations.scss';
+
+function DesktopAnalyticsPageViews() {
+  const { pathname } = useLocation();
+  useAnalyticsPageView(pathname);
+  return null;
+}
 
 export default function App() {
   return (
@@ -66,6 +73,7 @@ export default function App() {
           </ErrorBoundary>
         </DesktopShellChrome>
         <div id="modal-root" />
+        <DesktopAnalyticsPageViews />
         <ClientAnalytics />
       </BrowserRouter>
     </ThemeProvider>

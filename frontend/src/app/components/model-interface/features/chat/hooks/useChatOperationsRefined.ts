@@ -28,6 +28,13 @@ import {
     setActiveRouteConversationTarget,
 } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { enforceOutgoingChatProjectScope } from '@/lib/code-projects/apply-chat-project-scope';
+import {
+  trackChatMessageSent,
+  trackChatResponseCompleted,
+  trackChatResponseFailed,
+  trackChatSendBlockedInsufficientBalance,
+} from '@/lib/analytics/product-events';
+import { messageHasAttachments } from '@/lib/analytics/analytics-props.utils';
 import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
 import type { HandleSendQueueOptions } from './messageSendQueue.types';
 import { notifyBackgroundConversationReady } from '@/lib/utils/background-conversation-notify';
@@ -307,6 +314,11 @@ export function useChatOperationsRefined({
         const walletValidation = validateBalance(wallet, requiredBalance, modelForSend?.name || modelForSend?.id);
         if (!walletValidation) {
             console.warn('[useChatOperationsRefined] Wallet validation failed');
+            trackChatSendBlockedInsufficientBalance({
+                model: modelForSend,
+                requiredBalance,
+                walletBalance: wallet,
+            });
             return false;
         }
 
@@ -367,6 +379,7 @@ export function useChatOperationsRefined({
         }
 
         let wasError = false;
+        const sendStartedAt = Date.now();
         try {
             console.log('[useChatOperationsRefined] Fetching nobox functions...');
             const { accessModel, accessModelStream } = await getNoboxFunctions({ project });
@@ -396,6 +409,13 @@ export function useChatOperationsRefined({
             }
 
             console.log('[useChatOperationsRefined] Triggering API call', { shouldStream, messageCount: messages.length });
+            trackChatMessageSent({
+                model: modelForSend,
+                streaming: shouldStream,
+                conversationId: sendingViewId,
+                messageCount: messages.length,
+                hasAttachments: messageHasAttachments(userMsg.content),
+            });
             if (shouldStream) {
                 await handleStreamingResponse(accessModelStream, messages, updatedChat, requestOverrides);
             } else {
@@ -403,6 +423,12 @@ export function useChatOperationsRefined({
             }
             clearPendingOrphanReply?.();
             console.log('[useChatOperationsRefined] API call completed');
+            trackChatResponseCompleted({
+                model: modelForSend,
+                streaming: shouldStream,
+                durationMs: Date.now() - sendStartedAt,
+                conversationId: sendingViewId,
+            });
         } catch (err: unknown) {
             wasError = true;
             console.error('[useChatOperationsRefined] Caught error in handleSend:', err);
@@ -410,6 +436,16 @@ export function useChatOperationsRefined({
             const stillOwnsView = sendOwnsView();
             const isAbort = (err as { name?: string })?.name === 'AbortError'
                 || (err as { message?: string })?.message === 'Request aborted';
+
+            if (!(isAbort && !stillOwnsView)) {
+                trackChatResponseFailed({
+                    model: modelForSend,
+                    streaming: shouldStream,
+                    durationMs: Date.now() - sendStartedAt,
+                    error: err,
+                    conversationId: sendingViewId,
+                });
+            }
 
             // An abort after the user already moved to another chat (Stop on switch,
             // New Chat reset) is intentional — don't surface it in the new view.
