@@ -1,7 +1,8 @@
 import AuthenticatedChatPage from "@/app/components/AuthenticatedChatPage";
+import HomePage from "@/app/components/HomePage";
 import { ChatShellLoadingSkeleton } from "@/app/components/ChatShellLoadingSkeleton";
 import React, { Suspense } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   // AuthenticatedChatPage acts as the persistent layout wrapper
@@ -9,10 +10,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // Suspense: useSearchParams() in AuthenticatedChatPage otherwise deopts the whole / route to CSR.
   const cookieStore = cookies();
   const serverHasSession = Boolean(cookieStore.get("nobox_token")?.value) || Boolean(cookieStore.get("nobox_client_token")?.value);
+  const userAgent = headers().get("user-agent") ?? "";
 
   return (
     <Suspense fallback={<ChatShellLoadingSkeleton />}>
-      <AuthenticatedChatPage serverHasSession={serverHasSession} />
+      <AuthenticatedChatPage serverHasSession={serverHasSession} landing={<HomePage userAgent={userAgent} />} />
     </Suspense>
   );
 }

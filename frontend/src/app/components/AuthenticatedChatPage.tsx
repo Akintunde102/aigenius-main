@@ -7,7 +7,6 @@
 import React, { useEffect, useLayoutEffect, useState } from "react";
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import HomePage from "@/app/components/HomePage";
 import { initializeChatStorage } from "@/lib/utils/chatStorageInit";
 import "@/lib/utils/chatStorageUtils";
 import { hasAuthSession } from "@/lib/utils/auth-session";
@@ -30,11 +29,13 @@ interface AuthenticatedChatPageProps {
   /** @deprecated Use the URL-aware version. This prop is kept for backwards compatibility only. */
   initialConversationId?: string | null;
   serverHasSession?: boolean;
+  landing?: React.ReactNode;
 }
 
 export default function AuthenticatedChatPage({
   initialConversationId = null,
   serverHasSession = false,
+  landing,
 }: AuthenticatedChatPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -160,5 +161,5 @@ export default function AuthenticatedChatPage({
     );
   }
 
-  return <HomePage />;
+  return <>{landing}</>;
 }
