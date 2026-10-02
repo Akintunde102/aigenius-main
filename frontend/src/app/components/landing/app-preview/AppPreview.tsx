@@ -205,13 +205,13 @@ export function AppPreview() {
 
   if (!activeChat) return null;
 
-const sidebarClass = [
-  "absolute inset-y-0 left-0 z-20 flex w-64 flex-col",
-  "transition-[transform,visibility] duration-300 ease-out motion-reduce:transition-none",
-  mobileOpen ? "visible translate-x-0" : "invisible -translate-x-full",
-  "md:visible md:static md:z-auto md:w-60 md:shrink-0 md:translate-x-0 md:transition-none",
-  desktopOpen ? "" : "md:hidden",
-].join(" ");
+  const drawerClass = [
+    "absolute inset-y-0 left-0 z-20 w-64",
+    "transition-[transform,visibility] duration-300 ease-out motion-reduce:transition-none",
+    mobileOpen ? "visible translate-x-0" : "invisible -translate-x-full",
+    "md:static md:z-auto md:shrink-0 md:translate-x-0 md:overflow-hidden md:transition-[width,visibility]",
+    desktopOpen ? "md:visible md:w-60" : "md:invisible md:w-0",
+  ].join(" ");
 
   return (
     <div
@@ -270,8 +270,9 @@ const sidebarClass = [
           />
         )}
 
-        <Sidebar
-          className={sidebarClass}
+<div className={drawerClass}>
+  <Sidebar
+    className="flex h-full w-64 flex-col md:w-60"
           projects={projects}
           chats={chats}
           activeId={activeChat.id}
@@ -289,7 +290,8 @@ const sidebarClass = [
           onNewProject={newProject}
           onTogglePanel={togglePanel}
           onNotice={showNotice}
-        />
+          />
+          </div>
 
         <section className="relative flex min-w-0 flex-1 flex-col">
           <button
