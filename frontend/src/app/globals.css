@@ -308,3 +308,36 @@
 .workflow-header-scroll::-webkit-scrollbar-thumb:hover {
     background: rgba(148, 163, 184, 0.7);
 }
+
+/* REPLACE the previous landing block in globals.css with this one.
+   Warm paper and ink, one signal colour (burnt orange) used for live readouts only.
+   No purple anywhere except the logo mark. */
+@layer base {
+  .landing {
+    --lp-bg: #f8f7f3;
+    --lp-fg: #1b1a17;
+    --lp-muted: #6b6860;
+    --lp-surface: #eeece4;
+    --lp-raised: #fcfbf8;
+    --lp-tint: rgb(27 26 23 / 0.06);
+    --lp-tint-hover: rgb(27 26 23 / 0.1);
+    --lp-line: rgb(27 26 23 / 0.12);
+    --lp-shadow: rgb(27 26 23 / 0.28);
+    --lp-glass: rgb(248 247 243 / 0.8);
+    --lp-accent: #d9480f;
+  }
+
+  .dark .landing {
+    --lp-bg: #0d0d0c;
+    --lp-fg: #ecebe5;
+    --lp-muted: #8e8c83;
+    --lp-surface: #161614;
+    --lp-raised: #1e1e1b;
+    --lp-tint: rgb(255 255 255 / 0.06);
+    --lp-tint-hover: rgb(255 255 255 / 0.1);
+    --lp-line: rgb(255 255 255 / 0.1);
+    --lp-shadow: rgb(0 0 0 / 0.6);
+    --lp-glass: rgb(13 13 12 / 0.8);
+    --lp-accent: #ff8a3d;
+  }
+}

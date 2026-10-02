@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: 'class',
+  future: { hoverOnlyWhenSupported: true },
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -17,6 +18,7 @@ module.exports = {
         'gradient-subtle': 'linear-gradient(135deg, hsl(0 0% 3%), hsl(0 0% 6%))',
         'gradient-dark': 'linear-gradient(135deg, hsl(0 0% 3%), hsl(0 0% 8%))',
       },
+
       colors: {
         primary: "#3777FF",
         secondary: "#556DFF",
@@ -65,17 +67,36 @@ module.exports = {
           sidebar: 'hsl(var(--auth-sidebar))',
           'sidebar-foreground': 'hsl(var(--auth-sidebar-foreground))'
         },
+        lp: {
+          bg: "var(--lp-bg)",
+          fg: "var(--lp-fg)",
+          muted: "var(--lp-muted)",
+          surface: "var(--lp-surface)",
+          raised: "var(--lp-raised)",
+          tint: "var(--lp-tint)",
+          "tint-hover": "var(--lp-tint-hover)",
+          line: "var(--lp-line)",
+          glass: "var(--lp-glass)",
+          accent: "var(--lp-accent)",
+        },
       },
       boxShadow: {
         'elegant': '0 10px 40px -10px rgba(0, 0, 0, 0.5)',
         'subtle': '0 1px 3px 0 rgba(0, 0, 0, 0.3)',
         'glow': 'var(--shadow-glow)',
         'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.25)',
+        "lp-lift": "0 30px 80px -30px var(--lp-shadow)",
+        "lp-pop": "0 24px 64px -16px var(--lp-shadow)",
       },
       transitionTimingFunction: {
-        'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)'
+        'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
+        "out-strong": "cubic-bezier(0.23, 1, 0.32, 1)",
       },
       keyframes: {
+        "enter-up": {
+          from: { opacity: "0", transform: "translateY(8px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
         'fade-in': {
           '0%': {
             opacity: '0',
@@ -111,13 +132,21 @@ module.exports = {
             opacity: '0.8',
             transform: 'scale(1.05)'
           }
-        }
+        },
+        marquee: { to: { transform: "translateX(-50%)" } },
+        "marquee-reverse": {
+          from: { transform: "translateX(-50%)" },
+          to: { transform: "translateX(0)" },
+        },
       },
       animation: {
+        "enter-up": "enter-up 450ms cubic-bezier(0.23, 1, 0.32, 1) both",
         'fade-in': 'fade-in 0.6s ease-out',
         'float': 'float 6s ease-in-out infinite',
         'float-delayed': 'float-delayed 8s ease-in-out infinite',
-        'pulse-glow': 'pulse-glow 4s ease-in-out infinite'
+        'pulse-glow': 'pulse-glow 4s ease-in-out infinite',
+        marquee: "marquee 40s linear infinite",
+        "marquee-reverse": "marquee-reverse 46s linear infinite",
       }
     },
   },
