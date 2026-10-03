@@ -170,8 +170,6 @@ export function useAnchoredOrphanNotes(params: {
     void (async () => {
       try {
         const orphanThreads = await getOrphanThreadsForConversation(currentSessionId);
-        console.log(`[useAnchoredOrphanNotes] Fetched ${orphanThreads.length} orphan threads for session ${currentSessionId}`);
-        
         const persistedMarkers = orphanThreads
           .map((conv) => {
             const marker = toStickyThreadRecord(conv);
@@ -181,8 +179,6 @@ export function useAnchoredOrphanNotes(params: {
             return marker;
           })
           .filter((m): m is StickyThreadRecord => m !== null);
-
-        console.log(`[useAnchoredOrphanNotes] Resolved ${persistedMarkers.length} markers from API`);
 
         const draftMarkers = loadDraftStickyThreadMarkers(currentSessionId).map((marker) => ({
           ...marker,

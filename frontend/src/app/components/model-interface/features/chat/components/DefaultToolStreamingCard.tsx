@@ -186,13 +186,7 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
       ) : null}
 
       {!containerCollapsed && (
-        <div
-          className={
-            groupItem
-              ? cardStyles.details
-              : 'mt-1.5 space-y-3 border-l border-slate-200/90 pl-2.5 text-[11px] leading-relaxed text-slate-600 dark:border-zinc-700/80 dark:text-zinc-400'
-          }
-        >
+        <div className={groupItem ? cardStyles.details : cardStyles.standaloneDetails}>
           {showActivityLogs && (
             <div className="space-y-1.5">
               <div key={0} className="flex items-start gap-2">
@@ -230,42 +224,18 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
 
           {showUnifiedIo && (
             <div
-              className={
-                groupItem
-                  ? `${cardStyles.ioUnifiedPanel} ${success === false ? cardStyles.ioUnifiedPanelError : ''}`
-                  : `max-h-[280px] overflow-y-auto rounded-sm border custom-scrollbar border-slate-200/90 bg-slate-50/60 dark:border-zinc-700/80 dark:bg-zinc-900/35 ${success === false ? 'border-red-200/80 dark:border-red-900/50' : ''}`
-              }
+              className={`${cardStyles.ioUnifiedPanel} custom-scrollbar ${success === false ? cardStyles.ioUnifiedPanelError : ''}`}
             >
               {hasInput && (
-                <div className={groupItem ? cardStyles.ioBlock : undefined}>
-                  <div
-                    className={
-                      groupItem
-                        ? cardStyles.ioBlockLabel
-                        : 'px-2.5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-zinc-500'
-                    }
-                  >
+                <div className={cardStyles.ioBlock}>
+                  <div className={cardStyles.ioBlockLabel}>
                     Input
                   </div>
-                  <div
-                    className={
-                      groupItem
-                        ? cardStyles.ioBlockContent
-                        : 'space-y-0.5 px-2.5 pb-2 text-[11px] text-slate-500 dark:text-zinc-400'
-                    }
-                  >
+                  <div className={cardStyles.ioBlockContent}>
                     {inputEntries.map(([k, v]) => (
-                      <div key={k} className={groupItem ? cardStyles.ioRow : 'flex gap-1.5'}>
-                        <span
-                          className={
-                            groupItem
-                              ? cardStyles.ioKey
-                              : 'shrink-0 font-semibold text-slate-400 dark:text-zinc-500'
-                          }
-                        >
-                          {k}
-                        </span>
-                        <span className={groupItem ? cardStyles.ioValue : 'break-all'}>
+                      <div key={k} className={cardStyles.ioRow}>
+                        <span className={cardStyles.ioKey}>{k}</span>
+                        <span className={cardStyles.ioValue}>
                           {typeof v === 'string' ? v : JSON.stringify(v)}
                         </span>
                       </div>
@@ -275,21 +245,9 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
               )}
 
               {showOutputSection && (
-                <div
-                  className={
-                    groupItem
-                      ? cardStyles.ioBlock
-                      : hasInput
-                        ? 'border-t border-slate-200/80 dark:border-zinc-700/80'
-                        : undefined
-                  }
-                >
+                <div className={cardStyles.ioBlock}>
                   <div
-                    className={
-                      groupItem
-                        ? `${cardStyles.ioBlockLabel} ${loading && parsedResult === null ? cardStyles.ioBlockLabelActive : ''}`
-                        : `flex items-center gap-1 px-2.5 pt-2 text-[10px] font-semibold uppercase tracking-wide ${loading ? 'text-slate-700 dark:text-zinc-300' : 'text-slate-400 dark:text-zinc-500'}`
-                    }
+                    className={`${cardStyles.ioBlockLabel} ${loading && parsedResult === null ? cardStyles.ioBlockLabelActive : ''}`}
                   >
                     <span>Output</span>
                     {loading && parsedResult === null ? (
@@ -297,17 +255,13 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
                     ) : null}
                   </div>
                   <div
-                    className={
-                      groupItem
-                        ? `${cardStyles.ioBlockContent} ${success === false ? cardStyles.ioBlockContentError : ''}`
-                        : `px-2.5 pb-2 text-[11px] leading-relaxed ${success === false ? 'text-red-900 dark:text-red-300' : 'text-slate-900 dark:text-zinc-100'}`
-                    }
+                    className={`${cardStyles.ioBlockContent} ${success === false ? cardStyles.ioBlockContentError : ''}`}
                   >
                     {parsedResult !== null ? (
                       contentToRender ? (
                         <MarkdownRenderer content={contentToRender} className="markdown-tool-result" />
                       ) : (
-                        <div className={groupItem ? cardStyles.ioJsonWrap : 'opacity-80'}>
+                        <div className={cardStyles.ioJsonWrap}>
                           <JsonSyntaxBlock
                             value={parsedResult}
                             preClassName="max-h-60 border-none bg-transparent p-0"
@@ -316,7 +270,7 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
                         </div>
                       )
                     ) : (
-                      <span className="text-[10px] italic text-slate-400 dark:text-zinc-500">
+                      <span className="text-[10px] italic opacity-60">
                         Waiting for output…
                       </span>
                     )}

@@ -90,7 +90,7 @@ describe('buildAssistantRenderSegments', () => {
     expect(segments[2]).toMatchObject({ type: 'block' });
   });
 
-  it('replaces contiguous work blocks with one summary before the following text', () => {
+  it('replaces contiguous work blocks with one summary before the following text when there are 2 or more', () => {
     const blocks: ChatMessageRenderBlock[] = [
       { type: 'thinking', event: makeThinking('a') },
       { type: 'tool', event: makeTool({ tool: 'local_read_file' }) },
@@ -100,6 +100,19 @@ describe('buildAssistantRenderSegments', () => {
     const segments = buildAssistantRenderSegments(blocks, false);
     expect(segments).toHaveLength(2);
     expect(segments[0]).toMatchObject({ type: 'work_summary' });
+    expect(segments[1]).toMatchObject({ type: 'block', block: { type: 'text' } });
+  });
+
+  it('does not create a work summary group when the tool activity is just one', () => {
+    const toolEvt = makeTool({ tool: 'generate_video' });
+    const blocks: ChatMessageRenderBlock[] = [
+      { type: 'tool', event: toolEvt },
+      { type: 'text', content: 'Here is your video', endsWithLastTextEvent: true },
+    ];
+
+    const segments = buildAssistantRenderSegments(blocks, false);
+    expect(segments).toHaveLength(2);
+    expect(segments[0]).toEqual({ type: 'block', block: { type: 'tool', event: toolEvt } });
     expect(segments[1]).toMatchObject({ type: 'block', block: { type: 'text' } });
   });
 

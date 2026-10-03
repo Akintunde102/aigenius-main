@@ -126,6 +126,24 @@ export const TOOL_PERMISSION_CATALOG: ToolPermissionCatalogEntry[] = [
     description: 'Create Markdown drafts, update them, publish to a public or restricted page, and list pages',
     defaultRequiresApproval: MUTATING,
   },
+  {
+    id: 'publish_html',
+    label: 'Publish Web App',
+    description: 'Publish interactive HTML web apps to runpage.site or create draft previews',
+    defaultRequiresApproval: MUTATING,
+  },
+  {
+    id: 'check_slug_availability',
+    label: 'Check domain slug',
+    description: 'Check whether a custom subdomain slug is available on runpage.site',
+    defaultRequiresApproval: READ_ONLY,
+  },
+  {
+    id: 'list_user_pages',
+    label: 'List published web apps',
+    description: 'List web applications and landing pages published by you',
+    defaultRequiresApproval: READ_ONLY,
+  },
   // Gmail
   {
     id: 'gmail_send',

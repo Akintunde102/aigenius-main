@@ -128,6 +128,8 @@ const AddToWallet = ({
   const [firstName, setFirstName] = useState<string>("");
   const [lastName, setLastName] = useState<string>("");
   const [minTopUpCredits, setMinTopUpCredits] = useState(MIN_TOP_UP_CREDITS_FALLBACK);
+  const [creditsPerUsd, setCreditsPerUsd] = useState<number | null>(null);
+  const [equivalenceLabel, setEquivalenceLabel] = useState<string | null>(null);
   const [pendingCheckoutUrl, setPendingCheckoutUrl] = useState<string | null>(null);
 
   // Fetch wallet on mount and after update
@@ -160,9 +162,17 @@ const AddToWallet = ({
         });
         const config = res?.dataReturned as {
           minTopUpCredits?: number;
+          creditsPerUsd?: number;
+          equivalenceLabel?: string;
         } | undefined;
         if (typeof config?.minTopUpCredits === "number" && config.minTopUpCredits > 0) {
           setMinTopUpCredits(config.minTopUpCredits);
+        }
+        if (typeof config?.creditsPerUsd === "number" && config.creditsPerUsd > 0) {
+          setCreditsPerUsd(config.creditsPerUsd);
+        }
+        if (typeof config?.equivalenceLabel === "string" && config.equivalenceLabel.trim()) {
+          setEquivalenceLabel(config.equivalenceLabel);
         }
       } catch {
         // Keep env fallback when config cannot be loaded.
@@ -183,7 +193,9 @@ const AddToWallet = ({
   const parsedAmount = parseAmountNaira(amount);
   const canSubmitAmount = parsedAmount >= minTopUpCredits;
   const belowMinimum = parsedAmount > 0 && parsedAmount < minTopUpCredits;
-  const paymentUsd = creditsToUsd(parsedAmount);
+  const paymentUsd = creditsPerUsd !== null ? creditsToUsd(parsedAmount, creditsPerUsd) : 0;
+  const formatCreditsAsUsd = (credits: number) =>
+    creditsPerUsd !== null ? formatUsdAmount(creditsToUsd(credits, creditsPerUsd)) : null;
   const presetCredits = React.useMemo(
     () => buildPresetCredits(minTopUpCredits),
     [minTopUpCredits],
@@ -754,7 +766,7 @@ const AddToWallet = ({
               )}
               {!loadingCredits && wallet !== null && (
                 <span className="text-[11.5px] mt-0.5" style={{ color: "var(--modal-muted-fg)" }}>
-                  ≈ {formatUsdAmount(creditsToUsd(wallet))} available
+                  ≈ {formatCreditsAsUsd(wallet) ?? "—"} available
                 </span>
               )}
             </div>
@@ -768,7 +780,7 @@ const AddToWallet = ({
                 color: "var(--modal-muted-fg)",
               }}
             >
-              {getCreditEquivalenceLabel()}
+              {equivalenceLabel ?? (creditsPerUsd !== null ? getCreditEquivalenceLabel(creditsPerUsd) : "Credits priced by the server")}
             </span>
           </div>
 
@@ -873,7 +885,7 @@ const AddToWallet = ({
                           {addCommas(preset)}
                         </span>
                         <span className="text-[10.5px]" style={{ color: "var(--modal-muted-fg)" }}>
-                          {formatUsdAmount(creditsToUsd(preset))}
+                          {formatCreditsAsUsd(preset) ?? "—"}
                         </span>
                       </button>
                     );
@@ -914,11 +926,11 @@ const AddToWallet = ({
                 </div>
                 {belowMinimum ? (
                   <span className="text-[11.5px]" style={{ color: "#ef4444" }}>
-                    Minimum top-up is {minTopUpCredits.toLocaleString()} credits ({formatUsdAmount(creditsToUsd(minTopUpCredits))}).
+                    Minimum top-up is {minTopUpCredits.toLocaleString()} credits{formatCreditsAsUsd(minTopUpCredits) ? ` (${formatCreditsAsUsd(minTopUpCredits)})` : ""}.
                   </span>
                 ) : (
                   <span className="text-[11.5px]" style={{ color: "var(--modal-muted-fg)" }}>
-                    Minimum top-up: {minTopUpCredits.toLocaleString()} credits ({formatUsdAmount(creditsToUsd(minTopUpCredits))})
+                    Minimum top-up: {minTopUpCredits.toLocaleString()} credits{formatCreditsAsUsd(minTopUpCredits) ? ` (${formatCreditsAsUsd(minTopUpCredits)})` : ""}
                   </span>
                 )}
               </div>
@@ -962,7 +974,7 @@ const AddToWallet = ({
                   </svg>
                 ) : null}
                 {canSubmitAmount
-                  ? `Add ${addCommas(parsedAmount)} credits · ${formatUsdAmount(paymentUsd)}`
+                  ? `Add ${addCommas(parsedAmount)} credits${paymentUsd > 0 ? ` · ${formatUsdAmount(paymentUsd)}` : ""}`
                   : "Add credits"}
               </button>
 

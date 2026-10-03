@@ -79,6 +79,55 @@ describe('messageEdit.utils', () => {
         ]);
     });
 
+    it('buildEditedUserMessage keeps existing urls when another image is added', () => {
+        const original: ChatMessage = {
+            id: 'u1',
+            role: 'user',
+            content: [
+                { type: 'text', text: 'look' },
+                { type: 'image_url', image_url: { url: 'https://cdn.example/old.png' } },
+            ],
+            timestamp: 10,
+        };
+
+        const updated = buildEditedUserMessage(original, {
+            text: 'look',
+            attachments: [
+                { fileUrl: 'https://cdn.example/old.png', isImage: true, displayName: 'old.png' },
+                { fileUrl: 'https://cdn.example/new.png', isImage: true, displayName: 'new.png' },
+            ],
+        });
+
+        expect(updated.id).toBe('u1');
+        expect(updated.content).toEqual([
+            { type: 'text', text: 'look' },
+            { type: 'image_url', image_url: { url: 'https://cdn.example/old.png' } },
+            { type: 'image_url', image_url: { url: 'https://cdn.example/new.png' } },
+        ]);
+    });
+
+    it('buildEditedUserMessage replaces an image url without keeping the old one', () => {
+        const original: ChatMessage = {
+            id: 'u1',
+            role: 'user',
+            content: [
+                { type: 'image_url', image_url: { url: 'https://cdn.example/old.png' } },
+            ],
+            timestamp: 10,
+        };
+
+        const updated = buildEditedUserMessage(original, {
+            text: '',
+            attachments: [
+                { fileUrl: 'https://cdn.example/replacement.png', isImage: true, displayName: 'replacement.png' },
+            ],
+        });
+
+        expect(updated.content).toEqual([
+            { type: 'image_url', image_url: { url: 'https://cdn.example/replacement.png' } },
+        ]);
+    });
+
     it('isEditDraftSubmittable requires text or attachments', () => {
         expect(isEditDraftSubmittable({ text: '', attachments: [] })).toBe(false);
         expect(isEditDraftSubmittable({ text: 'hi', attachments: [] })).toBe(true);

@@ -24,28 +24,15 @@ import {
     isLikelyElectronRenderer,
     waitForAigeniusDesktopBridge,
 } from '@/lib/utils/desktop-runtime';
-
+import { appendAuthDebugLog } from '@/lib/utils/client-verbose-debug';
 
 type RetryableAxiosRequestConfig = InternalAxiosRequestConfig & {
     _authRetry?: boolean;
 };
 
-// ── Temporary diagnostic logger ──────────────────────────────────────────────
-// Writes to localStorage so logs survive page navigations and cold-boot reloads.
-// Read the log from DevTools: localStorage.getItem('__aig_auth_debug')
-// Clear it:                   localStorage.removeItem('__aig_auth_debug')
 function authDebugLog(msg: string): void {
-    try {
-        if (typeof localStorage === 'undefined') return;
-        const ts = new Date().toISOString();
-        const entry = `${ts} ${msg}`;
-        const prev = localStorage.getItem('__aig_auth_debug') ?? '';
-        localStorage.setItem('__aig_auth_debug', (prev + '\n' + entry).slice(-10000));
-        // eslint-disable-next-line no-console
-        console.warn('[AIG-AUTH]', entry);
-    } catch { /* never break auth over a log */ }
+    appendAuthDebugLog(msg);
 }
-// ─────────────────────────────────────────────────────────────────────────────
 
 
 const REQUESTED_WITH_HEADER = 'X-Requested-With';

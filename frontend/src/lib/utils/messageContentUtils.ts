@@ -36,6 +36,7 @@ export function isVisibleChatMessage(message: { role?: string; content?: unknown
 type MessageWithContentAndCost = {
     content?: unknown;
     cost?: unknown;
+    cost_credits?: unknown;
     modelId?: string;
 };
 
@@ -43,6 +44,7 @@ type SessionWithMessages = {
     modelId?: string;
     metadata?: {
         totalCost?: number;
+        totalCostCredits?: number;
         totalTokens?: number;
         lastAccessed?: string | Date;
     };
@@ -229,8 +231,18 @@ export function getSavedMessageCost(message: { cost?: unknown }): number | null 
     return null;
 }
 
+export function getSavedMessageCostCredits(message: { cost_credits?: unknown }): number | null {
+    return typeof message.cost_credits === 'number' && Number.isFinite(message.cost_credits)
+        ? message.cost_credits
+        : null;
+}
+
 export function getSessionStoredTotalCost(session: SessionWithMessages): number | null {
     return typeof session.metadata?.totalCost === 'number' ? session.metadata.totalCost : null;
+}
+
+export function getSessionStoredTotalCostCredits(session: SessionWithMessages): number | null {
+    return typeof session.metadata?.totalCostCredits === 'number' ? session.metadata.totalCostCredits : null;
 }
 
 /** Result of parsing a file message from a string (for previews). */

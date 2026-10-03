@@ -11,6 +11,7 @@ import {
   joinCloudFileS3Links,
   normalizeUploadFilesList,
   sortCloudFilesNewestFirst,
+  inferPreviewTypeFromCloudFile,
 } from "./user-files.utils";
 
 function file(partial: Partial<CloudFile> & Pick<CloudFile, "id">): CloudFile {
@@ -158,5 +159,32 @@ describe("user-files.utils", () => {
     expect(joinCloudFileS3Links([a, b])).toBe(
       "https://example.com/a\nhttps://example.com/b",
     );
+  });
+
+  it("inferPreviewTypeFromCloudFile classifies extensions correctly", () => {
+    expect(
+      inferPreviewTypeFromCloudFile(file({ id: "1", name: "pic.png" })),
+    ).toBe("image");
+    expect(
+      inferPreviewTypeFromCloudFile(file({ id: "2", name: "doc.pdf" })),
+    ).toBe("pdf");
+    expect(
+      inferPreviewTypeFromCloudFile(file({ id: "3", name: "clip.mp4" })),
+    ).toBe("video");
+    expect(
+      inferPreviewTypeFromCloudFile(file({ id: "4", name: "audio.mp3" })),
+    ).toBe("audio");
+    expect(
+      inferPreviewTypeFromCloudFile(file({ id: "5", name: "script.ts" })),
+    ).toBe("code");
+    expect(
+      inferPreviewTypeFromCloudFile(file({ id: "6", name: "notes.txt" })),
+    ).toBe("code");
+    expect(
+      inferPreviewTypeFromCloudFile(file({ id: "7", name: "data.json" })),
+    ).toBe("code");
+    expect(
+      inferPreviewTypeFromCloudFile(file({ id: "8", name: "archive.zip" })),
+    ).toBe("unsupported");
   });
 });

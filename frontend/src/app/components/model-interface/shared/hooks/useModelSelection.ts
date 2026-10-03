@@ -3,7 +3,7 @@ import { Model } from "@/app/components/model-interface/shared/types";
 import {
   filterModelsNew,
   sortModelsNew,
-  getModelAverageRequestPrice,
+  getModelAverageRequestCredits,
   ModelOrderBy,
   ModelOrderDir,
 } from "@/app/components/model-interface/shared/utils";
@@ -30,6 +30,23 @@ interface UseModelSelectionProps {
   // Initial fallback if uncontrolled
   initialOrderBy?: ModelOrderBy;
   initialOrderDir?: ModelOrderDir;
+  groupByAffordability?: boolean;
+}
+
+/** When true, skip pinning quick-pick / default models ahead of the sorted list. */
+export function isCatalogListRefinementActive(params: {
+  search: string;
+  selectedProviders: string[];
+  imageFilterOnly: boolean;
+  showWebSearch: boolean;
+  orderBy: ModelOrderBy;
+}): boolean {
+  if (params.search.trim().length > 0) return true;
+  if (params.selectedProviders.length > 0) return true;
+  if (params.imageFilterOnly) return true;
+  if (params.showWebSearch) return true;
+  if (params.orderBy !== "default") return true;
+  return false;
 }
 
 function partitionQuickPicksFirst(
@@ -75,6 +92,7 @@ export function useModelSelection({
   setShowWebSearch: setShowWebSearchProp,
   initialOrderBy = "default",
   initialOrderDir = "asc",
+  groupByAffordability = false,
 }: UseModelSelectionProps) {
   const [catalogFilter, setCatalogFilter] = useState<ModelCatalogFilter>("all");
 
@@ -170,7 +188,7 @@ export function useModelSelection({
   const avgCostById = useMemo(() => {
     const m = new Map<string, number>();
     for (const md of models)
-      m.set(md.id, Number(getModelAverageRequestPrice(md) || 0));
+      m.set(md.id, Number(getModelAverageRequestCredits(md) || 0));
     return m;
   }, [models]);
 
@@ -191,8 +209,22 @@ export function useModelSelection({
       showWebSearch,
     );
     const sorted = sortModelsNew(filtered, orderBy, orderDir);
+    const refinementActive =
+      isCatalogListRefinementActive({
+        search: deferredSearch,
+        selectedProviders,
+        imageFilterOnly,
+        showWebSearch,
+        orderBy,
+      }) ||
+      catalogFilter !== "all" ||
+      groupByAffordability;
+    if (refinementActive) {
+      return { quickPickModelsSorted: [], otherModelsSorted: sorted };
+    }
     return partitionQuickPicksFirst(sorted, effectiveQuickPickIds, catalogFilter);
   }, [
+    groupByAffordability,
     models,
     effectiveQuickPickIds,
     catalogFilter,

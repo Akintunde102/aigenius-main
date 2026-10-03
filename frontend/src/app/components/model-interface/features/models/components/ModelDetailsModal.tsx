@@ -4,6 +4,7 @@ import { FiX, FiCheck, FiLayers, FiDollarSign, FiMaximize2, FiCalendar, FiAlertC
 import { Model } from '@/app/components/model-interface/shared/types';
 import {
     getModelAverageRequestPrice,
+    getModelAverageRequestCredits,
     formatUSD,
     formatNGN,
     getModelDisplayName,
@@ -74,9 +75,10 @@ export function ModelDetailsModal({
     const providerLabel = getProviderLabel(provider) || provider;
     const isFree = provider === 'openrouter' && model.id?.split('/')[1]?.toLowerCase() === 'free';
     const avgCost = getModelAverageRequestPrice(model);
-    const showAvgCost = Number.isFinite(avgCost) && avgCost > 0;
-    const requiredBalance = computeModelRequiredBalance(model, avgCost);
-    const burnPercentage = getModelCreditBurnPercentage(model, wallet, avgCost);
+    const avgCredits = getModelAverageRequestCredits(model);
+    const showAvgCost = Number.isFinite(avgCredits) && avgCredits > 0;
+    const requiredBalance = computeModelRequiredBalance(model, avgCredits);
+    const burnPercentage = getModelCreditBurnPercentage(model, wallet, avgCredits);
     const isWalletLocked = isModelPickLocked(wallet, requiredBalance, {
         modelId: model.id,
     });
@@ -212,7 +214,7 @@ export function ModelDetailsModal({
                                         className="text-base font-semibold tabular-nums leading-tight"
                                         style={{ color: 'var(--modal-fg)' }}
                                     >
-                                        {showAvgCost ? formatNGN(avgCost) : isFree ? 'Free' : '—'}
+                                        {showAvgCost ? formatNGN(avgCredits) : isFree ? 'Free' : '—'}
                                     </div>
                                     <div
                                         className="text-[11px] mt-0.5 truncate"
@@ -220,7 +222,7 @@ export function ModelDetailsModal({
                                     >
                                         {showAvgCost ? `${formatUSD(avgCost)} USD` : isFree ? '0 credits' : 'Standard rates'}
                                     </div>
-                                    {burnPercentage !== null && burnPercentage >= 60 ? (
+                                    {!isWalletLocked && burnPercentage !== null && burnPercentage >= 60 ? (
                                         <div className="mt-1.5">
                                             <ModelCreditBurnIndicator
                                                 burnPercentage={burnPercentage}

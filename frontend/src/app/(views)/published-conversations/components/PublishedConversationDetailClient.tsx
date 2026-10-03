@@ -16,7 +16,7 @@ import {
     FiTrash2,
 } from 'react-icons/fi';
 import copy from 'copy-to-clipboard';
-import { formatUsdCostAsCredits } from '@/lib/credits';
+import { formatCredits } from '@/lib/credits';
 import { deletePublishedConversation, PublishedConversation } from '@/lib/calls/model-chat-conversation';
 import { getStoredUserDetailsSnapshot } from '@/lib/calls/get-logged-user-details';
 import { ChatMessage as ChatMessageType } from '@/app/components/model-interface/shared/types';
@@ -275,7 +275,7 @@ export default function PublishedConversationDetailClient({ conversation }: Publ
                                     onImagePreview={setImagePreview}
                                     imagePreview={imagePreview}
                                     setImagePreview={setImagePreview}
-                                    formatCost={(value) => formatUsdCostAsCredits(value)}
+                                    formatCost={(value) => formatCredits(value, { compact: true })}
                                     savedChats={savedChats}
                                     loading={false}
                                     streaming={false}

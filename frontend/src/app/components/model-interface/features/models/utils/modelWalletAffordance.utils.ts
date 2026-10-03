@@ -1,7 +1,6 @@
 import { CHAT_CONFIG } from "../../chat/hooks/chatOperations.constants";
 import {
-  getModelAverageRequestPrice,
-  USD_TO_NGN,
+  getModelAverageRequestCredits,
 } from "@/app/components/model-interface/shared/utils";
 import type { Model } from "@/app/components/model-interface/shared/types";
 import { isE2eBrowserWalletBypassEnabled } from "@/lib/e2e-wallet-bypass";
@@ -9,25 +8,23 @@ import { isE2eBrowserWalletBypassEnabled } from "@/lib/e2e-wallet-bypass";
 /** Minimum wallet balance (credits) required to pick/use a model. */
 export function computeModelRequiredBalance(
   model: Model | null,
-  averageCostUsd?: number,
+  averageCostCredits?: number,
 ): number {
   if (!model) {
     return CHAT_CONFIG.MIN_WALLET_BALANCE;
   }
 
-  const averageCostUSD =
-    averageCostUsd !== undefined &&
-    Number.isFinite(averageCostUsd) &&
-    averageCostUsd > 0
-      ? averageCostUsd
-      : getModelAverageRequestPrice(model);
-
-  const averageCostCredits = averageCostUSD * USD_TO_NGN;
+  const credits =
+    averageCostCredits !== undefined &&
+    Number.isFinite(averageCostCredits) &&
+    averageCostCredits > 0
+      ? averageCostCredits
+      : getModelAverageRequestCredits(model);
 
   return Math.max(
     CHAT_CONFIG.MIN_WALLET_BALANCE,
-    averageCostCredits > 0
-      ? averageCostCredits * CHAT_CONFIG.MODEL_BALANCE_FACTOR
+    credits > 0
+      ? credits * CHAT_CONFIG.MODEL_BALANCE_FACTOR
       : 0,
   );
 }
@@ -39,7 +36,7 @@ export const HIGH_CREDIT_BURN_THRESHOLD_PERCENT = 60;
 export function getModelCreditBurnPercentage(
   model: Model | null,
   wallet: number | null | undefined,
-  averageCostUsd?: number,
+  averageCostCredits?: number,
 ): number | null {
   if (
     !model ||
@@ -51,29 +48,28 @@ export function getModelCreditBurnPercentage(
     return null;
   }
 
-  const averageCostUSD =
-    averageCostUsd !== undefined &&
-    Number.isFinite(averageCostUsd) &&
-    averageCostUsd > 0
-      ? averageCostUsd
-      : getModelAverageRequestPrice(model);
+  const credits =
+    averageCostCredits !== undefined &&
+    Number.isFinite(averageCostCredits) &&
+    averageCostCredits > 0
+      ? averageCostCredits
+      : getModelAverageRequestCredits(model);
 
-  const averageCostCredits = averageCostUSD * USD_TO_NGN;
-  if (!Number.isFinite(averageCostCredits) || averageCostCredits <= 0) {
+  if (!Number.isFinite(credits) || credits <= 0) {
     return null;
   }
 
-  return Math.round((averageCostCredits / wallet) * 100);
+  return Math.round((credits / wallet) * 100);
 }
 
 /** Returns true if the model's single request cost meets or exceeds the high burn threshold percentage of the user's wallet. */
 export function isHighCreditBurnModel(
   model: Model | null,
   wallet: number | null | undefined,
-  averageCostUsd?: number,
+  averageCostCredits?: number,
   thresholdPercent = HIGH_CREDIT_BURN_THRESHOLD_PERCENT,
 ): boolean {
-  const percentage = getModelCreditBurnPercentage(model, wallet, averageCostUsd);
+  const percentage = getModelCreditBurnPercentage(model, wallet, averageCostCredits);
   return percentage !== null && percentage >= thresholdPercent;
 }
 
@@ -88,28 +84,19 @@ export function isModelWalletGatingEnabled(): boolean {
 
 export type ModelPickLockOptions = {
   modelId?: string;
-  /** Already-active model stays selectable even when balance is low. */
   selectedModelId?: string;
 };
 
 export function isModelPickLocked(
   wallet: number | null | undefined,
   requiredBalance: number,
-  options?: ModelPickLockOptions,
+  _options?: ModelPickLockOptions,
 ): boolean {
   if (!isModelWalletGatingEnabled()) {
     return false;
   }
 
   if (wallet === null || wallet === undefined || !Number.isFinite(wallet)) {
-    return false;
-  }
-
-  if (
-    options?.selectedModelId &&
-    options.modelId &&
-    options.selectedModelId === options.modelId
-  ) {
     return false;
   }
 

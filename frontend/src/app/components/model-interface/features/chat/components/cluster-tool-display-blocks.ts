@@ -89,7 +89,11 @@ export function clusterToolDisplayBlocks(blocks: ChatMessageDisplayBlock[]): Cha
       j += 1;
     }
 
-    out.push({ type: 'tool_cluster', events: cluster });
+    if (cluster.length > 1) {
+      out.push({ type: 'tool_cluster', events: cluster });
+    } else {
+      out.push(b);
+    }
     i = j;
   }
 

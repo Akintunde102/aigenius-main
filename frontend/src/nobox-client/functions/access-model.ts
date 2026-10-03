@@ -21,6 +21,7 @@ import {
 import { activeEditorForRuntime } from '@/lib/code-projects/active-editor-context';
 import { resolveProjectScopeForChatRequest } from '@/lib/code-projects/chat-project-scope';
 import { runCreateCodeProjectFromToolArgs } from '@/lib/code-projects/create-code-project-workflow';
+import { clientVerboseDebug, isClientVerboseDebugEnabled } from '@/lib/utils/client-verbose-debug';
 
 // Constants
 const OPENAI_CHAT_COMPLETIONS_PATH = '/gateway/*/openai/v1/chat/completions';
@@ -525,7 +526,7 @@ async function mergeRuntimeContextIntoRequestBody(
  * Helper function to set up common API request configuration
  */
 async function setupApiRequest(config: Config, requestBody: Record<string, any>, isStreaming = false) {
-  console.log('[access-model] setupApiRequest started', { isStreaming, model: requestBody.model });
+  clientVerboseDebug('access-model', 'setupApiRequest started', { isStreaming, model: requestBody.model });
   const endpoint = `${config.endpoint}${OPENAI_CHAT_COMPLETIONS_PATH}`;
   const jwtToken = getAccessToken();
 
@@ -540,28 +541,25 @@ async function setupApiRequest(config: Config, requestBody: Record<string, any>,
     ...getE2eWalletBypassHeaders(),
   };
 
-  console.log('[access-model] Resolving desktop chat request context...');
   const desktopChat =
     typeof window !== 'undefined' ? await resolveDesktopChatRequestContext() : false;
 
-  if (process.env.NODE_ENV === 'development') {
-    console.debug('[AIGenius Bridge] resolveDesktopChatRequestContext returned:', desktopChat);
-  }
-
-  if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-    console.info('[aigenius-desktop][chat] setupApiRequest', {
-      desktopChat,
-      hasRunnableBridge: hasRunnableLocalDesktopToolBridge(),
-      desktopShellAttr: document.documentElement.getAttribute('data-aigenius-desktop-shell'),
-      uaHasElectron: /\bElectron\/\d/.test(navigator.userAgent || ''),
-    });
+  if (isClientVerboseDebugEnabled()) {
+    clientVerboseDebug('AIGenius Bridge', 'resolveDesktopChatRequestContext returned:', desktopChat);
+    if (typeof window !== 'undefined') {
+      clientVerboseDebug('aigenius-desktop/chat', 'setupApiRequest', {
+        desktopChat,
+        hasRunnableBridge: hasRunnableLocalDesktopToolBridge(),
+        desktopShellAttr: document.documentElement.getAttribute('data-aigenius-desktop-shell'),
+        uaHasElectron: /\bElectron\/\d/.test(navigator.userAgent || ''),
+      });
+    }
   }
 
   if (desktopChat) {
     headers[AIGENIUS_DESKTOP_CLIENT_HEADER] = AIGENIUS_DESKTOP_CLIENT_HEADER_VALUE;
   }
 
-  console.log('[access-model] Merging runtime context...');
   await mergeRuntimeContextIntoRequestBody(requestBody, desktopChat);
 
   const body = JSON.stringify({
@@ -569,7 +567,10 @@ async function setupApiRequest(config: Config, requestBody: Record<string, any>,
     ...(isStreaming && { stream: true }),
   });
 
-  console.log('[access-model] setupApiRequest finished', { endpoint, headerCount: Object.keys(headers).length });
+  clientVerboseDebug('access-model', 'setupApiRequest finished', {
+    endpoint,
+    headerCount: Object.keys(headers).length,
+  });
   return { endpoint, headers, body };
 }
 
@@ -757,8 +758,8 @@ async function fulfillDesktopToolDelegate(
     }
   }
 
-  if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-    console.info('[aigenius-desktop][delegate] fulfillDesktopToolDelegate', {
+  if (isClientVerboseDebugEnabled() && typeof window !== 'undefined') {
+    clientVerboseDebug('aigenius-desktop/delegate', 'fulfillDesktopToolDelegate', {
       hasRunLocal: typeof desktop?.runLocalDesktopTool === 'function',
       tool: ev.tool,
     });
@@ -888,6 +889,16 @@ function processStreamingContent(delta: any): string | Array<{
       text?: string;
       image_url?: { url: string };
     }> = [];
+
+    if (typeof content === 'string' && content.length > 0) {
+      contentBlocks.push({ type: 'text', text: content });
+    } else if (Array.isArray(content)) {
+      for (const block of content) {
+        if (block && typeof block === 'object') {
+          contentBlocks.push(block);
+        }
+      }
+    }
 
     images.forEach((image: any) => {
       if (image.type === 'image_url' && image.image_url?.url) {
@@ -1097,12 +1108,23 @@ export type OpenRouterContentBlock =
   | { type: 'image_url'; image_url: { url: string } }
   | { type: 'input_audio'; input_audio: { data: string; format: string } };
 
-/** Per-tool billed amounts from the gateway (USD + ₦). */
+/** Per-tool billed amounts from the gateway (USD + platform credits). */
+export type ToolUsageChargeStatus = 'reserved' | 'settled' | 'refunded';
+
 export interface ToolUsageCharge {
   tool: string;
   display_name: string;
   cost_usd: number;
   cost_naira: number;
+  status?: ToolUsageChargeStatus;
+  job_id?: string;
+  reservation_id?: string;
+  reserved_usd?: number;
+  reserved_credits?: number;
+  settled_usd?: number;
+  settled_credits?: number;
+  reserved_at?: number;
+  released_at?: number;
 }
 
 /**

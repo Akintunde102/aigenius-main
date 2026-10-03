@@ -20,6 +20,8 @@ import type { MessageEditDraft } from '../../messages/utils/messageEdit.utils';
 import type { FailedUploadEntry } from '@/app/components/model-interface/features/file-upload/hooks/useFileUpload';
 import { FEATURE_FLAGS } from '@/lib/config/features';
 import { ImagePreviewLightbox } from '@/app/components/model-interface/features/message-types/components/ImagePreviewLightbox';
+import { ImagePreviewActionsProvider } from '@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext';
+import type { ImagePreviewOpenTarget } from '@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext';
 import type { SetChatUiError } from '@/app/components/model-interface/features/chat/hooks/chatUiError';
 
 interface ChatContainerProps {
@@ -33,8 +35,8 @@ interface ChatContainerProps {
     showNaira: boolean;
     showTyping: boolean;
     loading: boolean;
-    imagePreview: string | null;
-    setImagePreview: (preview: string | null) => void;
+    imagePreview: ImagePreviewOpenTarget | null;
+    setImagePreview: (preview: ImagePreviewOpenTarget | null) => void;
     chatEndRef: React.RefObject<HTMLDivElement>;
     chatAreaRef: React.MutableRefObject<HTMLDivElement | null>;
     showScrollToBottom: boolean;
@@ -374,6 +376,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
         .join(' ');
 
     return (
+        <ImagePreviewActionsProvider setImagePreview={setImagePreview}>
         <div
             className={`${styles.chatContainer} flex-1 flex flex-col min-w-0 h-full`}
             style={containerStyle}
@@ -602,6 +605,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                 />
             ) : null}
         </div>
+        </ImagePreviewActionsProvider>
     );
 });
 ChatContainer.displayName = "ChatContainer";

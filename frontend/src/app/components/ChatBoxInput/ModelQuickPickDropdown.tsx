@@ -59,7 +59,6 @@ type QuickPickOptionProps = {
   model: Model;
   isActive: boolean;
   wallet: number | null | undefined;
-  selectedModelId?: string;
   onSelect: (model: Model) => void;
   onAddCredits?: () => void;
 };
@@ -68,16 +67,12 @@ function QuickPickOption({
   model,
   isActive,
   wallet,
-  selectedModelId,
   onSelect,
   onAddCredits,
 }: QuickPickOptionProps) {
   const displayName = getModelDisplayName(model);
   const requiredBalance = computeModelRequiredBalance(model);
-  const isWalletLocked = isModelPickLocked(wallet, requiredBalance, {
-    modelId: model.id,
-    selectedModelId,
-  });
+  const isWalletLocked = isModelPickLocked(wallet, requiredBalance);
   const burnPercentage = getModelCreditBurnPercentage(model, wallet);
 
   const handleClick = () => {
@@ -102,13 +97,23 @@ function QuickPickOption({
       }
     >
       {isWalletLocked ? (
-        <>
-          <span className="min-w-0 truncate text-[11px] opacity-80">{displayName}</span>
-          <ModelWalletLockIndicator
-            requiredBalance={requiredBalance}
-            wallet={wallet}
-          />
-        </>
+        <div className="flex w-full items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <span className="min-w-0 truncate text-[11px] opacity-80">{displayName}</span>
+            <ModelWalletLockIndicator
+              requiredBalance={requiredBalance}
+              wallet={wallet}
+            />
+          </div>
+          {isActive && (
+            <FiCheck
+              size={12}
+              className="shrink-0"
+              style={{ color: "var(--chat-accent)" }}
+              aria-hidden
+            />
+          )}
+        </div>
       ) : burnPercentage !== null && burnPercentage >= 60 ? (
         <>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -207,6 +212,12 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
     () => getModelCreditBurnPercentage(selectedModel, wallet),
     [selectedModel, wallet],
   );
+
+  const isSelectedModelLocked = useMemo(() => {
+    if (!selectedModel) return false;
+    const requiredBalance = computeModelRequiredBalance(selectedModel);
+    return isModelPickLocked(wallet, requiredBalance);
+  }, [selectedModel, wallet]);
 
   /** Active model is not listed in the dropdown menu (e.g. toggled off quick picks). */
   const activeOutsideQuickPicks =
@@ -339,27 +350,58 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
                 type="button"
                 role="option"
                 aria-selected
-                onClick={() => handleSelect(selectedModel)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium transition-colors hover:[background-color:color-mix(in_srgb,var(--chat-composer-border)_35%,transparent)]"
+                onClick={
+                  isSelectedModelLocked
+                    ? onAddCredits
+                    : () => handleSelect(selectedModel)
+                }
+                className={
+                  isSelectedModelLocked
+                    ? "mx-2 mb-1.5 flex w-[calc(100%-16px)] cursor-not-allowed flex-col gap-1 rounded-lg px-2.5 py-2 text-left text-[11px] [background-color:color-mix(in_srgb,var(--chat-composer-border)_52%,transparent)]"
+                    : "flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium transition-colors hover:[background-color:color-mix(in_srgb,var(--chat-composer-border)_35%,transparent)]"
+                }
               >
-                <span className="min-w-0 flex-1 truncate">
-                  {getModelDisplayName(selectedModel)}
-                </span>
-                {selectedModelBurnPercentage !== null && selectedModelBurnPercentage >= 60 && (
-                  <span
-                    className="inline-flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-400/15"
-                    title={`A single message with this model could consume ~${selectedModelBurnPercentage}% of your current credits.`}
-                  >
-                    <span aria-hidden>🔥</span>
-                    <span>~{selectedModelBurnPercentage}%</span>
-                  </span>
+                {isSelectedModelLocked ? (
+                  <div className="flex w-full items-center justify-between gap-2">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      <span className="min-w-0 truncate text-[11px] opacity-80">
+                        {getModelDisplayName(selectedModel)}
+                      </span>
+                      <ModelWalletLockIndicator
+                        requiredBalance={computeModelRequiredBalance(selectedModel)}
+                        wallet={wallet}
+                      />
+                    </div>
+                    <FiCheck
+                      size={12}
+                      className="shrink-0"
+                      style={{ color: "var(--chat-accent)" }}
+                      aria-hidden
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <span className="min-w-0 flex-1 truncate">
+                      {getModelDisplayName(selectedModel)}
+                    </span>
+                    {selectedModelBurnPercentage !== null &&
+                      selectedModelBurnPercentage >= 60 && (
+                        <span
+                          className="inline-flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-400/15"
+                          title={`A single message with this model could consume ~${selectedModelBurnPercentage}% of your current credits.`}
+                        >
+                          <span aria-hidden>🔥</span>
+                          <span>~{selectedModelBurnPercentage}%</span>
+                        </span>
+                      )}
+                    <FiCheck
+                      size={12}
+                      className="shrink-0"
+                      style={{ color: "var(--chat-accent)" }}
+                      aria-hidden
+                    />
+                  </>
                 )}
-                <FiCheck
-                  size={12}
-                  className="shrink-0"
-                  style={{ color: "var(--chat-accent)" }}
-                  aria-hidden
-                />
               </button>
               {quickPickModels.length > 0 ? (
                 <div
@@ -387,7 +429,6 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
                   model={model}
                   isActive={selectedModel?.id === model.id}
                   wallet={wallet}
-                  selectedModelId={selectedModel?.id}
                   onSelect={handleSelect}
                   onAddCredits={onAddCredits}
                 />
@@ -429,15 +470,17 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
         >
           {displayName}
         </span>
-        {selectedModelBurnPercentage !== null && selectedModelBurnPercentage >= 60 && (
-          <span
-            className="inline-flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-400/15"
-            title={`A single message with ${displayName} could consume ~${selectedModelBurnPercentage}% of your current credits.`}
-          >
-            <span aria-hidden>🔥</span>
-            <span>~{selectedModelBurnPercentage}%</span>
-          </span>
-        )}
+        {!isSelectedModelLocked &&
+          selectedModelBurnPercentage !== null &&
+          selectedModelBurnPercentage >= 60 && (
+            <span
+              className="inline-flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-400/15"
+              title={`A single message with ${displayName} could consume ~${selectedModelBurnPercentage}% of your current credits.`}
+            >
+              <span aria-hidden>🔥</span>
+              <span>~{selectedModelBurnPercentage}%</span>
+            </span>
+          )}
         <FiChevronDown
           size={mini ? 10 : 12}
           className={`shrink-0 opacity-70 transition-transform duration-200 ${open ? "rotate-180" : ""}`}

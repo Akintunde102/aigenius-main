@@ -17,6 +17,9 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
     keep_update_note: 'Update Note',
     keep_delete_note: 'Delete Note',
     host_markdown: 'Host Markdown',
+    publish_html: 'Publish Web App',
+    check_slug_availability: 'Check Slug',
+    list_user_pages: 'List Published Apps',
     convert_to_pdf_and_upload: 'Convert to PDF',
     web_fetch: 'Fetch web page',
     youtube_get_transcript: 'YouTube transcript',
@@ -129,6 +132,21 @@ export function getToolActivityHint(
             if (action === 'list') return 'Listing hosted pages…';
             return 'Working on hosted Markdown…';
         }
+        case 'publish_html': {
+            const slug = args.slug;
+            const isDraft = args.is_draft;
+            if (typeof slug === 'string' && slug.trim()) {
+                return isDraft ? `Saving draft preview for ${slug}…` : `Publishing web app to ${slug}.runpage.site…`;
+            }
+            return isDraft ? 'Saving draft preview…' : 'Publishing web app…';
+        }
+        case 'check_slug_availability': {
+            const slug = args.slug;
+            if (typeof slug === 'string' && slug.trim()) return `Checking availability of "${slug}"…`;
+            return 'Checking slug availability…';
+        }
+        case 'list_user_pages':
+            return 'Listing published web apps…';
         case 'convert_to_pdf_and_upload':
             return 'Converting and uploading PDF…';
         case 'serper_google_search': {

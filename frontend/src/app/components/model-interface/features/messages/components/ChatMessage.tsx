@@ -28,6 +28,10 @@ import { computeSelectionToolbarPosition } from '../../chat/hooks/selectionToolb
 import { OrphanNoteLayer } from './OrphanNoteLayer';
 import { AssistantTurnSegments } from './AssistantTurnSegments';
 import { shouldHideEmptyAssistantMessage } from '../utils/assistantMessageVisibility.utils';
+import {
+    formatLocalRuntimeModelName,
+    isOllamaCatalogId,
+} from '../../models/utils/ollamaModelDisplayName.utils';
 import { useMessageContent, useCostCalculation, useSaveState } from '../hooks';
 
 // Message display components - direct imports to avoid circular dependency
@@ -178,12 +182,17 @@ export function ChatMessage({
 
     // Memoized values - prefer human-readable model name; resolve modelId to name when modelName missing
     const modelName = useMemo(() => {
-        if (msg.modelName) return msg.modelName;
-        if (msg.modelId) {
+        let resolved = '';
+        if (msg.modelName) resolved = msg.modelName;
+        else if (msg.modelId) {
             const matched = models.find((m) => m.id === msg.modelId);
-            return matched?.name ?? msg.modelId;
+            resolved = matched?.name ?? msg.modelId;
+        } else {
+            resolved = msg.role === 'assistant' ? 'Model' : '';
         }
-        return msg.role === 'assistant' ? 'Model' : '';
+        return isOllamaCatalogId(msg.modelId)
+            ? formatLocalRuntimeModelName(resolved)
+            : resolved;
     }, [msg.modelName, msg.modelId, msg.role, models]);
 
     const displayName = useMemo(() => {
@@ -587,6 +596,7 @@ export function ChatMessage({
                                             setImagePreview={setImagePreview}
                                             attachmentCacheSeed={attachmentCacheSeed}
                                             streaming={streaming}
+                                            role={msg.role}
                                         />
                                     ) : typeof msg.content === 'string' ? (
                                         msg.content.trim() ? (

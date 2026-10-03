@@ -218,8 +218,7 @@ export function LocalListDirectoryToolCard({
                     className={
                       groupItem
                         ? `${cardStyles.ioPanel} ${success === false ? cardStyles.ioPanelError : ''}`
-                        : `max-h-[280px] overflow-y-auto rounded-sm border px-2.5 py-2 text-[11px] leading-relaxed custom-scrollbar border-slate-200/90 dark:border-zinc-700/80 ${success === false ? 'text-red-900 dark:text-red-300' : 'text-slate-900 dark:text-zinc-100'
-                          }`
+                        : `max-h-[280px] overflow-y-auto rounded-sm border px-2.5 py-2 text-[11px] leading-relaxed custom-scrollbar border-slate-200/90 bg-white text-slate-900 dark:border-zinc-700/80 dark:bg-zinc-900 dark:text-zinc-100 ${success === false ? 'text-red-900 dark:text-red-300' : ''}`
                     }
                   >
                     {listing ? (

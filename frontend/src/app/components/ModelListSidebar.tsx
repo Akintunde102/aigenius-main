@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { FiTrash2, FiMapPin, FiInfo } from "react-icons/fi";
 import { FaRegImage, FaRegFileAlt, FaRegFileAudio, FaRegFileVideo } from "react-icons/fa";
 import { getPinnedModels, setPinnedModels, getDeletedModels, setDeletedModels } from '@/lib/utils/modelInterfaceUtils';
-import { formatUsdCostAsCredits } from '@/lib/credits';
+import { formatCredits } from '@/lib/credits';
 
 interface Model {
     id: string;
@@ -111,9 +111,9 @@ const ModelListSidebar: React.FC<ModelListSidebarProps> = ({ models, selectedMod
         return typeof val === 'number' && isFinite(val) && val > 0 ? `$${val.toFixed(4)}` : null;
     }
     function getAvgCostCredits(model: Model) {
-        const usd = model?.averageUserSpendPerRequest?.totalAverageCost;
-        if (!(typeof usd === 'number' && isFinite(usd) && usd > 0)) return null;
-        return formatUsdCostAsCredits(usd);
+        const credits = model?.averageUserSpendPerRequest?.totalAverageCostCredits;
+        if (!(typeof credits === 'number' && isFinite(credits) && credits > 0)) return null;
+        return formatCredits(credits, { compact: true });
     }
 
     // Helper to get modality icons

@@ -1,6 +1,6 @@
 import { useMemo, useDeferredValue } from 'react';
 import { Model, ChatMessage } from '@/app/components/model-interface/shared/types';
-import { filterModels, sortModelsByCost, filterModelsNew, sortModelsNew, USD_TO_NGN } from '@/app/components/model-interface/shared/utils';
+import { filterModels, sortModelsByCost, filterModelsNew, sortModelsNew } from '@/app/components/model-interface/shared/utils';
 import { SHOW_LEGACY_FILTERS } from '@/app/components/model-interface/shared/constants';
 import type { ModelOrderBy, ModelOrderDir } from '@/app/components/model-interface/shared/utils';
 
@@ -75,7 +75,7 @@ export function useComputedValues({
 
     const currentChatCostNaira = useMemo(
         () => chat.reduce(
-            (sum, msg) => sum + (typeof msg.cost === 'number' ? msg.cost * USD_TO_NGN : 0),
+            (sum, msg) => sum + (typeof msg.cost_credits === 'number' ? msg.cost_credits : 0),
             0,
         ),
         [chat],

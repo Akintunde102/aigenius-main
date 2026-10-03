@@ -300,3 +300,29 @@ export function isAttachableCloudFile(file: CloudFile): boolean {
   return ext in ATTACHABLE_MIME_BY_EXT;
 }
 
+export function inferPreviewTypeFromCloudFile(
+  file: CloudFile,
+): 'image' | 'pdf' | 'video' | 'audio' | 'code' | 'folder' | 'unsupported' {
+  const ext = getFileExtensionFromCloudFile(file).toLowerCase();
+  if (!ext) return 'unsupported';
+  if (IMAGE_EXT.has(ext)) return 'image';
+  if (ext === 'pdf') return 'pdf';
+  if (['mp4', 'webm', 'mov', 'avi', 'mkv', 'ogg'].includes(ext)) return 'video';
+  if (['mp3', 'wav', 'flac', 'aac', 'm4a'].includes(ext)) return 'audio';
+  if (
+    DOC_EXT.has(ext) ||
+    SHEET_EXT.has(ext) ||
+    PRES_EXT.has(ext) ||
+    CODE_EXT.has(ext) ||
+    [
+      'txt', 'md', 'markdown', 'json', 'csv', 'tsv', 'xml', 'yaml', 'yml',
+      'js', 'jsx', 'ts', 'tsx', 'html', 'htm', 'css', 'scss', 'sass', 'less',
+      'py', 'rb', 'go', 'rs', 'java', 'kt', 'swift', 'cs', 'php', 'sql',
+      'sh', 'bash', 'zsh', 'env', 'log', 'ini', 'conf', 'c', 'cpp', 'h', 'hpp',
+    ].includes(ext)
+  ) {
+    return 'code';
+  }
+  return 'unsupported';
+}
+

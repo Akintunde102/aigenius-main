@@ -42,7 +42,9 @@ export function useUIState(models: Model[]) {
   const [totalSpent, setTotalSpent] = useState(0);
 
   // Upload & Preview states
-  const [imagePreview, setImagePreview] = useState<any | string | null>(null);
+  const [imagePreview, setImagePreview] = useState<
+    import('@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext').ImagePreviewOpenTarget | null
+  >(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragActive, setDragActive] = useState(false);

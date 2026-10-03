@@ -52,44 +52,44 @@ export function ToolExecutionDisplay({ tool_executions }: ToolExecutionDisplayPr
                 return (
                     <div 
                         key={index}
-                        className="border border-gray-200 rounded-lg bg-gray-50 overflow-hidden"
+                        className="border border-gray-200 dark:border-zinc-700/80 rounded-lg bg-gray-50 dark:bg-zinc-900/50 overflow-hidden"
                     >
                         {/* Header */}
                         <button
                             onClick={() => toggleExpand(index)}
-                            className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-100 transition-colors"
+                            className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-100 dark:hover:bg-zinc-800/50 transition-colors"
                         >
                             <div className="flex items-center gap-2">
                                 {getToolIcon(execution.tool)}
-                                <span className="font-medium text-gray-700">
+                                <span className="font-medium text-gray-700 dark:text-zinc-200">
                                     {getToolDisplayName(execution.tool)}
                                 </span>
 
                                 {success ? (
-                                    <FiCheckCircle className="text-green-600" size={14} />
+                                    <FiCheckCircle className="text-green-600 dark:text-green-400" size={14} />
                                 ) : (
-                                    <FiAlertCircle className="text-red-600" size={14} />
+                                    <FiAlertCircle className="text-red-600 dark:text-red-400" size={14} />
                                 )}
                             </div>
                             {isExpanded ? (
-                                <FiChevronUp className="text-gray-500" size={16} />
+                                <FiChevronUp className="text-gray-500 dark:text-zinc-400" size={16} />
                             ) : (
-                                <FiChevronDown className="text-gray-500" size={16} />
+                                <FiChevronDown className="text-gray-500 dark:text-zinc-400" size={16} />
                             )}
                         </button>
 
                         {/* Details */}
                         {isExpanded && (
-                            <div className="px-3 pb-3 pt-1 border-t border-gray-200 bg-white">
+                            <div className="px-3 pb-3 pt-1 border-t border-gray-200 dark:border-zinc-700/80 bg-white dark:bg-zinc-900">
                                 {/* Arguments */}
                                 {Object.keys(execution.arguments).length > 0 && (
                                     <div className="mb-2">
-                                        <div className="text-xs font-semibold text-gray-600 mb-1">Input:</div>
-                                        <div className="text-xs bg-blue-50 p-2 rounded border border-blue-100 space-y-1">
+                                        <div className="text-xs font-semibold text-gray-600 dark:text-zinc-400 mb-1">Input:</div>
+                                        <div className="text-xs bg-blue-50 dark:bg-blue-950/30 p-2 rounded border border-blue-100 dark:border-blue-900/40 space-y-1">
                                             {Object.entries(execution.arguments).map(([key, value]) => (
                                                 <div key={key} className="flex gap-2">
-                                                    <span className="font-medium text-blue-900">{key}:</span>
-                                                    <span className="text-gray-700 break-all">
+                                                    <span className="font-medium text-blue-900 dark:text-blue-300">{key}:</span>
+                                                    <span className="text-gray-700 dark:text-zinc-300 break-all">
                                                         {typeof value === 'string' ? value : JSON.stringify(value)}
                                                     </span>
                                                 </div>
@@ -100,27 +100,27 @@ export function ToolExecutionDisplay({ tool_executions }: ToolExecutionDisplayPr
 
                                 {/* Result */}
                                 <div>
-                                    <div className="text-xs font-semibold text-gray-600 mb-1">Result:</div>
+                                    <div className="text-xs font-semibold text-gray-600 dark:text-zinc-400 mb-1">Result:</div>
                                     <div className={`text-xs p-2 rounded border ${
                                         success 
-                                            ? 'bg-green-50 border-green-100' 
-                                            : 'bg-red-50 border-red-100'
+                                            ? 'bg-green-50 dark:bg-green-950/30 border-green-100 dark:border-green-900/40' 
+                                            : 'bg-red-50 dark:bg-red-950/30 border-red-100 dark:border-red-900/40'
                                     }`}>
                                         {parsed.error ? (
-                                            <div className="text-red-700 font-medium">
+                                            <div className="text-red-700 dark:text-red-300 font-medium">
                                                 {ERROR_MESSAGES.TOOL_EXECUTION_FAILED}
                                             </div>
                                         ) : parsed.message ? (
-                                            <div className="text-green-700 font-medium">
+                                            <div className="text-green-700 dark:text-green-300 font-medium">
                                                 {valueToDisplayString(parsed.message)}
                                             </div>
                                         ) : parsed.messages ? (
                                             <div className="space-y-1">
-                                                <div className="text-gray-700 font-medium">
+                                                <div className="text-gray-700 dark:text-zinc-200 font-medium">
                                                     Found {parsed.messages.length} email(s)
                                                 </div>
                                                 {parsed.messages.slice(0, 3).map((msg: any, i: number) => (
-                                                    <div key={i} className="text-gray-600 pl-2 border-l-2 border-green-300">
+                                                    <div key={i} className="text-gray-600 dark:text-zinc-400 pl-2 border-l-2 border-green-300 dark:border-green-700">
                                                         {valueToDisplayString(
                                                             msg.subject ?? msg.snippet ?? 'No subject',
                                                         )}
@@ -128,7 +128,7 @@ export function ToolExecutionDisplay({ tool_executions }: ToolExecutionDisplayPr
                                                 ))}
                                             </div>
                                         ) : (
-                                            <pre className="text-gray-700 whitespace-pre-wrap break-all max-h-32 overflow-y-auto">
+                                            <pre className="text-gray-700 dark:text-zinc-300 whitespace-pre-wrap break-all max-h-32 overflow-y-auto">
                                                 {JSON.stringify(parsed, null, 2)}
                                             </pre>
                                         )}
@@ -136,7 +136,7 @@ export function ToolExecutionDisplay({ tool_executions }: ToolExecutionDisplayPr
                                 </div>
 
                                 {/* Timestamp */}
-                                <div className="mt-2 text-xs text-gray-400">
+                                <div className="mt-2 text-xs text-gray-400 dark:text-zinc-500">
                                     {new Date(execution.timestamp).toLocaleTimeString()}
                                 </div>
                             </div>

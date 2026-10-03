@@ -26,9 +26,8 @@ describe("modelWalletAffordance.utils", () => {
     expect(computeModelRequiredBalance(model, 0)).toBe(5);
   });
 
-  it("requires 2× average message cost in credits", () => {
-    // 0.01 USD/msg × 1000 credits/USD × 2 = 20 credits
-    expect(computeModelRequiredBalance(model, 0.01)).toBe(20);
+  it("requires 2× average message cost in backend-provided credits", () => {
+    expect(computeModelRequiredBalance(model, 10)).toBe(20);
   });
 
   it("locks picks when wallet is below required balance", () => {
@@ -37,13 +36,13 @@ describe("modelWalletAffordance.utils", () => {
     ).toBe(true);
   });
 
-  it("does not lock the already-selected model", () => {
+  it("locks the already-selected model when wallet is below required balance", () => {
     expect(
       isModelPickLocked(10, 20, {
         modelId: model.id,
         selectedModelId: model.id,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("does not lock while wallet is still loading", () => {
@@ -64,12 +63,12 @@ describe("modelWalletAffordance.utils", () => {
     expect(computeCreditsShortfall(null, 50)).toBe(50);
   });
 
-  it("partitions models into affordable and locked buckets", () => {
+  it("partitions models into affordable and locked buckets using credits", () => {
     const cheap: Model = { ...model, id: "cheap", name: "Cheap" };
     const expensive: Model = { ...model, id: "expensive", name: "Expensive" };
     const avgCostById = new Map<string, number>([
-      [cheap.id, 0.001],
-      [expensive.id, 0.05],
+      [cheap.id, 1],
+      [expensive.id, 50],
     ]);
 
     const { affordable, locked } = partitionModelsByWalletAffordance(
@@ -84,10 +83,10 @@ describe("modelWalletAffordance.utils", () => {
 
   describe("credit burn calculations", () => {
     it("returns null when wallet is null, undefined, or non-positive", () => {
-      expect(getModelCreditBurnPercentage(model, null, 0.01)).toBeNull();
-      expect(getModelCreditBurnPercentage(model, undefined, 0.01)).toBeNull();
-      expect(getModelCreditBurnPercentage(model, 0, 0.01)).toBeNull();
-      expect(getModelCreditBurnPercentage(model, -5, 0.01)).toBeNull();
+      expect(getModelCreditBurnPercentage(model, null, 10)).toBeNull();
+      expect(getModelCreditBurnPercentage(model, undefined, 10)).toBeNull();
+      expect(getModelCreditBurnPercentage(model, 0, 10)).toBeNull();
+      expect(getModelCreditBurnPercentage(model, -5, 10)).toBeNull();
     });
 
     it("returns null when model cost is 0 or negative", () => {
@@ -95,24 +94,16 @@ describe("modelWalletAffordance.utils", () => {
     });
 
     it("calculates the correct burn percentage relative to wallet", () => {
-      // 0.07 USD * 1000 credits/USD = 70 credits.
-      // 70 credits / 100 credits in wallet = 70%
-      expect(getModelCreditBurnPercentage(model, 100, 0.07)).toBe(70);
-
-      // 0.035 USD * 1000 credits/USD = 35 credits.
-      // 35 credits / 50 credits in wallet = 70%
-      expect(getModelCreditBurnPercentage(model, 50, 0.035)).toBe(70);
-
-      // 0.01 USD * 1000 = 10 credits.
-      // 10 / 100 = 10%
-      expect(getModelCreditBurnPercentage(model, 100, 0.01)).toBe(10);
+      expect(getModelCreditBurnPercentage(model, 100, 70)).toBe(70);
+      expect(getModelCreditBurnPercentage(model, 50, 35)).toBe(70);
+      expect(getModelCreditBurnPercentage(model, 100, 10)).toBe(10);
     });
 
     it("flags models that burn 60% or more of wallet", () => {
-      expect(isHighCreditBurnModel(model, 100, 0.06)).toBe(true);
-      expect(isHighCreditBurnModel(model, 100, 0.085)).toBe(true);
-      expect(isHighCreditBurnModel(model, 100, 0.059)).toBe(false);
-      expect(isHighCreditBurnModel(model, null, 0.06)).toBe(false);
+      expect(isHighCreditBurnModel(model, 100, 60)).toBe(true);
+      expect(isHighCreditBurnModel(model, 100, 85)).toBe(true);
+      expect(isHighCreditBurnModel(model, 100, 59)).toBe(false);
+      expect(isHighCreditBurnModel(model, null, 60)).toBe(false);
     });
 
     it("formats a user-friendly warning message", () => {
@@ -121,4 +112,3 @@ describe("modelWalletAffordance.utils", () => {
     });
   });
 });
-

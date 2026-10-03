@@ -3,10 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FiInfo, FiX } from 'react-icons/fi';
-import { ChatMessage as ChatMessageType } from '@/app/components/model-interface/shared/types';
+import { ChatMessage as ChatMessageType, ToolUsageCharge } from '@/app/components/model-interface/shared/types';
 import { getModelRoundCount } from './usageMetrics.utils';
+import { formatTime } from '@/lib/utils/modelInterfaceUtils';
 
-import { formatCredits, usdCostToCredits } from '@/lib/credits';
+import { formatCredits } from '@/lib/credits';
 
 function resolveToolUsdTotal(msg: ChatMessageType): number {
     const rows = msg.tool_usage_charges;
@@ -16,6 +17,14 @@ function resolveToolUsdTotal(msg: ChatMessageType): number {
     const fromUsage = msg.usage?.tool_cost_usd;
     if (fromUsage !== undefined && fromUsage > 0) {
         return fromUsage;
+    }
+    return 0;
+}
+
+function resolveToolCreditsTotal(msg: ChatMessageType): number {
+    const rows = msg.tool_usage_charges;
+    if (rows && rows.length > 0) {
+        return rows.reduce((sum, row) => sum + (typeof row.cost_naira === 'number' ? row.cost_naira : 0), 0);
     }
     return 0;
 }
@@ -55,12 +64,11 @@ function MetricStat({
 
 function CostPair({
     usd,
-    nairaUsd
+    credits,
 }: {
     usd: number;
-    nairaUsd?: number;
+    credits?: number;
 }) {
-    const credits = usdCostToCredits(nairaUsd ?? usd);
     return (
         <div className="overflow-hidden rounded-xl bg-slate-50/80 dark:bg-zinc-900/50">
             <div className="flex items-baseline justify-between gap-3 px-3 py-2">
@@ -69,12 +77,14 @@ function CostPair({
                     ${usd.toFixed(6)}
                 </span>
             </div>
-            <div className="flex items-baseline justify-between gap-3 bg-white/50 px-3 py-2 dark:bg-zinc-800/30">
-                <span className="text-[11px] text-slate-500 dark:text-zinc-400">Credits</span>
-                <span className="text-xs font-semibold tabular-nums text-slate-900 dark:text-zinc-100">
-                    {formatCredits(credits, { compact: true })}
-                </span>
-            </div>
+            {typeof credits === 'number' && Number.isFinite(credits) && (
+                <div className="flex items-baseline justify-between gap-3 bg-white/50 px-3 py-2 dark:bg-zinc-800/30">
+                    <span className="text-[11px] text-slate-500 dark:text-zinc-400">Credits</span>
+                    <span className="text-xs font-semibold tabular-nums text-slate-900 dark:text-zinc-100">
+                        {formatCredits(credits, { compact: true })}
+                    </span>
+                </div>
+            )}
         </div>
     );
 }
@@ -82,6 +92,99 @@ function CostPair({
 function SectionLabel({ children }: { children: React.ReactNode }) {
     return (
         <p className="mb-1.5 text-[11px] font-medium text-slate-500 dark:text-zinc-400">{children}</p>
+    );
+}
+
+function toolStatusLabel(status: ToolUsageCharge['status']): string | null {
+    if (status === 'reserved') {
+        return 'reserved';
+    }
+    if (status === 'refunded') {
+        return 'released';
+    }
+    return null;
+}
+
+function ToolChargeLedgerLine({
+    label,
+    at,
+    credits,
+    usd,
+}: {
+    label: string;
+    at?: number;
+    credits?: number;
+    usd?: number;
+}) {
+    return (
+        <div className="mt-1.5 border-t border-slate-200/70 pt-1.5 dark:border-zinc-700/50">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 text-[10px] text-slate-600 dark:text-zinc-400">
+                <span className="font-medium text-slate-700 dark:text-zinc-300">{label}</span>
+                {typeof at === 'number' && Number.isFinite(at) && (
+                    <span className="tabular-nums text-slate-400 dark:text-zinc-500" title={formatTime(at)}>
+                        {formatTime(at)}
+                    </span>
+                )}
+            </div>
+            <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-2 text-[10px] tabular-nums text-slate-500 dark:text-zinc-500">
+                <span>
+                    {typeof credits === 'number' && Number.isFinite(credits)
+                        ? formatCredits(credits, { compact: true })
+                        : '—'}
+                </span>
+                {typeof usd === 'number' && Number.isFinite(usd) && (
+                    <span>${usd.toFixed(6)}</span>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function ToolChargeRow({ row }: { row: ToolUsageCharge }) {
+    const statusText = toolStatusLabel(row.status);
+    const showLedger = Boolean(row.reserved_at || row.released_at || row.status === 'reserved' || row.status === 'settled' || row.status === 'refunded');
+    const releasedCredits = row.status === 'refunded' ? (row.settled_credits ?? 0) : row.settled_credits;
+    const releasedUsd = row.status === 'refunded' ? (row.settled_usd ?? 0) : row.settled_usd;
+
+    return (
+        <li className="rounded-lg bg-white/50 px-3 py-2 dark:bg-zinc-800/40">
+            <div className="text-[11px] font-medium text-slate-800 dark:text-zinc-200">
+                {row.display_name || row.tool}
+                {statusText ? (
+                    <span className="ml-1 font-normal text-slate-500 dark:text-zinc-400">
+                        ({statusText})
+                    </span>
+                ) : null}
+            </div>
+            <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-2 text-[10px] text-slate-600 dark:text-zinc-400">
+                <span className="font-mono text-slate-500 dark:text-zinc-500">
+                    {row.tool}
+                </span>
+                <span className="tabular-nums">
+                    {formatCredits(row.cost_naira, { compact: true })}
+                    <span className="text-slate-400 dark:text-zinc-600"> · </span>
+                    ${row.cost_usd.toFixed(6)}
+                </span>
+            </div>
+            {showLedger ? (
+                <>
+                    <ToolChargeLedgerLine
+                        label="Reserved"
+                        at={row.reserved_at}
+                        credits={row.reserved_credits ?? (row.status === 'reserved' ? row.cost_naira : undefined)}
+                        usd={row.reserved_usd ?? (row.status === 'reserved' ? row.cost_usd : undefined)}
+                    />
+                    {row.released_at !== undefined ? (
+                        <ToolChargeLedgerLine
+                            label="Released"
+                            at={row.released_at}
+                            credits={releasedCredits}
+                            usd={releasedUsd}
+                        />
+                    ) : null}
+                </>
+            ) : null}
+        </li>
     );
 }
 
@@ -107,10 +210,16 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
     }, [showUsageDetails, setShowUsageDetails]);
 
     const toolUsdTotal = resolveToolUsdTotal(msg);
+    const toolCreditsTotal = resolveToolCreditsTotal(msg);
     const modelRoundCount = getModelRoundCount(msg.usage);
     const modelUsd =
         msg.cost !== undefined && toolUsdTotal > 0
             ? Math.max(0, msg.cost - toolUsdTotal)
+            : undefined;
+    const totalCredits = typeof msg.cost_credits === 'number' ? msg.cost_credits : undefined;
+    const modelCredits =
+        totalCredits !== undefined && toolCreditsTotal > 0
+            ? Math.max(0, totalCredits - toolCreditsTotal)
             : undefined;
 
     if (!showUsageDetails || !mounted) return null;
@@ -161,63 +270,12 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {msg.usage && (
-                                <section aria-label="Token counts">
-                                    {modelRoundCount !== undefined && modelRoundCount > 1 && (
-                                        <div className="mb-2 rounded-xl bg-slate-50/80 px-3 py-2.5 dark:bg-zinc-900/50">
-                                            <div className="text-[11px] text-slate-500 dark:text-zinc-400">Agent run</div>
-                                            <div className="mt-0.5 text-sm font-semibold tabular-nums text-slate-900 dark:text-zinc-100">
-                                                {modelRoundCount.toLocaleString()} model calls
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div className="space-y-1 rounded-xl bg-slate-50/80 p-1 dark:bg-zinc-900/50">
-                                        <div className="grid min-w-0 grid-cols-2 gap-1">
-                                            <MetricStat
-                                                label="Prompt"
-                                                value={msg.usage.prompt_tokens.toLocaleString()}
-                                            />
-                                            <MetricStat
-                                                label="Completion"
-                                                value={msg.usage.completion_tokens.toLocaleString()}
-                                            />
-                                        </div>
-                                        <MetricStat
-                                            label={
-                                                modelRoundCount && modelRoundCount > 1
-                                                    ? 'Total tokens (session)'
-                                                    : 'Total tokens'
-                                            }
-                                            value={msg.usage.total_tokens.toLocaleString()}
-                                            emphasize
-                                        />
-                                    </div>
-                                </section>
-                            )}
-
                             {msg.tool_usage_charges && msg.tool_usage_charges.length > 0 ? (
                                 <section aria-label="Tool charges">
                                     <SectionLabel>Tools charged</SectionLabel>
-                                    <ul className="max-h-[7.5rem] space-y-1 overflow-y-auto rounded-xl bg-slate-50/80 p-1 dark:bg-zinc-900/50">
+                                    <ul className="max-h-[12rem] space-y-1 overflow-y-auto rounded-xl bg-slate-50/80 p-1 dark:bg-zinc-900/50">
                                         {msg.tool_usage_charges.map((row, i) => (
-                                            <li
-                                                key={`${row.tool}-${i}`}
-                                                className="rounded-lg bg-white/50 px-3 py-2 dark:bg-zinc-800/40"
-                                            >
-                                                <div className="text-[11px] font-medium text-slate-800 dark:text-zinc-200">
-                                                    {row.display_name || row.tool}
-                                                </div>
-                                                <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-2 text-[10px] text-slate-600 dark:text-zinc-400">
-                                                    <span className="font-mono text-slate-500 dark:text-zinc-500">
-                                                        {row.tool}
-                                                    </span>
-                                                    <span className="tabular-nums">
-                                                        {formatCredits(usdCostToCredits(row.cost_usd), { compact: true })}
-                                                        <span className="text-slate-400 dark:text-zinc-600"> · </span>
-                                                        ${row.cost_usd.toFixed(6)}
-                                                    </span>
-                                                </div>
-                                            </li>
+                                            <ToolChargeRow key={`${row.tool}-${row.job_id ?? i}`} row={row} />
                                         ))}
                                     </ul>
                                 </section>
@@ -226,7 +284,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                                 msg.usage.tool_cost_usd > 0 && (
                                     <section aria-label="Tool usage">
                                         <SectionLabel>Tool usage</SectionLabel>
-                                        <CostPair usd={msg.usage.tool_cost_usd} />
+                                        <CostPair usd={msg.usage.tool_cost_usd} credits={toolCreditsTotal > 0 ? toolCreditsTotal : undefined} />
                                     </section>
                                 )
                             )}
@@ -234,15 +292,63 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                             {msg.cost !== undefined && modelUsd !== undefined && (
                                 <section aria-label="Model cost">
                                     <SectionLabel>Model (tokens)</SectionLabel>
-                                    <CostPair usd={modelUsd} />
+                                    <CostPair usd={modelUsd} credits={modelCredits} />
                                 </section>
                             )}
 
                             {msg.cost !== undefined && (
                                 <section aria-label="Total cost">
                                     <SectionLabel>Total cost</SectionLabel>
-                                    <CostPair usd={msg.cost} />
+                                    <CostPair usd={msg.cost} credits={totalCredits} />
                                 </section>
+                            )}
+
+                            {msg.usage && (
+                                <details
+                                    className="group rounded-xl border border-dashed border-slate-200/70 bg-slate-50/40 dark:border-zinc-700/60 dark:bg-zinc-900/30"
+                                >
+                                    <summary
+                                        className="cursor-pointer list-none rounded-xl px-3 py-2 text-[10px] font-medium text-slate-400 transition hover:bg-slate-100/60 hover:text-slate-600 [&::-webkit-details-marker]:hidden dark:text-zinc-500 dark:hover:bg-zinc-800/40 dark:hover:text-zinc-400"
+                                    >
+                                        Token breakdown
+                                        <span className="ml-1.5 font-normal text-slate-400/90 dark:text-zinc-600">
+                                            optional
+                                        </span>
+                                    </summary>
+                                    <div className="space-y-2 border-t border-slate-200/60 px-1 pb-2 pt-2 dark:border-zinc-700/50">
+                                        {modelRoundCount !== undefined && (
+                                            <div className="rounded-lg bg-white/40 px-3 py-2 dark:bg-zinc-800/40">
+                                                <div className="text-[10px] text-slate-500 dark:text-zinc-500">
+                                                    Agent run
+                                                </div>
+                                                <div className="mt-0.5 text-xs font-medium tabular-nums text-slate-700 dark:text-zinc-300">
+                                                    {modelRoundCount.toLocaleString()} model calls
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="space-y-1 rounded-lg bg-white/40 p-1 dark:bg-zinc-800/40">
+                                            <div className="grid min-w-0 grid-cols-2 gap-1">
+                                                <MetricStat
+                                                    label="Prompt"
+                                                    value={msg.usage.prompt_tokens.toLocaleString()}
+                                                />
+                                                <MetricStat
+                                                    label="Completion"
+                                                    value={msg.usage.completion_tokens.toLocaleString()}
+                                                />
+                                            </div>
+                                            <MetricStat
+                                                label={
+                                                    modelRoundCount && modelRoundCount > 1
+                                                        ? 'Total tokens (session)'
+                                                        : 'Total tokens'
+                                                }
+                                                value={msg.usage.total_tokens.toLocaleString()}
+                                                emphasize
+                                            />
+                                        </div>
+                                    </div>
+                                </details>
                             )}
 
                             {!msg.usage &&

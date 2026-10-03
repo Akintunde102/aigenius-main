@@ -102,9 +102,11 @@ function handleStringMerge(
         return accumulatedContent + newContent;
     }
 
-    // Convert accumulated structured content to string and append
-    const textContent = contentToDisplayText(accumulatedContent);
-    return textContent + newContent;
+    // Keep image_url blocks. Flattening through contentToDisplayText would
+    // replace those URLs with the "[Image]" placeholder.
+    return handleStructuredMerge(accumulatedContent, [
+        { type: CONTENT_TYPES.TEXT, text: newContent },
+    ]);
 }
 
 /**

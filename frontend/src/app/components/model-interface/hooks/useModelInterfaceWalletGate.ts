@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { CHAT_CONFIG } from "../features/chat/hooks";
 import { isWalletRelatedChatError } from "../features/chat/hooks/errorHandling.utils";
 import type { ChatUiError } from "../features/chat/hooks/chatUiError";
-import { getModelAverageRequestPrice, USD_TO_NGN } from "../shared/utils";
+import { getModelAverageRequestCredits } from "../shared/utils";
 import { isE2eBrowserWalletBypassEnabled } from "@/lib/e2e-wallet-bypass";
 import type { Model } from "../shared/types";
 
@@ -24,8 +24,7 @@ export function useModelInterfaceWalletGate({
       return CHAT_CONFIG.MIN_WALLET_BALANCE;
     }
 
-    const averageCostUSD = getModelAverageRequestPrice(selectedModel);
-    const averageCostCredits = averageCostUSD * USD_TO_NGN;
+    const averageCostCredits = getModelAverageRequestCredits(selectedModel);
     const dynamicRequirement =
       averageCostCredits > 0
         ? averageCostCredits * CHAT_CONFIG.MODEL_BALANCE_FACTOR

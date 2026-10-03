@@ -7,6 +7,7 @@ import {
   getMajorProviders,
   extractProviders,
   getProviderLabel,
+  buildLabFilterOptions,
   ModelOrderBy,
   ModelOrderDir,
 } from "@/app/components/model-interface/shared/utils";
@@ -198,6 +199,7 @@ export const ModelSelectionModal = React.memo(({
     setShowWebSearch: setShowWebSearchProp,
     initialOrderBy: orderByProp,
     initialOrderDir: orderDirProp,
+    groupByAffordability,
   });
 
   // Sync prop changes back to local state (e.g. if cleared from outside)
@@ -260,6 +262,11 @@ export const ModelSelectionModal = React.memo(({
 
   const majorProviders = useMemo(
     () => getMajorProviders(extractProviders(models)),
+    [models],
+  );
+
+  const labOptions = useMemo(
+    () => buildLabFilterOptions(models),
     [models],
   );
 
@@ -363,19 +370,6 @@ export const ModelSelectionModal = React.memo(({
     return "All Models";
   }, [catalogFilter, selectedProviders]);
 
-  const currentViewSubtitle = useMemo(() => {
-    if (selectedProviders.length > 0) {
-      return `Models developed and hosted by ${getProviderLabel(selectedProviders[0])}.`;
-    }
-    if (catalogFilter === "default") {
-      return "Your curated quick-pick models for everyday chat.";
-    }
-    if (catalogFilter === "ollama") {
-      return "Locally installed models running on your machine via Ollama.";
-    }
-    return "Browse and select from all available AI models. Default picks appear first.";
-  }, [catalogFilter, selectedProviders]);
-
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (localSearch.trim()) count++;
@@ -389,6 +383,21 @@ export const ModelSelectionModal = React.memo(({
   }, [localSearch, orderBy, imageFilterOnly, selectedProviders.length, showWebSearch, groupByAffordability, catalogFilter]);
 
   const hasAnyFilterActive = activeFiltersCount > 0;
+
+  const currentViewSubtitle = useMemo(() => {
+    if (selectedProviders.length > 0) {
+      return `Models developed and hosted by ${getProviderLabel(selectedProviders[0])}.`;
+    }
+    if (catalogFilter === "default") {
+      return "Your curated quick-pick models for everyday chat.";
+    }
+    if (catalogFilter === "ollama") {
+      return "Locally installed models running on your machine via Ollama.";
+    }
+    return hasAnyFilterActive
+      ? "Results match your search and filters."
+      : "Browse and select from all available AI models. Default picks appear first.";
+  }, [catalogFilter, selectedProviders, hasAnyFilterActive]);
 
   const handleResetAllFilters = useCallback(() => {
     setLocalSearch("");
@@ -535,6 +544,8 @@ export const ModelSelectionModal = React.memo(({
                     showWebSearch={showWebSearch}
                     setShowWebSearch={setShowWebSearch}
                     majorProviders={majorProviders}
+                    models={models}
+                    labOptions={labOptions}
                     groupByAffordability={groupByAffordability}
                     setGroupByAffordability={setGroupByAffordabilityPersisted}
                     onResetAll={handleResetAllFilters}
@@ -626,6 +637,8 @@ export const ModelSelectionModal = React.memo(({
                   showWebSearch={showWebSearch}
                   setShowWebSearch={setShowWebSearch}
                   majorProviders={majorProviders}
+                  models={models}
+                  labOptions={labOptions}
                   groupByAffordability={groupByAffordability}
                   setGroupByAffordability={setGroupByAffordabilityPersisted}
                   isMobile={false}

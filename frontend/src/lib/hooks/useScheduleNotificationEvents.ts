@@ -13,6 +13,7 @@ import {
   type ScheduleNotificationSsePayload,
   type ScheduleRunNotificationDto,
 } from "@/lib/schedule-notifications/scheduleNotificationsApi";
+import { createThrottledWarnBucket, warnThrottled } from "@/lib/utils/client-verbose-debug";
 
 /** Dispatched when a new schedule notification arrives (for list pages to refetch). */
 export const SCHEDULE_NOTIFICATIONS_REFRESH_EVENT = "aigenius:schedule-notifications-refresh";
@@ -132,6 +133,7 @@ export function useScheduleNotificationEvents(): void {
   useEffect(() => {
     let controller = new AbortController();
     let disposed = false;
+    const sseErrorLog = createThrottledWarnBucket();
 
     const start = async () => {
       if (disposed) return;
@@ -140,7 +142,7 @@ export function useScheduleNotificationEvents(): void {
       await runScheduleNotificationEventsSubscription(url, () => getAccessToken(), controller.signal).catch(
         (err: unknown) => {
           if (err instanceof Error && err.name === "AbortError") return;
-          console.warn("Schedule notification SSE error", err);
+          warnThrottled(sseErrorLog, "Schedule notification SSE error", err);
         },
       );
     };

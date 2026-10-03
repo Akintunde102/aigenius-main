@@ -1,4 +1,10 @@
-import { filterModelsNew, sortModelsNew } from "../utils";
+import {
+  filterModelsNew,
+  sortModelsNew,
+  buildLabFilterOptions,
+  getProvider,
+  getProviderLabel,
+} from "../utils";
 import type { Model } from "../../types";
 
 function makeModel(
@@ -138,5 +144,57 @@ describe("filterModelsNew", () => {
     const sorted = sortModelsNew(filtered, "default", "asc");
     
     expect(sorted[0].name).toBe("GPT-4");
+  });
+});
+
+describe("buildLabFilterOptions", () => {
+  it("precomputes lab options with counts in brackets", () => {
+    const testModels = [
+      makeModel({ id: "openai/gpt-4o", name: "GPT-4o" }),
+      makeModel({ id: "openai/gpt-4o-mini", name: "GPT-4o Mini" }),
+      makeModel({ id: "anthropic/claude-3-5-sonnet", name: "Claude 3.5 Sonnet" }),
+      makeModel({ id: "mistralai/mistral-large", name: "Mistral Large" }),
+      makeModel({ id: "ollama:llama3", name: "Llama 3" }),
+    ];
+
+    const options = buildLabFilterOptions(testModels);
+
+    // First option should be "All labs" with total count in bracket
+    expect(options[0]).toEqual({ value: "", label: "All labs (5)" });
+
+    // Major providers should be presented first, then others alphabetically
+    const optionValues = options.map((o) => o.value);
+    expect(optionValues).toContain("openai");
+    expect(optionValues).toContain("anthropic");
+    expect(optionValues).toContain("mistralai");
+    expect(optionValues).toContain("ollama");
+
+    // Formatted labels with counts in brackets
+    expect(options.find((o) => o.value === "openai")?.label).toBe("OpenAI (2)");
+    expect(options.find((o) => o.value === "anthropic")?.label).toBe("Anthropic (1)");
+    expect(options.find((o) => o.value === "mistralai")?.label).toBe("Mistral (1)");
+    expect(options.find((o) => o.value === "ollama")?.label).toBe("Ollama (1)");
+  });
+
+  it("falls back to precomputed catalog counts when models array is empty", () => {
+    const options = buildLabFilterOptions([]);
+    expect(options.length).toBeGreaterThan(1);
+    expect(options[0].label).toMatch(/^All labs \(\d+\)$/);
+    expect(options.some((o) => o.value === "openai" && o.label.includes("OpenAI"))).toBe(true);
+  });
+
+  it("handles ollama provider prefix in getProvider", () => {
+    expect(getProvider("ollama:llama3")).toBe("ollama");
+    expect(getProvider("ollama/mistral")).toBe("ollama");
+    expect(getProvider("openai/gpt-4o")).toBe("openai");
+  });
+
+  it("returns human-readable labels for known labs", () => {
+    expect(getProviderLabel("openai")).toBe("OpenAI");
+    expect(getProviderLabel("x-ai")).toBe("xAI");
+    expect(getProviderLabel("z-ai")).toBe("Z-AI");
+    expect(getProviderLabel("meta-llama")).toBe("Meta Llama");
+    expect(getProviderLabel("bytedance-seed")).toBe("ByteDance Seed");
+    expect(getProviderLabel("~openai")).toBe("OpenAI (Latest)");
   });
 });

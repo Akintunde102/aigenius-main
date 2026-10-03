@@ -23,3 +23,7 @@ Use `frontend/src/lib/utils/desktop-runtime.ts` (`isAigeniusDesktopRuntime()`, `
 ## Coordination
 
 - IPC and preload contract changes require corresponding updates in `desktop/src` preload/main—mention both sides in the same change when possible.
+
+## DevTools noise
+
+Electron shows every renderer `console.*` call. Follow root `.cursor/rules/frontend-console-logging.mdc` (opt-in `__aig_verbose_debug` / `__aig_auth_debug`); throttle SSE/socket errors when the API restarts.

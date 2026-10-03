@@ -40,6 +40,36 @@ describe('mergeContentBlocks', () => {
         const result = mergeContentBlocks('', chunk as any);
         expect(result).toEqual([{ type: CONTENT_TYPES.TEXT, text: 'x' }]);
     });
+
+    it('keeps image urls when a later text chunk arrives as a string', () => {
+        const withImage = [
+            { type: CONTENT_TYPES.TEXT, text: 'See ' },
+            { type: CONTENT_TYPES.IMAGE_URL, image_url: { url: 'https://cdn.example/cat.png' } },
+        ];
+
+        const result = mergeContentBlocks(withImage as any, ' this');
+
+        expect(result).toEqual([
+            { type: CONTENT_TYPES.TEXT, text: 'See  this' },
+            { type: CONTENT_TYPES.IMAGE_URL, image_url: { url: 'https://cdn.example/cat.png' } },
+        ]);
+    });
+
+    it('keeps every image url when another image is appended after an error retry chunk', () => {
+        const first = [
+            { type: CONTENT_TYPES.IMAGE_URL, image_url: { url: 'https://cdn.example/one.png' } },
+        ];
+        const second = [
+            { type: CONTENT_TYPES.IMAGE_URL, image_url: { url: 'https://cdn.example/two.png' } },
+        ];
+
+        const result = mergeContentBlocks(first as any, second as any);
+
+        expect(result).toEqual([
+            { type: CONTENT_TYPES.IMAGE_URL, image_url: { url: 'https://cdn.example/one.png' } },
+            { type: CONTENT_TYPES.IMAGE_URL, image_url: { url: 'https://cdn.example/two.png' } },
+        ]);
+    });
 });
 
 describe('processStreamingContent', () => {

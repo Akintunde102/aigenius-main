@@ -8,6 +8,7 @@ import { buildLocalFilePreviewPayload } from '@/lib/utils/local-file-link';
 import { isWorkflowShellPath, openWorkflow } from '@/lib/utils/open-workflow';
 import { normalizeChatConversationOpenPath } from '@/lib/utils/safe-internal-next-path';
 import { openFilePreview } from '@/app/components/modals/FilePreviewManager';
+import { openVideoTrackingModal } from '@/app/components/modals/VideoTrackingManager';
 import {
     isMarkdownBlockCode,
     PreWithCopy,
@@ -28,6 +29,7 @@ import {
 import { inferLocalFilePreviewType, localFileLinkLabel } from '@/lib/utils/local-file-link';
 import { MarkdownExternalLink } from './MarkdownExternalLink';
 import { externalLinkPreview } from './markdown-external-link.utils';
+import { useImagePreviewActions } from '@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext';
 
 function reactNodeToPlainText(node: React.ReactNode): string {
     if (node == null || typeof node === 'boolean') {
@@ -92,6 +94,31 @@ export function MarkdownAnchor({
         if (shouldEmbedMediaMarkdownLink(href, linkText)) {
             return <MarkdownVideoPlayer src={href} title={linkText || undefined} />;
         }
+    }
+
+    if (href && (href.startsWith('/track/video/') || href.includes('/track/video/'))) {
+        const linkText = reactNodeToPlainText(props.children);
+        const slug = href.split('/track/video/')[1]?.split(/[?#]/)[0] || '';
+        return (
+            <a
+                {...props}
+                href={href}
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openVideoTrackingModal({
+                        identifier: slug,
+                        title: linkText || undefined,
+                    });
+                }}
+                className={clsx(
+                    props.className,
+                    'inline-flex items-center gap-1.5 px-3 py-1 my-1 rounded-lg text-xs font-semibold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/80 transition shadow-sm'
+                )}
+            >
+                {props.children}
+            </a>
+        );
     }
 
     if (href?.startsWith('local-file://')) {
@@ -189,9 +216,11 @@ export function MarkdownImage({
     node,
     src,
     alt,
+    className,
     ...props
 }: React.ImgHTMLAttributes<HTMLImageElement> & { node?: unknown }) {
     void node;
+    const previewActions = useImagePreviewActions();
     const imageSrc = typeof src === 'string' ? src : undefined;
     if (imageSrc && isYoutubeWatchUrl(imageSrc)) {
         return <MarkdownYoutubeEmbed watchUrl={imageSrc} title={typeof alt === 'string' ? alt : undefined} />;
@@ -207,12 +236,29 @@ export function MarkdownImage({
         }
         return <LocalFileInlineImage path={filePath} alt={alt} />;
     }
+    const openPreview = previewActions?.openImagePreview;
+    const handleClick = (event: React.MouseEvent<HTMLImageElement>) => {
+        props.onClick?.(event);
+        if (event.defaultPrevented || !imageSrc || !openPreview) return;
+        event.preventDefault();
+        openPreview({
+            fileUrl: imageSrc,
+            fileName: typeof alt === 'string' && alt.trim() ? alt : 'Image',
+            kind: 'image',
+        });
+    };
+
     // eslint-disable-next-line @next/next/no-img-element -- remote markdown images use standard img tags.
     return (
         <img
             src={imageSrc}
             alt={alt}
             {...props}
+            className={clsx(
+                openPreview && 'cursor-zoom-in rounded-md transition hover:opacity-95',
+                className,
+            )}
+            onClick={handleClick}
             // Cloudflare hotlink protection 403s when Referer is our origin; a
             // direct tab open sends no Referer and succeeds. Strip it on markdown imgs.
             referrerPolicy="no-referrer"

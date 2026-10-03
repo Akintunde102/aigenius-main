@@ -16,6 +16,7 @@ export interface Model {
         completionCost: number;
         expectedImageCost: number;
         totalAverageCost: number;
+        totalAverageCostCredits?: number;
     };
     featured?: boolean;
     /** When true, listed under "Main models" in the All Models tab. */
@@ -58,12 +59,23 @@ export interface ToolExecution {
     timestamp: number;
 }
 
-/** Per-tool billing line from the gateway (USD + ₦). */
+/** Per-tool billing line from the gateway (USD + platform credits). */
+export type ToolUsageChargeStatus = 'reserved' | 'settled' | 'refunded';
+
 export interface ToolUsageCharge {
     tool: string;
     display_name: string;
     cost_usd: number;
     cost_naira: number;
+    status?: ToolUsageChargeStatus;
+    job_id?: string;
+    reservation_id?: string;
+    reserved_usd?: number;
+    reserved_credits?: number;
+    settled_usd?: number;
+    settled_credits?: number;
+    reserved_at?: number;
+    released_at?: number;
 }
 
 /** Live tool execution state streamed to the UI (loader + log lines) */
@@ -153,6 +165,8 @@ export interface ChatMessage {
      * **Edge case:** `0` is a valid value (e.g. negligible rounding). Use `cost === undefined` to mean “not yet known / not provided”, not `!cost` (which treats `0` as missing).
      */
     cost?: number;
+    /** Billed platform credits for this turn, computed by the backend. */
+    cost_credits?: number;
     // Persona metadata for assistant messages
     personaName?: string;
     personaIconUrl?: string;
@@ -243,6 +257,7 @@ export interface ChatSession {
     messages: ChatMessage[];
     metadata?: {
         totalCost?: number;
+        totalCostCredits?: number;
         totalTokens?: number;
         lastAccessed?: string | Date;
         /** Denormalized from the last message when sidebar strips message bodies. */

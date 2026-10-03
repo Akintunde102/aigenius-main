@@ -13,12 +13,13 @@ import {
   groupCloudFilesByCategory,
   isAttachableCloudFile,
   sortCloudFilesNewestFirst,
+  USER_FILE_CATEGORY_LABELS,
+  USER_FILE_CATEGORY_ORDER,
 } from "./user-files.utils";
 import { useUploadedFilesList } from "./useUploadedFilesList";
 import {
   EmptyLibraryState,
   GalleryTile,
-  ImageLightbox,
   LibraryFileList,
   ListRow,
   MoreOptionsMenu,
@@ -27,6 +28,7 @@ import {
   type UserFilesBrowserProps,
   type ViewMode,
 } from "./components";
+import { ImagePreviewLightbox } from "@/app/components/model-interface/features/message-types/components/ImagePreviewLightbox";
 
 export type {
   UserFilesBrowserMode,
@@ -313,13 +315,16 @@ export function UserFilesBrowser({
   const pickToolbar = isPickMode ? (
     <div
       className="flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2.5"
-      style={{ borderColor: "var(--modal-border, #e5e7eb)" }}
+      style={{
+        borderColor: "var(--modal-border)",
+        background: "var(--modal-bg-muted)",
+      }}
     >
       <button
         type="button"
         onClick={handleConfirmPick}
         disabled={selectedPickFiles.length === 0}
-        className="rounded-lg bg-gray-900 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+        className="app-modal-btn-primary px-3.5 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40"
       >
         Attach
       </button>
@@ -327,30 +332,76 @@ export function UserFilesBrowser({
         type="button"
         onClick={() => setSelectedPickIds(new Set())}
         disabled={selectedPickFiles.length === 0}
-        className="rounded-lg border px-3.5 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-white/5"
-        style={{ borderColor: "var(--modal-border, #e5e7eb)" }}
+        className="rounded-lg border px-3.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-40"
+        style={{
+          borderColor: "var(--modal-border)",
+          color: "var(--modal-fg)",
+        }}
       >
         Clear
       </button>
-      <span className="text-sm tabular-nums text-gray-500 dark:text-gray-400">
+      <span
+        className="text-xs tabular-nums"
+        style={{ color: "var(--modal-muted-fg)" }}
+      >
         {selectedPickFiles.length} selected
       </span>
     </div>
   ) : null;
 
+  const categoryPills = (
+    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+      <button
+        type="button"
+        onClick={() => setNavFilter("all")}
+        className={`app-filter-pill flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium ${
+          navFilter === "all" ? "app-filter-pill--active" : ""
+        }`}
+      >
+        <span>All</span>
+        <span className="tabular-nums text-[10px] opacity-75">
+          ({filtered.length})
+        </span>
+      </button>
+      {USER_FILE_CATEGORY_ORDER.map((cat) => {
+        const count = grouped[cat]?.length ?? 0;
+        if (count === 0) return null;
+        return (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => setNavFilter(cat)}
+            className={`app-filter-pill flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium ${
+              navFilter === cat ? "app-filter-pill--active" : ""
+            }`}
+          >
+            <span>{USER_FILE_CATEGORY_LABELS[cat]}</span>
+            <span className="tabular-nums text-[10px] opacity-75">
+              ({count})
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
   const explorerInnerModal = (
     <>
       <div
-        className={`border-b border-gray-200 bg-white/70 sticky top-0 z-10 dark:border-gray-700 dark:bg-transparent ${isMobileLayout ? "px-2 py-1" : "px-4 py-1"
-          }`}
+        className="border-b sticky top-0 z-10 flex flex-col gap-2.5 px-4 py-3"
+        style={{
+          borderColor: "var(--modal-border)",
+          background: "var(--modal-bg)",
+        }}
       >
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <label htmlFor="user-files-modal-search" className="sr-only">
               Search files
             </label>
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+              style={{ color: "var(--modal-muted-fg)" }}
               aria-hidden
             />
             <input
@@ -360,13 +411,14 @@ export function UserFilesBrowser({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search files…"
               aria-label="Search files"
-              className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-8 text-sm text-gray-900 placeholder-gray-400 transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-600 dark:bg-transparent dark:text-gray-100"
+              className="app-modal-input h-9 pl-9 pr-8 text-xs sm:text-sm"
             />
             {query ? (
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded transition-colors hover:text-red-500"
+                style={{ color: "var(--modal-muted-fg)" }}
                 title="Clear search"
                 aria-label="Clear search"
               >
@@ -378,25 +430,35 @@ export function UserFilesBrowser({
           <button
             type="button"
             onClick={() => void refresh()}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-white/5"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none"
+            style={{
+              borderColor: "var(--modal-border)",
+              background: "var(--surface-muted)",
+              color: "var(--modal-muted-fg)",
+            }}
             title="Refresh"
             aria-label="Refresh files"
           >
-            <RefreshCw className="h-4 w-4" aria-hidden />
+            <RefreshCw
+              className={`h-4 w-4 transition-transform ${isRefreshing ? "animate-spin text-[var(--chat-accent)]" : ""}`}
+              aria-hidden
+            />
           </button>
         </div>
+
+        {categoryPills}
       </div>
 
       {pickToolbar}
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div
-          className={`min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] ${isMobileLayout ? "p-2 pb-4" : "px-2 pb-4 pt-1 sm:px-3"
-            }`}
+          className={`min-h-0 flex-1 overflow-y-auto overscroll-y-contain workflow-scroll ${
+            isMobileLayout ? "p-0 pb-4" : "p-0 pb-4"
+          }`}
         >
           {alertsBlock}
           {fileGridOrList}
-          <div className={isMobileLayout ? "h-3" : "h-6"} aria-hidden />
         </div>
       </div>
     </>
@@ -406,9 +468,16 @@ export function UserFilesBrowser({
 
   const lightbox =
     lightboxFile && (
-      <ImageLightbox
-        file={lightboxFile}
+      <ImagePreviewLightbox
+        imageUrl={{
+          fileUrl: lightboxFile.s3Link,
+          fileName: buildCloudFileDisplayName(lightboxFile),
+          kind: "image",
+        }}
         onClose={() => setLightboxFile(null)}
+        onSavedToUploads={() => {
+          void refresh({ silent: true });
+        }}
       />
     );
 

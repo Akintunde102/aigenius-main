@@ -28,8 +28,8 @@ interface OrphanThreadModalProps {
     markerViewportPos: { x: number; y: number } | null;
     onModelNameClick: () => void;
     onStopGeneration: () => void;
-    imagePreview: string | null;
-    setImagePreview: (url: string | null) => void;
+    imagePreview: import('@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext').ImagePreviewOpenTarget | null;
+    setImagePreview: (url: import('@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext').ImagePreviewOpenTarget | null) => void;
 }
 
 export const OrphanThreadModal: React.FC<OrphanThreadModalProps> = React.memo(({

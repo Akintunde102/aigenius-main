@@ -15,6 +15,7 @@ import GlobalToaster from "@/app/components/GlobalToaster";
 import ScheduleNotificationListener from "@/app/components/ScheduleNotificationListener";
 import { ColorModeBootstrapScript } from "@/app/components/ColorModeBootstrapScript";
 import { FilePreviewModal } from "@/app/components/modals/FilePreviewModal";
+import { VideoJobProgressModal } from "@/app/components/modals/VideoJobProgressModal";
 import { ThemeProvider } from "@/lib/providers/ThemeProvider";
 const Euclid = localFont({
   src: [
@@ -172,6 +173,7 @@ export default function RootLayout({
               <ScheduleNotificationListener />
               <GlobalToaster />
               <FilePreviewModal />
+              <VideoJobProgressModal />
               <DesktopToolApprovalHost />
             </ErrorBoundary>
             <div id="modal-root" />

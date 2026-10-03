@@ -4,6 +4,7 @@ import {
 } from "@/nobox-client";
 import { resolveGatewayApiRootUrl } from '@/lib/api/resolve-gateway-api-root';
 import { getLoggedUserToken } from './get-token';
+import { clientVerboseDebug } from '@/lib/utils/client-verbose-debug';
 
 interface GetNoboxModelArgs {
     project: any;
@@ -15,10 +16,10 @@ const getNoboxFunctions = async ({
     const token = getLoggedUserToken();
     const endpoint = await resolveGatewayApiRootUrl();
 
-    console.log('[getNoboxFunctions] Initializing with', {
+    clientVerboseDebug('getNoboxFunctions', 'Initializing with', {
         projectId: project.id,
         hasToken: !!token,
-        endpoint
+        endpoint,
     });
 
     if (token) {

@@ -1,11 +1,4 @@
 import { Model } from "@/app/components/model-interface/shared/types";
-import {
-  USD_TO_CREDITS_RATE,
-  formatCredits,
-  usdCostToCredits,
-} from "@/lib/credits";
-
-export const USD_TO_NGN = USD_TO_CREDITS_RATE;
 
 // Helper to get the lowest price for a model
 export function getModelLowestPrice(model: Model): number {
@@ -73,15 +66,24 @@ export function getModelAverageRequestPrice(
   return perToken * avgTokens;
 }
 
+/** Backend-computed billed credits for an average request. */
+export function getModelAverageRequestCredits(model: Model): number {
+  const fromBackend = model?.averageUserSpendPerRequest?.totalAverageCostCredits;
+  if (typeof fromBackend === "number" && Number.isFinite(fromBackend) && fromBackend > 0) {
+    return fromBackend;
+  }
+  return 0;
+}
+
 export function formatUSD(value: number): string {
   if (!isFinite(value)) return "$0.00";
   return `$${value.toFixed(4)}`;
 }
 
-export function formatNGN(valueUSD: number, withoutSymbol = false): string {
-  if (!isFinite(valueUSD)) return withoutSymbol ? "0" : "0 credits";
-  const credits = usdCostToCredits(valueUSD);
-  const formatted = credits.toLocaleString(undefined, { maximumFractionDigits: 0 });
+/** Format backend-provided platform credits for display. */
+export function formatNGN(credits: number, withoutSymbol = false): string {
+  if (!isFinite(credits)) return withoutSymbol ? "0" : "0 credits";
+  const formatted = Math.round(credits).toLocaleString(undefined, { maximumFractionDigits: 0 });
   return withoutSymbol ? formatted : `${formatted} credits`;
 }
 
@@ -198,33 +200,215 @@ export function extractModalities(models: Model[]): {
 /** Provider id from model id (e.g. "openai/gpt-5" -> "openai"). */
 export function getProvider(id: string): string {
   if (!id || typeof id !== "string") return "";
+  if (id.startsWith("ollama:") || id.startsWith("ollama/")) return "ollama";
   const part = id.split("/")[0]?.trim();
   return part || "";
 }
 
+export const KNOWN_PROVIDER_LABELS: Record<string, string> = {
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  google: "Google",
+  "x-ai": "xAI",
+  "z-ai": "Z-AI",
+  qwen: "Qwen",
+  deepseek: "DeepSeek",
+  mistralai: "Mistral",
+  meta: "Meta",
+  "meta-llama": "Meta Llama",
+  perplexity: "Perplexity",
+  openrouter: "Platform",
+  cohere: "Cohere",
+  amazon: "Amazon",
+  microsoft: "Microsoft",
+  alibaba: "Alibaba",
+  "aion-labs": "Aion Labs",
+  "anthracite-org": "Anthracite",
+  "arcee-ai": "Arcee AI",
+  assemblyai: "AssemblyAI",
+  baidu: "Baidu",
+  "black-forest-labs": "Black Forest Labs",
+  bytedance: "ByteDance",
+  "bytedance-seed": "ByteDance Seed",
+  canopylabs: "Canopy Labs",
+  cognitivecomputations: "Cognitive Computations",
+  deepgram: "Deepgram",
+  "dots-studio": "Dots Studio",
+  fireworks: "Fireworks AI",
+  "fish-audio": "Fish Audio",
+  gryphe: "Gryphe",
+  hexgrad: "Hexgrad",
+  heygen: "HeyGen",
+  "ibm-granite": "IBM Granite",
+  inception: "Inception",
+  inclusionai: "InclusionAI",
+  "inference-net": "Inference.net",
+  krea: "Krea",
+  kwaipilot: "KwaiPilot",
+  kwaivgi: "KwaiVGI",
+  liquid: "Liquid",
+  mancer: "Mancer",
+  meituan: "Meituan",
+  minimax: "MiniMax",
+  moonshotai: "Moonshot AI",
+  morph: "Morph",
+  "nex-agi": "Nex-AGI",
+  nousresearch: "Nous Research",
+  nvidia: "NVIDIA",
+  perceptron: "Perceptron",
+  poolside: "Poolside",
+  "prism-ml": "Prism ML",
+  recraft: "Recraft",
+  rekaai: "Reka AI",
+  relace: "Relace",
+  runway: "Runway",
+  sakana: "Sakana AI",
+  sao10k: "Sao10K",
+  sesame: "Sesame",
+  sourceful: "Sourceful",
+  stealth: "Stealth",
+  stepfun: "StepFun",
+  tencent: "Tencent",
+  thedrummer: "TheDrummer",
+  thinkingmachines: "Thinking Machines",
+  typesafe: "TypeSafe",
+  unbiased: "Unbiased",
+  undi95: "Undi95",
+  upstage: "Upstage",
+  writer: "Writer",
+  xiaomi: "Xiaomi",
+  ollama: "Ollama",
+  "~openai": "OpenAI (Latest)",
+  "~anthropic": "Anthropic (Latest)",
+  "~google": "Google (Latest)",
+  "~deepseek": "DeepSeek (Latest)",
+  "~x-ai": "xAI (Latest)",
+  "~z-ai": "Z-AI (Latest)",
+  "~moonshotai": "Moonshot AI (Latest)",
+};
+
+/** Precomputed model counts by lab from allowed catalog sent to frontend */
+export const PRECOMPUTED_CATALOG_LAB_COUNTS: Record<string, number> = {
+  openai: 59,
+  qwen: 53,
+  google: 20,
+  mistralai: 19,
+  "z-ai": 16,
+  anthropic: 15,
+  deepseek: 14,
+  minimax: 8,
+  "meta-llama": 8,
+  "~anthropic": 8,
+  "x-ai": 7,
+  moonshotai: 7,
+  tencent: 7,
+  "aion-labs": 6,
+  "bytedance-seed": 6,
+  "~openai": 6,
+  meta: 6,
+  xiaomi: 5,
+  perplexity: 5,
+  nvidia: 5,
+  amazon: 5,
+  cohere: 5,
+  sakana: 4,
+  "~google": 4,
+  "~deepseek": 3,
+  inclusionai: 3,
+  upstage: 3,
+  thedrummer: 3,
+  nousresearch: 3,
+  sao10k: 3,
+  thinkingmachines: 2,
+  stepfun: 2,
+  relace: 2,
+  rekaai: 2,
+  poolside: 2,
+  "~z-ai": 2,
+  perceptron: 2,
+  openrouter: 2,
+  "inference-net": 2,
+  microsoft: 2,
+  "nex-agi": 2,
+  morph: 2,
+  "ibm-granite": 2,
+  inception: 2,
+  "prism-ml": 1,
+  kwaipilot: 1,
+  "~moonshotai": 1,
+  "anthracite-org": 1,
+  "arcee-ai": 1,
+  baidu: 1,
+  bytedance: 1,
+  unbiased: 1,
+  undi95: 1,
+  fireworks: 1,
+  typesafe: 1,
+  cognitivecomputations: 1,
+  stealth: 1,
+  "~x-ai": 1,
+  mancer: 1,
+  gryphe: 1,
+  writer: 1,
+  meituan: 1,
+};
+
 /** Human-readable provider label (e.g. "openai" -> "OpenAI"). */
 export function getProviderLabel(providerId: string): string {
   if (!providerId) return "";
-  const known: Record<string, string> = {
-    openai: "OpenAI",
-    anthropic: "Anthropic",
-    google: "Google",
-    "x-ai": "xAI",
-    "z-ai": "Z-AI",
-    qwen: "Qwen",
-    deepseek: "DeepSeek",
-    mistralai: "Mistral",
-    meta: "Meta",
-    perplexity: "Perplexity",
-    openrouter: "Platform",
-    cohere: "Cohere",
-    amazon: "Amazon",
-    microsoft: "Microsoft",
-  };
+  if (KNOWN_PROVIDER_LABELS[providerId]) {
+    return KNOWN_PROVIDER_LABELS[providerId];
+  }
   return (
-    known[providerId] ||
-    providerId.charAt(0).toUpperCase() + providerId.slice(1).toLowerCase()
+    providerId
+      .replace(/^~/, "")
+      .replace(/[-_]/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
   );
+}
+
+/**
+ * Precomputes model counts per lab and builds options for the lab filter dropdown.
+ * Shows total count in bracket: "OpenAI (59)", "All labs (362)".
+ * Orders major providers first, followed by all other labs sorted alphabetically.
+ */
+export function buildLabFilterOptions(models?: Model[]): { value: string; label: string }[] {
+  const counts: Record<string, number> = {};
+  let totalCount = 0;
+
+  if (models && models.length > 0) {
+    for (const m of models) {
+      const p = getProvider(m.id);
+      if (p) {
+        counts[p] = (counts[p] || 0) + 1;
+        totalCount++;
+      }
+    }
+  } else {
+    Object.assign(counts, PRECOMPUTED_CATALOG_LAB_COUNTS);
+    totalCount = Object.values(PRECOMPUTED_CATALOG_LAB_COUNTS).reduce((sum, n) => sum + n, 0);
+  }
+
+  const providers = Object.keys(counts).filter((p) => (counts[p] || 0) > 0);
+  if (providers.length === 0) {
+    return [{ value: "", label: "All labs" }];
+  }
+
+  const majorSet = new Set(MAJOR_PROVIDER_IDS);
+  const majorList = MAJOR_PROVIDER_IDS.filter((pid) => (counts[pid] || 0) > 0);
+  const otherList = providers
+    .filter((pid) => !majorSet.has(pid))
+    .sort((a, b) => getProviderLabel(a).localeCompare(getProviderLabel(b)));
+
+  const sortedProviders = [...majorList, ...otherList];
+
+  return [
+    { value: "", label: totalCount > 0 ? `All labs (${totalCount})` : "All labs" },
+    ...sortedProviders.map((pid) => ({
+      value: pid,
+      label: `${getProviderLabel(pid)} (${counts[pid]})`,
+    })),
+  ];
 }
 
 /** Collapse lab ids/labels for prefix matching (`x-ai`, `xAI`, `Z.ai` → `xai`). */

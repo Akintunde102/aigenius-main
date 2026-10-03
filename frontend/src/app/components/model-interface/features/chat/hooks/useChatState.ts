@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChatMessage, ChatSession } from '@/app/components/model-interface/shared/types';
-import { USD_TO_NGN } from '@/app/components/model-interface/shared/utils';
 
 export function useChatState() {
     const [chat, setChat] = useState<ChatMessage[]>([]);
@@ -43,7 +42,7 @@ export function useChatState() {
         }, 0);
 
         const currentChatCostNaira = chat.reduce((sum, msg) => {
-            return sum + (typeof msg.cost === 'number' ? msg.cost * USD_TO_NGN : 0);
+            return sum + (typeof msg.cost_credits === 'number' ? msg.cost_credits : 0);
         }, 0);
 
         return { currentChatCostUSD, currentChatCostNaira };

@@ -63,26 +63,31 @@ export function EditableUserBubble({
         }
     }, [onCancel]);
 
-    const handleInputChange = useCallback((text: string) => {
-        onDraftChange({ ...draftRef.current, text });
+    const commitDraft = useCallback((next: MessageEditDraft) => {
+        draftRef.current = next;
+        onDraftChange(next);
     }, [onDraftChange]);
+
+    const handleInputChange = useCallback((text: string) => {
+        commitDraft({ ...draftRef.current, text });
+    }, [commitDraft]);
 
     const handleSendMessage = useCallback(async (message: string) => {
         const nextDraft = { ...draftRef.current, text: message };
-        onDraftChange(nextDraft);
+        commitDraft(nextDraft);
         if (!isEditDraftSubmittable(nextDraft) || disabled) {
             return false;
         }
         onCommit();
         return true;
-    }, [disabled, onCommit, onDraftChange]);
+    }, [commitDraft, disabled, onCommit]);
 
     const handleRemoveUploadedFile = useCallback((index: number) => {
-        onDraftChange({
+        commitDraft({
             ...draftRef.current,
             attachments: draftRef.current.attachments.filter((_, i) => i !== index),
         });
-    }, [onDraftChange]);
+    }, [commitDraft]);
 
     const handleFileUpload = useCallback((file: File) => {
         if (disabled) return;
@@ -100,7 +105,10 @@ export function EditableUserBubble({
                     || /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(file.name);
 
                 const current = draftRef.current;
-                onDraftChange({
+                if (current.attachments.some((attachment) => attachment.fileUrl === fileUrl)) {
+                    return;
+                }
+                commitDraft({
                     ...current,
                     attachments: [
                         ...current.attachments,
@@ -115,7 +123,7 @@ export function EditableUserBubble({
             },
             onError: () => {},
         });
-    }, [conversationId, disabled, onDraftChange]);
+    }, [commitDraft, conversationId, disabled]);
 
     return (
         <ChatBoxInput

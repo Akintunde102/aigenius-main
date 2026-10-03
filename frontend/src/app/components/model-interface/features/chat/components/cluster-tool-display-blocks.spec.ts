@@ -85,17 +85,17 @@ describe('buildInProgressClusterHeader', () => {
 });
 
 describe('clusterToolDisplayBlocks', () => {
-  it('wraps a single tool row into a tool cluster', () => {
+  it('does not create a group when the tool activity is just one', () => {
     const a = makeTool({
       tool: 'a',
       displayName: 'One',
       timestamp: 1000,
     });
     const blocks: ChatMessageDisplayBlock[] = [{ type: 'tool', event: a }];
-    expect(clusterToolDisplayBlocks(blocks)).toEqual([{ type: 'tool_cluster', events: [a] }]);
+    expect(clusterToolDisplayBlocks(blocks)).toEqual([{ type: 'tool', event: a }]);
   });
 
-  it('merges consecutive tools regardless of labels/timestamps', () => {
+  it('merges consecutive tools into a cluster when there are 2 or more', () => {
     const a = makeTool({
       tool: 'search',
       displayName: 'Searching docs',
@@ -115,7 +115,7 @@ describe('clusterToolDisplayBlocks', () => {
     expect(got[0]).toMatchObject({ type: 'tool_cluster', events: [a, b] });
   });
 
-  it('does not merge across text segments', () => {
+  it('does not merge across text segments and leaves single tools ungrouped', () => {
     const a = makeTool({ tool: 'a', displayName: 'Same', timestamp: 0 });
     const b = makeTool({ tool: 'b', displayName: 'Same', timestamp: 0 });
     const blocks: ChatMessageDisplayBlock[] = [
@@ -125,7 +125,24 @@ describe('clusterToolDisplayBlocks', () => {
     ];
     const got = clusterToolDisplayBlocks(blocks);
     expect(got).toHaveLength(3);
-    expect(got[0]).toMatchObject({ type: 'tool_cluster', events: [a] });
-    expect(got[2]).toMatchObject({ type: 'tool_cluster', events: [b] });
+    expect(got[0]).toMatchObject({ type: 'tool', event: a });
+    expect(got[2]).toMatchObject({ type: 'tool', event: b });
+  });
+
+  it('clusters consecutive tools while preserving single tools around text segments', () => {
+    const a = makeTool({ tool: 'a', displayName: 'A', timestamp: 0 });
+    const b = makeTool({ tool: 'b', displayName: 'B', timestamp: 0 });
+    const c = makeTool({ tool: 'c', displayName: 'C', timestamp: 0 });
+    const blocks: ChatMessageDisplayBlock[] = [
+      { type: 'tool', event: a },
+      { type: 'tool', event: b },
+      { type: 'text', content: 'interlude', endsWithLastTextEvent: false },
+      { type: 'tool', event: c },
+    ];
+    const got = clusterToolDisplayBlocks(blocks);
+    expect(got).toHaveLength(3);
+    expect(got[0]).toMatchObject({ type: 'tool_cluster', events: [a, b] });
+    expect(got[1]).toMatchObject({ type: 'text', content: 'interlude' });
+    expect(got[2]).toMatchObject({ type: 'tool', event: c });
   });
 });

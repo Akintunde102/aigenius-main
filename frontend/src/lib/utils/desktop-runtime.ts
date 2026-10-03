@@ -319,6 +319,8 @@ export type AigeniusDesktopBridgeSurface = {
   openFile?: (filePath: string) => Promise<{ ok: boolean; error: string }>;
   revealFileInFolder?: (filePath: string) => Promise<{ ok: boolean; error?: string }>;
   copyFileToClipboard?: (filePath: string) => Promise<{ ok: boolean; error?: string }>;
+  copyTextToClipboard?: (text: string) => Promise<{ ok: boolean; error?: string }>;
+  copyImageToClipboard?: (payload: { dataUrl?: string; filePath?: string }) => Promise<{ ok: boolean; error?: string }>;
   readLocalFilePreview?: (
     filePath: string,
   ) => Promise<

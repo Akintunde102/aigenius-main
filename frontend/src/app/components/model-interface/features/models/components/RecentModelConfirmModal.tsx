@@ -4,7 +4,7 @@ import { FiClock, FiX } from "react-icons/fi";
 import { Model } from "@/app/components/model-interface/shared/types";
 import {
   formatNGN,
-  getModelAverageRequestPrice,
+  getModelAverageRequestCredits,
   getModelDisplayName,
   getProvider,
   getProviderLabel,
@@ -66,7 +66,7 @@ export function RecentModelConfirmModal({
 
   const displayName = getModelDisplayName(model);
   const providerLabel = getProviderLabel(getProvider(model.id));
-  const averageCost = getModelAverageRequestPrice(model);
+  const averageCost = getModelAverageRequestCredits(model);
   const costLabel = Number.isFinite(averageCost)
     ? averageCost > 0
       ? `${formatNGN(averageCost, true)} / msg`
