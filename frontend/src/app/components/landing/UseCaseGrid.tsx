@@ -68,7 +68,6 @@ export function UseCaseGrid() {
         onClose={() => setActiveId(null)}
         title={demo?.title ?? "Preview"}
         description="A short example of what this looks like in the app."
-        size="lg"
       >
         {demo && <UseCaseDemo key={demo.id} demo={demo} />}
       </Modal>
