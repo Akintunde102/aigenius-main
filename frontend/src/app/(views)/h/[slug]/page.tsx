@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { getAllHostedFiles, getHostedFileBySlug, isRestrictedHostedFile } from '@/lib/calls/hosted-file';
 import HostedMarkdownDetailClient from '../components/HostedMarkdownDetailClient';
 import HostedMarkdownAccessClient from '../components/HostedMarkdownAccessClient';
+import { DISPLAY } from '@/app/components/landing/typography';
 import {
     buildHostedFileDescription,
     buildHostedFileJsonLd,
@@ -106,19 +107,17 @@ export default async function HostedMarkdownPage({ params }: PageProps) {
 
     if (!file) {
         return (
-            <div className="flex min-h-[50vh] flex-col items-center justify-center bg-[var(--chat-canvas-bg)] px-4 py-16 text-center text-[var(--app-ink-900)]">
-                <div className="max-w-md rounded-2xl border border-[var(--chat-composer-border)] bg-[var(--chat-composer-bg)] px-8 py-10">
-                    <h1 className="text-xl font-semibold">Page not found</h1>
-                    <p className="mt-3 text-sm text-[var(--chat-muted-fg)]">
-                        This link may be invalid or the page was unpublished.
-                    </p>
-                    <Link
-                        href="/h"
-                        className="mt-6 inline-flex font-medium text-[var(--chat-accent)] underline underline-offset-4"
-                    >
-                        Browse hosted pages
-                    </Link>
-                </div>
+            <div className="mx-auto flex min-h-[50vh] w-full max-w-md flex-col items-center justify-center px-5 py-24 text-center">
+                <h1 className={`${DISPLAY} text-4xl font-normal leading-[1.05] tracking-[-0.03em]`}>Page not found</h1>
+                <p className="mt-4 text-lg leading-relaxed text-lp-muted">
+                    This link may be invalid or the page was unpublished.
+                </p>
+                <Link
+                    href="/h"
+                    className="mt-8 font-medium underline underline-offset-4 transition-colors duration-150 hover:text-lp-muted"
+                >
+                    Browse hosted pages
+                </Link>
             </div>
         );
     }

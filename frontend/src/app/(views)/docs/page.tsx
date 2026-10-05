@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FiArrowRight } from "react-icons/fi";
+import { DISPLAY } from "@/app/components/landing/typography";
 import {
   DOCS_FOCUS,
   DOCS_LINK_CLASS,
@@ -22,57 +23,46 @@ const DOCS = [
 
 export default function DocsIndexPage() {
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-8 pt-6 sm:px-6 lg:px-8">
-      <header className="mx-auto max-w-2xl text-center">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-500">
-          Legal center
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
+    <div className="mx-auto w-full max-w-6xl px-5 pb-28 pt-14 sm:px-8 lg:pt-24">
+      <header className="max-w-2xl">
+        <h1 className={`${DISPLAY} text-5xl font-normal leading-[1.02] tracking-[-0.03em] sm:text-6xl`}>
           Policies &amp; terms
         </h1>
-        <p className="mt-4 text-base leading-relaxed text-stone-600 sm:text-lg">
-          Transparency matters. Read our policies to understand how we operate and how we protect your
-          data.
+        <p className="mt-5 text-lg leading-relaxed text-lp-muted">
+          Transparency matters. Read our policies to understand how we operate and how we protect your data.
         </p>
       </header>
 
-      <ul className="mx-auto mt-10 grid max-w-2xl gap-4">
+      {/* Links in a plain nav, not a <ul>: a global list rule was indenting lists. */}
+      <nav aria-label="Documents" className="mt-14 grid gap-3 sm:grid-cols-2">
         {DOCS.map((doc) => (
-          <li key={doc.href}>
-            <Link
-              href={doc.href}
-              className={cn(
-                "group flex flex-col p-6 text-left transition hover:border-cyan-300/70 hover:shadow-md sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:p-7",
-                DOCS_SURFACE_CARD,
-                DOCS_FOCUS,
-              )}
-            >
-              <div className="min-w-0 flex-1">
-                <span className="block font-semibold tracking-tight text-stone-900 group-hover:text-cyan-900">
-                  {doc.title}
-                </span>
-                <span className="mt-1.5 block text-sm leading-relaxed text-stone-600">
-                  {doc.description}
-                </span>
-              </div>
-              <span className="mt-4 inline-flex shrink-0 items-center text-sm font-semibold text-cyan-800 sm:mt-0">
-                Read document
-                <FiArrowRight
-                  className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5"
-                  aria-hidden
-                />
-              </span>
-            </Link>
-          </li>
+          <Link
+            key={doc.href}
+            href={doc.href}
+            className={cn(
+              "group flex min-h-44 flex-col justify-between gap-8 p-7 text-left transition-colors duration-200 hover:bg-black/[0.07] dark:hover:bg-white/[0.08]",
+              DOCS_SURFACE_CARD,
+              DOCS_FOCUS,
+            )}
+          >
+            <div>
+              <span className={`${DISPLAY} block text-[1.6rem] leading-[1.15] tracking-[-0.015em]`}>{doc.title}</span>
+              <span className="mt-3 block text-[15px] leading-relaxed text-lp-muted">{doc.description}</span>
+            </div>
+            <span className="inline-flex items-center text-sm font-medium text-lp-muted transition-colors duration-200 group-hover:text-lp-fg">
+              Read document
+              <FiArrowRight
+                className="ml-1 h-4 w-4 transition-transform duration-200 ease-out-strong group-hover:translate-x-0.5"
+                aria-hidden
+              />
+            </span>
+          </Link>
         ))}
-      </ul>
+      </nav>
 
-      <p className="mx-auto mt-12 max-w-lg text-center text-sm text-stone-600">
+      <p className="mt-14 text-sm text-lp-muted">
         Questions? Contact us at{" "}
-        <a
-          href="mailto:nobox.hq@gmail.com"
-          className={cn(DOCS_LINK_CLASS, DOCS_FOCUS)}
-        >
+        <a href="mailto:nobox.hq@gmail.com" className={cn(DOCS_LINK_CLASS, "text-lp-fg", DOCS_FOCUS)}>
           nobox.hq@gmail.com
         </a>
       </p>

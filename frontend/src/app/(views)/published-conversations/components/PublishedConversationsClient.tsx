@@ -6,7 +6,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { FiUser, FiCalendar, FiMessageSquare, FiSearch, FiLoader, FiTrash2 } from 'react-icons/fi';
 import { getStoredUserDetailsSnapshot } from '@/lib/calls/get-logged-user-details';
 import { deletePublishedConversation, PublishedConversation } from '@/lib/calls/model-chat-conversation';
-import { LandingAmbientBackground } from '@/app/components/ui';
+import { DISPLAY } from '@/app/components/landing/typography';
 import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
 import { cn } from '@/lib/utils';
 import { publishedMessageReadableText } from '../publishedConversationSeo.utils';
@@ -17,15 +17,15 @@ interface PublishedConversationsClientProps {
 
 const container = {
     hidden: {},
-    visible: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } },
+    visible: { transition: { staggerChildren: 0.05, delayChildren: 0.03 } },
 };
 
 const fadeUp = {
-    hidden: { opacity: 0, y: 16 },
+    hidden: { opacity: 0, y: 12 },
     visible: { opacity: 1, y: 0 },
 };
 
-const EASE = [0.22, 1, 0.36, 1] as const;
+const EASE = [0.23, 1, 0.32, 1] as const;
 
 export default function PublishedConversationsClient({ conversations }: PublishedConversationsClientProps) {
     const reduce = useReducedMotion();
@@ -39,7 +39,7 @@ export default function PublishedConversationsClient({ conversations }: Publishe
     }, [conversations]);
 
     useEffect(() => {
-        // Local snapshot only — never call getUserDetails() here: authorized API + refresh
+        // Local snapshot only. Never call getUserDetails() here: authorized API + refresh
         // failure triggers global login redirect, which breaks this public route.
         setCurrentUser(getStoredUserDetailsSnapshot());
     }, []);
@@ -100,28 +100,23 @@ export default function PublishedConversationsClient({ conversations }: Publishe
     };
 
     return (
-        <div className="relative w-full pb-16">
-            <LandingAmbientBackground />
-
+        <div className="w-full pb-24">
             <motion.div
                 initial="hidden"
                 animate="visible"
                 variants={reduce ? undefined : container}
-                className="relative z-10 mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8"
+                className="mx-auto w-full max-w-6xl px-5 pt-14 sm:px-8 lg:pt-24"
             >
                 {/* Header */}
                 <motion.div
                     variants={reduce ? undefined : fadeUp}
-                    transition={{ duration: 0.5, ease: EASE }}
-                    className="mx-auto max-w-2xl text-center"
+                    transition={{ duration: 0.3, ease: EASE }}
+                    className="max-w-2xl"
                 >
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400/80">
-                        Community
-                    </p>
-                    <h1 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                    <h1 className={`${DISPLAY} text-balance text-5xl font-normal leading-[1.02] tracking-[-0.03em] sm:text-6xl`}>
                         Published conversations
                     </h1>
-                    <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-zinc-400">
+                    <p className="mt-5 max-w-xl text-lg leading-relaxed text-lp-muted">
                         Discover and explore AI conversations shared by the community.
                     </p>
                 </motion.div>
@@ -129,14 +124,14 @@ export default function PublishedConversationsClient({ conversations }: Publishe
                 {/* Search */}
                 <motion.div
                     variants={reduce ? undefined : fadeUp}
-                    transition={{ duration: 0.5, ease: EASE }}
-                    className="relative mx-auto mt-10 max-w-lg"
+                    transition={{ duration: 0.3, ease: EASE }}
+                    className="relative mt-10 max-w-md"
                 >
                     <label htmlFor="search-conversations" className="sr-only">
                         Search conversations
                     </label>
                     <FiSearch
-                        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
+                        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lp-muted"
                         size={18}
                         aria-hidden
                     />
@@ -146,7 +141,10 @@ export default function PublishedConversationsClient({ conversations }: Publishe
                         placeholder="Search conversations..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] py-3 pl-11 pr-4 text-sm text-zinc-100 placeholder-zinc-500 backdrop-blur transition focus:border-cyan-400/40 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                        className={cn(
+                            'w-full rounded-full bg-black/[0.05] py-3 pl-11 pr-4 text-sm text-lp-fg transition-shadow duration-150 placeholder:text-black/40 dark:bg-white/[0.07] dark:placeholder:text-white/40',
+                            FOCUS_RING,
+                        )}
                     />
                 </motion.div>
 
@@ -155,116 +153,105 @@ export default function PublishedConversationsClient({ conversations }: Publishe
                     {filteredConversations.length === 0 ? (
                         <motion.div
                             variants={reduce ? undefined : fadeUp}
-                            transition={{ duration: 0.5, ease: EASE }}
-                            className="relative mx-auto max-w-md"
+                            transition={{ duration: 0.3, ease: EASE }}
+                            className="mx-auto max-w-md py-12 text-center"
                         >
-                            <div
-                                aria-hidden
-                                className="absolute -inset-6 rounded-[2rem] bg-gradient-to-r from-cyan-500/[0.12] via-transparent to-emerald-500/[0.12] blur-2xl"
-                            />
-                            <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-950 p-8 text-center shadow-2xl shadow-black/50 sm:p-10">
-                                <div
-                                    aria-hidden
-                                    className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent"
-                                />
-                                <div className="relative mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/[0.08] text-cyan-300">
-                                    <FiMessageSquare size={22} aria-hidden />
-                                </div>
-                                <h3 className="relative mt-6 text-xl font-semibold tracking-tight text-white">
-                                    {searchTerm ? 'No conversations found' : 'No published conversations yet'}
-                                </h3>
-                                <p className="relative mt-3 text-sm leading-relaxed text-zinc-400">
-                                    {searchTerm
-                                        ? 'Try adjusting your search terms to find what you\'re looking for.'
-                                        : 'Be the first to publish a conversation and share your AI interactions with the community!'
-                                    }
-                                </p>
-                                {searchTerm && (
-                                    <button
-                                        onClick={() => setSearchTerm('')}
-                                        className={cn(
-                                            'relative mt-6 inline-flex items-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 active:scale-[0.99]',
-                                            FOCUS_RING,
-                                        )}
-                                    >
-                                        Clear search
-                                    </button>
-                                )}
+                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-black/[0.05] text-lp-muted dark:bg-white/[0.07]">
+                                <FiMessageSquare size={22} aria-hidden />
                             </div>
+                            <h2 className={`${DISPLAY} mt-6 text-2xl font-normal tracking-[-0.02em]`}>
+                                {searchTerm ? 'No conversations found' : 'No published conversations yet'}
+                            </h2>
+                            <p className="mt-3 text-[15px] leading-relaxed text-lp-muted">
+                                {searchTerm
+                                    ? 'Try adjusting your search terms to find what you\'re looking for.'
+                                    : 'Be the first to publish a conversation and share your AI interactions with the community!'
+                                }
+                            </p>
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm('')}
+                                    className={cn(
+                                        'mt-6 inline-flex h-11 items-center rounded-full bg-stone-900 px-6 text-sm font-medium text-white transition-[transform,opacity] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97] dark:bg-white dark:text-stone-900',
+                                        FOCUS_RING,
+                                    )}
+                                >
+                                    Clear search
+                                </button>
+                            )}
                         </motion.div>
                     ) : (
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                             {filteredConversations.map((conversation, i) => (
                                 <motion.div
                                     key={conversation.id}
                                     variants={reduce ? undefined : fadeUp}
-                                    transition={{ duration: 0.45, ease: EASE, delay: Math.min(i, 6) * 0.05 }}
+                                    transition={{ duration: 0.3, ease: EASE, delay: Math.min(i, 6) * 0.04 }}
                                 >
                                     <Link
                                         href={`/published-conversations/${conversation.id}`}
                                         prefetch
-                                        className="group relative block h-full overflow-hidden rounded-2xl border border-white/[0.07] bg-zinc-950/60 backdrop-blur-sm transition-colors hover:border-cyan-400/30 hover:bg-zinc-950/80"
+                                        className={cn(
+                                            'group flex h-full flex-col rounded-2xl bg-black/[0.04] p-6 transition-colors duration-200 hover:bg-black/[0.07] dark:bg-white/[0.05] dark:hover:bg-white/[0.08]',
+                                            FOCUS_RING,
+                                        )}
                                     >
-                                        <div className="flex h-full flex-col p-5">
-                                            <h3 className="mb-2 line-clamp-2 text-lg font-semibold tracking-tight text-white transition-colors group-hover:text-cyan-300">
-                                                {conversation.publishedTitle}
-                                            </h3>
+                                        <h3 className={`${DISPLAY} line-clamp-2 text-[1.35rem] font-normal leading-[1.2] tracking-[-0.015em]`}>
+                                            {conversation.publishedTitle}
+                                        </h3>
 
-                                            {conversation.publishedDescription && (
-                                                <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-zinc-400">
-                                                    {conversation.publishedDescription}
-                                                </p>
-                                            )}
+                                        {conversation.publishedDescription && (
+                                            <p className="mt-2 line-clamp-2 text-[15px] leading-relaxed text-lp-muted">
+                                                {conversation.publishedDescription}
+                                            </p>
+                                        )}
 
-                                            <div className="mb-4 rounded-xl border border-white/[0.06] bg-white/[0.03] p-3.5">
-                                                <p className="line-clamp-3 text-[13px] leading-relaxed text-zinc-400">
-                                                    {getConversationPreview(conversation)}
-                                                </p>
-                                            </div>
+                                        <p className="mt-4 line-clamp-3 text-[13px] leading-relaxed text-lp-muted">
+                                            {getConversationPreview(conversation)}
+                                        </p>
 
-                                            <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
-                                                <span className="flex items-center gap-1.5">
-                                                    <FiUser size={13} aria-hidden />
-                                                    <span className="font-medium text-zinc-300">
-                                                        {`${conversation.user?.firstName || ''} ${conversation.user?.lastName || ''}`.trim() || 'Anonymous'}
-                                                    </span>
+                                        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-6 text-xs text-lp-muted">
+                                            <span className="flex items-center gap-1.5">
+                                                <FiUser size={13} aria-hidden />
+                                                <span className="font-medium text-lp-fg">
+                                                    {`${conversation.user?.firstName || ''} ${conversation.user?.lastName || ''}`.trim() || 'Anonymous'}
                                                 </span>
-                                                <span aria-hidden>·</span>
-                                                <span className="flex items-center gap-1.5">
-                                                    <FiMessageSquare size={13} aria-hidden />
-                                                    {getMessageCount(conversation)} messages
-                                                </span>
-                                                <span aria-hidden>·</span>
-                                                <span className="flex items-center gap-1.5">
-                                                    <FiCalendar size={13} aria-hidden />
-                                                    {formatDate(conversation.publishedAt)}
-                                                </span>
-                                            </div>
-
-                                            {isOwner(conversation) && (
-                                                <div className="mt-4 border-t border-white/[0.06] pt-4">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            handleDelete(conversation.id);
-                                                        }}
-                                                        disabled={deletingId === conversation.id}
-                                                        aria-label="Delete conversation"
-                                                        className={cn(
-                                                            'ml-auto flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-zinc-400 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-60',
-                                                            FOCUS_RING,
-                                                        )}
-                                                    >
-                                                        {deletingId === conversation.id ? (
-                                                            <FiLoader size={16} className="animate-spin" />
-                                                        ) : (
-                                                            <FiTrash2 size={16} />
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            )}
+                                            </span>
+                                            <span aria-hidden>·</span>
+                                            <span className="flex items-center gap-1.5">
+                                                <FiMessageSquare size={13} aria-hidden />
+                                                {getMessageCount(conversation)} messages
+                                            </span>
+                                            <span aria-hidden>·</span>
+                                            <span className="flex items-center gap-1.5">
+                                                <FiCalendar size={13} aria-hidden />
+                                                {formatDate(conversation.publishedAt)}
+                                            </span>
                                         </div>
+
+                                        {isOwner(conversation) && (
+                                            <div className="mt-4 flex">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        handleDelete(conversation.id);
+                                                    }}
+                                                    disabled={deletingId === conversation.id}
+                                                    aria-label="Delete conversation"
+                                                    className={cn(
+                                                        'ml-auto flex h-9 w-9 items-center justify-center rounded-full bg-black/[0.05] text-lp-muted transition-colors duration-150 hover:text-rose-500 disabled:opacity-60 dark:bg-white/[0.07]',
+                                                        FOCUS_RING,
+                                                    )}
+                                                >
+                                                    {deletingId === conversation.id ? (
+                                                        <FiLoader size={16} className="animate-spin" />
+                                                    ) : (
+                                                        <FiTrash2 size={16} />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        )}
                                     </Link>
                                 </motion.div>
                             ))}

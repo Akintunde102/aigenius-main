@@ -21,6 +21,8 @@ import { deletePublishedConversation, PublishedConversation } from '@/lib/calls/
 import { getStoredUserDetailsSnapshot } from '@/lib/calls/get-logged-user-details';
 import { ChatMessage as ChatMessageType } from '@/app/components/model-interface/shared/types';
 import { applyColorMode, persistColorMode } from '@/lib/color-mode';
+import { DISPLAY } from '@/app/components/landing/typography';
+import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
 import { ChatMessage } from './';
 import {
     buildPublishedConversationMarkdown,
@@ -34,19 +36,29 @@ interface PublishedConversationDetailClientProps {
     conversation: PublishedConversation;
 }
 
+/* Tonal round buttons: no borders, one step off the page, same on light and dark. */
 const iconButtonClass = [
-    'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-sm',
-    'border-[var(--chat-composer-border)] bg-[var(--chat-composer-bg)] text-[var(--app-ink-900)]',
-    'hover:bg-[var(--surface-muted)]',
-    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-accent)]',
+    'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm',
+    'bg-black/[0.05] text-[var(--app-ink-900)] dark:bg-white/[0.07]',
+    'transition-[background-color,transform] duration-150 ease-out-strong active:scale-[0.97]',
+    'hover:bg-black/[0.09] dark:hover:bg-white/[0.12]',
+    FOCUS_RING,
     'disabled:cursor-not-allowed disabled:opacity-60',
 ].join(' ');
 
 const textButtonClass = [
-    'inline-flex h-10 items-center rounded-lg border px-4 text-sm',
-    'border-[var(--chat-composer-border)] bg-[var(--chat-composer-bg)] text-[var(--app-ink-900)]',
-    'hover:bg-[var(--surface-muted)]',
-    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-accent)]',
+    'inline-flex h-11 items-center rounded-full px-6 text-[15px] font-medium',
+    'bg-black/[0.06] text-[var(--app-ink-900)] dark:bg-white/[0.08]',
+    'transition-[background-color,transform] duration-150 ease-out-strong active:scale-[0.97]',
+    'hover:bg-black/[0.1] dark:hover:bg-white/[0.13]',
+    FOCUS_RING,
+].join(' ');
+
+const primaryButtonClass = [
+    'inline-flex h-11 items-center rounded-full px-6 text-[15px] font-medium',
+    'bg-stone-900 text-white dark:bg-white dark:text-stone-900',
+    'transition-[opacity,transform] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97]',
+    FOCUS_RING,
 ].join(' ');
 
 export default function PublishedConversationDetailClient({ conversation }: PublishedConversationDetailClientProps) {
@@ -155,8 +167,8 @@ export default function PublishedConversationDetailClient({ conversation }: Publ
 
     return (
         <article className="published-thread min-h-[70vh] w-full bg-[var(--chat-canvas-bg)] text-[var(--app-ink-900)]">
-            <header className="sticky top-0 z-30 border-b border-[var(--chat-composer-border)] bg-[var(--chat-canvas-bg)]/95 backdrop-blur-sm">
-                <div className="mx-auto flex h-11 w-full max-w-3xl items-center gap-2 px-4 sm:px-6">
+            <header className="sticky top-0 z-30 bg-[var(--chat-canvas-bg)]/90 backdrop-blur-md">
+                <div className="mx-auto flex h-14 w-full max-w-3xl items-center gap-3 px-4 sm:px-6">
                     <nav className="sr-only" aria-label="Breadcrumb">
                         <ol>
                             <li><Link href="/">AIGenius</Link></li>
@@ -164,7 +176,7 @@ export default function PublishedConversationDetailClient({ conversation }: Publ
                             <li aria-current="page">{conversation.publishedTitle}</li>
                         </ol>
                     </nav>
-                    <h1 className="min-w-0 flex-1 truncate text-sm font-semibold" title={conversation.publishedTitle}>
+                    <h1 className="min-w-0 flex-1 truncate text-sm font-medium" title={conversation.publishedTitle}>
                         {conversation.publishedTitle}
                     </h1>
                     <p className="hidden shrink-0 whitespace-nowrap text-xs text-[var(--chat-muted-fg)] sm:block">
@@ -177,7 +189,7 @@ export default function PublishedConversationDetailClient({ conversation }: Publ
                     <p className="sr-only">
                         {authorName}. Published {formatDate(conversation.publishedAt)}. {messages.length} {messages.length === 1 ? 'message' : 'messages'}.
                     </p>
-                    <div className="ml-auto flex shrink-0 items-center gap-1" role="toolbar" aria-label="Conversation actions">
+                    <div className="ml-auto flex shrink-0 items-center gap-1.5" role="toolbar" aria-label="Conversation actions">
                         {questions.length >= 2 ? (
                             <div className="relative" ref={jumpMenuRef}>
                                 <button
@@ -193,7 +205,7 @@ export default function PublishedConversationDetailClient({ conversation }: Publ
                                 {jumpOpen ? (
                                     <nav
                                         aria-label="Questions in this conversation"
-                                        className="absolute right-0 top-full z-40 mt-1 max-h-64 w-72 overflow-y-auto rounded-xl border border-[var(--chat-composer-border)] bg-[var(--chat-composer-bg)] p-2 shadow-lg"
+                                        className="absolute right-0 top-full z-40 mt-2 max-h-64 w-72 overflow-y-auto rounded-2xl bg-[var(--chat-composer-bg)] p-2 shadow-xl ring-1 ring-black/5 dark:ring-white/10"
                                     >
                                         <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm">
                                             {questions.map((question) => (
@@ -251,7 +263,7 @@ export default function PublishedConversationDetailClient({ conversation }: Publ
                 </div>
             </header>
 
-            <div className="mx-auto w-full max-w-3xl px-4 py-4 sm:px-6">
+            <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
                 {conversation.publishedDescription ? (
                     <p className="sr-only">{conversation.publishedDescription}</p>
                 ) : null}
@@ -262,7 +274,7 @@ export default function PublishedConversationDetailClient({ conversation }: Publ
                             <div
                                 key={message.id || message.messageId || index}
                                 id={publishedMessageAnchorId(index)}
-                                className="scroll-mt-14"
+                                className="scroll-mt-16"
                             >
                                 <ChatMessage
                                     msg={message}
@@ -291,23 +303,19 @@ export default function PublishedConversationDetailClient({ conversation }: Publ
 
                 <section
                     aria-label="Use AIGenius"
-                    className="mt-12 rounded-2xl border border-[var(--chat-composer-border)] bg-[var(--chat-composer-bg)] px-5 py-6"
+                    className="mt-16 rounded-3xl bg-black/[0.04] px-7 py-9 dark:bg-white/[0.05]"
                 >
-                    <h2 className="text-lg font-semibold tracking-tight">Continue in AIGenius</h2>
-                    <p className="mt-2 max-w-[62ch] text-sm leading-6 text-[var(--app-ink-700)]">
+                    <h2 className={`${DISPLAY} text-2xl font-normal leading-[1.15] tracking-[-0.02em] sm:text-[1.75rem]`}>
+                        Continue in AIGenius
+                    </h2>
+                    <p className="mt-3 max-w-[62ch] text-[15px] leading-relaxed text-[var(--app-ink-700)]">
                         Sign in to chat with the same models, bring your own files, and publish a conversation of your own.
                     </p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                        <Link
-                            href="/login"
-                            className="inline-flex h-10 items-center rounded-lg bg-[var(--chat-accent)] px-4 text-sm font-semibold text-white hover:bg-[var(--chat-accent-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-accent)]"
-                        >
+                    <div className="mt-6 flex flex-wrap gap-2">
+                        <Link href="/login" className={primaryButtonClass}>
                             Sign in
                         </Link>
-                        <Link
-                            href="/signup"
-                            className={textButtonClass}
-                        >
+                        <Link href="/signup" className={textButtonClass}>
                             Create an account
                         </Link>
                     </div>

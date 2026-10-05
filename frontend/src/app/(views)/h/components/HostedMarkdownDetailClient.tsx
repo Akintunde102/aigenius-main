@@ -18,6 +18,8 @@ import copy from 'copy-to-clipboard';
 import { getStoredUserDetailsSnapshot } from '@/lib/calls/get-logged-user-details';
 import { deleteHostedFile, type HostedFilePublic } from '@/lib/calls/hosted-file';
 import { applyColorMode, persistColorMode } from '@/lib/color-mode';
+import { DISPLAY } from '@/app/components/landing/typography';
+import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
 import { HostedMarkdownBody } from './HostedMarkdownBody';
 import {
     estimateHostedReadingMinutes,
@@ -29,19 +31,29 @@ interface HostedMarkdownDetailClientProps {
     file: HostedFilePublic;
 }
 
+/* Tonal round buttons: no borders, one step off the page, same on light and dark. */
 const iconButtonClass = [
-    'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-sm',
-    'border-[var(--chat-composer-border)] bg-[var(--chat-composer-bg)] text-[var(--app-ink-900)]',
-    'hover:bg-[var(--surface-muted)]',
-    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-accent)]',
+    'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm',
+    'bg-black/[0.05] text-[var(--app-ink-900)] dark:bg-white/[0.07]',
+    'transition-[background-color,transform] duration-150 ease-out-strong active:scale-[0.97]',
+    'hover:bg-black/[0.09] dark:hover:bg-white/[0.12]',
+    FOCUS_RING,
     'disabled:cursor-not-allowed disabled:opacity-60',
 ].join(' ');
 
 const textButtonClass = [
-    'inline-flex h-10 items-center rounded-lg border px-4 text-sm',
-    'border-[var(--chat-composer-border)] bg-[var(--chat-composer-bg)] text-[var(--app-ink-900)]',
-    'hover:bg-[var(--surface-muted)]',
-    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-accent)]',
+    'inline-flex h-11 items-center rounded-full px-6 text-[15px] font-medium',
+    'bg-black/[0.06] text-[var(--app-ink-900)] dark:bg-white/[0.08]',
+    'transition-[background-color,transform] duration-150 ease-out-strong active:scale-[0.97]',
+    'hover:bg-black/[0.1] dark:hover:bg-white/[0.13]',
+    FOCUS_RING,
+].join(' ');
+
+const primaryButtonClass = [
+    'inline-flex h-11 items-center rounded-full px-6 text-[15px] font-medium',
+    'bg-stone-900 text-white dark:bg-white dark:text-stone-900',
+    'transition-[opacity,transform] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97]',
+    FOCUS_RING,
 ].join(' ');
 
 export default function HostedMarkdownDetailClient({ file }: HostedMarkdownDetailClientProps) {
@@ -125,9 +137,9 @@ export default function HostedMarkdownDetailClient({ file }: HostedMarkdownDetai
 
     return (
         <article className="published-thread min-h-[70vh] w-full bg-[var(--chat-canvas-bg)] text-[var(--app-ink-900)]">
-            <header className="sticky top-0 z-30 overflow-visible border-b border-[var(--chat-composer-border)] bg-[var(--chat-canvas-bg)]/95 backdrop-blur-sm">
-                <div className="mx-auto flex h-11 w-full max-w-[72ch] items-center gap-2 px-4 sm:px-6">
-                    <p className="min-w-0 flex-1 truncate text-sm font-semibold" title={file.title}>
+            <header className="sticky top-0 z-30 overflow-visible bg-[var(--chat-canvas-bg)]/90 backdrop-blur-md">
+                <div className="mx-auto flex h-14 w-full max-w-[72ch] items-center gap-3 px-4 sm:px-6">
+                    <p className="min-w-0 flex-1 truncate text-sm font-medium" title={file.title}>
                         {file.title}
                     </p>
                     <p className="hidden shrink-0 whitespace-nowrap text-xs text-[var(--chat-muted-fg)] sm:block">
@@ -140,7 +152,7 @@ export default function HostedMarkdownDetailClient({ file }: HostedMarkdownDetai
                     <p className="sr-only">
                         {authorName}. Published {formatDate(file.publishedAt)}. {readingMinutes} minute read.
                     </p>
-                    <div className="relative ml-auto flex shrink-0 items-center gap-1" role="toolbar" aria-label="Page actions">
+                    <div className="relative ml-auto flex shrink-0 items-center gap-1.5" role="toolbar" aria-label="Page actions">
                         <button
                             type="button"
                             className={iconButtonClass}
@@ -180,7 +192,7 @@ export default function HostedMarkdownDetailClient({ file }: HostedMarkdownDetai
                 </div>
             </header>
 
-            <div className="mx-auto w-full max-w-[72ch] px-4 py-8 sm:px-6">
+            <div className="mx-auto w-full max-w-[72ch] px-4 py-10 sm:px-6">
                 {file.description ? (
                     <p className="sr-only">{file.description}</p>
                 ) : null}
@@ -189,34 +201,32 @@ export default function HostedMarkdownDetailClient({ file }: HostedMarkdownDetai
 
                 <section
                     aria-label="Use AIGenius"
-                    className="mt-12 rounded-2xl border border-[var(--chat-composer-border)] bg-[var(--chat-composer-bg)] px-5 py-6"
+                    className="mt-16 rounded-3xl bg-black/[0.04] px-7 py-9 dark:bg-white/[0.05]"
                 >
                     {currentUser ? (
                         <>
-                            <h2 className="text-lg font-semibold tracking-tight">Continue in AIGenius</h2>
-                            <p className="mt-2 max-w-[62ch] text-sm leading-6 text-[var(--app-ink-700)]">
+                            <h2 className={`${DISPLAY} text-2xl font-normal leading-[1.15] tracking-[-0.02em] sm:text-[1.75rem]`}>
+                                Continue in AIGenius
+                            </h2>
+                            <p className="mt-3 max-w-[62ch] text-[15px] leading-relaxed text-[var(--app-ink-700)]">
                                 Open your workspace to host Markdown, chat with every model, and publish more pages.
                             </p>
-                            <div className="mt-4">
-                                <Link
-                                    href="/"
-                                    className="inline-flex h-10 items-center rounded-lg bg-[var(--chat-accent)] px-4 text-sm font-semibold text-white hover:bg-[var(--chat-accent-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-accent)]"
-                                >
+                            <div className="mt-6">
+                                <Link href="/" className={primaryButtonClass}>
                                     Open app
                                 </Link>
                             </div>
                         </>
                     ) : (
                         <>
-                            <h2 className="text-lg font-semibold tracking-tight">Publish your own page</h2>
-                            <p className="mt-2 max-w-[62ch] text-sm leading-6 text-[var(--app-ink-700)]">
+                            <h2 className={`${DISPLAY} text-2xl font-normal leading-[1.15] tracking-[-0.02em] sm:text-[1.75rem]`}>
+                                Publish your own page
+                            </h2>
+                            <p className="mt-3 max-w-[62ch] text-[15px] leading-relaxed text-[var(--app-ink-700)]">
                                 Sign in to host Markdown from your files, chat with every model, and share a public page of your own.
                             </p>
-                            <div className="mt-4 flex flex-wrap gap-2">
-                                <Link
-                                    href={signInHref}
-                                    className="inline-flex h-10 items-center rounded-lg bg-[var(--chat-accent)] px-4 text-sm font-semibold text-white hover:bg-[var(--chat-accent-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-accent)]"
-                                >
+                            <div className="mt-6 flex flex-wrap gap-2">
+                                <Link href={signInHref} className={primaryButtonClass}>
                                     Sign in
                                 </Link>
                                 <Link href="/signup" className={textButtonClass}>
