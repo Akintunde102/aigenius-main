@@ -1,6 +1,6 @@
 import React from 'react';
 import { Model } from './types';
-import { getModelAverageRequestPrice } from '@/app/components/model-interface/shared/utils';
+import { getModelAverageRequestPrice, getModelAverageRequestCredits } from '@/app/components/model-interface/shared/utils';
 import { formatUSD, formatNGN } from '@/app/components/model-interface/shared/utils';
 
 interface ModelLineProps {
@@ -27,6 +27,7 @@ export const ModelLine: React.FC<ModelLineProps> = ({ model }) => {
     };
 
     const avgUSD = model ? getModelAverageRequestPrice(model as any) : 0;
+    const avgCredits = model ? getModelAverageRequestCredits(model as any) : 0;
 
     return (
         <div className="px-3 py-1.5 text-xs border-b border-gray-100 bg-gray-50/50">
@@ -47,7 +48,7 @@ export const ModelLine: React.FC<ModelLineProps> = ({ model }) => {
                 <div className="flex items-center gap-2">
                     {isFinite(avgUSD) && avgUSD > 0 && (
                         <>
-                            <span className="text-blue-700 font-medium">~<span className="text-green-700">{formatUSD(avgUSD)} · {formatNGN(avgUSD)} credits/msg</span></span>
+                            <span className="text-blue-700 font-medium">~<span className="text-green-700">{formatUSD(avgUSD)} · {formatNGN(avgCredits)} credits/msg</span></span>
                         </>
                     )}
                     <span className="text-gray-400 font-mono">{model.id}</span>

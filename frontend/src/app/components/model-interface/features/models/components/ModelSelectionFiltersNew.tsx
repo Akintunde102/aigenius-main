@@ -2,10 +2,12 @@ import React, { useMemo } from "react";
 import { FiGlobe, FiCheckCircle, FiRotateCcw, FiZap, FiCpu } from "react-icons/fi";
 import type { ModelCatalogFilter } from "@/app/components/model-interface/shared/hooks/useModelSelection";
 import { FaRegImage } from "react-icons/fa";
+import type { Model } from "@/app/components/model-interface/shared/types";
 import {
   ModelOrderBy,
   ModelOrderDir,
   getProviderLabel,
+  buildLabFilterOptions,
 } from "@/app/components/model-interface/shared/utils";
 import {
   FilterPillDropdown,
@@ -26,7 +28,9 @@ interface ModelSelectionFiltersNewProps {
   setSelectedProviders: (v: string[] | ((prev: string[]) => string[])) => void;
   showWebSearch: boolean;
   setShowWebSearch: (v: boolean) => void;
-  majorProviders: string[];
+  majorProviders?: string[];
+  models?: Model[];
+  labOptions?: FilterPillOption[];
   groupByAffordability?: boolean;
   setGroupByAffordability?: (v: boolean | ((prev: boolean) => boolean)) => void;
   isMobile?: boolean;
@@ -139,6 +143,8 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
   showWebSearch,
   setShowWebSearch,
   majorProviders,
+  models,
+  labOptions: labOptionsProp,
   groupByAffordability,
   setGroupByAffordability,
   isMobile = false,
@@ -152,16 +158,24 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
 }: ModelSelectionFiltersNewProps) {
   const selectedProvider = selectedProviders[0] ?? "";
 
-  const labOptions = useMemo<FilterPillOption[]>(
-    () => [
-      { value: "", label: "All labs" },
-      ...majorProviders.map((pid) => ({
-        value: pid,
-        label: getProviderLabel(pid),
-      })),
-    ],
-    [majorProviders],
-  );
+  const labOptions = useMemo<FilterPillOption[]>(() => {
+    if (labOptionsProp && labOptionsProp.length > 0) {
+      return labOptionsProp;
+    }
+    if (models && models.length > 0) {
+      return buildLabFilterOptions(models);
+    }
+    if (majorProviders && majorProviders.length > 0) {
+      return [
+        { value: "", label: "All labs" },
+        ...majorProviders.map((pid) => ({
+          value: pid,
+          label: getProviderLabel(pid),
+        })),
+      ];
+    }
+    return buildLabFilterOptions();
+  }, [labOptionsProp, models, majorProviders]);
 
   const hasAnyFilterActive =
     orderBy !== "default" ||
@@ -264,6 +278,8 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
             placeholder="Labs"
             ariaLabel="Filter by lab"
             forceActive={Boolean(selectedProvider)}
+            searchable
+            searchPlaceholder="Search labs..."
           />
 
           <FilterPillIconButton
@@ -507,13 +523,16 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
           {Boolean(selectedProvider) && (
             <button
               type="button"
-              onClick={() => setSelectedProviders([])}
+              onClick={() => {
+                setSelectedProviders([]);
+              }}
               className="text-[10px] text-[var(--chat-accent)] hover:underline"
             >
               All labs
             </button>
           )}
         </div>
+
         <FilterPillDropdown
           value={selectedProvider}
           options={labOptions}
@@ -521,6 +540,8 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
           placeholder="All labs"
           ariaLabel="Filter by lab"
           forceActive={Boolean(selectedProvider)}
+          searchable
+          searchPlaceholder="Search labs..."
           className="w-full [&>button]:w-full [&>button]:justify-between [&>button]:h-7.5 [&>button]:text-xs"
           labelClassName="truncate flex-1 text-left"
         />

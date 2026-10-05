@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { FiCopy, FiExternalLink } from "react-icons/fi";
 import type { CloudFile } from "@/app/components/file/file.interface";
+import { openFilePreview } from "@/app/components/modals/FilePreviewManager";
 import { timeAgo } from "@/lib/time-ago";
 import { CATEGORY_THEME } from "../user-files.theme";
 import {
@@ -11,6 +12,7 @@ import {
   classifyUserFileCategory,
   formatFileByteSize,
   getFileExtensionFromCloudFile,
+  inferPreviewTypeFromCloudFile,
   isImageCloudFile,
 } from "../user-files.utils";
 import { categoryIcon } from "./category-icon";
@@ -45,21 +47,28 @@ export function GalleryTile({
   const isImg = isImageCloudFile(file);
   const [imgErr, setImgErr] = useState(false);
 
-  const openExternal = useCallback(() => {
-    window.open(file.s3Link, "_blank", "noopener,noreferrer");
-  }, [file.s3Link]);
+  const displayName = buildCloudFileDisplayName(file);
+
+  const openPreviewOrFile = useCallback(() => {
+    if (isImg && !imgErr) {
+      onImageClick(file);
+    } else {
+      const previewType = inferPreviewTypeFromCloudFile(file);
+      openFilePreview({
+        url: file.s3Link,
+        name: displayName,
+        type: previewType,
+      });
+    }
+  }, [isImg, imgErr, file, displayName, onImageClick]);
 
   const activateMain = useCallback(() => {
     if (pickMode) {
       onToggleSelect?.();
       return;
     }
-    if (isImg && !imgErr) {
-      onImageClick(file);
-    } else {
-      openExternal();
-    }
-  }, [pickMode, onToggleSelect, isImg, imgErr, file, onImageClick, openExternal]);
+    openPreviewOrFile();
+  }, [pickMode, onToggleSelect, openPreviewOrFile]);
 
   const selectionRing = pickMode
     ? selected
@@ -117,15 +126,16 @@ export function GalleryTile({
               >
                 Copy link
               </button>
-              <a
-                href={file.s3Link}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
                 className="text-[10px] font-medium text-gray-700 underline-offset-2 hover:underline"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openPreviewOrFile();
+                }}
               >
                 Open
-              </a>
+              </button>
             </div>
           </div>
 
@@ -208,16 +218,17 @@ export function GalleryTile({
                 <FiCopy size={13} aria-hidden />
                 Copy link
               </button>
-              <a
-                href={file.s3Link}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
                 className="flex flex-1 items-center justify-center gap-1 rounded-md border border-gray-200 bg-white py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openPreviewOrFile();
+                }}
               >
                 <FiExternalLink size={13} aria-hidden />
                 Open
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -300,12 +311,13 @@ export function GalleryTile({
           <FiCopy size={15} className="opacity-95" aria-hidden />
           Copy link
         </button>
-        <a
-          href={file.s3Link}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
           className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-800 hover:bg-gray-50 sm:text-sm"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            openPreviewOrFile();
+          }}
         >
           <FiExternalLink
             size={15}
@@ -313,7 +325,7 @@ export function GalleryTile({
             aria-hidden
           />
           Open
-        </a>
+        </button>
       </div>
     </article>
   );

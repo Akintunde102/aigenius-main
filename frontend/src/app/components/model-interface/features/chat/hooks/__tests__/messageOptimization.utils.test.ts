@@ -112,4 +112,37 @@ describe('optimizeMessagesForAPI', () => {
         expect(assistantPayload).not.toHaveProperty('events');
         expect(optimized.map((m) => m.role)).toEqual(['user', 'assistant', 'user']);
     });
+
+    it('replays a user image without rewriting or dropping its url', () => {
+        const imageUrl = 'https://cdn.example/uploads/photo.png';
+        const messages: ChatMessage[] = [
+            {
+                id: 'u1',
+                role: 'user',
+                content: [
+                    { type: 'text', text: 'what is this?' },
+                    { type: 'image_url', image_url: { url: imageUrl } },
+                ],
+                timestamp: 1,
+            },
+            {
+                id: 'a1',
+                role: 'assistant',
+                content: 'a cat',
+                timestamp: 2,
+            },
+        ];
+
+        const snapshot = messages.slice(0, 1);
+        const { messages: optimized } = optimizeMessagesForAPI(snapshot);
+
+        expect(snapshot[0].content).toEqual([
+            { type: 'text', text: 'what is this?' },
+            { type: 'image_url', image_url: { url: imageUrl } },
+        ]);
+        expect(optimized[0].content).toEqual([
+            { type: 'text', text: 'what is this?' },
+            { type: 'image_url', image_url: { url: imageUrl } },
+        ]);
+    });
 });

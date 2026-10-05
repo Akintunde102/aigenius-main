@@ -38,8 +38,8 @@ export interface ChatMessageWrapperProps {
     onOpenOrphanMarker?: (marker: StickyThreadMarker) => void;
     onToggleOrphanMarkers?: (messageId: string) => void;
     onCopy: (content: string) => void;
-    imagePreview: string | null;
-    setImagePreview: (url: string | null) => void;
+    imagePreview: import('../../message-types/components/ImagePreviewActionsContext').ImagePreviewOpenTarget | null;
+    setImagePreview: (url: any) => void;
     loading: boolean;
     streaming: boolean;
     selectedPersonalityName?: string;
@@ -130,8 +130,8 @@ function ChatMessageWrapperInner({
                 onOpenOrphanMarker={onOpenOrphanMarker}
                 onToggleOrphanMarkers={onToggleOrphanMarkers}
                 onImagePreview={onImagePreviewNoop}
-                imagePreview={imagePreview}
-                setImagePreview={setImagePreview}
+                imagePreview={typeof imagePreview === 'string' ? imagePreview : (imagePreview?.fileUrl ?? null)}
+                setImagePreview={setImagePreview as (url: string | null) => void}
                 formatCost={formatCostCb}
                 loading={loading}
                 streaming={streaming && isLastVisibleMessage}

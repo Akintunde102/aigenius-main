@@ -52,5 +52,16 @@ export function useUploadedFilesList(options?: {
     void refresh();
   }, [skip, refresh]);
 
+  useEffect(() => {
+    if (skip) return;
+    const handleFileUploaded = () => {
+      void refresh({ silent: true });
+    };
+    window.addEventListener("aigenius:file-uploaded", handleFileUploaded);
+    return () => {
+      window.removeEventListener("aigenius:file-uploaded", handleFileUploaded);
+    };
+  }, [skip, refresh]);
+
   return { files, loading, isRefreshing, fetchError, refresh };
 }

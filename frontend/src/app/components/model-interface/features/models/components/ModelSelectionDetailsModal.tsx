@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { FiX } from 'react-icons/fi';
 import { Model } from '@/app/components/model-interface/shared/types';
-import { formatUSD, formatNGN, getModelDisplayName } from '@/app/components/model-interface/shared/utils';
+import { formatUSD, formatNGN, getModelDisplayName, getModelAverageRequestPrice } from '@/app/components/model-interface/shared/utils';
 import {
     formatPricingAmount,
     formatPricingTierLabel,
@@ -151,7 +151,7 @@ const ModelSelectionDetailsModal = memo(function ModelDetailsModal({
                                 {formatNGN(averageCost)}
                             </div>
                             <div className="text-sm" style={{ color: "var(--modal-muted-fg)" }}>
-                                {formatUSD(averageCost)}
+                                {formatUSD(getModelAverageRequestPrice(model))}
                             </div>
                         </div>
                     )}

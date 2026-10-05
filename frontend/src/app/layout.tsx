@@ -15,6 +15,7 @@ import GlobalToaster from "@/app/components/GlobalToaster";
 import ScheduleNotificationListener from "@/app/components/ScheduleNotificationListener";
 import { ColorModeBootstrapScript } from "@/app/components/ColorModeBootstrapScript";
 import { FilePreviewModal } from "@/app/components/modals/FilePreviewModal";
+import { VideoJobProgressModal } from "@/app/components/modals/VideoJobProgressModal";
 import { ThemeProvider } from "@/lib/providers/ThemeProvider";
 const Euclid = localFont({
   src: [
@@ -150,7 +151,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className="scroll-smooth">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
         <ColorModeBootstrapScript />
@@ -172,6 +173,7 @@ export default function RootLayout({
               <ScheduleNotificationListener />
               <GlobalToaster />
               <FilePreviewModal />
+              <VideoJobProgressModal />
               <DesktopToolApprovalHost />
             </ErrorBoundary>
             <div id="modal-root" />

@@ -48,51 +48,73 @@ export function AttachmentLibraryModal({
 
   const portalTarget = document.getElementById("modal-root") ?? document.body;
 
+  const filesCount = library.files?.length ?? 0;
+
   return createPortal(
     (
       <div
         role="presentation"
-        className={`fixed inset-0 z-[110] flex justify-center bg-black/30 p-0 ${
-          isMobile ? "items-stretch" : "items-center"
-        }`}
+        className={`app-modal-overlay backdrop-blur-[2px] ${isMobile ? "p-0" : ""}`}
         onClick={onClose}
       >
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="attachment-library-title"
-          className={`flex w-full flex-col overflow-hidden border shadow-2xl ${
+          className={`app-modal-panel ${
             isMobile
-              ? "h-full max-h-none rounded-none"
-              : "h-[min(85vh,720px)] max-h-[min(94vh,720px)] max-w-2xl rounded-xl"
+              ? "h-full max-h-none rounded-none border-0"
+              : "h-[min(85vh,720px)] max-h-[min(90vh,720px)] max-w-2xl sm:max-w-3xl shadow-2xl"
           }`}
           onClick={(e) => e.stopPropagation()}
-          style={{
-            background: "var(--modal-bg)",
-            borderColor: "var(--modal-border)",
-            color: "var(--modal-fg)",
-          }}
         >
-          <div className="flex-shrink-0 border-b" style={{ borderColor: "var(--modal-border)" }}>
-            <div
-              className={`flex items-center justify-between ${isMobile ? "px-3 py-2" : "px-4 py-3"}`}
-            >
-              <h2
-                id="attachment-library-title"
-                className={`font-semibold ${isMobile ? "text-base" : "text-lg"}`}
+          <div className="app-modal-panel-header flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                style={{
+                  background: "color-mix(in srgb, var(--chat-accent) 12%, transparent)",
+                  color: "var(--chat-accent)",
+                }}
+                aria-hidden
               >
-                Choose from My files
-              </h2>
-              <button
-                type="button"
-                aria-label="Close"
-                className="rounded p-1 transition-colors hover:text-red-500"
-                style={{ color: "var(--modal-muted-fg)" }}
-                onClick={onClose}
-              >
-                <FiX size={isMobile ? 20 : 22} aria-hidden />
-              </button>
+                <FiX className="h-4.5 w-4.5 rotate-45" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2
+                    id="attachment-library-title"
+                    className="text-base font-semibold leading-none"
+                    style={{ color: "var(--modal-fg)" }}
+                  >
+                    Choose from My files
+                  </h2>
+                  {filesCount > 0 && (
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums"
+                      style={{
+                        background: "color-mix(in srgb, var(--modal-fg) 8%, transparent)",
+                        color: "var(--modal-muted-fg)",
+                      }}
+                    >
+                      {filesCount}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-xs" style={{ color: "var(--modal-muted-fg)" }}>
+                  Select uploaded files to attach to your prompt
+                </p>
+              </div>
             </div>
+            <button
+              type="button"
+              aria-label="Close"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-none"
+              style={{ color: "var(--modal-muted-fg)" }}
+              onClick={onClose}
+            >
+              <FiX className="h-4 w-4" aria-hidden />
+            </button>
           </div>
 
           <div className="attachment-library-browser flex min-h-0 flex-1 flex-col overflow-hidden">

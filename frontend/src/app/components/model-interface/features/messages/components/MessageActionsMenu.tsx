@@ -1,6 +1,10 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  getMessageActionsMenuViewportBottom,
+  resolveMessageActionsMenuVerticalDirection,
+} from "./messageActionsMenu.collision";
 import { MoreHorizontal } from "lucide-react";
 import { FiTrash2, FiInfo, FiCopy, FiRepeat, FiBookmark } from "react-icons/fi";
 import { Sparkles } from "lucide-react";
@@ -60,34 +64,25 @@ export function MessageActionsMenu({
 
     const triggerRect = rootRef.current.getBoundingClientRect();
     const menuRect = menuRef.current.getBoundingClientRect();
-    const viewportMargin = 8;
-    const spaceAbove = triggerRect.top - viewportMargin;
-    const spaceBelow = window.innerHeight - triggerRect.bottom - viewportMargin;
-    const canOpenUp = spaceAbove >= menuRect.height;
-    const canOpenDown = spaceBelow >= menuRect.height;
+    const menuHeight = menuRect.height > 0 ? menuRect.height : menuRef.current.offsetHeight;
+    if (menuHeight <= 0) return;
 
-    if (canOpenDown && !canOpenUp) {
-      setMenuVerticalDirection("down");
-      return;
-    }
-
-    if (canOpenUp && !canOpenDown) {
-      setMenuVerticalDirection("up");
-      return;
-    }
-
-    if (!canOpenUp && !canOpenDown) {
-      setMenuVerticalDirection(spaceBelow > spaceAbove ? "down" : "up");
-      return;
-    }
-
-    setMenuVerticalDirection("down");
+    const next = resolveMessageActionsMenuVerticalDirection(
+      triggerRect,
+      menuHeight,
+      getMessageActionsMenuViewportBottom(),
+    );
+    setMenuVerticalDirection((prev) => (prev === next ? prev : next));
   }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updateMenuVerticalDirection();
+  }, [open, updateMenuVerticalDirection]);
 
   useEffect(() => {
     if (!open) return;
 
-    const frameId = window.requestAnimationFrame(updateMenuVerticalDirection);
     const onDoc = (e: MouseEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) {
         setOpen(false);
@@ -105,7 +100,6 @@ export function MessageActionsMenu({
     window.addEventListener("resize", onViewportChange);
     window.addEventListener("scroll", onViewportChange, true);
     return () => {
-      window.cancelAnimationFrame(frameId);
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onViewportChange);

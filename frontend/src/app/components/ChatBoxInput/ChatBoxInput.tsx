@@ -104,7 +104,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
         [onSelectModel, onModelChange],
     );
     const glisten = useGlistenEffect();
-    const { inputValue, handleInputChange, flushInputToParent } = useInputState({
+    const { inputValue, handleInputChange, flushInputToParent, clearInput } = useInputState({
         externalInputValue,
         onInputChange,
         composerSessionKey,
@@ -183,27 +183,19 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     const handleSubmit = useCallback(
         async (e: React.FormEvent | React.MouseEvent) => {
             e.preventDefault();
-            console.log('[ChatBoxInput] handleSubmit triggered', {
-                inputValue: inputValue.trim(),
-                hasFiles: uploadedFiles.length > 0,
-                sendBlocked,
-                responseInProgress,
-                uploading
-            });
             if ((inputValue.trim() || uploadedFiles.length > 0) && !sendBlocked) {
-                console.log('[ChatBoxInput] Calling onSendMessage');
                 flushInputToParent();
-                await Promise.resolve(
+                const sent = await Promise.resolve(
                     onSendMessageRef.current(inputValue.trim(), selectedModel),
                 );
-                console.log('[ChatBoxInput] onSendMessage finished');
+                if (sent !== false) {
+                    clearInput();
+                }
             } else if (inputValue.trim() && canQueueMessage) {
                 queueCurrentInput();
-            } else {
-                console.log('[ChatBoxInput] Submission blocked or empty input');
             }
         },
-        [inputValue, uploadedFiles.length, sendBlocked, canQueueMessage, selectedModel, flushInputToParent, queueCurrentInput],
+        [inputValue, uploadedFiles.length, sendBlocked, canQueueMessage, selectedModel, flushInputToParent, clearInput, queueCurrentInput],
     );
 
     // PC: Enter = send, Shift+Enter = new line. Mobile: Enter and Shift+Enter = new line only (no keyboard submit).

@@ -6,6 +6,7 @@ import {
     storePinnedChats,
     clearChatStorage
 } from './chatStorage';
+import { isClientVerboseDebugEnabled } from './client-verbose-debug';
 
 // Utility to manually populate IndexedDB with backend data
 export async function populateIndexedDBFromBackend(): Promise<void> {
@@ -62,17 +63,10 @@ export async function testBackendCall(): Promise<void> {
     }
 }
 
-// Make functions available globally for browser console access
-if (typeof window !== 'undefined') {
+// Opt-in DevTools helpers: localStorage.setItem('__aig_verbose_debug', '1')
+if (typeof window !== 'undefined' && isClientVerboseDebugEnabled()) {
     (window as any).populateIndexedDBFromBackend = populateIndexedDBFromBackend;
     (window as any).checkIndexedDBContents = checkIndexedDBContents;
     (window as any).forceRefreshFromBackend = forceRefreshFromBackend;
     (window as any).testBackendCall = testBackendCall;
-
-    console.log('🔧 Chat storage utility functions available globally:');
-    console.log('   - populateIndexedDBFromBackend()');
-    console.log('   - checkIndexedDBContents()');
-    console.log('   - forceRefreshFromBackend()');
-    console.log('   - testBackendCall()');
-    console.log('   - runAllChatStorageTests()');
 }

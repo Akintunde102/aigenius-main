@@ -1,56 +1,61 @@
 import { DesktopDemo } from "./DesktopDemo";
-import { FeatureSection, type FeatureItem } from "./FeatureSection";
-import { ModelSwitchPreview } from "./ModelSwitchPreview";
+import { MeterCalculator } from "./MeterCalculator";
+import { ModelSwitcher } from "./ModelSwitcher";
+import { Scrollytelling, type FeatureItem } from "./Scrollytelling";
 import { ToolsDemo } from "./ToolsDemo";
-import { WalletDemo } from "./WalletDemo";
 
-/**
- * The ids are the targets of the header links (#models, #desktop, #tools, #pricing).
- * Copy is one line and one sentence on purpose. The preview does the explaining.
- */
+/** Exactly four items: the pinned layout in Scrollytelling is sized for four. */
 const ITEMS: readonly FeatureItem[] = [
   {
     id: "models",
-    title: "Switch models mid-conversation.",
-    body: "Pick Claude, GPT, Gemini or DeepSeek from the message box. Every reply shows what it cost.",
-    hint: "Try it: open the model menu and pick another model.",
-    cta: { label: "Try it on the web", href: "/login" },
+    title: "Switch models in the middle of a conversation.",
+    description:
+      "Claude for the careful read, GPT for the quick rewrite, Gemini or DeepSeek when they fit better. Everything stays in one thread, and each request is billed at that model's own price.",
+    points: [
+      "Claude, GPT, Gemini, DeepSeek, Llama and more through OpenRouter",
+      "Each request billed at its own model's price",
+      "No separate accounts or API keys",
+    ],
     decorative: false,
-    visual: <ModelSwitchPreview />,
+    visual: <ModelSwitcher />,
   },
   {
     id: "desktop",
     title: "Works on your machine. Asks before it acts.",
-    body: "The desktop app reads your files and runs commands in your projects. Anything that changes something waits for your approval.",
-    hint: "Plays on its own: it lists a folder, then waits for approval before moving files.",
+    description:
+      "The desktop app can read your files, run commands and write results back to your project. Each action that changes something waits for your approval first.",
+    points: [
+      "Direct access to local files, code and projects",
+      "Approve or deny each tool call",
+      "Gmail and PDF tools alongside local ones",
+    ],
     decorative: true,
     visual: <DesktopDemo />,
   },
   {
     id: "tools",
     title: "Reads your PDFs, searches the web, checks your inbox.",
-    body: "Point it at a long report, ask it to look something up, or search your email. Sensitive steps wait for you.",
-    hint: "Plays on its own: three tools in one request, and Gmail waits for your approval.",
+    description:
+      "Instead of copying and pasting, point it at a long report, ask it to look something up, or have it go through your email. You see each tool it uses, and anything sensitive waits for your approval.",
+    points: [
+      "Reads and summarizes long PDF reports",
+      "Searches the web for current information",
+      "Searches your Gmail, only after you allow it",
+    ],
     decorative: true,
     visual: <ToolsDemo />,
   },
   {
     id: "pricing",
     title: "A wallet, not a subscription.",
-    body: "Top up from $1. Each message spends only what it costs, and cheaper models cost fewer credits.",
-    hint: "Try it: tap a model to send a message and watch the balance.",
-    cta: { label: "Start with free credits", href: "/login" },
+    description:
+      "Slide to see what your month would cost. A flat plan charges the same whether you use it or not; the wallet charges for the requests you actually send.",
+    points: ["Top up in USD or NGN", "Free credits when you sign up", "No plan to cancel"],
     decorative: false,
-    visual: <WalletDemo />,
+    visual: <MeterCalculator />,
   },
 ];
 
 export function FeatureRows() {
-  return (
-    <>
-      {ITEMS.map((item, index) => (
-        <FeatureSection key={item.id} item={item} flip={index % 2 === 1} />
-      ))}
-    </>
-  );
+  return <Scrollytelling items={ITEMS} />;
 }

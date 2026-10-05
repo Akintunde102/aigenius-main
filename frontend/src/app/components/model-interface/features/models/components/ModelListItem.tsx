@@ -2,8 +2,7 @@ import React, { useMemo } from 'react';
 import { FiTrash2, FiMapPin, FiInfo } from "react-icons/fi";
 import { FaRegImage, FaRegFileAlt, FaRegFileAudio, FaRegFileVideo } from "react-icons/fa";
 import { Model } from '@/app/components/model-interface/shared/types';
-import { getProvider, getProviderLabel } from '@/app/components/model-interface/shared/utils';
-import { formatUsdCostAsCredits } from '@/lib/credits';
+import { getProvider, getProviderLabel, getModelAverageRequestCredits, formatNGN } from '@/app/components/model-interface/shared/utils';
 
 interface ModelListItemProps {
     model: Model;
@@ -35,12 +34,9 @@ export const ModelListItem: React.FC<ModelListItemProps> = React.memo(({
     const providerLabel = useMemo(() => getProviderLabel(getProvider(model.id)), [model.id]);
 
     const getCreditsPrice = (model: Model) => {
-        if (!model.pricing) return null;
-        const price = model.pricing.prompt || Object.values(model.pricing)[0];
-        if (!price) return null;
-        const num = parseFloat(price);
-        if (isNaN(num)) return null;
-        return formatUsdCostAsCredits(num);
+        const credits = getModelAverageRequestCredits(model);
+        if (!Number.isFinite(credits) || credits <= 0) return null;
+        return formatNGN(credits);
     };
 
     // Helper to get modality icons

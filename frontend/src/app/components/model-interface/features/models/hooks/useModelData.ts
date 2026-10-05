@@ -7,6 +7,7 @@ import { waitForAccessToken } from '@/lib/api/wait-for-access-token';
 import { subscribeToTokenRefresh } from '@/lib/api/auth-client';
 import { resolveDefaultActiveModel } from '@/app/components/model-interface/shared/constants/quickPickModels';
 import { filterModelsForChatUiCatalog } from '@/app/components/model-interface/features/models/utils/modelConversationEligibility.utils';
+import { withLocalRuntimeDisplayName } from '@/app/components/model-interface/features/models/utils/ollamaModelDisplayName.utils';
 
 let inflightModelsPromise: Promise<any> | null = null;
 let cachedModels: any[] | null = null;
@@ -208,7 +209,9 @@ export function useModelData() {
                     list = list.filter((m: any) => m.provider !== 'ollama' && !(m.id && m.id.startsWith('ollama:')));
                 }
 
-                list = filterModelsForChatUiCatalog(list as Model[]);
+                list = filterModelsForChatUiCatalog(list as Model[]).map((model) =>
+                    withLocalRuntimeDisplayName(model),
+                );
 
                 if (!cancelled) setModels(list);
 

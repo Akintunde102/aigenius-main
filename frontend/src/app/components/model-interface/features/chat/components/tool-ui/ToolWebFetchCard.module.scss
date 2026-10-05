@@ -189,7 +189,7 @@
 
 .linkItem a {
   font-size: 11px;
-  color: #0369a1;
+  color: var(--chat-accent, #2563eb);
   text-decoration: none;
 
   &:hover {
@@ -211,4 +211,13 @@
   .titleLoading {
     animation: none;
   }
+}
+
+:global(.dark) .root,
+:global([data-theme="dark"]) .root {
+  --tool-work-muted: var(--chat-muted-fg, #9ca3af);
+  --tool-work-text: var(--app-ink-900, #ececef);
+  --tool-work-border: var(--app-border-soft, rgba(255, 255, 255, 0.08));
+  --tool-work-surface: var(--app-panel-strong, #18181c);
+  --tool-work-ring: color-mix(in srgb, var(--chat-accent) 22%, transparent);
 }

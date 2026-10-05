@@ -36,7 +36,7 @@ import {
     needsSync
 } from './chatStorage';
 import { normalizeChatMessages, normalizeSessionMessages } from './messageContentUtils';
-import { formatCredits, usdCostToCredits } from '@/lib/credits';
+import { formatCredits } from '@/lib/credits';
 import { mergeSidebarSessionRecord } from '@/app/components/model-interface/conversation/sessionRecency';
 
 /** Some legacy rows used `_id` instead of `id`. */
@@ -453,13 +453,13 @@ export async function getExistingChatTitle(session: ChatMessage[]): Promise<stri
     return existingSession?.title || null;
 }
 
-export function formatNaira(usd: string): string {
-    const num = parseFloat(usd);
-    if (Number.isNaN(num)) return usd;
-    return formatCredits(usdCostToCredits(num), { compact: true });
+export function formatNaira(credits: string): string {
+    const num = parseFloat(credits);
+    if (Number.isNaN(num)) return credits;
+    return formatCredits(num, { compact: true });
 }
 
-export function formatCost(usd: number, _showNaira?: boolean): string {
-    return formatCredits(usdCostToCredits(usd), { compact: true });
+export function formatCost(credits: number, _showNaira?: boolean): string {
+    return formatCredits(credits, { compact: true });
 }
 

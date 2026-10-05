@@ -10,6 +10,7 @@ import {
   isDesktopShellFromBuild,
   resolveAigeniusDesktopRuntime,
 } from "@/lib/utils/desktop-runtime";
+import { appendAuthDebugLog } from "@/lib/utils/client-verbose-debug";
 
 /**
  * Next middleware only sees cookies; localStorage may already hold tokens after OAuth or a prior session.
@@ -27,13 +28,9 @@ export default function EarlyDesktopAuthCookieSync(): null {
       syncAuthSessionCookiesFromStorage();
       void syncCodeProjectToDesktop();
       const validToken = getValidAccessToken();
-      // eslint-disable-next-line no-console
-      console.warn('[AIG-AUTH] EarlyDesktopAuthCookieSync: hasAuthSession=true validToken=' + !!validToken + ' path=' + (typeof window !== 'undefined' ? window.location.pathname : 'ssr'));
-      try {
-        const prev = localStorage.getItem('__aig_auth_debug') ?? '';
-        const entry = new Date().toISOString() + ' EarlyDesktopAuthCookieSync: hasAuthSession=true validToken=' + !!validToken;
-        localStorage.setItem('__aig_auth_debug', (prev + '\n' + entry).slice(-10000));
-      } catch { /* ignore */ }
+      appendAuthDebugLog(
+        `EarlyDesktopAuthCookieSync: hasAuthSession=true validToken=${!!validToken} path=${typeof window !== 'undefined' ? window.location.pathname : 'ssr'}`,
+      );
       if (!validToken) {
         // [FIX] Do NOT call handleSessionExpired() here on desktop.
         // An expired access token on cold boot is normal; use-desktop-session-restore

@@ -303,14 +303,10 @@ export function useChatOperationsRefined({
         const modelForSend = sendOptions?.modelOverride ?? selectedModel;
         const shouldStream = enableStreaming !== undefined ? enableStreaming : streamingEnabled;
         const inputToSend = resolveInputToSend(content, input);
-        console.log('[useChatOperationsRefined] handleSend entered', { hasSelectedModel: !!modelForSend, inputLength: inputToSend.length, shouldStream });
-
         if (!modelForSend) {
-            console.warn('[useChatOperationsRefined] No selected model');
             return false;
         }
         if (!preCreatedMessage && !inputToSend.trim()) {
-            console.log('[useChatOperationsRefined] Empty input, returning');
             return false;
         }
 
@@ -324,7 +320,6 @@ export function useChatOperationsRefined({
         const requiredBalance = computeRequiredBalance(modelForSend);
         const walletValidation = validateBalance(wallet, requiredBalance, modelForSend?.name || modelForSend?.id);
         if (!walletValidation) {
-            console.warn('[useChatOperationsRefined] Wallet validation failed');
             trackChatSendBlockedInsufficientBalance({
                 model: modelForSend,
                 requiredBalance,
@@ -372,9 +367,9 @@ export function useChatOperationsRefined({
             setChatForSession(sendingSessionId, prev => [...prev, userMsg]);
         }
 
-        if (!preCreatedMessage && sendOptions?.targetSessionKey === undefined) {
-            // Clear the composer draft for the session being sent (not whichever
-            // key a stale closure would resolve).
+        if (sendOptions?.targetSessionKey === undefined) {
+            // Clear the composer draft for the session being sent (including
+            // attachment sends that use preCreatedMessage but still typed text).
             setInputMap(prev => ({ ...prev, [sendingSessionId]: '' }));
         }
         setLoadingForSession(sendingSessionId, true);
@@ -394,8 +389,12 @@ export function useChatOperationsRefined({
 
         let wasError = false;
         const sendStartedAt = Date.now();
+        let requestStarted = false;
         try {
-            console.log('[useChatOperationsRefined] Fetching nobox functions...');
+            // Validation already returned above. From here, keep the user turn
+            // (including image URLs) even if the model request fails, so retry
+            // and replay resend the same uploads.
+            requestStarted = true;
             const { accessModel, accessModelStream } = await getNoboxFunctions({ project });
 
             const rawMessages = orderMessagesForApi(updatedChat);
@@ -423,7 +422,6 @@ export function useChatOperationsRefined({
                 setTimeout(() => setOptimizationMessage(''), CHAT_CONFIG.OPTIMIZATION_MESSAGE_TIMEOUT);
             }
 
-            console.log('[useChatOperationsRefined] Triggering API call', { shouldStream, messageCount: messages.length });
             trackChatMessageSent({
                 model: modelForSend,
                 streaming: shouldStream,
@@ -437,7 +435,6 @@ export function useChatOperationsRefined({
                 await handleNonStreamingResponse(accessModel, messages, updatedChat, requestOverrides);
             }
             clearPendingOrphanReply?.();
-            console.log('[useChatOperationsRefined] API call completed');
             trackChatResponseCompleted({
                 model: modelForSend,
                 streaming: shouldStream,
@@ -474,7 +471,6 @@ export function useChatOperationsRefined({
                 });
             }
         } finally {
-            console.log('[useChatOperationsRefined] handleSend finished', { sessionId: sendingSessionId });
             // Only clear in-flight indicators when no newer send has started on this slot.
             const sessionsToClear = new Set<string>([sendingSessionId]);
             if (currentMaterializedIdRef.current) {
@@ -496,7 +492,7 @@ export function useChatOperationsRefined({
                 }, 100);
             }
         }
-        return !wasError;
+        return requestStarted;
 
         function sendOwnsView(): boolean {
             const sameDraftGeneration = draftEpochAtSend === undefined

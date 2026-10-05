@@ -64,7 +64,7 @@ export default function DesktopShellChrome({
       <DesktopTitleBarActions />
       <DesktopOpacityFloatingControl />
       <div
-        className="aigenius-desktop-app-shell flex min-h-0 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain scroll-smooth"
+        className="aigenius-desktop-app-shell flex min-h-0 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain"
         style={{
           height: "100dvh",
           maxHeight: "100dvh",

@@ -6,11 +6,13 @@ import { createPortal } from "react-dom";
 import { Check, MessageSquare, MoreHorizontal } from "lucide-react";
 import { FiCopy, FiExternalLink } from "react-icons/fi";
 import type { CloudFile } from "@/app/components/file/file.interface";
+import { openFilePreview } from "@/app/components/modals/FilePreviewManager";
 import {
   buildCloudFileDisplayName,
   classifyUserFileCategory,
   formatFileByteSize,
   getFileExtensionFromCloudFile,
+  inferPreviewTypeFromCloudFile,
   isImageCloudFile,
 } from "../user-files.utils";
 import { categoryIcon } from "./category-icon";
@@ -47,14 +49,18 @@ export function LibraryFileList({
   const [openMenuFileId, setOpenMenuFileId] = useState<string | null>(null);
 
   return (
-    <div className="mt-1">
+    <div className="mt-0">
       <div
-        className={`grid items-center gap-x-3 border-b px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 sm:gap-x-4 ${
+        className={`grid items-center gap-x-3 border-b px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wider sticky top-0 z-[2] sm:gap-x-4 ${
           isPick
             ? "grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_7rem_4.5rem]"
             : "grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_7rem_4.5rem_auto]"
         }`}
-        style={{ borderColor: "var(--modal-border, #e5e7eb)" }}
+        style={{
+          borderColor: "var(--modal-border)",
+          background: "var(--modal-bg-muted)",
+          color: "var(--modal-muted-fg)",
+        }}
         aria-hidden
       >
         {isPick ? <span className="w-5" /> : null}
@@ -93,12 +99,14 @@ function LibraryFileActionsMenu({
   file,
   isOpen,
   onOpenChange,
+  onOpenOrPreview,
   onCopy,
   onRequestClose,
 }: {
   file: CloudFile;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onOpenOrPreview: () => void;
   onCopy: () => void;
   onRequestClose?: () => void;
 }) {
@@ -177,44 +185,54 @@ function LibraryFileActionsMenu({
             <div
               ref={menuRef}
               role="menu"
-              className="fixed z-[120] w-52 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-[var(--modal-border)] dark:bg-[var(--modal-bg-muted)]"
-              style={{ top: position.top, left: position.left }}
+              className="fixed z-[120] w-52 rounded-xl border p-1 shadow-xl animate-in fade-in zoom-in-95 duration-100"
+              style={{
+                top: position.top,
+                left: position.left,
+                background: "var(--modal-bg)",
+                borderColor: "var(--modal-border)",
+                color: "var(--modal-fg)",
+                boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.45)",
+              }}
               onClick={(event) => event.stopPropagation()}
             >
-              <a
-                href={file.s3Link}
-                target="_blank"
-                rel="noopener noreferrer"
-                role="menuitem"
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-800 hover:bg-gray-50 dark:text-[var(--modal-fg)] dark:hover:bg-white/10"
-                onClick={() => onOpenChange(false)}
-              >
-                <FiExternalLink size={14} className="opacity-70" aria-hidden />
-                Open file
-              </a>
               <button
                 type="button"
                 role="menuitem"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-50 dark:text-[var(--modal-fg)] dark:hover:bg-white/10"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium rounded-lg transition-colors hover:bg-[var(--surface-muted)]"
+                style={{ color: "var(--modal-fg)" }}
+                onClick={() => {
+                  onOpenOrPreview();
+                  onOpenChange(false);
+                }}
+              >
+                <FiExternalLink size={14} style={{ color: "var(--modal-muted-fg)" }} aria-hidden />
+                Open file
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium rounded-lg transition-colors hover:bg-[var(--surface-muted)]"
+                style={{ color: "var(--modal-fg)" }}
                 onClick={() => {
                   onCopy();
                   onOpenChange(false);
                 }}
               >
-                <FiCopy size={14} className="opacity-70" aria-hidden />
+                <FiCopy size={14} style={{ color: "var(--modal-muted-fg)" }} aria-hidden />
                 Copy link
               </button>
               {conv ? (
                 <Link
                   href={`/chat/${conv}`}
                   role="menuitem"
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/50"
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-lg text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
                   onClick={() => {
                     onRequestClose?.();
                     onOpenChange(false);
                   }}
                 >
-                  <MessageSquare className="h-4 w-4 shrink-0" aria-hidden />
+                  <MessageSquare className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   Open conversation
                 </Link>
               ) : null}
@@ -232,15 +250,20 @@ function LibraryFileActionsMenu({
         aria-haspopup="menu"
         aria-expanded={isOpen}
         title="File actions"
-        className={`flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/10 ${
-          isOpen ? "bg-gray-50 dark:bg-white/10" : ""
+        className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-colors ${
+          isOpen
+            ? "border-[var(--modal-border)] bg-[var(--surface-muted)]"
+            : "border-transparent hover:border-[var(--modal-border)] hover:bg-[var(--surface-muted)]"
         }`}
+        style={{
+          color: isOpen ? "var(--modal-fg)" : "var(--modal-muted-fg)",
+        }}
         onClick={(event) => {
           event.stopPropagation();
           onOpenChange(!isOpen);
         }}
       >
-        <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
+        <MoreHorizontal className="h-4 w-4" aria-hidden />
         <span className="sr-only">More file actions</span>
       </button>
       {menuPanel}
@@ -277,17 +300,31 @@ function LibraryFileRow({
   const displayName = buildCloudFileDisplayName(file);
 
   const openOrPreview = useCallback(() => {
-    if (isImg && !imgErr) onImageClick();
-    else window.open(file.s3Link, "_blank", "noopener,noreferrer");
-  }, [isImg, imgErr, file.s3Link, onImageClick]);
+    if (isImg && !imgErr) {
+      onImageClick();
+    } else {
+      const previewType = inferPreviewTypeFromCloudFile(file);
+      openFilePreview({
+        url: file.s3Link,
+        name: displayName,
+        type: previewType,
+      });
+    }
+  }, [isImg, imgErr, file, displayName, onImageClick]);
 
   const rowInteractiveClass = selected
-    ? "bg-gray-100 dark:bg-white/10"
-    : "hover:bg-gray-50 dark:hover:bg-white/5";
+    ? "bg-[color-mix(in_srgb,var(--chat-accent)_12%,var(--modal-bg))] dark:bg-[color-mix(in_srgb,var(--chat-accent)_16%,var(--modal-bg))]"
+    : "hover:bg-[var(--surface-muted)] transition-colors";
 
   const nameCell = (
-    <span className="flex min-w-0 items-center gap-2.5">
-      <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded bg-gray-100 dark:bg-white/10">
+    <span className="flex min-w-0 items-center gap-3">
+      <span
+        className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg border flex items-center justify-center shadow-xs"
+        style={{
+          borderColor: "var(--modal-border)",
+          background: "var(--surface-muted)",
+        }}
+      >
         {isImg && !imgErr ? (
           <img
             src={file.s3Link}
@@ -299,11 +336,14 @@ function LibraryFileRow({
           />
         ) : (
           <span className="flex h-full w-full items-center justify-center">
-            <span className="scale-[0.55]">{categoryIcon(cat, "sm")}</span>
+            <span className="scale-[0.6]">{categoryIcon(cat, "sm")}</span>
           </span>
         )}
       </span>
-      <span className="min-w-0 truncate text-sm text-gray-900 dark:text-gray-100">
+      <span
+        className="min-w-0 truncate text-sm font-medium"
+        style={{ color: "var(--modal-fg)" }}
+      >
         {displayName}
       </span>
     </span>
@@ -317,24 +357,30 @@ function LibraryFileRow({
           role="option"
           aria-selected={selected}
           onClick={onToggleSelect}
-          className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 border-b px-3 py-2.5 text-left transition-colors sm:grid-cols-[auto_minmax(0,1fr)_7rem_4.5rem] sm:gap-x-4 ${rowInteractiveClass}`}
-          style={{ borderColor: "var(--modal-border, #e5e7eb)" }}
+          className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 border-b px-3.5 py-2.5 text-left transition-colors sm:grid-cols-[auto_minmax(0,1fr)_7rem_4.5rem] sm:gap-x-4 ${rowInteractiveClass}`}
+          style={{ borderColor: "var(--modal-border)" }}
         >
           <span
             className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
               selected
-                ? "border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900"
-                : "border-gray-300 bg-transparent dark:border-gray-500"
+                ? "border-[var(--chat-accent)] bg-[var(--chat-accent)] text-white"
+                : "border-[var(--modal-border)] bg-transparent"
             }`}
             aria-hidden
           >
             {selected ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
           </span>
           {nameCell}
-          <span className="hidden truncate text-sm text-gray-500 dark:text-gray-400 sm:block">
+          <span
+            className="hidden truncate text-xs tabular-nums sm:block"
+            style={{ color: "var(--modal-muted-fg)" }}
+          >
             {formatLibraryFileDate(file.createdAt)}
           </span>
-          <span className="text-right text-sm tabular-nums text-gray-500 dark:text-gray-400">
+          <span
+            className="text-right text-xs tabular-nums"
+            style={{ color: "var(--modal-muted-fg)" }}
+          >
             {formatFileByteSize(file.fileSizeInBytes)}
           </span>
         </button>
@@ -345,8 +391,8 @@ function LibraryFileRow({
   return (
     <li>
       <div
-        className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-b px-3 py-2.5 transition-colors sm:grid-cols-[minmax(0,1fr)_7rem_4.5rem_auto] sm:gap-x-4 ${rowInteractiveClass}`}
-        style={{ borderColor: "var(--modal-border, #e5e7eb)" }}
+        className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-b px-3.5 py-2.5 transition-colors sm:grid-cols-[minmax(0,1fr)_7rem_4.5rem_auto] sm:gap-x-4 ${rowInteractiveClass}`}
+        style={{ borderColor: "var(--modal-border)" }}
       >
         <button
           type="button"
@@ -355,10 +401,16 @@ function LibraryFileRow({
         >
           {nameCell}
         </button>
-        <span className="hidden truncate text-sm text-gray-500 dark:text-gray-400 sm:block">
+        <span
+          className="hidden truncate text-xs tabular-nums sm:block"
+          style={{ color: "var(--modal-muted-fg)" }}
+        >
           {formatLibraryFileDate(file.createdAt)}
         </span>
-        <span className="hidden text-right text-sm tabular-nums text-gray-500 dark:text-gray-400 sm:block">
+        <span
+          className="hidden text-right text-xs tabular-nums sm:block"
+          style={{ color: "var(--modal-muted-fg)" }}
+        >
           {formatFileByteSize(file.fileSizeInBytes)}
         </span>
         <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
@@ -366,6 +418,7 @@ function LibraryFileRow({
             file={file}
             isOpen={actionsMenuOpen}
             onOpenChange={(open) => onActionsMenuOpenChange?.(open)}
+            onOpenOrPreview={openOrPreview}
             onCopy={onCopy}
             onRequestClose={onRequestClose}
           />

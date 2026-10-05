@@ -43,8 +43,8 @@ interface ChatAreaProps {
   showNaira: boolean;
   showTyping: boolean;
   loading: boolean;
-  imagePreview: string | null;
-  setImagePreview: (url: string | null) => void;
+  imagePreview: import('@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext').ImagePreviewOpenTarget | null;
+  setImagePreview: (url: import('@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext').ImagePreviewOpenTarget | null) => void;
   chatEndRef: React.RefObject<HTMLDivElement>;
   chatAreaRef: React.MutableRefObject<HTMLDivElement | null>;
   onDeleteMessage: (idx: number) => void;

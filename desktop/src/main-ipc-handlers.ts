@@ -4,6 +4,7 @@ import {
   clipboard,
   dialog,
   ipcMain,
+  nativeImage,
   shell,
 } from 'electron';
 import fs from 'fs';
@@ -128,6 +129,72 @@ export function registerMainIpcHandlers(): void {
         clipboard.writeText(p);
       },
     });
+  });
+
+  ipcMain.handle('copy-text', async (_event, text: string) => {
+    try {
+      if (typeof text === 'string') {
+        clipboard.writeText(text);
+        return { ok: true as const };
+      }
+      return { ok: false as const, error: 'invalid' };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'failed';
+      return { ok: false as const, error: message };
+    }
+  });
+
+  ipcMain.handle('copy-image-to-clipboard', async (_event, payload: { dataUrl?: string; filePath?: string }) => {
+    try {
+      if (payload?.filePath && typeof payload.filePath === 'string' && payload.filePath.trim().length > 0) {
+        const normalized = normalizeRendererFilesystemPath(payload.filePath.trim());
+        const img = nativeImage.createFromPath(normalized);
+        if (!img.isEmpty()) {
+          clipboard.writeImage(img);
+          try {
+            await copyItemToOsClipboard(normalized, {
+              electronWriteFiles: (p) => {
+                if (process.platform === 'darwin') {
+                  clipboard.writeBuffer('public.file-url', Buffer.from(pathToFileURL(p).href));
+                }
+              },
+              writeText: () => {},
+            });
+          } catch {
+            // ignore file path clipboard error, image bitmap is already copied
+          }
+          return { ok: true as const };
+        }
+      }
+
+      if (payload?.dataUrl && typeof payload.dataUrl === 'string' && payload.dataUrl.trim().length > 0) {
+        const img = nativeImage.createFromDataURL(payload.dataUrl);
+        if (!img.isEmpty()) {
+          clipboard.writeImage(img);
+          try {
+            const tempDir = os.tmpdir();
+            const tempFile = path.join(tempDir, `aigenius-image-${Date.now()}.png`);
+            await fs.promises.writeFile(tempFile, img.toPNG());
+            await copyItemToOsClipboard(tempFile, {
+              electronWriteFiles: (p) => {
+                if (process.platform === 'darwin') {
+                  clipboard.writeBuffer('public.file-url', Buffer.from(pathToFileURL(p).href));
+                }
+              },
+              writeText: () => {},
+            });
+          } catch {
+            // ignore temp file write error, image bitmap is already copied
+          }
+          return { ok: true as const };
+        }
+      }
+
+      return { ok: false as const, error: 'empty_image' };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'failed';
+      return { ok: false as const, error: message };
+    }
   });
 
   ipcMain.handle('read-local-file-preview', async (_event, filePath: string) => {

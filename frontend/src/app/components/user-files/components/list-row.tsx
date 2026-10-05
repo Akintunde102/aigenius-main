@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { Check } from "lucide-react";
 import { FiCopy, FiExternalLink } from "react-icons/fi";
 import type { CloudFile } from "@/app/components/file/file.interface";
+import { openFilePreview } from "@/app/components/modals/FilePreviewManager";
 import { timeAgo } from "@/lib/time-ago";
 import { CATEGORY_THEME } from "../user-files.theme";
 import {
@@ -11,6 +12,7 @@ import {
   classifyUserFileCategory,
   formatFileByteSize,
   getFileExtensionFromCloudFile,
+  inferPreviewTypeFromCloudFile,
   isImageCloudFile,
 } from "../user-files.utils";
 import { categoryIcon } from "./category-icon";
@@ -41,15 +43,24 @@ export function ListRow({
   const cat = classifyUserFileCategory(ext);
   const theme = CATEGORY_THEME[cat];
   const borderAccent = FILE_TYPE_LEFT_BORDER[cat];
+  const displayName = buildCloudFileDisplayName(file);
 
   const openOrPreview = useCallback(() => {
     if (pickMode) {
       onToggleSelect?.();
       return;
     }
-    if (isImg && !imgErr) onImageClick(file);
-    else window.open(file.s3Link, "_blank");
-  }, [pickMode, onToggleSelect, file, imgErr, isImg, onImageClick]);
+    if (isImg && !imgErr) {
+      onImageClick(file);
+    } else {
+      const previewType = inferPreviewTypeFromCloudFile(file);
+      openFilePreview({
+        url: file.s3Link,
+        name: displayName,
+        type: previewType,
+      });
+    }
+  }, [pickMode, onToggleSelect, isImg, imgErr, file, displayName, onImageClick]);
 
   return (
     <li>
@@ -112,16 +123,15 @@ export function ListRow({
               >
                 Copy
               </button>
-              <a
-                href={file.s3Link}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={openOrPreview}
                 className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50 sm:inline-flex sm:items-center sm:gap-1 sm:text-sm"
                 title="Open file"
-          >
-            <FiExternalLink size={14} aria-hidden />
-            <span className="sr-only sm:not-sr-only">Open</span>
-          </a>
+              >
+                <FiExternalLink size={14} aria-hidden />
+                <span className="sr-only sm:not-sr-only">Open</span>
+              </button>
           <FileActionsMenu
             file={file}
             tone="light"

@@ -115,7 +115,9 @@ const LeftControlsSection: React.FC<{
                             <span className={`${mini ? 'text-[10px]' : 'text-xs'} font-medium truncate max-w-32`}>
                                 {selectedModel?.name ?? 'Select model'}
                             </span>
-                            {selectedModelBurnPercentage !== null && selectedModelBurnPercentage >= 60 && (
+                            {!showComposerWalletHint &&
+                                selectedModelBurnPercentage !== null &&
+                                selectedModelBurnPercentage >= 60 && (
                                 <span
                                     className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 text-[9px] font-semibold text-amber-700 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-400/15"
                                     title={`A single message with ${selectedModel?.name || 'this model'} could consume ~${selectedModelBurnPercentage}% of your current credits.`}

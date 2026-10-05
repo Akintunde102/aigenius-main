@@ -124,27 +124,27 @@ export function LocalShellToolCard({ streaming_tool, result, arguments: toolArgs
   }, [streamLogs, loading, resultOpen, showTerminalPre]);
 
   return (
-    <div className="my-1 w-full text-[12px] leading-snug text-slate-600">
+    <div className="my-1 w-full text-[12px] leading-snug text-slate-600 dark:text-zinc-400">
       <button
         type="button"
         onClick={() => setContainerCollapsed(!containerCollapsed)}
-        className="flex w-full flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-sm px-0 py-0.5 text-left transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/80"
+        className="flex w-full flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-sm px-0 py-0.5 text-left transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/80 dark:hover:text-zinc-100 dark:focus-visible:ring-zinc-600/80"
         aria-expanded={!containerCollapsed}
       >
-        <span className="min-w-0 shrink font-medium text-slate-700">{resolvedDisplayName}</span>
-        <span className="shrink-0 text-slate-400">· {statusText}</span>
-        <span className="shrink-0 text-slate-400 tabular-nums" aria-hidden>
+        <span className="min-w-0 shrink font-medium text-slate-700 dark:text-zinc-200">{resolvedDisplayName}</span>
+        <span className="shrink-0 text-slate-400 dark:text-zinc-500">· {statusText}</span>
+        <span className="shrink-0 text-slate-400 tabular-nums dark:text-zinc-500" aria-hidden>
           {containerCollapsed ? '▸' : '▾'}
         </span>
       </button>
 
       {!containerCollapsed && (
-        <div className="mt-1.5 space-y-3 border-l border-slate-200/90 pl-2.5 text-[11px] leading-relaxed text-slate-600">
+        <div className="mt-1.5 space-y-3 border-l border-slate-200/90 pl-2.5 text-[11px] leading-relaxed text-slate-600 dark:border-zinc-700/80 dark:text-zinc-400">
           {filteredLogs.length > 0 && (
             <div className="space-y-1.5">
               <div className="flex items-start gap-2">
                 <span
-                  className={`mt-1.5 shrink-0 font-mono text-[10px] text-slate-400 select-none ${
+                  className={`mt-1.5 shrink-0 font-mono text-[10px] text-slate-400 select-none dark:text-zinc-500 ${
                     loading && filteredLogs.length === 1 ? 'animate-pulse' : ''
                   }`}
                 >
@@ -158,16 +158,16 @@ export function LocalShellToolCard({ streaming_tool, result, arguments: toolArgs
                   <button
                     type="button"
                     onClick={() => setActivityOpen(!activityOpen)}
-                    className="text-[10px] font-medium text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
+                    className="text-[10px] font-medium text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline dark:text-zinc-500 dark:hover:text-zinc-300"
                   >
                     {activityOpen ? 'Hide steps' : `Show ${filteredLogs.length - 1} more`}
                   </button>
                   {activityOpen && (
-                    <div className="mt-1 space-y-1 border-l border-slate-200/80 pl-2">
+                    <div className="mt-1 space-y-1 border-l border-slate-200/80 pl-2 dark:border-zinc-700/80">
                       {filteredLogs.slice(1).map((log, i) => (
-                        <div key={i + 1} className="flex items-start gap-2 text-slate-500">
+                        <div key={i + 1} className="flex items-start gap-2 text-slate-500 dark:text-zinc-400">
                           <span
-                            className={`mt-1.5 shrink-0 font-mono text-[10px] text-slate-400 select-none ${
+                            className={`mt-1.5 shrink-0 font-mono text-[10px] text-slate-400 select-none dark:text-zinc-500 ${
                               loading && i + 1 === filteredLogs.length - 1 ? 'animate-pulse' : ''
                             }`}
                           >
@@ -189,19 +189,19 @@ export function LocalShellToolCard({ streaming_tool, result, arguments: toolArgs
                 <button
                   type="button"
                   onClick={() => setInputOpen(!inputOpen)}
-                  className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600"
+                  className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300"
                 >
                   <span>Input</span>
                   {inputOpen ? <FiChevronUp className="h-3 w-3" aria-hidden /> : <FiChevronDown className="h-3 w-3" aria-hidden />}
                 </button>
                 {inputOpen && (
-                  <div className="mt-1 space-y-0.5 border-l border-slate-200/80 pl-2 text-slate-500">
+                  <div className="mt-1 space-y-0.5 border-l border-slate-200/80 pl-2 text-slate-500 dark:border-zinc-700/80 dark:text-zinc-400">
                     {Object.entries(toolArgs).map(([k, v]) => {
                       if (k === 'activityTitle') return null;
                       return (
                         <div key={k} className="flex gap-1.5">
-                          <span className="font-semibold text-slate-400 shrink-0">{k}:</span>
-                          <span className="break-all">{typeof v === 'string' ? v : JSON.stringify(v)}</span>
+                          <span className="font-semibold text-slate-400 dark:text-zinc-500 shrink-0">{k}:</span>
+                          <span className="break-all text-slate-700 dark:text-zinc-300">{typeof v === 'string' ? v : JSON.stringify(v)}</span>
                         </div>
                       );
                     })}
@@ -216,7 +216,7 @@ export function LocalShellToolCard({ streaming_tool, result, arguments: toolArgs
                   type="button"
                   onClick={() => setResultOpen(!resultOpen)}
                   className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-                    loading ? 'text-slate-700' : 'text-slate-400 hover:text-slate-600'
+                    loading ? 'text-slate-700 dark:text-zinc-300' : 'text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300'
                   }`}
                 >
                   <span>Result</span>
@@ -231,42 +231,42 @@ export function LocalShellToolCard({ streaming_tool, result, arguments: toolArgs
 
                 {resultOpen && (
                   <div
-                    className={`max-h-[280px] overflow-y-auto rounded-sm border px-2.5 py-2 text-[11px] leading-relaxed custom-scrollbar border-slate-200/90 ${
-                      success === false ? 'text-red-900' : 'text-slate-900'
+                    className={`max-h-[280px] overflow-y-auto rounded-sm border px-2.5 py-2 text-[11px] leading-relaxed custom-scrollbar border-slate-200/90 bg-white text-slate-900 dark:border-zinc-700/80 dark:bg-zinc-900 dark:text-zinc-100 ${
+                      success === false ? 'text-red-900 dark:text-red-300 border-red-200 dark:border-red-900/50' : ''
                     }`}
                   >
                     {showTerminalPre && (
                       <pre
                         ref={streamScrollRef}
                         className={`m-0 font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words bg-transparent ${
-                          parsedResult !== null && contentToRender ? 'mb-2 pb-2 border-b border-slate-200/70' : ''
+                          parsedResult !== null && contentToRender ? 'mb-2 pb-2 border-b border-slate-200/70 dark:border-zinc-700/80' : ''
                         }`}
                       >
                         {promptParts ? (
                           <>
-                            <span className="text-slate-500">{promptParts.cwdDisplay}</span>
+                            <span className="text-slate-500 dark:text-zinc-400">{promptParts.cwdDisplay}</span>
                             {promptParts.sep === '>' ? (
-                              <span className="text-slate-600">{promptParts.sep} </span>
+                              <span className="text-slate-600 dark:text-zinc-400">{promptParts.sep} </span>
                             ) : (
-                              <span className="text-slate-600">
+                              <span className="text-slate-600 dark:text-zinc-400">
                                 {' '}
                                 {promptParts.sep}{' '}
                               </span>
                             )}
-                            <span className="text-slate-900">{promptParts.commandLine}</span>
+                            <span className="text-slate-900 dark:text-zinc-100">{promptParts.commandLine}</span>
                             {'\n'}
                           </>
                         ) : null}
                         {loading || hasStreamText ? (
                           streamLogs.length === 0 && loading ? (
-                            <span className="italic text-slate-500">Waiting for output from your device…</span>
+                            <span className="italic text-slate-500 dark:text-zinc-400">Waiting for output from your device…</span>
                           ) : (
                             streamLogs.flatMap((log, i) => {
                               const msg = valueToDisplayString(log.message);
                               if (!msg) return [];
                               const stderr = log.tag === 'stderr';
                               return [
-                                <span key={`shell-stream-${i}`} className={stderr ? 'text-red-700' : 'text-slate-800'}>
+                                <span key={`shell-stream-${i}`} className={stderr ? 'text-red-700 dark:text-red-400' : 'text-slate-800 dark:text-zinc-200'}>
                                   {msg}
                                 </span>,
                               ];

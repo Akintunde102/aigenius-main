@@ -231,4 +231,119 @@ describe('MessageHandlers', () => {
             [expectedMessage],
         );
     });
+
+    it('handleReplayMessage resends the same image urls after a failed turn', () => {
+        const imageUrl = 'https://cdn.example/uploads/photo.png';
+        const thread: ChatMessage[] = [
+            {
+                id: 'u0',
+                role: 'user',
+                content: [
+                    { type: 'text', text: 'what is this?' },
+                    { type: 'image_url', image_url: { url: imageUrl } },
+                ],
+                timestamp: 1,
+            },
+            { id: 'a1', role: 'assistant', content: 'partial reply', timestamp: 2 },
+        ];
+        const { handlers } = renderWithHandlers(thread);
+
+        handlers().handleReplayMessage(thread[0], 0);
+
+        const expectedSnapshot = [thread[0]];
+        expect(setChat).toHaveBeenCalledWith(expectedSnapshot);
+        expect(handleSend).toHaveBeenCalledWith(
+            undefined,
+            undefined,
+            thread[0],
+            expectedSnapshot,
+        );
+        expect(thread[0].content).toEqual([
+            { type: 'text', text: 'what is this?' },
+            { type: 'image_url', image_url: { url: imageUrl } },
+        ]);
+    });
+
+    it('handleCommitEditMessage keeps the original image when a new one is added', () => {
+        const thread: ChatMessage[] = [
+            {
+                id: 'u0',
+                role: 'user',
+                content: [
+                    { type: 'text', text: 'look' },
+                    { type: 'image_url', image_url: { url: 'https://cdn.example/old.png' } },
+                ],
+                timestamp: 1,
+            },
+            { id: 'a1', role: 'assistant', content: 'seen', timestamp: 2 },
+        ];
+        const { handlers } = renderWithHandlers(thread);
+
+        act(() => {
+            handlers().handleStartEditMessage(thread[0], 0);
+            handlers().handleUpdateEditDraft({
+                text: 'look again',
+                attachments: [
+                    { fileUrl: 'https://cdn.example/old.png', isImage: true, displayName: 'old.png' },
+                    { fileUrl: 'https://cdn.example/new.png', isImage: true, displayName: 'new.png' },
+                ],
+            });
+            handlers().handleCommitEditMessage(0);
+        });
+
+        const expectedMessage = expect.objectContaining({
+            id: 'u0',
+            content: [
+                { type: 'text', text: 'look again' },
+                { type: 'image_url', image_url: { url: 'https://cdn.example/old.png' } },
+                { type: 'image_url', image_url: { url: 'https://cdn.example/new.png' } },
+            ],
+        });
+        expect(handleSend).toHaveBeenCalledWith(
+            undefined,
+            undefined,
+            expectedMessage,
+            [expectedMessage],
+        );
+    });
+
+    it('handleCommitEditMessage drops a removed image url and sends the replacement', () => {
+        const thread: ChatMessage[] = [
+            {
+                id: 'u0',
+                role: 'user',
+                content: [
+                    { type: 'image_url', image_url: { url: 'https://cdn.example/old.png' } },
+                ],
+                timestamp: 1,
+            },
+        ];
+        const { handlers } = renderWithHandlers(thread);
+
+        act(() => {
+            handlers().handleStartEditMessage(thread[0], 0);
+            handlers().handleUpdateEditDraft({
+                text: '',
+                attachments: [
+                    { fileUrl: 'https://cdn.example/replacement.png', isImage: true, displayName: 'replacement.png' },
+                ],
+            });
+            handlers().handleCommitEditMessage(0);
+        });
+
+        expect(handleSend).toHaveBeenCalledWith(
+            undefined,
+            undefined,
+            expect.objectContaining({
+                content: [
+                    { type: 'image_url', image_url: { url: 'https://cdn.example/replacement.png' } },
+                ],
+            }),
+            [expect.objectContaining({
+                content: [
+                    { type: 'image_url', image_url: { url: 'https://cdn.example/replacement.png' } },
+                ],
+            })],
+        );
+    });
 });

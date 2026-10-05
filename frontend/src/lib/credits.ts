@@ -1,5 +1,6 @@
 /**
- * Wallet credits — 1000 credits = $1 USD.
+ * Display helpers for backend-provided platform credits.
+ * USD → credits conversion happens only on the API (`usdToPlatformCredits`).
  */
 
 function parsePositiveRate(raw: string | undefined, fallback: number): number {
@@ -7,18 +8,9 @@ function parsePositiveRate(raw: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-export const CREDITS_PER_USD = parsePositiveRate(
-  process.env.NEXT_PUBLIC_CREDITS_PER_USD,
-  1000,
-);
-
-export const USD_TO_CREDITS_RATE = CREDITS_PER_USD;
-
-/** @deprecated Use USD_TO_CREDITS_RATE */
-export const USD_TO_NGN = USD_TO_CREDITS_RATE;
-
 export const WALLET_PAYMENT_CURRENCY = 'USD' as const;
 
+/** Fallback until `/wallet/credits-config` loads. Backend is the source of truth. */
 export const MIN_TOP_UP_CREDITS = parsePositiveRate(
   process.env.NEXT_PUBLIC_MIN_WALLET_TOP_UP_CREDITS,
   1000,
@@ -27,15 +19,12 @@ export const MIN_TOP_UP_CREDITS = parsePositiveRate(
 /** Free credits granted to new accounts at registration. */
 export const SIGNUP_BONUS_CREDITS = 100;
 
-export function creditsToUsd(credits: number): number {
-  return Math.round((credits / CREDITS_PER_USD) * 100) / 100;
-}
-
-export function usdToCredits(usd: number): number {
-  if (!Number.isFinite(usd)) {
+/** Convert credits to USD using the rate published by the backend credits-config. */
+export function creditsToUsd(credits: number, creditsPerUsd: number): number {
+  if (!Number.isFinite(credits) || credits < 0 || !Number.isFinite(creditsPerUsd) || creditsPerUsd <= 0) {
     return 0;
   }
-  return Math.round(usd * CREDITS_PER_USD);
+  return Math.round((credits / creditsPerUsd) * 100) / 100;
 }
 
 export function formatCredits(value: number, options?: { compact?: boolean }): string {
@@ -58,14 +47,9 @@ export function formatUsdAmount(amount: number): string {
   })}`;
 }
 
-export function usdCostToCredits(usd: number): number {
-  return usdToCredits(usd);
-}
-
-export function formatUsdCostAsCredits(usd: number): string {
-  return formatCredits(usdCostToCredits(usd), { compact: true });
-}
-
-export function getCreditEquivalenceLabel(): string {
-  return '1,000 credits = $1.00 USD';
+export function getCreditEquivalenceLabel(creditsPerUsd: number): string {
+  if (!Number.isFinite(creditsPerUsd) || creditsPerUsd <= 0) {
+    return 'Credits priced by the server';
+  }
+  return `${creditsPerUsd.toLocaleString()} credits = $1.00 USD`;
 }

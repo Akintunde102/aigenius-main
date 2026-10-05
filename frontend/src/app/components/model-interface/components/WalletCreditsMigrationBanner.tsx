@@ -151,7 +151,7 @@ export function WalletCreditsMigrationBanner() {
   const previous = formatMigrationBalance(migration.previousLegacyBalance);
   const next = formatMigrationBalance(migration.newBalanceCredits);
   const rate = formatMigrationBalance(migration.ngnPerUsd);
-  const usdValue = formatUsdAmount(creditsToUsd(migration.newBalanceCredits));
+  const usdValue = formatUsdAmount(creditsToUsd(migration.newBalanceCredits, migration.creditsPerUsd));
 
   const handleDismiss = () => {
     dismissNotice(userId, migration.migratedAt);

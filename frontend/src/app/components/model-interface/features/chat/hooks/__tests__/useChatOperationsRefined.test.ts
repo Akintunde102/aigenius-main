@@ -13,6 +13,7 @@ import getNoboxFunctions from '@/lib/calls/get-nobox-functions';
 import { abortSubagentConversation } from '@/lib/calls/model-chat-conversation';
 import { useStreamingResponse } from '../useStreamingResponse';
 import { useNonStreamingResponse } from '../useNonStreamingResponse';
+import { useWalletManagement } from '../useWalletManagement';
 
 jest.mock('@/lib/calls/get-nobox-functions', () => ({
     __esModule: true,
@@ -143,6 +144,10 @@ describe('useChatOperationsRefined', () => {
         };
 
         jest.clearAllMocks();
+        (useWalletManagement as jest.Mock).mockReturnValue({
+            validateBalance: jest.fn(() => true),
+            updateWalletFromResponse: jest.fn(),
+        });
         (getNoboxFunctions as jest.Mock).mockResolvedValue({ accessModel, accessModelStream });
         (useStreamingResponse as jest.Mock).mockReturnValue({
             handleStreamingResponse,
@@ -468,6 +473,53 @@ describe('useChatOperationsRefined', () => {
         });
 
         expect(clearPendingOrphanReply).not.toHaveBeenCalled();
+    });
+
+    it('keeps a started image send successful for callers when the model request fails', async () => {
+        handleStreamingResponse.mockRejectedValueOnce(new Error('provider failed'));
+        renderHookWithProps({ streamingEnabled: true });
+
+        const imageUrl = 'https://cdn.example/uploads/photo.png';
+        const imageMessage: ChatMessage = {
+            id: 'img-1',
+            role: 'user',
+            content: [
+                { type: 'text', text: 'what is this?' },
+                { type: 'image_url', image_url: { url: imageUrl } },
+            ],
+            timestamp: 9,
+        };
+        const snapshot = [...baseChat, imageMessage];
+
+        let sent = false;
+        await act(async () => {
+            sent = await resultRef.current!.handleSend(undefined, true, imageMessage, snapshot);
+        });
+
+        expect(sent).toBe(true);
+        expect(handleStreamingResponse).toHaveBeenCalled();
+        const uiChatBase = handleStreamingResponse.mock.calls[0][2] as ChatMessage[];
+        expect(uiChatBase[uiChatBase.length - 1].content).toEqual(imageMessage.content);
+        expect(imageMessage.content).toEqual([
+            { type: 'text', text: 'what is this?' },
+            { type: 'image_url', image_url: { url: imageUrl } },
+        ]);
+    });
+
+    it('returns false before dispatch when the wallet check rejects the send', async () => {
+        (useWalletManagement as jest.Mock).mockReturnValue({
+            validateBalance: jest.fn(() => false),
+            updateWalletFromResponse: jest.fn(),
+        });
+        renderHookWithProps({ streamingEnabled: true });
+
+        let sent = true;
+        await act(async () => {
+            sent = await resultRef.current!.handleSend('hello', true);
+        });
+
+        expect(sent).toBe(false);
+        expect(handleStreamingResponse).not.toHaveBeenCalled();
     });
 
     it('aborts only the viewed subagent conversation and not the materialized parent conversation on stop', () => {

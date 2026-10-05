@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import copy from 'copy-to-clipboard';
 import {
@@ -23,12 +23,16 @@ import {
     resolveAttachmentKind,
     type AttachmentKind,
 } from './messageAttachment.utils';
+import { copyImageToClipboard, copyTextToClipboard, resolveAbsoluteUrl } from './imageCopy.utils';
+import { ImagePreviewContextMenu } from './ImagePreviewContextMenu';
+import toast from 'react-hot-toast';
 
 export interface AttachmentPreviewTarget {
     fileUrl: string;
     fileName?: string;
     kind?: AttachmentKind;
     mimeType?: string;
+    localPath?: string;
 }
 
 export interface AttachmentPreviewModalProps {
@@ -90,9 +94,22 @@ export function AttachmentPreviewModal({ attachment, onClose }: AttachmentPrevie
     const [textError, setTextError] = useState<string | null>(null);
     const [isCorsError, setIsCorsError] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [imageCopied, setImageCopied] = useState(false);
+    const [linkCopied, setLinkCopied] = useState(false);
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+    const imgRef = useRef<HTMLImageElement>(null);
+    const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
+    const didLongPressRef = useRef(false);
 
     useEffect(() => {
         setMounted(true);
+        return () => {
+            if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+            }
+        };
     }, []);
 
     const target: AttachmentPreviewTarget | null = useMemo(() => {
@@ -100,17 +117,23 @@ export function AttachmentPreviewModal({ attachment, onClose }: AttachmentPrevie
         if (typeof attachment === 'string') {
             const url = attachment;
             const name = url.split('/').pop()?.split('?')[0] || 'Attachment';
+            const isLocal = url.startsWith('local-file://');
+            const localPath = isLocal ? decodeURIComponent(url.replace('local-file://', '')) : undefined;
             return {
                 fileUrl: url,
                 fileName: decodeURIComponent(name),
                 kind: resolveAttachmentKind(name, url),
+                localPath,
             };
         }
+        const isLocal = attachment.fileUrl.startsWith('local-file://');
+        const localPath = attachment.localPath || (isLocal ? decodeURIComponent(attachment.fileUrl.replace('local-file://', '')) : undefined);
         const name = attachment.fileName || attachment.fileUrl.split('/').pop()?.split('?')[0] || 'Attachment';
         return {
             ...attachment,
             fileName: name,
             kind: attachment.kind || resolveAttachmentKind(name, attachment.fileUrl),
+            localPath,
         };
     }, [attachment]);
 
@@ -199,16 +222,102 @@ export function AttachmentPreviewModal({ attachment, onClose }: AttachmentPrevie
         };
     }, []);
 
+    const handleCopyImage = useCallback(async () => {
+        if (!target) return;
+        const ok = await copyImageToClipboard({
+            image: imgRef.current,
+            fileUrl: target.fileUrl,
+            fileName: target.fileName,
+            localPath: target.localPath,
+        });
+        if (ok) {
+            setImageCopied(true);
+            setTimeout(() => setImageCopied(false), 2000);
+        }
+    }, [target]);
+
+    const handleMenuCopy = useCallback(async () => {
+        await handleCopyImage();
+        setTimeout(() => setContextMenu(null), 300);
+    }, [handleCopyImage]);
+
+    const handleCopyLink = useCallback(async () => {
+        if (!target?.fileUrl) return;
+        const link = resolveAbsoluteUrl(target.fileUrl);
+        const ok = await copyTextToClipboard(link);
+        if (ok) {
+            setLinkCopied(true);
+            toast.success('Image link copied to clipboard');
+            setTimeout(() => {
+                setLinkCopied(false);
+                setContextMenu(null);
+            }, 400);
+        } else {
+            toast.error('Failed to copy link');
+        }
+    }, [target?.fileUrl]);
+
+    const clearLongPressTimer = useCallback(() => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+        longPressStartRef.current = null;
+    }, []);
+
+    const onImagePointerDown = useCallback((e: React.PointerEvent) => {
+        if (e.button === 0) {
+            clearLongPressTimer();
+            didLongPressRef.current = false;
+            longPressStartRef.current = { x: e.clientX, y: e.clientY };
+            longPressTimerRef.current = setTimeout(() => {
+                didLongPressRef.current = true;
+                setContextMenu({ x: e.clientX, y: e.clientY });
+            }, 450);
+        }
+    }, [clearLongPressTimer]);
+
+    const onImagePointerMove = useCallback((e: React.PointerEvent) => {
+        if (longPressStartRef.current) {
+            const dist = Math.hypot(
+                e.clientX - longPressStartRef.current.x,
+                e.clientY - longPressStartRef.current.y,
+            );
+            if (dist > 8) {
+                clearLongPressTimer();
+            }
+        }
+    }, [clearLongPressTimer]);
+
+    const onImagePointerUp = useCallback(() => {
+        clearLongPressTimer();
+    }, [clearLongPressTimer]);
+
+    const onImageContextMenu = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        clearLongPressTimer();
+        setContextMenu({ x: e.clientX, y: e.clientY });
+    }, [clearLongPressTimer]);
+
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 event.preventDefault();
+                if (contextMenu) {
+                    setContextMenu(null);
+                    return;
+                }
                 onClose();
+            }
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c' && target?.kind === 'image') {
+                event.preventDefault();
+                void handleCopyImage();
             }
         };
         window.addEventListener('keydown', onKeyDown, true);
         return () => window.removeEventListener('keydown', onKeyDown, true);
-    }, [onClose]);
+    }, [contextMenu, handleCopyImage, onClose, target?.kind]);
 
     const handleDownload = useCallback((e?: React.MouseEvent) => {
         if (e) {
@@ -352,6 +461,28 @@ export function AttachmentPreviewModal({ attachment, onClose }: AttachmentPrevie
                         </div>
 
                         <div className="flex items-center gap-2.5">
+                            {/* Copy Image button if previewing an image */}
+                            {target.kind === 'image' && (
+                                <button
+                                    type="button"
+                                    onClick={() => void handleCopyImage()}
+                                    className="flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold shadow-sm transition hover:opacity-80 active:scale-95"
+                                    style={{
+                                        background: "var(--modal-bg-muted)",
+                                        borderColor: "var(--modal-border)",
+                                        color: "var(--modal-fg)",
+                                    }}
+                                    title="Copy image (Ctrl+C)"
+                                >
+                                    {imageCopied ? (
+                                        <Check className="h-4 w-4 text-emerald-500" />
+                                    ) : (
+                                        <Copy className="h-4 w-4" />
+                                    )}
+                                    <span>{imageCopied ? 'Copied' : 'Copy'}</span>
+                                </button>
+                            )}
+
                             {/* Primary Download button */}
                             <button
                                 type="button"
@@ -404,18 +535,26 @@ export function AttachmentPreviewModal({ attachment, onClose }: AttachmentPrevie
                     >
                         {target.kind === 'image' ? (
                             <div
-                                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl border p-2"
+                                data-testid="attachment-image-container"
+                                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl border p-2 select-none"
                                 style={{
                                     background: "var(--modal-bg)",
                                     borderColor: "var(--modal-border)",
                                 }}
+                                onPointerDown={onImagePointerDown}
+                                onPointerMove={onImagePointerMove}
+                                onPointerUp={onImagePointerUp}
+                                onPointerCancel={onImagePointerUp}
+                                onContextMenu={onImageContextMenu}
                             >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
+                                    ref={imgRef}
                                     src={target.fileUrl}
                                     alt={target.fileName || 'Preview'}
-                                    className="max-h-[72vh] w-auto max-w-full object-contain rounded-lg shadow-xl"
+                                    className="max-h-[72vh] w-auto max-w-full object-contain rounded-lg shadow-xl pointer-events-none"
                                     decoding="async"
+                                    crossOrigin="anonymous"
                                 />
                             </div>
                         ) : isTextLike ? (
@@ -597,6 +736,18 @@ export function AttachmentPreviewModal({ attachment, onClose }: AttachmentPrevie
                         </button>
                     </div>
                 </div>
+                {contextMenu && (
+                    <ImagePreviewContextMenu
+                        x={contextMenu.x}
+                        y={contextMenu.y}
+                        copied={imageCopied}
+                        linkCopied={linkCopied}
+                        onClose={() => setContextMenu(null)}
+                        onCopy={() => void handleMenuCopy()}
+                        onCopyLink={!target.fileUrl.startsWith('data:') && !target.fileUrl.startsWith('blob:') ? handleCopyLink : undefined}
+                        onDownload={handleDownload}
+                    />
+                )}
             </div>
         ) as React.ReactNode,
         portalTarget,

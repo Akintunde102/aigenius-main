@@ -166,6 +166,53 @@ describe('conversationId in access-model', () => {
     });
 
     describe('accessModelStream (streaming)', () => {
+        it('keeps caption text and image urls from the same stream chunk', async () => {
+            const chunk = JSON.stringify({
+                choices: [{
+                    delta: {
+                        content: 'here it is',
+                        images: [{
+                            type: 'image_url',
+                            image_url: { url: 'https://cdn.example/generated.png' },
+                        }],
+                    },
+                }],
+            });
+            const body = {
+                getReader: () => ({
+                    read: jest
+                        .fn()
+                        .mockResolvedValueOnce({ done: false, value: Buffer.from(`data: ${chunk}\n`, 'utf8') })
+                        .mockResolvedValueOnce({ done: false, value: Buffer.from('data: [DONE]\n', 'utf8') })
+                        .mockResolvedValueOnce({ done: true, value: undefined }),
+                    releaseLock: jest.fn(),
+                }),
+            };
+            mockFetch.mockResolvedValue({
+                ok: true,
+                headers: new Headers(),
+                body,
+            } as unknown as Response);
+
+            const onData = jest.fn();
+            const { accessModelStream } = await import('../access-model');
+            await accessModelStream({
+                body: { messages: [{ role: 'user', content: 'draw' }] },
+                options: { model: 'gpt-4' },
+                config: mockConfig as any,
+                onData,
+            });
+
+            expect(onData).toHaveBeenCalledWith(
+                [
+                    { type: 'text', text: 'here it is' },
+                    { type: 'image_url', image_url: { url: 'https://cdn.example/generated.png' } },
+                ],
+                undefined,
+                undefined,
+            );
+        });
+
         it('includes conversationId in request body when provided', async () => {
             const body = {
                 getReader: () => ({

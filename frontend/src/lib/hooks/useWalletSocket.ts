@@ -7,6 +7,11 @@ import { getAccessToken, refreshAccessToken, subscribeToTokenRefresh } from '@/l
 import { resolveDesktopUpstreamApiRootUrl, getLocalMiniServerApiRootUrl } from '@/lib/api/resolve-gateway-api-root';
 import { clearUserDetailsCache } from '@/lib/calls/get-logged-user-details';
 import { isAigeniusDesktopRuntime } from '@/lib/utils/desktop-runtime';
+import {
+    clientVerboseDebug,
+    createThrottledWarnBucket,
+    warnThrottled,
+} from '@/lib/utils/client-verbose-debug';
 
 interface WalletUpdatedPayload {
     userId: string;
@@ -69,20 +74,22 @@ export function useWalletSocket({ onWalletUpdated }: UseWalletSocketOptions) {
 
             socketRef.current = socket;
 
+            const socketErrorLog = createThrottledWarnBucket();
+
             socket.on('wallet:updated', (payload: WalletUpdatedPayload) => {
-                console.log('[WalletSocket] wallet:updated', payload);
+                clientVerboseDebug('WalletSocket', 'wallet:updated', payload);
                 clearUserDetailsCache();
                 callbackRef.current(payload);
             });
 
             socket.on('disconnect', (reason) => {
                 if (reason !== 'io client disconnect') {
-                    console.log('[WalletSocket] disconnected:', reason);
+                    clientVerboseDebug('WalletSocket', 'disconnected:', reason);
                 }
             });
 
             socket.on('connect_error', (err) => {
-                console.warn('[WalletSocket] connect_error:', err.message);
+                warnThrottled(socketErrorLog, '[WalletSocket] connect_error', err.message);
                 if (!canUseHttpOnlyRefreshCookie() && !canUseDesktopStoredRefreshToken()) {
                     return;
                 }

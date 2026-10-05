@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FiChevronDown } from "react-icons/fi";
+import { FiChevronDown, FiSearch, FiX } from "react-icons/fi";
 import { cn } from "@/lib/utils";
 
 export interface FilterPillOption {
@@ -18,6 +18,9 @@ interface FilterPillDropdownProps {
   forceActive?: boolean;
   className?: string;
   labelClassName?: string;
+  /** When true, renders a search bar inside the opened dropdown menu */
+  searchable?: boolean;
+  searchPlaceholder?: string;
 }
 
 type MenuPosition = {
@@ -33,9 +36,10 @@ const MENU_Z_INDEX = 120;
 function computeMenuPosition(
   triggerEl: HTMLElement,
   menuEl: HTMLElement | null,
+  searchable = false,
 ): MenuPosition {
   const rect = triggerEl.getBoundingClientRect();
-  const minWidth = Math.max(rect.width, 9.5 * 16); // ~9.5rem
+  const minWidth = Math.max(rect.width, searchable ? 12 * 16 : 9.5 * 16);
   const left = Math.min(
     rect.left,
     window.innerWidth - minWidth - VIEWPORT_PADDING,
@@ -64,13 +68,17 @@ export const FilterPillDropdown = React.memo(function FilterPillDropdown({
   forceActive = false,
   className,
   labelClassName,
+  searchable = false,
+  searchPlaceholder,
 }: FilterPillDropdownProps) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLUListElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const listboxId = useId();
 
   const selected = options.find((opt) => opt.value === value);
@@ -81,12 +89,35 @@ export const FilterPillDropdown = React.memo(function FilterPillDropdown({
 
   const updateMenuPosition = useCallback(() => {
     if (!triggerRef.current) return;
-    setMenuPosition(computeMenuPosition(triggerRef.current, menuRef.current));
-  }, []);
+    setMenuPosition(computeMenuPosition(triggerRef.current, menuRef.current, searchable));
+  }, [searchable]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (open) {
+      if (searchable) {
+        const timer = setTimeout(() => searchInputRef.current?.focus(), 30);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      setSearchQuery("");
+    }
+  }, [open, searchable]);
+
+  const filteredOptions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!searchable || !q) return options;
+    return options.filter((opt) => {
+      if (!opt.value) return false;
+      return (
+        opt.label.toLowerCase().includes(q) ||
+        opt.value.toLowerCase().includes(q)
+      );
+    });
+  }, [options, searchable, searchQuery]);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -95,7 +126,7 @@ export const FilterPillDropdown = React.memo(function FilterPillDropdown({
     }
     updateMenuPosition();
     requestAnimationFrame(() => updateMenuPosition());
-  }, [open, options.length, updateMenuPosition]);
+  }, [open, filteredOptions.length, updateMenuPosition]);
 
   useEffect(() => {
     if (!open) return;
@@ -128,17 +159,6 @@ export const FilterPillDropdown = React.memo(function FilterPillDropdown({
     };
   }, [open, close, updateMenuPosition]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onReposition = () => updateMenuPosition();
-    window.addEventListener("resize", onReposition);
-    window.addEventListener("scroll", onReposition, true);
-    return () => {
-      window.removeEventListener("resize", onReposition);
-      window.removeEventListener("scroll", onReposition, true);
-    };
-  }, [open, updateMenuPosition]);
-
   const handleSelect = (next: string) => {
     onChange(next);
     close();
@@ -147,12 +167,9 @@ export const FilterPillDropdown = React.memo(function FilterPillDropdown({
   const menu =
     open && menuPosition && mounted
       ? createPortal(
-          <ul
+          <div
             ref={menuRef}
-            id={listboxId}
-            role="listbox"
-            aria-label={ariaLabel}
-            className="app-filter-pill-menu fixed min-w-[9.5rem] max-h-56 overflow-y-auto py-1"
+            className="app-filter-pill-menu fixed min-w-[9.5rem] flex flex-col p-1"
             style={{
               top: menuPosition.top,
               left: menuPosition.left,
@@ -160,26 +177,87 @@ export const FilterPillDropdown = React.memo(function FilterPillDropdown({
               zIndex: MENU_Z_INDEX,
             }}
           >
-            {options.map((opt) => {
-              const selectedOption = opt.value === value;
-              return (
-                <li key={opt.value || "__all__"} role="presentation">
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={selectedOption}
-                    onClick={() => handleSelect(opt.value)}
-                    className={cn(
-                      "app-filter-pill-menu__item w-full text-left",
-                      selectedOption && "app-filter-pill-menu__item--selected",
-                    )}
-                  >
-                    {opt.label}
-                  </button>
+            {searchable && (
+              <div className="p-1 pb-1.5 border-b border-[var(--modal-border)] mb-1 flex-shrink-0">
+                <div className="relative flex items-center">
+                  <FiSearch
+                    size={12}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--sidebar-muted-fg)]"
+                    aria-hidden
+                  />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        e.stopPropagation();
+                        if (searchQuery) {
+                          setSearchQuery("");
+                        } else {
+                          close();
+                        }
+                      } else if (e.key === "Enter" && filteredOptions.length > 0) {
+                        e.preventDefault();
+                        handleSelect(filteredOptions[0].value);
+                      }
+                    }}
+                    placeholder={searchPlaceholder || "Search..."}
+                    aria-label={searchPlaceholder || "Search options"}
+                    className="app-modal-input rounded-md pl-6 pr-5 text-xs h-7 w-full transition-colors"
+                    style={{
+                      background: "var(--sidebar-search-bg)",
+                      borderColor: "var(--sidebar-border)",
+                      color: "var(--sidebar-search-fg)",
+                    }}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[var(--sidebar-muted-fg)] hover:text-[var(--sidebar-fg)] transition-colors p-0.5"
+                      aria-label="Clear search"
+                    >
+                      <FiX size={11} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            <ul
+              id={listboxId}
+              role="listbox"
+              aria-label={ariaLabel}
+              className="max-h-52 overflow-y-auto space-y-0.5 [scrollbar-width:thin]"
+            >
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((opt) => {
+                  const selectedOption = opt.value === value;
+                  return (
+                    <li key={opt.value || "__all__"} role="presentation">
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={selectedOption}
+                        onClick={() => handleSelect(opt.value)}
+                        className={cn(
+                          "app-filter-pill-menu__item w-full text-left",
+                          selectedOption && "app-filter-pill-menu__item--selected",
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    </li>
+                  );
+                })
+              ) : (
+                <li className="px-2.5 py-2 text-xs text-[var(--sidebar-muted-fg)] text-center">
+                  No matching options
                 </li>
-              );
-            })}
-          </ul>,
+              )}
+            </ul>
+          </div>,
           document.body,
         )
       : null;

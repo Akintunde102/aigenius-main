@@ -74,6 +74,16 @@ export function buildAssistantRenderSegments(
 
   const flushWorkSummary = () => {
     if (pendingWorkItems.length === 0) return;
+    if (pendingWorkItems.length === 1) {
+      const item = pendingWorkItems[0];
+      if (item.kind === 'thinking') {
+        segments.push({ type: 'block', block: { type: 'thinking', event: item.event } });
+      } else {
+        segments.push({ type: 'block', block: { type: 'tool', event: item.event } });
+      }
+      pendingWorkItems = [];
+      return;
+    }
     segments.push({ type: 'work_summary', items: pendingWorkItems });
     pendingWorkItems = [];
   };

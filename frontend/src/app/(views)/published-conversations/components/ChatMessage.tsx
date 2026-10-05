@@ -17,6 +17,10 @@ import { AssistantTurnSegments } from '@/app/components/model-interface/features
 import { StructuredMessage } from '@/app/components/model-interface/features/message-types/components/ImageMessage';
 import type { StructuredContentBlock } from '@/app/components/model-interface/features/message-types/components/messageAttachment.utils';
 import { shouldHideEmptyAssistantMessage } from '@/app/components/model-interface/features/messages/utils/assistantMessageVisibility.utils';
+import {
+    formatLocalRuntimeModelName,
+    isOllamaCatalogId,
+} from '@/app/components/model-interface/features/models/utils/ollamaModelDisplayName.utils';
 
 import { useMessageContent, useCostCalculation } from '@/app/(views)/published-conversations/hooks';
 import {
@@ -62,12 +66,17 @@ export function ChatMessage({
     const cost = useCostCalculation(msg, showCosts);
 
     const modelName = useMemo(() => {
-        if (msg.modelName) return msg.modelName;
-        if (msg.modelId) {
+        let resolved = '';
+        if (msg.modelName) resolved = msg.modelName;
+        else if (msg.modelId) {
             const matched = models.find((m) => m.id === msg.modelId);
-            return matched?.name ?? msg.modelId;
+            resolved = matched?.name ?? msg.modelId;
+        } else {
+            resolved = msg.role === 'assistant' ? 'Assistant' : '';
         }
-        return msg.role === 'assistant' ? 'Assistant' : '';
+        return isOllamaCatalogId(msg.modelId)
+            ? formatLocalRuntimeModelName(resolved)
+            : resolved;
     }, [msg.modelName, msg.modelId, msg.role, models]);
 
     const displayName = useMemo(() => {

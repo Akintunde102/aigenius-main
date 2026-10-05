@@ -152,43 +152,43 @@ export function LocalApplyPatchToolCard({
       <div className="min-w-0 space-y-2">
         {patchFileCards}
         {filteredLogs.length > 0 ? (
-          <p className="text-[11px] text-slate-500">{valueToDisplayString(filteredLogs[0].message)}</p>
+          <p className="text-[11px] text-slate-500 dark:text-zinc-400">{valueToDisplayString(filteredLogs[0].message)}</p>
         ) : null}
         {success === false && contentToRender ? (
-          <p className="text-[11px] text-red-700">{contentToRender}</p>
+          <p className="text-[11px] text-red-700 dark:text-red-400">{contentToRender}</p>
         ) : null}
       </div>
     );
   }
 
   return (
-    <div className="my-1 w-full text-[12px] leading-snug text-slate-600">
+    <div className="my-1 w-full text-[12px] leading-snug text-slate-600 dark:text-zinc-400">
       <button
         type="button"
         onClick={() => setContainerCollapsed(!containerCollapsed)}
-        className="flex w-full flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-sm px-0 py-0.5 text-left transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/80"
+        className="flex w-full flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-sm px-0 py-0.5 text-left transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/80 dark:hover:text-zinc-100 dark:focus-visible:ring-zinc-600/80"
         aria-expanded={!containerCollapsed}
       >
-        <span className="min-w-0 shrink font-medium text-slate-700">{resolvedDisplayName}</span>
-        <span className="shrink-0 text-slate-400">· {statusText}</span>
-        <span className="shrink-0 text-slate-400 tabular-nums" aria-hidden>
+        <span className="min-w-0 shrink font-medium text-slate-700 dark:text-zinc-200">{resolvedDisplayName}</span>
+        <span className="shrink-0 text-slate-400 dark:text-zinc-500">· {statusText}</span>
+        <span className="shrink-0 text-slate-400 tabular-nums dark:text-zinc-500" aria-hidden>
           {containerCollapsed ? '▸' : '▾'}
         </span>
       </button>
 
       {!containerCollapsed && (
-        <div className="mt-1.5 space-y-3 border-l border-slate-200/90 pl-2.5 text-[11px] leading-relaxed text-slate-600">
+        <div className="mt-1.5 space-y-3 border-l border-slate-200/90 pl-2.5 text-[11px] leading-relaxed text-slate-600 dark:border-zinc-700/80 dark:text-zinc-400">
           {patchFileCards}
 
           {!parsed.ok && parsed.detail ? (
-            <p className="italic text-slate-400">{parsed.detail}</p>
+            <p className="italic text-slate-400 dark:text-zinc-500">{parsed.detail}</p>
           ) : null}
 
           {filteredLogs.length > 0 && (
             <div className="space-y-1">
               <div className="flex items-start gap-2">
                 <span
-                  className={`mt-1.5 shrink-0 font-mono text-[10px] text-slate-400 select-none ${loading && filteredLogs.length === 1 ? 'animate-pulse' : ''}`}
+                  className={`mt-1.5 shrink-0 font-mono text-[10px] text-slate-400 select-none dark:text-zinc-500 ${loading && filteredLogs.length === 1 ? 'animate-pulse' : ''}`}
                 >
                   {loading && filteredLogs.length === 1 ? '•' : '–'}
                 </span>
@@ -197,25 +197,25 @@ export function LocalApplyPatchToolCard({
             </div>
           )}
 
-          <div className="space-y-2.5 border-t border-slate-200/70 pt-2">
+          <div className="space-y-2.5 border-t border-slate-200/70 pt-2 dark:border-zinc-700/80">
             {toolArgs && Object.keys(toolArgs).length > 0 && (
               <div>
                 <button
                   type="button"
                   onClick={() => setInputOpen(!inputOpen)}
-                  className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600"
+                  className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300"
                 >
                   <span>Input</span>
                   {inputOpen ? <FiChevronUp className="h-3 w-3" aria-hidden /> : <FiChevronDown className="h-3 w-3" aria-hidden />}
                 </button>
                 {inputOpen && (
-                  <div className="mt-1 space-y-0.5 border-l border-slate-200/80 pl-2 text-slate-500">
+                  <div className="mt-1 space-y-0.5 border-l border-slate-200/80 pl-2 text-slate-500 dark:border-zinc-700/80 dark:text-zinc-400">
                     {Object.entries(toolArgs).map(([k, v]) => {
                       if (k === 'activityTitle') return null;
                       return (
                         <div key={k} className="flex gap-1.5">
-                          <span className="shrink-0 font-semibold text-slate-400">{k}:</span>
-                          <span className="break-all">{typeof v === 'string' ? v : JSON.stringify(v)}</span>
+                          <span className="shrink-0 font-semibold text-slate-400 dark:text-zinc-500">{k}:</span>
+                          <span className="break-all text-slate-700 dark:text-zinc-300">{typeof v === 'string' ? v : JSON.stringify(v)}</span>
                         </div>
                       );
                     })}
@@ -230,7 +230,7 @@ export function LocalApplyPatchToolCard({
                   type="button"
                   onClick={() => parsedResult !== null && setResultOpen(!resultOpen)}
                   className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-                    loading ? 'text-slate-700' : 'text-slate-400 hover:text-slate-600'
+                    loading ? 'text-slate-700 dark:text-zinc-300' : 'text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300'
                   }`}
                   disabled={loading && parsedResult === null}
                 >
@@ -245,8 +245,8 @@ export function LocalApplyPatchToolCard({
                 </button>
                 {resultOpen && parsedResult !== null && (
                   <div
-                    className={`custom-scrollbar max-h-[180px] overflow-y-auto rounded-sm border px-2.5 py-2 text-[11px] leading-relaxed border-slate-200/90 ${
-                      success === false ? 'text-red-900' : 'text-slate-900'
+                    className={`custom-scrollbar max-h-[180px] overflow-y-auto rounded-sm border px-2.5 py-2 text-[11px] leading-relaxed border-slate-200/90 bg-white text-slate-900 dark:border-zinc-700/80 dark:bg-zinc-900 dark:text-zinc-100 ${
+                      success === false ? 'text-red-900 dark:text-red-300 border-red-200 dark:border-red-900/50' : ''
                     }`}
                   >
                     {contentToRender ? (

@@ -1,5 +1,5 @@
 import { ChatMessage, ChatSession, ModelPricing } from '@/app/components/model-interface/shared/types';
-import { USD_TO_CREDITS_RATE, formatCredits, usdCostToCredits } from '@/lib/credits';
+import { formatCredits } from '@/lib/credits';
 
 // Constants
 export const STORAGE_KEYS = {
@@ -8,10 +8,6 @@ export const STORAGE_KEYS = {
     PINNED_CHATS: 'nobox_pinned_chats',
     PINNED_MODELS: 'nobox_pinned_models',
     DELETED_MODELS: 'nobox_deleted_models'
-} as const;
-
-export const CONVERSION_RATES = {
-    USD_TO_NGN: USD_TO_CREDITS_RATE
 } as const;
 
 export const DEFAULT_VALUES = {
@@ -225,13 +221,13 @@ export function formatTime(timestamp: number): string {
     return date.toLocaleString();
 }
 
-export function formatNaira(usd: string | number): string {
-    const num = typeof usd === 'string' ? parseFloat(usd) : usd;
-    if (isNaN(num)) return String(usd);
-    return formatCredits(usdCostToCredits(num), { compact: true });
+export function formatNaira(credits: string | number): string {
+    const num = typeof credits === 'string' ? parseFloat(credits) : credits;
+    if (isNaN(num)) return String(credits);
+    return formatCredits(num, { compact: true });
 }
 
-/** Display formatting for known USD amounts (always as credits). */
-export function formatCost(usd: number, _showNaira?: boolean): string {
-    return formatCredits(usdCostToCredits(usd), { compact: true });
+/** Display formatting for backend-provided platform credits. */
+export function formatCost(credits: number, _showNaira?: boolean): string {
+    return formatCredits(credits, { compact: true });
 } 

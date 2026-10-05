@@ -4,6 +4,11 @@ import { startTransition, useEffect, useRef } from 'react';
 import { addOrMergeSessionToLocalHistory, upsertChatHistorySession } from '@/lib/utils/modelChatConversationUtils';
 import { normalizeSessionMessages } from '@/lib/utils/messageContentUtils';
 import { ChatSession } from '@/app/components/model-interface/shared/types';
+import {
+    clientVerboseDebug,
+    createThrottledWarnBucket,
+    warnThrottled,
+} from '@/lib/utils/client-verbose-debug';
 
 const CONVERSATION_EVENTS_PATH = '/gateway/*/model-chats/conversation-events';
 
@@ -92,7 +97,7 @@ export async function runConversationEventsSubscription(
             onSession?.(normalized as ChatSession);
 
             const actionLabel = eventType === 'conversation_created' ? 'Saved' : 'Updated';
-            console.log(`[Conversation] ${actionLabel}: ${sessionForList.title}`);
+            clientVerboseDebug('Conversation', `${actionLabel}: ${sessionForList.title}`);
         } catch (_) {
             // ignore parse errors
         }
@@ -150,6 +155,7 @@ export function useConversationEvents(
         let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
         let reconnectAttempt = 0;
         let disposed = false;
+        const sseErrorLog = createThrottledWarnBucket();
 
         const clearReconnectTimer = () => {
             if (reconnectTimer) {
@@ -197,7 +203,7 @@ export function useConversationEvents(
                 }
             } catch (err: any) {
                 if (err?.name === 'AbortError') return;
-                console.warn('Conversation events SSE error', err);
+                warnThrottled(sseErrorLog, 'Conversation events SSE error', err);
                 scheduleReconnect();
             }
         };

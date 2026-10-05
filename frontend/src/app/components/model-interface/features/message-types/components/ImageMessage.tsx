@@ -45,6 +45,8 @@ interface StructuredMessageProps {
     imagePreview: string | null;
     setImagePreview: (url: string | null) => void;
     streaming?: boolean;
+    /** When set, stream cursor only renders on assistant turns. */
+    role?: string;
     attachmentCacheSeed?: string | number | null;
 }
 
@@ -53,6 +55,7 @@ export const StructuredMessage: React.FC<StructuredMessageProps> = ({
     onImagePreview,
     setImagePreview,
     streaming = false,
+    role = 'assistant',
     attachmentCacheSeed,
 }) => {
     const segments = mergeAttachmentSegments(segmentStructuredContent(content));
@@ -64,13 +67,14 @@ export const StructuredMessage: React.FC<StructuredMessageProps> = ({
         <div className="space-y-3 md:space-y-4">
             {orderedSegments.map((segment, segmentIndex) => {
                 if (segment.type === 'text') {
-                    const isLast = segmentIndex === segments.length - 1;
+                    const isLast = segmentIndex === orderedSegments.length - 1;
+                    const showStreamCursor = streaming && role === 'assistant' && isLast;
                     return (
                         <div key={segment.key} className="break-words">
                             <MarkdownRenderer content={segment.text} />
-                            {streaming && isLast && (
+                            {showStreamCursor ? (
                                 <span className="animate-pulse">▊</span>
-                            )}
+                            ) : null}
                         </div>
                     );
                 }

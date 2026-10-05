@@ -49,8 +49,8 @@ type Props = {
   showNaira: boolean;
   showTyping: boolean;
   loading: boolean;
-  imagePreview: string | null;
-  setImagePreview: (v: string | null) => void;
+  imagePreview: import('@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext').ImagePreviewOpenTarget | null;
+  setImagePreview: (v: import('@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext').ImagePreviewOpenTarget | null) => void;
   chatAreaRef: React.RefObject<HTMLDivElement | null>;
   showScrollToBottom: boolean;
   handleSave: (message: ChatMessage) => void;

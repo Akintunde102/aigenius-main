@@ -26,16 +26,16 @@ export default function PrivacyPolicyPage() {
       effectiveDateIso="2025-09-30"
       sections={PRIVACY_SECTIONS}
     >
-      <p>
+      <p className="text-stone-700 leading-[1.7]">
         This Privacy Policy explains how Nobox Labs Limited (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) collects, uses, and shares
-        information when you visit or use <strong>AIGenius</strong>, our pay-as-you-go AI chat platform available at{" "}
+        information when you visit or use <strong className="text-stone-900">AIGenius</strong>, our pay-as-you-go AI chat platform available at{" "}
         <DocLink href="https://aigenius.noboxlabs.xyz" external>https://aigenius.noboxlabs.xyz</DocLink>,
         including the website, web console, API, and related services (collectively, the &quot;Services&quot;).
       </p>
 
       <DocSection id="who-we-are" title="1) Who we are">
         <p>
-          <strong>Data controller:</strong> Nobox Labs Limited. We operate AIGenius. When you use our Services, we act as the controller of your account and usage information. If you use our backend platform to store or process data on behalf of your end users, you are the controller of that data and we act as your processor. Our Data Processing Addendum (DPA) governs processor activities and is available on request.
+          <strong className="text-stone-900">Data controller:</strong> Nobox Labs Limited. We operate AIGenius. When you use our Services, we act as the controller of your account and usage information. If you use our backend platform to store or process data on behalf of your end users, you are the controller of that data and we act as your processor. Our Data Processing Addendum (DPA) governs processor activities and is available on request.
         </p>
       </DocSection>
 
@@ -49,14 +49,14 @@ export default function PrivacyPolicyPage() {
         <p className="mb-4">We collect the following categories of information (as implemented in our Services):</p>
         <DocList
           items={[
-            <><strong>Account information:</strong> email, first name, last name, profile image, gender; password hash (if you use email authentication); OAuth profile data from Google or GitHub.</>,
-            <><strong>Wallet and billing:</strong> credit balance (wallet), payment transaction records (reference, amount, currency, status, provider response) via Paystack.</>,
-            <><strong>Conversations and AI usage:</strong> chat messages, model identifiers, token usage, cost per request, custom personalities (name, description, prompt, icon).</>,
-            <><strong>Uploads:</strong> file names, sizes, MIME types, storage URLs, and metadata for files you upload.</>,
-            <><strong>Usage and logs:</strong> request identifiers, user IDs, project and record-space references, client details, request details (e.g. timings, URLs), IP address, and user agent where logged.</>,
-            <><strong>Product analytics (with consent):</strong> when you accept analytics in our cookie banner, we use <strong>PostHog</strong> to collect anonymous usage events (e.g. pages visited, features used, sign-in and wallet actions). We configure PostHog <strong>not</strong> to record your chat message content. PostHog may store a pseudonymous identifier, device/browser metadata, and event properties such as model IDs and conversation IDs (not message text).</>,
-            <><strong>Local storage and similar tech:</strong> we use browser localStorage and sessionStorage for authentication tokens, user details, model preferences, integration states, and your analytics consent choice. We may use cookies where required for session management. See &quot;Cookies and local storage&quot; below.</>,
-            <><strong>Integrations:</strong> data we receive from third-party services you connect (e.g. Google OAuth, Gmail, Paystack), governed by their policies.</>,
+            <><strong className="text-stone-900">Account information:</strong> email, first name, last name, profile image, gender; password hash (if you use email authentication); OAuth profile data from Google or GitHub.</>,
+            <><strong className="text-stone-900">Wallet and billing:</strong> credit balance (wallet), payment transaction records (reference, amount, currency, status, provider response) via Paystack.</>,
+            <><strong className="text-stone-900">Conversations and AI usage:</strong> chat messages, model identifiers, token usage, cost per request, custom personalities (name, description, prompt, icon).</>,
+            <><strong className="text-stone-900">Uploads:</strong> file names, sizes, MIME types, storage URLs, and metadata for files you upload.</>,
+            <><strong className="text-stone-900">Usage and logs:</strong> request identifiers, user IDs, project and record-space references, client details, request details (e.g. timings, URLs), IP address, and user agent where logged.</>,
+            <><strong className="text-stone-900">Product analytics (with consent):</strong> when you accept analytics in our cookie banner, we use <strong className="text-stone-900">PostHog</strong> to collect anonymous usage events (e.g. pages visited, features used, sign-in and wallet actions). We configure PostHog <strong className="text-stone-900">not</strong> to record your chat message content. PostHog may store a pseudonymous identifier, device/browser metadata, and event properties such as model IDs and conversation IDs (not message text).</>,
+            <><strong className="text-stone-900">Local storage and similar tech:</strong> we use browser localStorage and sessionStorage for authentication tokens, user details, model preferences, integration states, and your analytics consent choice. We may use cookies where required for session management. See &quot;Cookies and local storage&quot; below.</>,
+            <><strong className="text-stone-900">Integrations:</strong> data we receive from third-party services you connect (e.g. Google OAuth, Gmail, Paystack), governed by their policies.</>,
           ]}
         />
       </DocSection>
@@ -86,10 +86,10 @@ export default function PrivacyPolicyPage() {
         <p className="mb-4">Where applicable, we rely on:</p>
         <DocList
           items={[
-            <><strong>Contract:</strong> to provide the Services you requested.</>,
-            <><strong>Legitimate interests:</strong> to improve security, performance, and Services; prevent abuse.</>,
-            <><strong>Consent:</strong> for optional cookies or marketing where required.</>,
-            <><strong>Legal obligation:</strong> to comply with applicable laws.</>,
+            <><strong className="text-stone-900">Contract:</strong> to provide the Services you requested.</>,
+            <><strong className="text-stone-900">Legitimate interests:</strong> to improve security, performance, and Services; prevent abuse.</>,
+            <><strong className="text-stone-900">Consent:</strong> for optional cookies or marketing where required.</>,
+            <><strong className="text-stone-900">Legal obligation:</strong> to comply with applicable laws.</>,
           ]}
         />
       </DocSection>
@@ -100,27 +100,27 @@ export default function PrivacyPolicyPage() {
           We may use cookies where required for session management. You can control cookies through your browser settings and clear localStorage/sessionStorage; doing so may log you out and reset your analytics preference.
         </p>
         <p className="mb-4">
-          <strong>Essential storage</strong> (required for the Services to work) includes sign-in tokens and session data. These are not used for marketing analytics.
+          <strong className="text-stone-900">Essential storage</strong> (required for the Services to work) includes sign-in tokens and session data. These are not used for marketing analytics.
         </p>
         <p className="mb-4">
-          <strong>Analytics (optional)</strong> — if you click <strong>Accept</strong> in our cookie banner on public pages, we load PostHog (US cloud: posthog.com) to understand how AIGenius is used. PostHog receives pseudonymous events such as page views, feature usage, and high-level product actions. We do <strong>not</strong> send chat message text in analytics events. If you choose <strong>Decline</strong>, PostHog is not loaded.
+          <strong className="text-stone-900">Analytics (optional)</strong> — if you click <strong className="text-stone-900">Accept</strong> in our cookie banner on public pages, we load PostHog (US cloud: posthog.com) to understand how AIGenius is used. PostHog receives pseudonymous events such as page views, feature usage, and high-level product actions. We do <strong className="text-stone-900">not</strong> send chat message text in analytics events. If you choose <strong className="text-stone-900">Decline</strong>, PostHog is not loaded.
         </p>
         <p>
-          <strong>Session replay</strong> — when you accept analytics, PostHog may also record a replay of on-screen interactions (similar to a video) to help us improve the product. Chat message areas and text inputs are masked in replays where possible; we still treat chat content as sensitive and do not intentionally send message text to PostHog as analytics event payloads.
+          <strong className="text-stone-900">Session replay</strong> — when you accept analytics, PostHog may also record a replay of on-screen interactions (similar to a video) to help us improve the product. Chat message areas and text inputs are masked in replays where possible; we still treat chat content as sensitive and do not intentionally send message text to PostHog as analytics event payloads.
         </p>
       </DocSection>
 
       <DocSection id="how-we-share" title="8) How we share information">
         <DocList
           items={[
-            <><strong>AI providers:</strong> prompts and conversation content are sent to OpenRouter and underlying providers (OpenAI, Anthropic, Google, etc.) to generate responses.</>,
-            <><strong>Payment providers:</strong> Paystack, Payaza, or Flutterwave process payment data depending on your checkout flow; their policies apply.</>,
-            <><strong>Analytics:</strong> PostHog (PostHog, Inc.) processes pseudonymous product analytics when you consent. See PostHog&apos;s privacy documentation at <DocLink href="https://posthog.com/privacy" external>posthog.com/privacy</DocLink>.</>,
-            <><strong>OAuth providers:</strong> Google and GitHub handle sign-in; their policies apply.</>,
-            <><strong>Storage:</strong> AWS S3 or Cloudinary may store uploaded files; their policies apply.</>,
-            <><strong>Service providers/subprocessors:</strong> bound by confidentiality and security obligations.</>,
-            <><strong>Legal and safety:</strong> to comply with law, protect rights, safety, and prevent fraud/abuse.</>,
-            <><strong>Business transfers:</strong> in relation to a merger, acquisition, or asset sale.</>,
+            <><strong className="text-stone-900">AI providers:</strong> prompts and conversation content are sent to OpenRouter and underlying providers (OpenAI, Anthropic, Google, etc.) to generate responses.</>,
+            <><strong className="text-stone-900">Payment providers:</strong> Paystack, Payaza, or Flutterwave process payment data depending on your checkout flow; their policies apply.</>,
+            <><strong className="text-stone-900">Analytics:</strong> PostHog (PostHog, Inc.) processes pseudonymous product analytics when you consent. See PostHog&apos;s privacy documentation at <DocLink href="https://posthog.com/privacy" external>posthog.com/privacy</DocLink>.</>,
+            <><strong className="text-stone-900">OAuth providers:</strong> Google and GitHub handle sign-in; their policies apply.</>,
+            <><strong className="text-stone-900">Storage:</strong> AWS S3 or Cloudinary may store uploaded files; their policies apply.</>,
+            <><strong className="text-stone-900">Service providers/subprocessors:</strong> bound by confidentiality and security obligations.</>,
+            <><strong className="text-stone-900">Legal and safety:</strong> to comply with law, protect rights, safety, and prevent fraud/abuse.</>,
+            <><strong className="text-stone-900">Business transfers:</strong> in relation to a merger, acquisition, or asset sale.</>,
             "We do not sell personal information.",
           ]}
         />
@@ -176,8 +176,8 @@ export default function PrivacyPolicyPage() {
       </DocSection>
 
       <DocSection id="contact" title="16) Contact">
-        <div className="space-y-2">
-          <p className="font-semibold">Nobox Labs Limited</p>
+        <div className="space-y-2 text-stone-700">
+          <p className="font-semibold text-stone-900">Nobox Labs Limited</p>
           <p>Website: <DocLink href="https://aigenius.noboxlabs.xyz" external>https://aigenius.noboxlabs.xyz</DocLink></p>
           <p>Email: <DocLink href="mailto:nobox.hq@gmail.com">nobox.hq@gmail.com</DocLink></p>
         </div>

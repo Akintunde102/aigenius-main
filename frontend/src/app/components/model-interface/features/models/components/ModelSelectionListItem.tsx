@@ -1,8 +1,12 @@
 import React, { memo, useMemo, useState } from 'react';
 import { FiBookmark, FiInfo } from 'react-icons/fi';
 import { Model } from '@/app/components/model-interface/shared/types';
-import { formatNGN } from '@/app/components/model-interface/shared/utils';
-import { getModelCreditBurnPercentage } from '../utils/modelWalletAffordance.utils';
+import { formatNGN, formatUSD, getModelAverageRequestPrice } from '@/app/components/model-interface/shared/utils';
+import {
+    computeModelRequiredBalance,
+    getModelCreditBurnPercentage,
+    isModelPickLocked,
+} from '../utils/modelWalletAffordance.utils';
 import { ModelCreditBurnIndicator } from './ModelCreditBurnIndicator';
 
 // Model list row for search tab
@@ -45,6 +49,14 @@ const ModelSelectionListItem = memo(function ModelListItem({
             .slice(0, 1);
     }, [model]);
 
+    const requiredBalance = useMemo(
+        () => computeModelRequiredBalance(model, averageCost),
+        [model, averageCost],
+    );
+    const isWalletLocked = useMemo(
+        () => isModelPickLocked(wallet, requiredBalance),
+        [wallet, requiredBalance],
+    );
     const burnPercentage = useMemo(
         () => getModelCreditBurnPercentage(model, wallet, averageCost),
         [model, wallet, averageCost],
@@ -87,7 +99,7 @@ const ModelSelectionListItem = memo(function ModelListItem({
                                 ~<span className="text-green-700">{formatNGN(averageCost, true)} credits/msg</span>
                             </span>
                         )}
-                        {burnPercentage !== null && burnPercentage >= 60 && (
+                        {!isWalletLocked && burnPercentage !== null && burnPercentage >= 60 && (
                             <ModelCreditBurnIndicator
                                 burnPercentage={burnPercentage}
                             />
@@ -166,7 +178,7 @@ const ModelSelectionListItem = memo(function ModelListItem({
                     {isFinite(averageCost) && averageCost > 0 && (
                         <div className={`text-blue-700 font-semibold ${isMobile ? 'text-[10px] mt-1' : 'text-xs mt-2'
                             }`}>
-                            Avg. price (est. 800 tokens): {formatNGN(averageCost)} USD · {formatNGN(averageCost)} NGN
+                            Avg. price (est. 800 tokens): {formatUSD(getModelAverageRequestPrice(model))} · {formatNGN(averageCost)}
                         </div>
                     )}
                 </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatUsdCostAsCredits } from '@/lib/credits';
+import { formatCredits } from '@/lib/credits';
 import { ChatMessage as ChatMessageType } from '@/app/components/model-interface/shared/types';
 import { timeAgo } from "@/lib/time-ago";
 import { formatTime } from '@/lib/utils/modelInterfaceUtils';
@@ -32,9 +32,9 @@ export const CostDisplay: React.FC<CostDisplayProps> = ({
 
     const costRow =
         msg.role === 'assistant' ? (
-            typeof msg.cost === 'number' ? (
+            typeof msg.cost_credits === 'number' ? (
                 <span className="font-medium text-[#2563EB]">
-                    {formatUsdCostAsCredits(msg.cost)}
+                    {formatCredits(msg.cost_credits, { compact: true })}
                     {modelRoundCount !== undefined && modelRoundCount > 1 && (
                         <span className="ml-1 font-normal text-[#94A3B8]">
                             · {modelRoundCount} calls
@@ -51,7 +51,7 @@ export const CostDisplay: React.FC<CostDisplayProps> = ({
         ) : null;
 
     const legacyCost =
-        msg.cost === undefined && !streaming && showCosts && cost > 0 ? (
+        msg.cost_credits === undefined && !streaming && showCosts && cost > 0 ? (
             <span className="text-[#2563EB]">{formatCost(cost, true)}</span>
         ) : null;
 

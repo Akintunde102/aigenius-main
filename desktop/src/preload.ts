@@ -397,6 +397,10 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     ipcRenderer.invoke('reveal-file-path', path) as Promise<{ ok: boolean; error?: string }>,
   copyFileToClipboard: (path: string): Promise<{ ok: boolean; error?: string }> =>
     ipcRenderer.invoke('copy-file-path', path) as Promise<{ ok: boolean; error?: string }>,
+  copyTextToClipboard: (text: string): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('copy-text', text) as Promise<{ ok: boolean; error?: string }>,
+  copyImageToClipboard: (payload: { dataUrl?: string; filePath?: string }): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('copy-image-to-clipboard', payload) as Promise<{ ok: boolean; error?: string }>,
   readLocalFilePreview: (
     path: string,
   ): Promise<

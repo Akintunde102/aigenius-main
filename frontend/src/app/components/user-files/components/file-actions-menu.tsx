@@ -4,7 +4,12 @@ import Link from "next/link";
 import { MessageSquare, MoreHorizontal } from "lucide-react";
 import { FiCopy, FiExternalLink, FiGlobe } from "react-icons/fi";
 import type { CloudFile } from "@/app/components/file/file.interface";
-import { isMarkdownCloudFile } from "../user-files.utils";
+import { openFilePreview } from "@/app/components/modals/FilePreviewManager";
+import {
+  buildCloudFileDisplayName,
+  inferPreviewTypeFromCloudFile,
+  isMarkdownCloudFile,
+} from "../user-files.utils";
 import { PublishHostedMarkdownModal } from "./PublishHostedMarkdownModal";
 import { useState } from "react";
 
@@ -13,6 +18,7 @@ export function FileActionsMenu({
   compact,
   file,
   onCopy,
+  onOpenOrPreview,
   onRequestClose,
   tone = "dark",
   conversationOnly = false,
@@ -20,6 +26,7 @@ export function FileActionsMenu({
   compact?: boolean;
   file: CloudFile;
   onCopy: () => void;
+  onOpenOrPreview?: () => void;
   onRequestClose?: () => void;
   tone?: "dark" | "light";
   /** When true, only “Open conversation” is shown (Open/Copy live on the card). */
@@ -60,20 +67,29 @@ export function FileActionsMenu({
       <div className={menuPanelClass}>
         {!conversationOnly ? (
           <>
-            <a
-              href={file.s3Link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={menuLinkClass}
-              onClick={() =>
+            <button
+              type="button"
+              role="menuitem"
+              className={menuItemClass}
+              onClick={() => {
+                if (onOpenOrPreview) {
+                  onOpenOrPreview();
+                } else {
+                  const previewType = inferPreviewTypeFromCloudFile(file);
+                  openFilePreview({
+                    url: file.s3Link,
+                    name: buildCloudFileDisplayName(file),
+                    type: previewType,
+                  });
+                }
                 (
                   document.activeElement as HTMLElement | null
-                )?.closest("details")?.removeAttribute("open")
-              }
+                )?.closest("details")?.removeAttribute("open");
+              }}
             >
               <FiExternalLink size={14} className="opacity-70" aria-hidden />
               Open file
-            </a>
+            </button>
             <button
               type="button"
               className={menuItemClass}

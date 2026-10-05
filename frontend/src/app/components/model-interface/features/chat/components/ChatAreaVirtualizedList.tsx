@@ -19,8 +19,8 @@ export interface ChatAreaVirtualizedListProps {
   showCosts: boolean;
   showNaira: boolean;
   loading: boolean;
-  imagePreview: string | null;
-  setImagePreview: (url: string | null) => void;
+  imagePreview: import('@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext').ImagePreviewOpenTarget | null;
+  setImagePreview: (url: import('@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext').ImagePreviewOpenTarget | null) => void;
   chatAreaRef?: React.RefObject<HTMLDivElement | null>;
   onDeleteMessage: (idx: number) => void;
   onDeleteMessageById?: (id: string) => void;

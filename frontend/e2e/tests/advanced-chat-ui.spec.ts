@@ -76,6 +76,7 @@ test.describe('Advanced chat UI scenarios', () => {
 
         await page.getByRole('button', { name: /Tokens: 11 prompt \+ 22 completion = 33 total/ }).click();
         await expect(page.getByRole('heading', { name: 'Token usage' })).toBeVisible({ timeout: 5000 });
+        await page.getByText('Token breakdown', { exact: true }).click();
         await expect(page.getByText('Prompt', { exact: true })).toBeVisible();
         await expect(page.getByText('Completion', { exact: true })).toBeVisible();
         await expect(page.getByText('Total tokens', { exact: true })).toBeVisible();
