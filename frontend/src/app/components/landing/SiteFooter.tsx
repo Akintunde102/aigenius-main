@@ -22,15 +22,6 @@ const FOOTER_LINK =
  *   bg-lp-* tokens. In the browser those tokens were not producing a background here.
  */
 export function SiteFooter() {
-  const { t } = useLanguage();
-
-  const getNavLinkLabel = (label: string, href: string) => {
-    if (href === "#models") return t("landing.models", label);
-    if (href === "#desktop") return t("landing.desktop", label);
-    if (href === "#tools") return t("landing.tools", label);
-    if (href === "#pricing") return t("landing.pricing", label);
-    return label;
-  };
   return (
     <footer>
       <section className="px-5 py-28 text-center lg:py-40">
