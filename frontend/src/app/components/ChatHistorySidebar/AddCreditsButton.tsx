@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FiPlus } from 'react-icons/fi';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 interface AddCreditsButtonProps {
     onClick: () => void;
@@ -23,18 +24,22 @@ const AddCreditsButton: React.FC<AddCreditsButtonProps> = ({
     onClick, 
     variant = 'standard' 
 }) => {
+    const { t } = useLanguage();
     const [isHovered, setIsHovered] = useState(false);
+    const addCreditsLabel = t('modals.addCreditsTitle', 'Add Credits');
+    const addShort = t('common.add', 'Add');
+    const walletTitle = t('wallet.addCredits', 'Add credits');
 
     // Compact variant - minimal footprint, inline with credits
     if (variant === 'compact') {
         return (
             <button
-                aria-label="Add Credits"
+                aria-label={addCreditsLabel}
                 className="flex items-center justify-center w-6 h-6 rounded-md bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-500 hover:text-white hover:border-blue-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 active:scale-95 group"
                 onClick={onClick}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
-                title="Add credits to your wallet"
+                title={walletTitle}
             >
                 <FiPlus 
                     size={14} 
@@ -49,19 +54,19 @@ const AddCreditsButton: React.FC<AddCreditsButtonProps> = ({
     if (variant === 'standard') {
         return (
             <button
-                aria-label="Add Credits"
+                aria-label={addCreditsLabel}
                 className="flex items-center justify-center gap-1 px-2 py-1 rounded-md bg-gradient-to-r from-blue-50 to-blue-100 text-blue-600 border border-blue-200 hover:from-blue-500 hover:to-blue-600 hover:text-white hover:border-blue-700 hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 active:scale-95 group"
                 onClick={onClick}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
-                title="Add credits to your wallet"
+                title={walletTitle}
             >
                 <FiPlus 
                     size={12} 
                     className="transition-transform duration-200 group-hover:rotate-90" 
                     strokeWidth={3}
                 />
-                <span className="text-[10px] font-semibold">Add</span>
+                <span className="text-[10px] font-semibold">{addShort}</span>
             </button>
         );
     }
@@ -70,12 +75,12 @@ const AddCreditsButton: React.FC<AddCreditsButtonProps> = ({
     if (variant === 'prominent') {
         return (
             <button
-                aria-label="Add Credits"
+                aria-label={addCreditsLabel}
                 className="relative flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white border border-blue-700 hover:from-blue-600 hover:to-blue-700 hover:shadow-lg hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 active:scale-95 group overflow-hidden"
                 onClick={onClick}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
-                title="Add credits to your wallet"
+                title={walletTitle}
             >
                 {/* Shine effect on hover */}
                 <div 
@@ -91,7 +96,7 @@ const AddCreditsButton: React.FC<AddCreditsButtonProps> = ({
                         className="transition-all duration-200 group-hover:rotate-90 group-hover:scale-110" 
                         strokeWidth={2.5}
                     />
-                    <span className="text-xs font-semibold">Add Credits</span>
+                    <span className="text-xs font-semibold">{addCreditsLabel}</span>
                 </div>
             </button>
         );

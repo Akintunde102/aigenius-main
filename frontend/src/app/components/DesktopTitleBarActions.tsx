@@ -21,6 +21,7 @@ import {
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { openFilePreview } from "./modals/FilePreviewManager";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 /** Re-enable root file explorer + local search index caption buttons when ready. */
 const SHOW_EXTRA_CAPTION_ACTIONS = false;
@@ -106,6 +107,7 @@ const CLOSE_BTN_CLASS =
   "fixed z-[160] m-0 box-border flex items-center justify-center rounded-none border-0 p-0 outline-none transition-colors hover:bg-[#e81123] active:bg-[#f1707a] hover:text-white focus-visible:ring-2 focus-visible:ring-blue-500/30 cursor-pointer pointer-events-auto";
 
 export default function DesktopTitleBarActions() {
+  const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -159,7 +161,7 @@ export default function DesktopTitleBarActions() {
     }
 
     setCopiedEmail(true);
-    toast.success(`Support email copied: ${email}`, {
+    toast.success(t("desktopProductMenu.supportEmailCopied", "Support email copied: {email}", { email }), {
       id: "support-copy-toast",
       icon: "📋",
       duration: 2500,
@@ -175,8 +177,8 @@ export default function DesktopTitleBarActions() {
         : 'desktop';
     const subject =
       issueType === 'bug'
-        ? 'AIGenius Desktop Issue Report'
-        : 'AIGenius Desktop Support Request';
+        ? t("desktopProductMenu.emailSubjectBug", "AIGenius Desktop Issue Report")
+        : t("desktopProductMenu.emailSubjectGeneral", "AIGenius Desktop Support Request");
     const body =
       issueType === 'bug'
         ? `Hello AIGenius Support Team,%0D%0A%0D%0APlatform: ${platform}%0D%0AVersion: 0.1.0%0D%0A%0D%0APlease describe the issue you encountered:%0D%0A`
@@ -195,7 +197,11 @@ export default function DesktopTitleBarActions() {
     setOpacity((current) => {
       const next = current < 95 ? 100 : 70;
       window.aigeniusDesktop?.setWindowOpacity?.(next / 100);
-      toast.success(next < 95 ? `Peek-through mode (${next}%)` : `Full opacity (${next}%)`, {
+      toast.success(
+        next < 95
+          ? t("desktopProductMenu.peekThroughToast", "Peek-through mode ({percent}%)", { percent: next })
+          : t("desktopProductMenu.fullOpacityToast", "Full opacity ({percent}%)", { percent: next }),
+        {
         icon: next < 95 ? '👻' : '🪟',
         id: 'window-opacity-toast',
         duration: 1500,
@@ -375,8 +381,8 @@ export default function DesktopTitleBarActions() {
       <button
         type="button"
         id="desktop-window-minimize"
-        aria-label="Minimize window"
-        title="Minimize"
+        aria-label={t("desktopProductMenu.minimizeAria", "Minimize window")}
+        title={t("desktopProductMenu.minimizeTitle", "Minimize")}
         onClick={() => window.aigeniusDesktop?.minimizeWindow?.()}
         className={CAPTION_BTN_CLASS}
         style={{
@@ -391,8 +397,16 @@ export default function DesktopTitleBarActions() {
       <button
         type="button"
         id="desktop-window-maximize"
-        aria-label={isMaximized ? "Restore window" : "Maximize window"}
-        title={isMaximized ? "Restore" : "Maximize"}
+        aria-label={
+          isMaximized
+            ? t("desktopProductMenu.restoreAria", "Restore window")
+            : t("desktopProductMenu.maximizeAria", "Maximize window")
+        }
+        title={
+          isMaximized
+            ? t("desktopProductMenu.restoreTitle", "Restore")
+            : t("desktopProductMenu.maximizeTitle", "Maximize")
+        }
         onClick={() => window.aigeniusDesktop?.maximizeWindow?.()}
         className={CAPTION_BTN_CLASS}
         style={{
@@ -407,8 +421,8 @@ export default function DesktopTitleBarActions() {
       <button
         type="button"
         id="desktop-window-close"
-        aria-label="Close window"
-        title="Close"
+        aria-label={t("desktopProductMenu.closeAria", "Close window")}
+        title={t("desktopProductMenu.closeTitle", "Close")}
         onClick={() => window.aigeniusDesktop?.closeWindow?.()}
         className={CLOSE_BTN_CLASS}
         style={{
@@ -433,7 +447,7 @@ export default function DesktopTitleBarActions() {
         ref={menuButtonRef}
         type="button"
         id="desktop-product-menu-button"
-        aria-label="AIGenius product menu"
+        aria-label={t("desktopProductMenu.productMenuAria", "AIGenius product menu")}
         aria-haspopup="true"
         aria-expanded={isMenuOpen}
         onClick={() => setIsMenuOpen((prev) => !prev)}
@@ -487,14 +501,14 @@ export default function DesktopTitleBarActions() {
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 leading-none">
-                    AIGenius Desktop
+                    {t("desktopProductMenu.desktopTitle", "AIGenius Desktop")}
                   </span>
                   <span className="rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800/60 px-1.5 py-0.5 text-[9.5px] font-mono font-medium text-blue-600 dark:text-blue-400">
                     v0.1.0
                   </span>
                 </div>
                 <p className="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-1 leading-tight">
-                  All the best AI models. In one simple app.
+                  {t("desktopProductMenu.tagline", "All the best AI models. In one simple app.")}
                 </p>
               </div>
             </div>
@@ -505,14 +519,14 @@ export default function DesktopTitleBarActions() {
             <div className="px-1 mb-1.5 flex items-center justify-between">
               <span className="text-[10px] font-bold tracking-wider text-zinc-400 dark:text-zinc-500 uppercase flex items-center gap-1.5">
                 <Sliders className="w-3 h-3 text-blue-500" strokeWidth={2.2} />
-                Window & Display
+                {t("desktopProductMenu.windowDisplaySection", "Window & Display")}
               </span>
             </div>
 
             <div className="flex items-center justify-between text-[11px] mb-1.5 px-0.5">
               <span className="font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
                 <Eye className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" strokeWidth={2} />
-                Opacity
+                {t("desktopProductMenu.opacity", "Opacity")}
               </span>
               <span className="font-mono text-[10.5px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 border border-blue-200/70 dark:border-blue-800/60 px-1.5 py-0.2 rounded-md">
                 {opacity}%
@@ -523,7 +537,7 @@ export default function DesktopTitleBarActions() {
               type="range"
               role="slider"
               id="desktop-opacity-slider"
-              aria-label="Window opacity slider"
+              aria-label={t("desktopProductMenu.opacitySliderAria", "Window opacity slider")}
               aria-valuemin={15}
               aria-valuemax={100}
               aria-valuenow={opacity}
@@ -564,7 +578,7 @@ export default function DesktopTitleBarActions() {
               onClick={toggleOpacity}
               className="w-full flex items-center justify-between text-[11px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100/60 dark:hover:bg-zinc-800/40 px-1.5 py-1 rounded-md transition-colors mt-1.5 cursor-pointer"
             >
-              <span>Toggle peek mode</span>
+              <span>{t("desktopProductMenu.togglePeekMode", "Toggle peek mode")}</span>
               <span className="flex items-center gap-1 text-[10.5px] text-zinc-500 dark:text-zinc-400">
                 {isDarwin ? (
                   <>
@@ -592,7 +606,7 @@ export default function DesktopTitleBarActions() {
             <div className="flex items-center justify-between px-1 mb-1.5">
               <span className="text-[10px] font-bold tracking-wider text-zinc-400 dark:text-zinc-500 uppercase flex items-center gap-1.5">
                 <LifeBuoy className="w-3 h-3 text-blue-500" strokeWidth={2.2} />
-                Contact Us & Issues
+                {t("desktopProductMenu.contactSection", "Contact Us & Issues")}
               </span>
             </div>
 
@@ -600,10 +614,10 @@ export default function DesktopTitleBarActions() {
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
                   <div className="text-[11.5px] font-semibold text-zinc-900 dark:text-zinc-100">
-                    Direct Engineering Support
+                    {t("desktopProductMenu.directSupportTitle", "Direct Engineering Support")}
                   </div>
                   <div className="text-[10.5px] text-zinc-500 dark:text-zinc-400">
-                    For any bugs, crashes, account or setup issues
+                    {t("desktopProductMenu.directSupportDesc", "For any bugs, crashes, account or setup issues")}
                   </div>
                 </div>
               </div>
@@ -618,19 +632,19 @@ export default function DesktopTitleBarActions() {
                 </div>
                 <button
                   type="button"
-                  aria-label="Copy support email"
+                  aria-label={t("desktopProductMenu.copySupportEmailAria", "Copy support email")}
                   onClick={handleCopySupportEmail}
                   className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/80 border border-transparent hover:border-blue-200 dark:hover:border-blue-800 transition-colors cursor-pointer shrink-0"
                 >
                   {copiedEmail ? (
                     <>
                       <Check className="w-3 h-3 text-emerald-500" />
-                      <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">{t("common.copied", "Copied")}</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-3 h-3" />
-                      <span>Copy</span>
+                      <span>{t("common.copy", "Copy")}</span>
                     </>
                   )}
                 </button>
@@ -644,7 +658,7 @@ export default function DesktopTitleBarActions() {
                   className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-2 py-1.5 text-[11px] font-medium shadow-xs transition-colors cursor-pointer"
                 >
                   <Mail className="w-3 h-3" />
-                  <span>Email Support</span>
+                  <span>{t("desktopProductMenu.emailSupport", "Email Support")}</span>
                 </button>
                 <button
                   type="button"
@@ -652,7 +666,7 @@ export default function DesktopTitleBarActions() {
                   className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-white dark:bg-zinc-800/90 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 px-2 py-1.5 text-[11px] font-medium transition-colors cursor-pointer"
                 >
                   <Bug className="w-3 h-3 text-amber-500" />
-                  <span>Report Bug</span>
+                  <span>{t("desktopProductMenu.reportBug", "Report Bug")}</span>
                 </button>
               </div>
             </div>
@@ -664,7 +678,7 @@ export default function DesktopTitleBarActions() {
           <div className="py-1">
             <div className="px-1 mb-1">
               <span className="text-[10px] font-bold tracking-wider text-zinc-400 dark:text-zinc-500 uppercase">
-                Legal & Resources
+                {t("desktopProductMenu.legalSection", "Legal & Resources")}
               </span>
             </div>
 
@@ -676,7 +690,7 @@ export default function DesktopTitleBarActions() {
               >
                 <span className="flex items-center gap-2">
                   <FileText className="w-3.5 h-3.5 text-zinc-400 group-hover:text-blue-500 transition-colors" />
-                  <span>Terms of Service</span>
+                  <span>{t("landing.termsOfService", "Terms of Service")}</span>
                 </span>
                 <ExternalLink className="w-3 h-3 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors" />
               </button>
@@ -688,7 +702,7 @@ export default function DesktopTitleBarActions() {
               >
                 <span className="flex items-center gap-2">
                   <ShieldCheck className="w-3.5 h-3.5 text-zinc-400 group-hover:text-emerald-500 transition-colors" />
-                  <span>Privacy Policy</span>
+                  <span>{t("landing.privacyPolicy", "Privacy Policy")}</span>
                 </span>
                 <ExternalLink className="w-3 h-3 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors" />
               </button>
@@ -703,17 +717,17 @@ export default function DesktopTitleBarActions() {
               type="button"
               role="menuitem"
               onClick={() => {
-                toast.success("We love you too! ❤️");
+                toast.success(t("desktopProductMenu.weLoveYouToast", "We love you too! ❤️"));
                 setIsMenuOpen(false);
               }}
               className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/70 cursor-pointer group transition-colors"
             >
-              <span>We love you</span>
+              <span>{t("desktopProductMenu.weLoveYou", "We love you")}</span>
               <Heart className="w-3 h-3 text-rose-500 fill-rose-500 group-hover:scale-125 transition-transform duration-150" />
             </button>
 
             <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium">
-              Nobox Labs
+              {t("desktopProductMenu.noboxLabs", "Nobox Labs")}
             </span>
           </div>
         </div>
@@ -747,8 +761,8 @@ export default function DesktopTitleBarActions() {
       ) : null}
       <button
         type="button"
-        aria-label="New window"
-        title="New window"
+        aria-label={t("desktopProductMenu.newWindowAria", "New window")}
+        title={t("desktopProductMenu.newWindowTitle", "New window")}
         onClick={() => {
           void window.aigeniusDesktop?.openNewWindow?.();
         }}

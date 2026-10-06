@@ -10,6 +10,7 @@ import { ERROR_MESSAGES } from '../../hooks/chatOperations.constants';
 import type { ToolStreamingCardProps } from '../tool-streaming-card.types';
 import { toolStreamingInlineStatus } from '../tool-streaming-inline-status';
 import { shellTerminalPromptParts } from './local-shell-display.utils';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 type ToolLogEntry = { tag?: string; message: unknown };
 
@@ -18,6 +19,7 @@ function isStreamTag(tag: unknown): tag is 'stdout' | 'stderr' {
 }
 
 export function LocalShellToolCard({ streaming_tool, result, arguments: toolArgsProp }: ToolStreamingCardProps) {
+  const { t } = useLanguage();
   const { tool, displayName, logs, loading, success } = streaming_tool;
   const toolArgs = toolArgsProp ?? streaming_tool.arguments;
   const [activityOpen, setActivityOpen] = useState(false);
@@ -259,7 +261,7 @@ export function LocalShellToolCard({ streaming_tool, result, arguments: toolArgs
                         ) : null}
                         {loading || hasStreamText ? (
                           streamLogs.length === 0 && loading ? (
-                            <span className="italic text-slate-500 dark:text-zinc-400">Waiting for output from your device…</span>
+                            <span className="italic text-slate-500 dark:text-zinc-400">{t('toolUi.localShellWaiting', 'Waiting for output from your device…')}</span>
                           ) : (
                             streamLogs.flatMap((log, i) => {
                               const msg = valueToDisplayString(log.message);

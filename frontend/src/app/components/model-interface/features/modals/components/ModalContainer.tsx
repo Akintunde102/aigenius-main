@@ -63,6 +63,7 @@ interface ModalContainerProps {
   setImageFilterOnly?: (v: boolean | ((prev: boolean) => boolean)) => void;
   wallet?: number | null;
   onAddCredits?: () => void;
+  onOpenNonTextModels?: () => void;
 }
 
 export function ModalContainer({
@@ -116,6 +117,7 @@ export function ModalContainer({
   setImageFilterOnly,
   wallet = null,
   onAddCredits,
+  onOpenNonTextModels,
 }: ModalContainerProps) {
   return (
     <>
@@ -179,6 +181,7 @@ export function ModalContainer({
         handleShowModelDetails={handleShowModelDetails}
         wallet={wallet}
         onAddCredits={onAddCredits}
+        onOpenNonTextModels={onOpenNonTextModels}
       />
     </>
   );

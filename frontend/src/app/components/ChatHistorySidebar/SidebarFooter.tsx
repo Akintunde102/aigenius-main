@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from "react";
-import { FiBookmark, FiLogOut, FiLink, FiGift, FiFolder, FiZap, FiBell, FiMoon, FiSun, FiPlus, FiMonitor, FiShield, FiChevronRight, FiCheck, FiSettings } from 'react-icons/fi';
+import { FiBookmark, FiLogOut, FiLink, FiGift, FiFolder, FiZap, FiBell, FiMoon, FiSun, FiPlus, FiMonitor, FiShield, FiChevronRight, FiCheck, FiSettings, FiFilm, FiGlobe } from 'react-icons/fi';
 import { createPortal } from 'react-dom';
 import { useTheme } from "@/lib/providers/ThemeProvider";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 import type { ColorMode } from "@/lib/color-mode";
 import { useToolPermissions } from "@/lib/hooks/useToolPermissions";
 import { FEATURE_FLAGS } from "@/lib/config/features";
@@ -34,6 +35,7 @@ function AutoApproveSafetyDialog({
     onConfirm: () => void;
     onCancel: () => void;
 }) {
+    const { t } = useLanguage();
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -59,12 +61,13 @@ function AutoApproveSafetyDialog({
                 onClick={(e) => e.stopPropagation()}
             >
                 <h2 id="auto-approve-warning-title" className="text-lg font-semibold text-gray-900 dark:text-slate-50">
-                    Auto-approve all tools?
+                    {t('sidebar.autoApproveWarningTitle', 'Auto-approve all tools?')}
                 </h2>
                 <p className="mt-2 text-sm text-gray-600 dark:text-slate-300">
-                    The assistant will be able to run tools without asking — including commands on your
-                    device, file changes, emails, and other actions that alter data. Only turn this on if
-                    you trust the current session.
+                    {t(
+                        'sidebar.autoApproveWarningText',
+                        'The assistant will be able to run tools without asking — including commands on your device, file changes, emails, and other actions that alter data. Only turn this on if you trust the current session.',
+                    )}
                 </p>
                 <div className="mt-5 flex justify-end gap-2">
                     <button
@@ -72,14 +75,14 @@ function AutoApproveSafetyDialog({
                         className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                         onClick={onCancel}
                     >
-                        Cancel
+                        {t('common.cancel', 'Cancel')}
                     </button>
                     <button
                         type="button"
                         className="rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
                         onClick={onConfirm}
                     >
-                        Turn on auto-approve
+                        {t('sidebar.turnOnAutoApprove', 'Turn on auto-approve')}
                     </button>
                 </div>
             </div>
@@ -105,14 +108,16 @@ interface SidebarFooterProps {
     /** When incremented (e.g. from collapsed-rail avatar), opens the “more actions” menu. */
     openMenuSignal?: number;
     onOpenToolPermissions?: () => void;
+    onOpenNonTextModels?: () => void;
 }
 
-const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, onShowSavedChats, onOpenMyFiles, onOpenWorkflows, onOpenNotifications, onIntegrations, onGiveCredits, onLogout, openMenuSignal, onOpenToolPermissions }) => {
+const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, onShowSavedChats, onOpenMyFiles, onOpenWorkflows, onOpenNotifications, onIntegrations, onGiveCredits, onLogout, openMenuSignal, onOpenToolPermissions, onOpenNonTextModels }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [showThemeSubmenu, setShowThemeSubmenu] = useState(false);
     const [showAutoApproveWarning, setShowAutoApproveWarning] = useState(false);
     const { theme, setTheme } = useTheme();
+    const { languageInfo, openLanguageModal, t } = useLanguage();
     const menuRef = useRef<HTMLDivElement>(null);
     const { state: toolPermissionState, setAutoApproveAll } = useToolPermissions();
 
@@ -229,7 +234,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         }}
                                     >
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--sidebar-muted-fg)" }}>Credits</span>
+                                            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--sidebar-muted-fg)" }}>{t('common.credits', 'Credits')}</span>
                                         </div>
                                         <div className="flex min-w-0 items-center gap-2">
                                             <span className="sidebar-settings-value">{walletFormatted}</span>
@@ -244,7 +249,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                                 }}
                                             >
                                                 <FiPlus size={11} strokeWidth={2} />
-                                                <span>Add</span>
+                                                <span>{t('common.add', 'Add')}</span>
                                             </button>
                                         </div>
                                     </div>
@@ -263,7 +268,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         <span className={MENU_ICON_SLOT} aria-hidden>
                                             <FiBookmark size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
-                                        <span>Saved messages</span>
+                                        <span>{t('sidebar.savedMessages', 'Saved messages')}</span>
                                     </button>
                                 )}
 
@@ -280,7 +285,24 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         <span className={MENU_ICON_SLOT} aria-hidden>
                                             <FiFolder size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
-                                        <span>My files</span>
+                                        <span>{t('sidebar.myFiles', 'My files')}</span>
+                                    </button>
+                                )}
+
+                                {onOpenNonTextModels && (
+                                    <button
+                                        type="button"
+                                        className={MENU_ROW_BASE}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onOpenNonTextModels();
+                                            setIsMenuOpen(false);
+                                        }}
+                                    >
+                                        <span className={MENU_ICON_SLOT} aria-hidden>
+                                            <FiFilm size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
+                                        </span>
+                                        <span>{t('sidebar.mediaModels', 'Media models')}</span>
                                     </button>
                                 )}
 
@@ -297,7 +319,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         <span className={MENU_ICON_SLOT} aria-hidden>
                                             <FiZap size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
-                                        <span>Workflows</span>
+                                        <span>{t('sidebar.workflows', 'Workflows')}</span>
                                     </button>
                                 )}
 
@@ -314,7 +336,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         <span className={MENU_ICON_SLOT} aria-hidden>
                                             <FiBell size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
-                                        <span>Notifications</span>
+                                        <span>{t('sidebar.notifications', 'Notifications')}</span>
                                     </button>
                                 )}
 
@@ -331,7 +353,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         <span className={MENU_ICON_SLOT} aria-hidden>
                                             <FiLink size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
-                                        <span>Integrations</span>
+                                        <span>{t('sidebar.integrations', 'Integrations')}</span>
                                     </button>
                                 )}
 
@@ -348,7 +370,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         <span className={MENU_ICON_SLOT} aria-hidden>
                                             <FiShield size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
-                                        <span>Tool permissions</span>
+                                        <span>{t('sidebar.toolPermissions', 'Tool permissions')}</span>
                                     </button>
                                 )}
 
@@ -369,7 +391,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                                 {theme === 'dark' && <FiMoon size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />}
                                                 {theme === 'system' && <FiMonitor size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />}
                                             </span>
-                                            <span>Appearance</span>
+                                            <span>{t('sidebar.appearance', 'Appearance')}</span>
                                         </span>
                                         <FiChevronRight
                                             size={14}
@@ -383,6 +405,12 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         <div role="menu" aria-label="Appearance" className="mb-0.5 mt-0.5 flex flex-col gap-0.5">
                                             {THEME_OPTIONS.map((option) => {
                                                 const isActive = theme === option.value;
+                                                const label =
+                                                    option.value === 'light'
+                                                        ? t('sidebar.light', 'Light')
+                                                        : option.value === 'dark'
+                                                        ? t('sidebar.dark', 'Dark')
+                                                        : t('sidebar.system', 'System');
                                                 return (
                                                     <button
                                                         key={option.value}
@@ -400,7 +428,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                                         <span className={MENU_ICON_SLOT} aria-hidden>
                                                             {option.icon}
                                                         </span>
-                                                        <span className="flex-1">{option.label}</span>
+                                                        <span className="flex-1">{label}</span>
                                                         {isActive && (
                                                             <FiCheck size={13} strokeWidth={2.5} className="shrink-0 opacity-70" aria-hidden />
                                                         )}
@@ -409,6 +437,29 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                             })}
                                         </div>
                                     )}
+                                </div>
+
+                                <div>
+                                    <button
+                                        type="button"
+                                        className={`${MENU_ROW_BASE} justify-between`}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            openLanguageModal();
+                                            setIsMenuOpen(false);
+                                            setShowThemeSubmenu(false);
+                                        }}
+                                    >
+                                        <span className="flex min-w-0 items-center gap-2.5">
+                                            <span className={MENU_ICON_SLOT} aria-hidden>
+                                                <FiGlobe size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
+                                            </span>
+                                            <span>{t('sidebar.language', 'Language')}</span>
+                                        </span>
+                                        <span className="text-[11px] font-medium opacity-65 truncate max-w-[100px] text-right">
+                                            {languageInfo.nativeName}
+                                        </span>
+                                    </button>
                                 </div>
 
                                 {onGiveCredits && (
@@ -424,7 +475,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         <span className={MENU_ICON_SLOT} aria-hidden>
                                             <FiGift size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
-                                        <span>Give Credits</span>
+                                        <span>{t('sidebar.giveCredits', 'Give Credits')}</span>
                                     </button>
                                 )}
 
@@ -441,7 +492,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         <span className={MENU_ICON_SLOT} aria-hidden>
                                             <FiLogOut size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
-                                        <span>Logout</span>
+                                        <span>{t('sidebar.logout', 'Logout')}</span>
                                     </button>
                                 )}
 
@@ -454,7 +505,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                     type="button"
                                     role="menuitemcheckbox"
                                     aria-checked={toolPermissionState?.autoApproveAll ?? false}
-                                    aria-label="Auto-approve all tools"
+                                    aria-label={t('sidebar.autoApprove', 'Auto-approve')}
                                     className={`${MENU_ROW_BASE} w-full cursor-pointer justify-between`}
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -465,7 +516,7 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                         <span className={MENU_ICON_SLOT} aria-hidden>
                                             <FiZap size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
-                                        <span>Auto-approve</span>
+                                        <span>{t('sidebar.autoApprove', 'Auto-approve')}</span>
                                     </span>
                                     <span
                                         aria-hidden="true"

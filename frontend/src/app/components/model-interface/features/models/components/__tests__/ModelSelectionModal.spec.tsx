@@ -177,9 +177,12 @@ describe('ModelSelectionModal', () => {
             ...mockModels[1],
             id: 'expensive',
             name: 'Model Expensive',
-            pricing: {
-                prompt: '0.05',
-                completion: '0.05',
+            averageUserSpendPerRequest: {
+                promptCost: 0,
+                completionCost: 0,
+                expectedImageCost: 0,
+                totalAverageCost: 0,
+                totalAverageCostCredits: 50,
             },
         };
 

@@ -1,7 +1,9 @@
+import path from 'path';
 import { loopbackHttpOrigin } from './loopback-host';
 import { MINI_SERVER_PORT } from './mini-server-port';
 import { sidecarFetch } from './sidecar-fetch';
 import { sidecarAuthHeaders } from './local-tool-executor-helpers';
+import { isImageExtension } from './utils/image-extensions';
 
 const SERVER_URL = loopbackHttpOrigin(MINI_SERVER_PORT);
 
@@ -47,7 +49,14 @@ export function shouldRouteToolViaSidecar(
       if (args.mode !== undefined) {
         return false;
       }
-      return typeof args.path === 'string' && args.path.trim().length > 0;
+      if (typeof args.path !== 'string' || !args.path.trim()) {
+        return false;
+      }
+      const ext = path.extname(args.path.trim()).slice(1).toLowerCase();
+      if (ext === 'pdf' || ext === 'doc' || ext === 'docx' || isImageExtension(ext)) {
+        return false;
+      }
+      return true;
     case 'local_git_status':
     case 'local_git_diff':
       return typeof args.cwd === 'string' && args.cwd.trim().length > 0;

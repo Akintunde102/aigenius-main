@@ -20,6 +20,7 @@ import { Magnetic } from "./Magnetic";
 import { ParallaxPhoto } from "./ParallaxPhoto";
 import type { Platform } from "./platforms";
 import { DISPLAY } from "./typography";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 const POINTER_SPRING = { stiffness: 120, damping: 20, mass: 0.6 } as const;
@@ -32,9 +33,17 @@ const OFFSCREEN = -400;
  * strength and the second softer, the way Cursor sets its own.
  */
 const HEADLINE_CLASS = `${DISPLAY} text-[clamp(2.25rem,5vw,4rem)] font-semibold leading-[1.06] tracking-[-0.04em]`;
-const HEADLINE = [
-  { text: "One app. Every model.", className: "" },
-  { text: "Your files. Your machine.", className: "text-white/60" },
+const HEADLINE_LINES = [
+  {
+    key: "landing.headline1",
+    fallback: "One app. Every model.",
+    className: "",
+  },
+  {
+    key: "landing.headline2",
+    fallback: "Your files. Your machine.",
+    className: "text-white/60",
+  },
 ] as const;
 
 /** Decorative model chips sit at different depths, so they drift by different amounts with the cursor. */
@@ -111,6 +120,7 @@ interface HeroProps {
 }
 
 export function Hero({ initialPlatform }: HeroProps) {
+  const { t } = useLanguage();
   const reduceMotion = useReducedMotion();
   const container = useLandingScroll();
   const sectionRef = useRef<HTMLElement>(null);
@@ -198,9 +208,9 @@ export function Hero({ initialPlatform }: HeroProps) {
             className="max-w-3xl text-left"
           >
             <h1 className={HEADLINE_CLASS}>
-              {HEADLINE.map((line, index) => (
+              {HEADLINE_LINES.map((line, index) => (
                 <span
-                  key={line.text}
+                  key={line.key}
                   className="block overflow-hidden pb-[0.1em]"
                 >
                   <motion.span
@@ -213,7 +223,7 @@ export function Hero({ initialPlatform }: HeroProps) {
                       delay: 0.1 + index * 0.12,
                     }}
                   >
-                    {line.text}
+                    {t(line.key, line.fallback)}
                   </motion.span>
                 </span>
               ))}
@@ -225,8 +235,10 @@ export function Hero({ initialPlatform }: HeroProps) {
               transition={{ duration: 0.7, ease: EASE, delay: 0.5 }}
             >
               <p className="mt-5 max-w-xl text-lg leading-relaxed text-white/85">
-                Use Claude, GPT and Gemini from one app, with direct access to
-                your files. Top up from $1 and pay per request.
+                {t(
+                  "landing.heroSubtitle",
+                  "Use Claude, GPT and Gemini from one desktop and web app, with direct access to your files, code and Gmail. Top up a wallet from $1 and pay for each request.",
+                )}
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-start">
@@ -244,14 +256,17 @@ export function Hero({ initialPlatform }: HeroProps) {
                     href="/login"
                     className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-white/15 font-medium text-white backdrop-blur-md hover:bg-white/25 ${BUTTON_SIZE.lg} ${PRESS}`}
                   >
-                    Use it on the web
+                    {t("landing.useOnWeb", "Use it on the web")}
                   </Link>
                 </Magnetic>
               </div>
 
               <p className="mt-4 text-sm text-white/75">
-                {FREE_CREDITS} free credits when you sign up. Top up in USD or
-                NGN.
+                {t(
+                  "landing.heroCreditsNotice",
+                  `${FREE_CREDITS} free credits when you sign up. Top up in USD or NGN when you need more.`,
+                  { credits: FREE_CREDITS },
+                )}
               </p>
             </motion.div>
           </motion.div>

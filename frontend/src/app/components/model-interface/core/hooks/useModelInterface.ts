@@ -66,6 +66,7 @@ export function useModelInterface(options?: {
 
   const {
     models,
+    nonTextModels,
     modelsLoading,
     selectedModel,
     setSelectedModel,
@@ -582,6 +583,7 @@ export function useModelInterface(options?: {
   return {
     modelState: {
       models,
+      nonTextModels,
       modelsLoading,
       selectedModel,
       setSelectedModel,

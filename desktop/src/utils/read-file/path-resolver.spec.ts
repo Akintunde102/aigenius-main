@@ -5,6 +5,15 @@ import { resolveDirectoryPath, resolveLocalImagePath, resolveReadFilePath } from
 
 jest.mock('../../active-code-project', () => ({
   getActiveCodeProjectRootPath: () => path.join(os.tmpdir(), 'aigenius-test-project'),
+  getActiveCodeProjectId: () => null,
+}));
+
+jest.mock('../../check-code-project-root-path', () => ({
+  checkCodeProjectRootPath: jest.fn(async () => ({
+    ok: true,
+    status: 'ok',
+    canRecreate: false,
+  })),
 }));
 
 describe('resolveLocalImagePath', () => {

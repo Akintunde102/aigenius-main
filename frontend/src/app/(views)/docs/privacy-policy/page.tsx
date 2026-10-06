@@ -22,8 +22,8 @@ const PRIVACY_SECTIONS = [
 export default function PrivacyPolicyPage() {
   return (
     <DocPage
-      effectiveDate="30 September 2025"
-      effectiveDateIso="2025-09-30"
+      effectiveDate="5 October 2026"
+      effectiveDateIso="2026-10-05"
       sections={PRIVACY_SECTIONS}
     >
       <p>
@@ -75,6 +75,7 @@ export default function PrivacyPolicyPage() {
             "Process payments, manage your credit wallet, and deduct usage costs.",
             "Monitor performance, fix issues, and improve features.",
             "Measure product usage through PostHog when you consent to analytics (see Cookies and local storage).",
+            "Diagnose crashes from redacted error reports sent to our API, which we may forward to PostHog.",
             "Communicate important updates, security notices, and support responses.",
             "Comply with legal obligations and defend legal claims.",
             "Create aggregated or de-identified insights that cannot reasonably identify you.",

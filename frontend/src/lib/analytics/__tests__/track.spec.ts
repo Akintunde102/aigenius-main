@@ -1,5 +1,16 @@
 /** @jest-environment jsdom */
 
+jest.mock('posthog-js', () => ({
+  __esModule: true,
+  default: {
+    init: jest.fn(),
+    capture: jest.fn(),
+    identify: jest.fn(),
+    reset: jest.fn(),
+    register: jest.fn(),
+  },
+}));
+
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 import { trackChatMessageSent } from '@/lib/analytics/product-events';
 import posthog from 'posthog-js';
@@ -15,28 +26,34 @@ import {
   trackEvent,
 } from '@/lib/analytics/track';
 
-const capture = jest.fn();
-const identify = jest.fn();
-const reset = jest.fn();
+const capture = posthog.capture as jest.Mock;
+const identify = posthog.identify as jest.Mock;
+const reset = posthog.reset as jest.Mock;
 
-jest.mock('posthog-js', () => ({
-  __esModule: true,
-  default: {
-    init: jest.fn(),
-    capture,
-    identify,
-    reset,
-    register: jest.fn(),
-  },
-}));
+const localStorageStore: Record<string, string> = {};
 
-import posthog from 'posthog-js';
+function installWorkingLocalStorageMock(): void {
+  Object.keys(localStorageStore).forEach((key) => delete localStorageStore[key]);
+  (window.localStorage.getItem as jest.Mock).mockImplementation(
+    (key: string) => localStorageStore[key] ?? null,
+  );
+  (window.localStorage.setItem as jest.Mock).mockImplementation((key: string, value: string) => {
+    localStorageStore[key] = value;
+  });
+  (window.localStorage.removeItem as jest.Mock).mockImplementation((key: string) => {
+    delete localStorageStore[key];
+  });
+  (window.localStorage.clear as jest.Mock).mockImplementation(() => {
+    Object.keys(localStorageStore).forEach((key) => delete localStorageStore[key]);
+  });
+}
 
 describe('analytics track', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    installWorkingLocalStorageMock();
     resetPostHogClientForTests();
     process.env = { ...originalEnv };
     delete process.env.NEXT_PUBLIC_ENABLE_ANALYTICS;

@@ -681,12 +681,14 @@ export async function executeReadFile(
         }],
       };
     }
-    const offset = typeof args.offset === 'number' && args.offset >= 0 ? args.offset : 0;
-    const maxBytes = typeof args.max_bytes === 'number'
-      ? Math.min(Math.max(1, Math.floor(args.max_bytes)), 2_000_000)
-      : 65_536;
-    const item = await readBoundedFileByBytes(pathResult.resolved, pathResult.displayPath, offset, maxBytes);
-    return { results: [item] };
+    if (!documentExtractKind(pathResult.resolved)) {
+      const offset = typeof args.offset === 'number' && args.offset >= 0 ? args.offset : 0;
+      const maxBytes = typeof args.max_bytes === 'number'
+        ? Math.min(Math.max(1, Math.floor(args.max_bytes)), 2_000_000)
+        : 65_536;
+      const item = await readBoundedFileByBytes(pathResult.resolved, pathResult.displayPath, offset, maxBytes);
+      return { results: [item] };
+    }
   }
 
   const item = await readSingle(requests[0], lineBudget.maxLines);

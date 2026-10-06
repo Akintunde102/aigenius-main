@@ -16,6 +16,7 @@ import {
 import { startIndexerUtilityProcess, stopIndexerUtilityProcess } from './indexer-utility-process';
 import { resolveFrontendPort } from './frontend-port';
 import { resolveMiniServerCorsOrigins } from './resolve-mini-server-cors-origins';
+import { resolveActiveOtaUiDir } from './desktop-ui-ota';
 
 export const INDEXER_IPC_PORT = process.env.AIGENIUS_INDEXER_IPC_PORT ?? '18012';
 export const FRONTEND_PORT = resolveFrontendPort();
@@ -76,6 +77,10 @@ export function nextStandaloneDir(): string {
 
 export function desktopUiStaticDir(): string {
   if (app.isPackaged) {
+    const otaDir = resolveActiveOtaUiDir(app.getPath('userData'));
+    if (otaDir) {
+      return otaDir;
+    }
     return path.join(process.resourcesPath, 'desktop-ui');
   }
   return path.join(repoRootFromDesktopDist(), 'desktop-renderer', 'dist');

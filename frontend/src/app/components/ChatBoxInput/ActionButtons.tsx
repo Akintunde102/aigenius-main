@@ -2,6 +2,7 @@ import React from 'react';
 import { Paperclip, Mic, Phone, Loader2, X, Check } from 'lucide-react';
 import { ActionButtonsProps } from './types';
 import { FEATURE_FLAGS } from '@/lib/config/features';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
     disabled,
@@ -15,6 +16,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     isSTTActive,
     isDictationTranscribing = false,
 }) => {
+    const { t } = useLanguage();
     /** Dictation-only — do not tie to conversational `audioStatus` or the mic flickers in phone mode. */
     const micTranscribing = isDictationTranscribing;
 
@@ -26,7 +28,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                     type="button"
                     className={`p-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isAudioMode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:text-green-500 hover:bg-green-50'
                         }`}
-                    title="Enter Audio Mode"
+                    title={t('composer.enterAudioMode', 'Enter Audio Mode')}
+                    aria-label={t('composer.enterAudioMode', 'Enter Audio Mode')}
                     disabled={disabled}
                     onClick={() => onAudioModeToggle(!isAudioMode)}
                 >
@@ -39,7 +42,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 <button
                     type="button"
                     className="p-1.5 rounded-full text-blue-500 bg-blue-50 disabled:opacity-50 cursor-not-allowed"
-                    title="Transcribing..."
+                    title={t('composer.transcribing', 'Transcribing...')}
+                    aria-label={t('composer.transcribing', 'Transcribing...')}
                     disabled
                 >
                     <Loader2 size={12} className="animate-spin" />
@@ -50,7 +54,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                     <button
                         type="button"
                         className="p-1.5 rounded-full [color:var(--chat-muted-fg)] hover:[color:var(--sidebar-fg)] hover:bg-black/[0.05] dark:hover:bg-white/[0.06] transition-colors"
-                        title="Cancel recording"
+                        title={t('composer.cancelRecording', 'Cancel recording')}
+                        aria-label={t('composer.cancelRecording', 'Cancel recording')}
                         onClick={() => onCancelSTT?.()}
                     >
                         <X size={12} />
@@ -59,7 +64,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                     <button
                         type="button"
                         className="p-1.5 rounded-full text-white bg-[var(--chat-accent)] hover:opacity-90 transition-colors animate-pulse"
-                        title="Keep transcription"
+                        title={t('composer.keepTranscription', 'Keep transcription')}
+                        aria-label={t('composer.keepTranscription', 'Keep transcription')}
                         onClick={() => onConfirmSTT?.()}
                     >
                         <Check size={12} />
@@ -69,7 +75,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 <button
                     type="button"
                     className="p-1.5 rounded-full text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Speak"
+                    title={t('composer.speak', 'Speak')}
+                    aria-label={t('composer.speak', 'Speak')}
                     disabled={disabled}
                     onClick={onStartSTT}
                 >
@@ -81,7 +88,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             <button
                 type="button"
                 className={`rounded-full p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 [color:var(--chat-muted-fg)] hover:[color:var(--sidebar-fg)] hover:bg-black/[0.05] dark:hover:bg-white/[0.06] ${!supportsFileUpload ? "cursor-not-allowed opacity-40" : ""}`}
-                title={supportsFileUpload ? "Add attachment" : "File upload not supported"}
+                title={supportsFileUpload ? t('composer.attachFiles', 'Add attachment') : t('composer.fileUploadNotSupported', 'File upload not supported')}
+                aria-label={supportsFileUpload ? t('composer.attachFiles', 'Add attachment') : t('composer.fileUploadNotSupported', 'File upload not supported')}
                 disabled={disabled || !supportsFileUpload}
                 onClick={onAttachmentClick}
             >

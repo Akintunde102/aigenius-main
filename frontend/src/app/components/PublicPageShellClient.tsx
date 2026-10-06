@@ -42,6 +42,7 @@ function readPublicHeaderSession(): { signedIn: boolean; label: string } {
  * page's ThemeToggle, which runs the identical localStorage + applyResolvedColorMode logic.
  */
 export function PublicHeader() {
+  const { t, openLanguageModal } = useLanguage();
   const pathname = usePathname();
   const [signedIn, setSignedIn] = useState(false);
   const [label, setLabel] = useState("Open app");

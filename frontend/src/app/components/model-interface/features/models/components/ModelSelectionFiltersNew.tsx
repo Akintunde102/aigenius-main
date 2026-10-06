@@ -14,6 +14,7 @@ import {
   FilterPillIconButton,
   type FilterPillOption,
 } from "./FilterPillDropdown";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 interface ModelSelectionFiltersNewProps {
   showFilterSortRow?: boolean;
@@ -87,15 +88,6 @@ function CatalogFilterPill({
   );
 }
 
-const SORT_OPTIONS: FilterPillOption[] = [
-  { value: "default", label: "Default" },
-  { value: "name", label: "Name" },
-  { value: "release_date", label: "Release Date" },
-  { value: "cost", label: "Cost" },
-  { value: "provider", label: "Provider" },
-  { value: "context", label: "Context" },
-];
-
 function ToggleSwitch({
   checked,
   onChange,
@@ -156,26 +148,48 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
   ollamaModelsCount = 0,
   showOllamaCatalogFilter = false,
 }: ModelSelectionFiltersNewProps) {
+  const { t } = useLanguage();
   const selectedProvider = selectedProviders[0] ?? "";
 
+  const sortOptions = useMemo<FilterPillOption[]>(
+    () => [
+      { value: "default", label: t("modelPicker.sortDefault", "Default") },
+      { value: "name", label: t("modelPicker.sortName", "Name") },
+      { value: "release_date", label: t("modelPicker.sortReleaseDate", "Release Date") },
+      { value: "cost", label: t("modelPicker.sortCost", "Cost") },
+      { value: "provider", label: t("modelPicker.sortProvider", "Provider") },
+      { value: "context", label: t("modelPicker.sortContext", "Context") },
+    ],
+    [t],
+  );
+
   const labOptions = useMemo<FilterPillOption[]>(() => {
+    const allLabsLabel = t("modelPicker.allLabs", "All labs");
     if (labOptionsProp && labOptionsProp.length > 0) {
-      return labOptionsProp;
+      return labOptionsProp.map((opt) =>
+        opt.value === "" ? { ...opt, label: allLabsLabel } : opt,
+      );
     }
     if (models && models.length > 0) {
-      return buildLabFilterOptions(models);
+      const built = buildLabFilterOptions(models);
+      return built.map((opt) =>
+        opt.value === "" ? { ...opt, label: allLabsLabel } : opt,
+      );
     }
     if (majorProviders && majorProviders.length > 0) {
       return [
-        { value: "", label: "All labs" },
+        { value: "", label: allLabsLabel },
         ...majorProviders.map((pid) => ({
           value: pid,
           label: getProviderLabel(pid),
         })),
       ];
     }
-    return buildLabFilterOptions();
-  }, [labOptionsProp, models, majorProviders]);
+    const built = buildLabFilterOptions();
+    return built.map((opt) =>
+      opt.value === "" ? { ...opt, label: allLabsLabel } : opt,
+    );
+  }, [labOptionsProp, models, majorProviders, t]);
 
   const hasAnyFilterActive =
     orderBy !== "default" ||
@@ -195,9 +209,11 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
         <CatalogFilterPill
           active={catalogFilter === "default"}
           onClick={() => onToggleCatalogFilter!("default")}
-          ariaLabel={`Filter to default models, ${defaultModelsCount} available`}
+          ariaLabel={t("modelPicker.filterDefaultCatalogAria", "Filter to default models, {count} available", {
+            count: defaultModelsCount,
+          })}
           icon={<FiZap size={11} className="text-amber-500" />}
-          label="Default models"
+          label={t("modelPicker.defaultModelsPill", "Default models")}
           count={defaultModelsCount}
           activeClassName="app-filter-pill--default-catalog-active"
         />
@@ -206,9 +222,11 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
         <CatalogFilterPill
           active={catalogFilter === "ollama"}
           onClick={() => onToggleCatalogFilter!("ollama")}
-          ariaLabel={`Filter to Ollama models, ${ollamaModelsCount} available`}
+          ariaLabel={t("modelPicker.filterOllamaCatalogAria", "Filter to Ollama models, {count} available", {
+            count: ollamaModelsCount,
+          })}
           icon={<FiCpu size={11} className="text-teal-600 dark:text-teal-400" />}
-          label="Ollama"
+          label={t("modelPicker.ollamaLabel", "Ollama")}
           count={ollamaModelsCount}
           activeClassName="app-filter-pill--ollama-catalog-active"
         />
@@ -237,10 +255,10 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
         <div className="flex items-center gap-1.5 flex-wrap">
           <FilterPillDropdown
             value={orderBy}
-            options={SORT_OPTIONS}
+            options={sortOptions}
             onChange={(next) => setOrderBy(next as ModelOrderBy)}
-            placeholder="Sort"
-            ariaLabel="Sort models"
+            placeholder={t("modelPicker.sort", "Sort")}
+            ariaLabel={t("modelPicker.sortModelsAria", "Sort models")}
             forceActive={orderBy !== "default"}
           />
 
@@ -248,8 +266,8 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
             <FilterPillIconButton
               active
               onClick={() => setOrderDir(orderDir === "asc" ? "desc" : "asc")}
-              title={orderDir === "asc" ? "Ascending" : "Descending"}
-              ariaLabel="Sort direction"
+              title={orderDir === "asc" ? t("modelPicker.ascending", "Ascending") : t("modelPicker.descending", "Descending")}
+              ariaLabel={t("modelPicker.sortDirectionAria", "Sort direction")}
             >
               <span className="text-[11px] font-semibold leading-none">
                 {orderDir === "asc" ? "↑" : "↓"}
@@ -263,10 +281,10 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
             onClick={() => setImageFilterOnly((prev) => !prev)}
             title={
               imageFilterOnly
-                ? "Files & images – on"
-                : "Files & images – show only models that accept file and image attachments"
+                ? t("modelPicker.filesImagesOn", "Files & images – on")
+                : t("modelPicker.filesImagesOff", "Files & images – show only models that accept file and image attachments")
             }
-            ariaLabel="Filter by file and image input"
+            ariaLabel={t("modelPicker.filesImagesAria", "Filter by file and image input")}
           >
             <FaRegImage size={13} />
           </FilterPillIconButton>
@@ -275,11 +293,11 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
             value={selectedProvider}
             options={labOptions}
             onChange={(next) => setSelectedProviders(next ? [next] : [])}
-            placeholder="Labs"
-            ariaLabel="Filter by lab"
+            placeholder={t("modelPicker.labs", "Labs")}
+            ariaLabel={t("modelPicker.filterByLabAria", "Filter by lab")}
             forceActive={Boolean(selectedProvider)}
             searchable
-            searchPlaceholder="Search labs..."
+            searchPlaceholder={t("modelPicker.searchLabs", "Search labs...")}
           />
 
           <FilterPillIconButton
@@ -288,10 +306,10 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
             onClick={() => setShowWebSearch(!showWebSearch)}
             title={
               showWebSearch
-                ? "Web search (on)"
-                : "Web search – filter by models with web search"
+                ? t("modelPicker.webSearchOn", "Web search (on)")
+                : t("modelPicker.webSearchOff", "Web search – filter by models with web search")
             }
-            ariaLabel="Filter by web search"
+            ariaLabel={t("modelPicker.webSearchAria", "Filter by web search")}
           >
             <FiGlobe size={13} />
           </FilterPillIconButton>
@@ -303,10 +321,10 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
               onClick={() => setGroupByAffordability((prev) => !prev)}
               title={
                 groupByAffordability
-                  ? "Affordable check (on) – showing models you can use"
-                  : "Affordable check – show models I can use"
+                  ? t("modelPicker.affordabilityOn", "Affordable check (on) – showing models you can use")
+                  : t("modelPicker.affordabilityOff", "Affordable check – show models I can use")
               }
-              ariaLabel="Filter by affordability check"
+              ariaLabel={t("modelPicker.affordabilityAria", "Filter by affordability check")}
             >
               <FiCheckCircle size={13} />
             </FilterPillIconButton>
@@ -318,7 +336,7 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
               onClick={handleResetFilters}
               className="text-[11px] font-medium text-[var(--chat-accent)] hover:underline px-1 py-1"
             >
-              Reset
+              {t("modelPicker.reset", "Reset")}
             </button>
           )}
         </div>
@@ -333,7 +351,7 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
         <div className="space-y-1.5">
           <div className="px-1">
             <span className="text-[10px] font-semibold text-[var(--sidebar-muted-fg)] uppercase tracking-wider">
-              Collections
+              {t("modelPicker.collections", "Collections")}
             </span>
           </div>
           {collectionPills}
@@ -344,7 +362,7 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-semibold text-[var(--sidebar-muted-fg)] uppercase tracking-wider">
-            Filters
+            {t("modelPicker.filters", "Filters")}
           </span>
           {activeFiltersCount !== undefined && activeFiltersCount > 0 && (
             <span className="inline-flex items-center justify-center px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[var(--chat-accent)]/15 text-[var(--chat-accent)]">
@@ -357,10 +375,10 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
             type="button"
             onClick={handleResetFilters}
             className="inline-flex items-center gap-1 text-[10px] font-medium text-[var(--chat-accent)] hover:underline transition-colors"
-            title="Reset all filters"
+            title={t("modelPicker.resetAllFilters", "Reset all filters")}
           >
             <FiRotateCcw size={10} />
-            <span>Reset</span>
+            <span>{t("modelPicker.reset", "Reset")}</span>
           </button>
         )}
       </div>
@@ -369,7 +387,7 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
       <div className="space-y-1.5">
         <div className="flex items-center justify-between px-1">
           <span className="text-[10px] font-semibold text-[var(--sidebar-muted-fg)] uppercase tracking-wider">
-            Sort by
+            {t("modelPicker.sortBy", "Sort by")}
           </span>
           {orderBy !== "default" && (
             <button
@@ -377,7 +395,7 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
               onClick={() => setOrderBy("default")}
               className="text-[10px] text-[var(--sidebar-muted-fg)] hover:text-[var(--sidebar-fg)] transition-colors"
             >
-              Default
+              {t("modelPicker.sortDefault", "Default")}
             </button>
           )}
         </div>
@@ -385,10 +403,10 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
           <div className="flex-1 min-w-0">
             <FilterPillDropdown
               value={orderBy}
-              options={SORT_OPTIONS}
+              options={sortOptions}
               onChange={(next) => setOrderBy(next as ModelOrderBy)}
-              placeholder="Sort by"
-              ariaLabel="Sort models"
+              placeholder={t("modelPicker.sortBy", "Sort by")}
+              ariaLabel={t("modelPicker.sortModelsAria", "Sort models")}
               forceActive={orderBy !== "default"}
               className="w-full [&>button]:w-full [&>button]:justify-between [&>button]:h-7.5 [&>button]:text-xs"
               labelClassName="truncate flex-1 text-left"
@@ -398,8 +416,8 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
             <FilterPillIconButton
               active
               onClick={() => setOrderDir(orderDir === "asc" ? "desc" : "asc")}
-              title={orderDir === "asc" ? "Ascending order" : "Descending order"}
-              ariaLabel="Sort direction"
+              title={orderDir === "asc" ? t("modelPicker.ascendingOrder", "Ascending order") : t("modelPicker.descendingOrder", "Descending order")}
+              ariaLabel={t("modelPicker.sortDirectionAria", "Sort direction")}
             >
               <span className="text-xs font-bold leading-none">
                 {orderDir === "asc" ? "↑" : "↓"}
@@ -413,7 +431,7 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
       <div className="space-y-1.5">
         <div className="px-1">
           <span className="text-[10px] font-semibold text-[var(--sidebar-muted-fg)] uppercase tracking-wider">
-            Capabilities
+            {t("modelPicker.capabilities", "Capabilities")}
           </span>
         </div>
         <div className="space-y-1">
@@ -439,12 +457,12 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
                 size={13}
                 className={imageFilterOnly ? "text-pink-500 shrink-0" : "shrink-0 opacity-70"}
               />
-              <span className="text-xs truncate">Files & Images</span>
+              <span className="text-xs truncate">{t("modelPicker.filesImagesLabel", "Files & Images")}</span>
             </div>
             <ToggleSwitch
               checked={imageFilterOnly}
               onChange={() => setImageFilterOnly((prev) => !prev)}
-              ariaLabel="Toggle files and images filter"
+              ariaLabel={t("modelPicker.filesImagesToggleAria", "Toggle files and images filter")}
             />
           </div>
 
@@ -470,12 +488,12 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
                 size={13}
                 className={showWebSearch ? "text-blue-500 shrink-0" : "shrink-0 opacity-70"}
               />
-              <span className="text-xs truncate">Web Search</span>
+              <span className="text-xs truncate">{t("modelPicker.webSearchLabel", "Web Search")}</span>
             </div>
             <ToggleSwitch
               checked={showWebSearch}
               onChange={() => setShowWebSearch(!showWebSearch)}
-              ariaLabel="Toggle web search filter"
+              ariaLabel={t("modelPicker.webSearchToggleAria", "Toggle web search filter")}
             />
           </div>
 
@@ -502,12 +520,12 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
                   size={13}
                   className={groupByAffordability ? "text-emerald-500 shrink-0" : "shrink-0 opacity-70"}
                 />
-                <span className="text-xs truncate">Affordable Only</span>
+                <span className="text-xs truncate">{t("modelPicker.affordableOnly", "Affordable Only")}</span>
               </div>
               <ToggleSwitch
                 checked={groupByAffordability}
                 onChange={() => setGroupByAffordability((prev) => !prev)}
-                ariaLabel="Toggle affordable only filter"
+                ariaLabel={t("modelPicker.affordableOnlyToggleAria", "Toggle affordable only filter")}
               />
             </div>
           )}
@@ -518,7 +536,7 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
       <div className="space-y-1.5">
         <div className="flex items-center justify-between px-1">
           <span className="text-[10px] font-semibold text-[var(--sidebar-muted-fg)] uppercase tracking-wider">
-            Labs
+            {t("modelPicker.labs", "Labs")}
           </span>
           {Boolean(selectedProvider) && (
             <button
@@ -528,7 +546,7 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
               }}
               className="text-[10px] text-[var(--chat-accent)] hover:underline"
             >
-              All labs
+              {t("modelPicker.allLabs", "All labs")}
             </button>
           )}
         </div>
@@ -537,11 +555,11 @@ export const ModelSelectionFiltersNew = React.memo(function ModelSelectionFilter
           value={selectedProvider}
           options={labOptions}
           onChange={(next) => setSelectedProviders(next ? [next] : [])}
-          placeholder="All labs"
-          ariaLabel="Filter by lab"
+          placeholder={t("modelPicker.allLabs", "All labs")}
+          ariaLabel={t("modelPicker.filterByLabAria", "Filter by lab")}
           forceActive={Boolean(selectedProvider)}
           searchable
-          searchPlaceholder="Search labs..."
+          searchPlaceholder={t("modelPicker.searchLabs", "Search labs...")}
           className="w-full [&>button]:w-full [&>button]:justify-between [&>button]:h-7.5 [&>button]:text-xs"
           labelClassName="truncate flex-1 text-left"
         />

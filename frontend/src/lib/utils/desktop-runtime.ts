@@ -193,7 +193,20 @@ export type AigeniusDesktopBridgeSurface = {
   getChatRuntimeContext?: () => Promise<unknown>;
   setCodeProjectIndex?: (
     payload: { projectId: string; rootPath: string } | null,
-  ) => Promise<{ ok: boolean }>;
+  ) => Promise<
+    | { ok: true }
+    | { ok: false; error?: string; rootCheck?: unknown }
+  >;
+  checkCodeProjectRoot?: (rootPath: string) => Promise<{
+    ok: boolean;
+    status: string;
+    canRecreate: boolean;
+    resolvedPath?: string;
+  }>;
+  recreateCodeProjectRoot?: (rootPath: string) => Promise<
+    | { ok: true; path: string; created: boolean }
+    | { ok: false; error: string }
+  >;
   pickProjectDirectory?: () => Promise<{ path: string } | null>;
   createNamedProjectDirectory?: (payload: { folderName: string; silent?: boolean }) => Promise<
     | { ok: true; path: string; created?: boolean }

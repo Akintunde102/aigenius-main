@@ -29,7 +29,7 @@ export function inferLocalFilePreviewType(path: string): FilePreviewPayload['typ
 
   const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
   const pdfExts = ['pdf'];
-  const videoExts = ['mp4', 'webm', 'ogg', 'ogv', 'mov', 'm4v', 'mkv', 'avi', 'wmv', 'flv', '3gp', 'ts', 'm3u8'];
+  const videoExts = ['mp4', 'webm', 'ogg', 'ogv', 'mov', 'm4v', 'mkv', 'avi', 'wmv', 'flv', '3gp', 'm2ts', 'm3u8'];
   const audioExts = ['mp3', 'wav', 'm4a', 'aac', 'flac', 'opus', 'oga'];
 
   if (!hasExtension) return 'folder';

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { motion, useReducedMotion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { clearUserDetailsCache } from '@/lib/calls/get-logged-user-details';
@@ -24,13 +23,12 @@ import {
     reconcilePaymentWithBackend,
     type WalletPaymentVerification,
 } from '@/lib/wallet-pending-payment-poll';
-import { LandingAmbientBackground } from '@/app/components/ui';
-import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
 import { cn } from '@/lib/utils';
 import {
   trackWalletTopUpCompleted,
   trackWalletTopUpFailed,
 } from '@/lib/analytics/product-events';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 type VerifyPaymentResponse = WalletPaymentVerification;
 
@@ -51,6 +49,7 @@ type ServerCallEnvelope<T> = {
 const VERIFY_TRIGGER_KEY_PREFIX = 'aigenius:payment-verify-triggered:';
 
 export function PaymentCallbackLoadingView() {
+    const { t } = useLanguage();
     return (
         <StatusShell>
             <StatusCard tone="loading">
@@ -58,10 +57,13 @@ export function PaymentCallbackLoadingView() {
                     <Loader2 size={32} className="animate-spin" aria-hidden />
                 </StatusIcon>
                 <h1 className={STATUS_TITLE}>
-                    Processing payment
+                    {t('payment.processingTitle', 'Processing payment')}
                 </h1>
                 <p className={STATUS_TEXT}>
-                    Verifying your transaction with your payment provider…
+                    {t(
+                        'payment.verifyingSubtitle',
+                        'Verifying your transaction with your payment provider…',
+                    )}
                 </p>
             </StatusCard>
         </StatusShell>
@@ -135,6 +137,7 @@ async function triggerVerifyOnce(reference: string): Promise<VerifyPaymentRespon
 
 export default function PaymentCallbackClient() {
     const searchParams = useSearchParams();
+    const { t } = useLanguage();
     const [status, setStatus] = useState<'loading' | 'success' | 'failed' | 'confirming'>('loading');
 
     useEffect(() => {
@@ -443,7 +446,9 @@ export default function PaymentCallbackClient() {
                             : 'Your wallet has been verified and updated.'}
                     </p>
                     {searchParams.get('desktop') !== '1' ? (
-                        <p className={cn(STATUS_TEXT, "mt-2")}>Returning you to your wallet…</p>
+                        <p className={cn(STATUS_TEXT, 'mt-2')}>
+                            {t('payment.returningToWallet', 'Returning you to your wallet…')}
+                        </p>
                     ) : null}
                 </StatusCard>
             </StatusShell>

@@ -8,6 +8,8 @@ import { ChatLoadingIndicator } from "./model-interface/features/chat/components
 import { groupSidebarSessionsByProject, sortSidebarSessions } from "./ChatHistoryList/chatHistoryListGrouping";
 import type { CodeProject } from "@/lib/calls/code-projects";
 import { loadComposerDraftMap } from "@/lib/utils/composerDraftStorage";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
+import toast from "react-hot-toast";
 
 /** Max conversations shown per sidebar section before "Open more". */
 const SIDEBAR_SESSION_PREVIEW_LIMIT = 5;
@@ -30,26 +32,26 @@ function ProjectSectionHeader({
     isActive = false,
     hasActiveChat = false,
     showInfo = false,
-    conversationCount = 0,
     isCollapsed = false,
     rootPath,
     onSelect,
     onToggleCollapse,
     onInfo,
     onNewChat,
+    folderMissing = false,
 }: {
     label: string;
     isActive?: boolean;
     /** True when this project section contains the currently open conversation inline. */
     hasActiveChat?: boolean;
     showInfo?: boolean;
-    conversationCount?: number;
     isCollapsed?: boolean;
     rootPath?: string | null;
     onSelect?: () => void;
     onToggleCollapse?: () => void;
     onInfo?: () => void;
     onNewChat?: () => void;
+    folderMissing?: boolean;
 }) {
     const [isHovered, setIsHovered] = React.useState(false);
     const sectionRef = React.useRef<HTMLDivElement>(null);
@@ -78,7 +80,11 @@ function ProjectSectionHeader({
         if (!rootPath) return;
         const bridge = (window as any).aigeniusDesktop;
         if (bridge?.revealFileInFolder) {
-            void bridge.revealFileInFolder(rootPath);
+            void bridge.revealFileInFolder(rootPath).then((result: { ok: boolean; error?: string }) => {
+                if (result && !result.ok) {
+                    toast.error(result.error ?? "Path does not exist");
+                }
+            });
         } else {
             // Fallback for non-desktop: open as file:// URL
             window.open(`file://${rootPath}`, '_blank');
@@ -127,6 +133,18 @@ function ProjectSectionHeader({
                         <polyline points="9 18 15 12 9 6" />
                     </svg>
                     <span className="truncate uppercase">{label}</span>
+                    {folderMissing ? (
+                        <span
+                            className="ml-1 shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold normal-case tracking-normal"
+                            style={{
+                                color: "var(--sidebar-fg, #1c1c1a)",
+                                background: "color-mix(in srgb, var(--chat-accent, #0ea5e9) 18%, transparent)",
+                            }}
+                            title="Project folder is missing on disk"
+                        >
+                            Folder missing
+                        </span>
+                    ) : null}
                 </button>
             </div>
             {/* Action buttons — fade in/out on section hover */}
@@ -265,6 +283,7 @@ interface ChatHistoryListProps {
     onNewChatForProject?: (projectId: string | null) => void;
     onSelectProject?: (projectId: string | null) => void;
     onProjectInfo?: (projectId: string) => void;
+    folderMissingByProjectId?: Record<string, boolean>;
     getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
     /** Returns true when a conversation has typed text in the composer that hasn't been sent. */
     hasDraftSession?: (sessionId: string) => boolean;
@@ -291,9 +310,11 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
     onNewChatForProject,
     onSelectProject,
     onProjectInfo,
+    folderMissingByProjectId = {},
     getCachedMessages,
     hasDraftSession,
 }) => {
+    const { t } = useLanguage();
     // Centralized Modal State
     const [actionSession, setActionSession] = useState<ChatSession | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -591,7 +612,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                         className="mb-1.5 w-full pl-8 pr-2 py-0.5 text-left text-[11px] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
                         style={{ color: "var(--sidebar-muted-fg)", opacity: 0.8 }}
                     >
-                        Open more ({hiddenCount})
+                        {t('sidebar.openMore', `Open more (${hiddenCount})`, { count: hiddenCount })}
                     </button>
                 ) : null}
             </>
@@ -616,6 +637,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                 {useProjectLayout ? (
                     projectBuckets.map((bucket) => {
                         const sectionKey = bucket.projectId ?? 'general';
+                        const displayLabel = bucket.projectId === null ? t('sidebar.general', bucket.label) : bucket.label;
                         const hasInlineActive = bucket.hasActiveSession;
                         const isCollapsed = hasInlineActive
                             ? false
@@ -624,8 +646,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                         return (
                         <div key={sectionKey} className="mb-1" data-project-section>
                             <ProjectSectionHeader
-                                label={bucket.label}
-                                conversationCount={bucket.conversationCount}
+                                label={displayLabel}
                                 isCollapsed={isCollapsed}
                                 hasActiveChat={hasInlineActive}
                                 rootPath={bucket.rootPath}
@@ -653,6 +674,11 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                                         ? () => onNewChatForProject(bucket.projectId)
                                         : undefined
                                 }
+                                folderMissing={
+                                    bucket.projectId
+                                        ? folderMissingByProjectId[bucket.projectId] === true
+                                        : false
+                                }
                             />
                             {!isCollapsed
                                 ? renderFlatSessionList(
@@ -672,10 +698,10 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
             <ConfirmationModal
                 isOpen={showDeleteModal}
                 isProcessing={isProcessing}
-                title="Delete this chat?"
-                processingTitle="Deleting chat..."
-                confirmText="Delete"
-                processingText="Deleting..."
+                title={t('sidebar.confirmDeleteChatTitle', 'Delete this chat?')}
+                processingTitle={t('sidebar.deletingChat', 'Deleting chat...')}
+                confirmText={t('common.delete', 'Delete')}
+                processingText={t('common.loading', 'Deleting...')}
                 confirmButtonColor="red"
                 onConfirm={confirmDelete}
                 onCancel={() => setShowDeleteModal(false)}
@@ -684,10 +710,10 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
             <ConfirmationModal
                 isOpen={showStarModal}
                 isProcessing={isProcessing}
-                title={actionSession?.starred ? "Unstar this chat?" : "Star this chat?"}
-                processingTitle={actionSession?.starred ? "Unstarring chat..." : "Starring chat..."}
-                confirmText={actionSession?.starred ? "Unstar" : "Star"}
-                processingText={actionSession?.starred ? "Unstarring..." : "Starring..."}
+                title={actionSession?.starred ? t('sidebar.confirmUnstarChatTitle', 'Unstar this chat?') : t('sidebar.confirmStarChatTitle', 'Star this chat?')}
+                processingTitle={actionSession?.starred ? t('sidebar.unstarringChat', 'Unstarring chat...') : t('sidebar.starringChat', 'Starring chat...')}
+                confirmText={actionSession?.starred ? t('common.unstar', 'Unstar') : t('common.star', 'Star')}
+                processingText={actionSession?.starred ? t('sidebar.unstarringChat', 'Unstarring...') : t('sidebar.starringChat', 'Starring...')}
                 confirmButtonColor={actionSession?.starred ? "gray" : "yellow"}
                 onConfirm={confirmStar}
                 onCancel={() => setShowStarModal(false)}

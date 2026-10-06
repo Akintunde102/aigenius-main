@@ -320,6 +320,65 @@ export function resolveStickyMarkerHighlightRects(
   }));
 }
 
+export function resolveStickyMarkerRange(
+  container: HTMLElement,
+  anchor: OrphanReplyAnchor,
+): Range | null {
+  const match = findBestTextMatch(container, anchor);
+  if (!match) return null;
+
+  const range = document.createRange();
+  range.setStart(match.node, match.startOffset);
+  range.setEnd(match.node, match.endOffset);
+  return range;
+}
+
+/** Elements whose text must not become an "Ask further" anchor (tool output, work summary, reasoning, code). */
+export const ORPHAN_IGNORE_SELECTOR = "[data-orphan-ignore], pre";
+
+/**
+ * True when the selection starts, ends, or spans across tool/code UI, so the
+ * "Ask further" menu is only offered for plain assistant prose.
+ */
+export function isSelectionInsideOrphanIgnoredZone(container: HTMLElement, range: Range): boolean {
+  const toElement = (node: Node): Element | null =>
+    node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+
+  const boundaries = [range.startContainer, range.endContainer, range.commonAncestorContainer];
+  if (boundaries.some((node) => toElement(node)?.closest(ORPHAN_IGNORE_SELECTOR))) {
+    return true;
+  }
+
+  return Array.from(container.querySelectorAll(ORPHAN_IGNORE_SELECTOR)).some((element) =>
+    range.intersectsNode(element),
+  );
+}
+
+export type ResolvedMarkerRects<T> = {
+  marker: T;
+  rects: { left: number; top: number; width: number; height: number }[];
+};
+
+/** Markers whose anchored text covers the point (container-relative coordinates). */
+export function findMarkersAtPoint<T>(
+  resolved: ResolvedMarkerRects<T>[],
+  x: number,
+  y: number,
+  slop = 1,
+): T[] {
+  return resolved
+    .filter(({ rects }) =>
+      rects.some(
+        (r) =>
+          x >= r.left - slop &&
+          x <= r.left + r.width + slop &&
+          y >= r.top - slop &&
+          y <= r.top + r.height + slop,
+      ),
+    )
+    .map(({ marker }) => marker);
+}
+
 export function getStickyMarkerMessageId(message: ChatMessage): string {
   return message.messageId ?? message.id ?? `ts_${message.timestamp}`;
 }

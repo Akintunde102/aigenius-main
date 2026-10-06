@@ -32,7 +32,7 @@ export function AssistantTurnSegments({
             {segments.map((segment, index) => {
                 if (segment.type === 'work_summary') {
                     return (
-                        <div key={`work-summary-${index}`} className="w-full">
+                        <div key={`work-summary-${index}`} className="w-full" data-orphan-ignore>
                             <AssistantWorkSummary items={segment.items} />
                         </div>
                     );
@@ -52,7 +52,7 @@ export function AssistantTurnSegments({
 
                 if (block.type === 'thinking') {
                     return (
-                        <div key={`thinking-${index}`} className="w-full">
+                        <div key={`thinking-${index}`} className="w-full" data-orphan-ignore>
                             <ReasoningGroup
                                 event={block.event}
                                 messageStreaming={streaming}
@@ -63,7 +63,7 @@ export function AssistantTurnSegments({
 
                 if (block.type === 'tool_cluster') {
                     return (
-                        <div key={`tool-cluster-${index}`} className="w-full">
+                        <div key={`tool-cluster-${index}`} className="w-full" data-orphan-ignore>
                             <ToolStreamingGroup
                                 events={block.events}
                                 messageStreaming={streaming}
@@ -78,7 +78,7 @@ export function AssistantTurnSegments({
 
                 const toolEvt = block.event;
                 return (
-                    <div key={`tool-${index}`} className="w-full">
+                    <div key={`tool-${index}`} className="w-full" data-orphan-ignore>
                         <ToolStreamingCard
                             streaming_tool={{
                                 tool: toolEvt.tool,

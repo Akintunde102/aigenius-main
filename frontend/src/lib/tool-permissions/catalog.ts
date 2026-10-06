@@ -133,6 +133,12 @@ export const TOOL_PERMISSION_CATALOG: ToolPermissionCatalogEntry[] = [
     defaultRequiresApproval: MUTATING,
   },
   {
+    id: 'create_site_favicon',
+    label: 'Create site favicon',
+    description: 'Generate a small SVG favicon to use with publish_html',
+    defaultRequiresApproval: READ_ONLY,
+  },
+  {
     id: 'check_slug_availability',
     label: 'Check domain slug',
     description: 'Check whether a custom subdomain slug is available on runpage.site',

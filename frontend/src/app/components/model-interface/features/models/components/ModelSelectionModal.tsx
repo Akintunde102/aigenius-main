@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FiX, FiSearch, FiSliders, FiGlobe, FiCheckCircle, FiRotateCcw } from "react-icons/fi";
+import { FiX, FiSearch, FiSliders, FiGlobe, FiCheckCircle, FiRotateCcw, FiFilm } from "react-icons/fi";
 import { FaRegImage } from "react-icons/fa";
 import { Model } from "@/app/components/model-interface/shared/types";
 import {
@@ -20,6 +20,7 @@ import { partitionModelsByWalletAffordance } from "@/app/components/model-interf
 import { isConversationPickableModel } from "@/app/components/model-interface/features/models/utils/modelConversationEligibility.utils";
 import type { ModelSelectionSection } from "./ModelSelectionGrid";
 import { trackModelSelected } from "@/lib/analytics/product-events";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 const MODEL_PICKER_GROUP_BY_AFFORDABILITY_KEY =
   "nobox-model-picker-group-by-affordability";
@@ -43,12 +44,13 @@ function persistGroupByAffordabilityPreference(value: boolean): void {
 }
 
 function ModelsLoadingSign() {
+  const { t } = useLanguage();
   return (
     <div
       className="flex flex-col items-center justify-center gap-3 py-16"
       role="status"
       aria-live="polite"
-      aria-label="Loading models"
+      aria-label={t('modelPicker.loadingModels', 'Loading models…')}
     >
       <div
         className="h-8 w-8 animate-spin rounded-full border-2"
@@ -59,7 +61,7 @@ function ModelsLoadingSign() {
         aria-hidden
       />
       <p className="text-sm" style={{ color: "var(--modal-muted-fg)" }}>
-        Loading models…
+        {t('modelPicker.loadingModels', 'Loading models…')}
       </p>
     </div>
   );
@@ -106,6 +108,7 @@ interface ModelSelectionModalProps {
   setOrderByCost?: (order: "none" | "asc" | "desc") => void;
   wallet?: number | null;
   onAddCredits?: () => void;
+  onOpenNonTextModels?: () => void;
 }
 
 export const ModelSelectionModal = React.memo(({
@@ -137,7 +140,9 @@ export const ModelSelectionModal = React.memo(({
   setShowWebSearch: setShowWebSearchProp,
   wallet = null,
   onAddCredits,
+  onOpenNonTextModels,
 }: ModelSelectionModalProps) => {
+  const { t } = useLanguage();
   const [isMobile, setIsMobile] = useState(false);
   const [showFilterSortRow, setShowFilterSortRow] = useState(true);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -313,14 +318,14 @@ export const ModelSelectionModal = React.memo(({
       );
       const sections: ModelSelectionSection[] = [];
       if (affordable.length > 0) {
-        sections.push({ title: "Models you can use", models: affordable });
+        sections.push({ title: t('modelPicker.modelsYouCanUse', "Models you can use"), models: affordable });
       }
       if (locked.length > 0) {
-        sections.push({ title: "Need more credits", models: locked });
+        sections.push({ title: t('modelPicker.needMoreCredits', "Need more credits"), models: locked });
       }
       return sections;
     },
-    [wallet, avgCostById, selectedModel?.id],
+    [wallet, avgCostById, selectedModel?.id, t],
   );
 
   const allModelSections = useMemo(() => {
@@ -364,11 +369,14 @@ export const ModelSelectionModal = React.memo(({
   }, [isOpen, handleClose]);
 
   const currentViewTitle = useMemo(() => {
-    if (selectedProviders.length > 0) return `${getProviderLabel(selectedProviders[0])} Models`;
-    if (catalogFilter === "default") return "Default Models";
-    if (catalogFilter === "ollama") return "Ollama Models";
-    return "All Models";
-  }, [catalogFilter, selectedProviders]);
+    if (selectedProviders.length > 0) {
+      const provider = getProviderLabel(selectedProviders[0]);
+      return t('modelPicker.providerModelsTitle', '{provider} Models', { provider });
+    }
+    if (catalogFilter === "default") return t('modelPicker.defaultModels', "Default Models");
+    if (catalogFilter === "ollama") return t('modelPicker.ollamaModels', "Ollama Models");
+    return t('modelPicker.allModels', "All Models");
+  }, [catalogFilter, selectedProviders, t]);
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
@@ -386,18 +394,19 @@ export const ModelSelectionModal = React.memo(({
 
   const currentViewSubtitle = useMemo(() => {
     if (selectedProviders.length > 0) {
-      return `Models developed and hosted by ${getProviderLabel(selectedProviders[0])}.`;
+      const provider = getProviderLabel(selectedProviders[0]);
+      return t('modelPicker.subtitleProviderModels', 'Models developed and hosted by {provider}.', { provider });
     }
     if (catalogFilter === "default") {
-      return "Your curated quick-pick models for everyday chat.";
+      return t('modelPicker.subtitleDefault', 'Your curated quick-pick models for everyday chat.');
     }
     if (catalogFilter === "ollama") {
-      return "Locally installed models running on your machine via Ollama.";
+      return t('modelPicker.subtitleOllama', 'Locally installed models running on your machine via Ollama.');
     }
     return hasAnyFilterActive
-      ? "Results match your search and filters."
-      : "Browse and select from all available AI models. Default picks appear first.";
-  }, [catalogFilter, selectedProviders, hasAnyFilterActive]);
+      ? t('modelPicker.subtitleFiltered', 'Results match your search and filters.')
+      : t('modelPicker.subtitleBrowseAll', 'Browse and select from all available AI models. Default picks appear first.');
+  }, [catalogFilter, selectedProviders, hasAnyFilterActive, t]);
 
   const handleResetAllFilters = useCallback(() => {
     setLocalSearch("");
@@ -480,7 +489,7 @@ export const ModelSelectionModal = React.memo(({
                   <input
                     ref={searchRef}
                     type="text"
-                    placeholder="Search models..."
+                    placeholder={t('modelPicker.searchPlaceholder', "Search models...")}
                     value={localSearch}
                     onChange={(e) => setLocalSearch(e.target.value)}
                     onKeyDown={(e) => {
@@ -502,7 +511,7 @@ export const ModelSelectionModal = React.memo(({
                       onClick={() => setLocalSearch("")}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded"
                       style={{ color: "var(--sidebar-muted-fg)" }}
-                      title="Clear search"
+                      title={t('modelPicker.clearSearch', "Clear search")}
                     >
                       <FiX size={12} />
                     </button>
@@ -517,7 +526,7 @@ export const ModelSelectionModal = React.memo(({
                   }`}
                 >
                   <FiSliders size={13} />
-                  <span>Filters</span>
+                  <span>{t('modelPicker.filters', "Filters")}</span>
                   {activeFiltersCount > 0 && (
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[var(--chat-accent)] text-white">
                       {activeFiltersCount}
@@ -579,7 +588,7 @@ export const ModelSelectionModal = React.memo(({
                   <input
                     ref={searchRef}
                     type="text"
-                    placeholder="Search models..."
+                    placeholder={t('modelPicker.searchPlaceholder', "Search models...")}
                     value={localSearch}
                     onChange={(e) => setLocalSearch(e.target.value)}
                     onKeyDown={(e) => {
@@ -601,7 +610,7 @@ export const ModelSelectionModal = React.memo(({
                       onClick={() => setLocalSearch("")}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/10"
                       style={{ color: "var(--sidebar-muted-fg)" }}
-                      title="Clear search"
+                      title={t('modelPicker.clearSearch', "Clear search")}
                     >
                       <FiX size={12} />
                     </button>
@@ -613,7 +622,7 @@ export const ModelSelectionModal = React.memo(({
                         border: "1px solid var(--sidebar-border)",
                         color: "var(--sidebar-muted-fg)",
                       }}
-                      title="Press / to search"
+                      title={t('modelPicker.pressSlashToSearch', 'Press / to search')}
                     >
                       /
                     </kbd>
@@ -662,7 +671,10 @@ export const ModelSelectionModal = React.memo(({
                 }}
               >
                 <span className="tabular-nums">
-                  Showing {displayedModelCount} of {models.length}
+                  {t('modelPicker.showingCount', 'Showing {shown} of {total}', {
+                    shown: displayedModelCount,
+                    total: models.length,
+                  })}
                 </span>
                 {wallet !== null && (
                   <span
@@ -671,9 +683,9 @@ export const ModelSelectionModal = React.memo(({
                       background: "color-mix(in srgb, var(--chat-accent) 12%, transparent)",
                       color: "var(--credits-fg, var(--chat-accent))",
                     }}
-                    title="Current wallet credits"
+                    title={t('modelPicker.walletCreditsTitle', 'Current wallet credits')}
                   >
-                    {wallet} cr
+                    {t('modelPicker.creditsAbbrev', '{count} cr', { count: wallet })}
                   </span>
                 )}
               </div>
@@ -719,7 +731,7 @@ export const ModelSelectionModal = React.memo(({
                 className="h-7 w-7 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-black/5 dark:hover:bg-white/10 hover:text-[var(--modal-fg)] shrink-0"
                 style={{ color: "var(--modal-muted-fg)" }}
                 onClick={handleClose}
-                title="Close model selection"
+                title={t('modelPicker.closeModelSelection', 'Close model selection')}
               >
                 <FiX size={16} strokeWidth={2} />
               </button>
@@ -738,18 +750,18 @@ export const ModelSelectionModal = React.memo(({
               }}
             >
               <span className="text-[11px] font-medium text-[var(--modal-muted-fg)] mr-0.5">
-                Active:
+                {t('modelPicker.activeFilters', 'Active:')}
               </span>
 
               {localSearch && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--modal-bg)] border border-[var(--modal-border)] text-[var(--modal-fg)] shadow-xs">
-                  <span className="text-[var(--modal-muted-fg)]">Search:</span>
+                  <span className="text-[var(--modal-muted-fg)]">{t('modelPicker.chipSearch', 'Search:')}</span>
                   <span className="font-semibold max-w-[120px] truncate">{localSearch}</span>
                   <button
                     type="button"
                     onClick={() => setLocalSearch("")}
                     className="hover:text-red-500 rounded p-0.5 transition-colors"
-                    title="Clear search"
+                    title={t('modelPicker.clearSearch', 'Clear search')}
                   >
                     <FiX size={11} />
                   </button>
@@ -758,13 +770,13 @@ export const ModelSelectionModal = React.memo(({
 
               {selectedProviders.length > 0 && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--modal-bg)] border border-[var(--modal-border)] text-[var(--modal-fg)] shadow-xs">
-                  <span className="text-[var(--modal-muted-fg)]">Lab:</span>
+                  <span className="text-[var(--modal-muted-fg)]">{t('modelPicker.chipLab', 'Lab:')}</span>
                   <span className="font-semibold">{getProviderLabel(selectedProviders[0])}</span>
                   <button
                     type="button"
                     onClick={() => setSelectedProviders([])}
                     className="hover:text-red-500 rounded p-0.5 transition-colors"
-                    title="Clear lab filter"
+                    title={t('modelPicker.clearLabFilter', 'Clear lab filter')}
                   >
                     <FiX size={11} />
                   </button>
@@ -774,12 +786,12 @@ export const ModelSelectionModal = React.memo(({
               {imageFilterOnly && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-pink-500/10 border border-pink-500/20 text-pink-700 dark:text-pink-300">
                   <FaRegImage size={11} />
-                  <span>Files & images</span>
+                  <span>{t('modelPicker.chipFilesImages', 'Files & images')}</span>
                   <button
                     type="button"
                     onClick={() => setImageFilterOnly(false)}
                     className="hover:text-red-500 rounded p-0.5 transition-colors"
-                    title="Remove files & images filter"
+                    title={t('modelPicker.removeFilesImagesFilter', 'Remove files & images filter')}
                   >
                     <FiX size={11} />
                   </button>
@@ -789,12 +801,12 @@ export const ModelSelectionModal = React.memo(({
               {showWebSearch && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300">
                   <FiGlobe size={11} />
-                  <span>Web search</span>
+                  <span>{t('modelPicker.chipWebSearch', 'Web search')}</span>
                   <button
                     type="button"
                     onClick={() => setShowWebSearch(false)}
                     className="hover:text-red-500 rounded p-0.5 transition-colors"
-                    title="Remove web search filter"
+                    title={t('modelPicker.removeWebSearchFilter', 'Remove web search filter')}
                   >
                     <FiX size={11} />
                   </button>
@@ -804,12 +816,12 @@ export const ModelSelectionModal = React.memo(({
               {groupByAffordability && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300">
                   <FiCheckCircle size={11} />
-                  <span>Affordable only</span>
+                  <span>{t('modelPicker.chipAffordableOnly', 'Affordable only')}</span>
                   <button
                     type="button"
                     onClick={() => setGroupByAffordabilityPersisted(false)}
                     className="hover:text-red-500 rounded p-0.5 transition-colors"
-                    title="Remove affordable only filter"
+                    title={t('modelPicker.removeAffordableFilter', 'Remove affordable only filter')}
                   >
                     <FiX size={11} />
                   </button>
@@ -818,13 +830,13 @@ export const ModelSelectionModal = React.memo(({
 
               {orderBy !== "default" && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--modal-bg)] border border-[var(--modal-border)] text-[var(--modal-fg)] shadow-xs">
-                  <span className="text-[var(--modal-muted-fg)]">Sort:</span>
+                  <span className="text-[var(--modal-muted-fg)]">{t('modelPicker.chipSort', 'Sort:')}</span>
                   <span className="font-semibold">{orderBy} ({orderDir === "asc" ? "↑" : "↓"})</span>
                   <button
                     type="button"
                     onClick={() => setOrderBy("default")}
                     className="hover:text-red-500 rounded p-0.5 transition-colors"
-                    title="Reset sort"
+                    title={t('modelPicker.resetSort', 'Reset sort')}
                   >
                     <FiX size={11} />
                   </button>
@@ -833,12 +845,12 @@ export const ModelSelectionModal = React.memo(({
 
               {catalogFilter === "default" && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300">
-                  <span>Default models</span>
+                  <span>{t('modelPicker.defaultModelsPill', 'Default models')}</span>
                   <button
                     type="button"
                     onClick={() => setCatalogFilter("all")}
                     className="hover:text-red-500 rounded p-0.5 transition-colors"
-                    title="Show all models"
+                    title={t('modelPicker.showAllModels', 'Show all models')}
                   >
                     <FiX size={11} />
                   </button>
@@ -847,12 +859,12 @@ export const ModelSelectionModal = React.memo(({
 
               {catalogFilter === "ollama" && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-teal-500/10 border border-teal-500/20 text-teal-800 dark:text-teal-300">
-                  <span>Ollama</span>
+                  <span>{t('modelPicker.ollamaLabel', 'Ollama')}</span>
                   <button
                     type="button"
                     onClick={() => setCatalogFilter("all")}
                     className="hover:text-red-500 rounded p-0.5 transition-colors"
-                    title="Show all models"
+                    title={t('modelPicker.showAllModels', 'Show all models')}
                   >
                     <FiX size={11} />
                   </button>
@@ -864,7 +876,7 @@ export const ModelSelectionModal = React.memo(({
                 onClick={handleResetAllFilters}
                 className="text-[11px] font-medium text-[var(--chat-accent)] hover:underline ml-auto transition-colors"
               >
-                Clear all
+                {t('modelPicker.clearAll', 'Clear all')}
               </button>
             </div>
           )}
@@ -901,15 +913,19 @@ export const ModelSelectionModal = React.memo(({
                               className="text-sm font-semibold mb-1"
                               style={{ color: "var(--modal-fg)" }}
                             >
-                              No matching models found
+                              {t('modelPicker.noMatchingModels', 'No matching models found')}
                             </h3>
                             <p
                               className="text-xs max-w-sm mb-4"
                               style={{ color: "var(--modal-muted-fg)" }}
                             >
                               {localSearch
-                                ? `We couldn't find any models matching "${localSearch}". Try checking for typos or resetting your filters.`
-                                : "No models match the currently selected filters."}
+                                ? t(
+                                    'modelPicker.noMatchSearch',
+                                    'We couldn\'t find any models matching "{query}". Try checking for typos or resetting your filters.',
+                                    { query: localSearch },
+                                  )
+                                : t('modelPicker.noMatchFilters', 'No models match the currently selected filters.')}
                             </p>
                             <button
                               type="button"
@@ -917,7 +933,7 @@ export const ModelSelectionModal = React.memo(({
                               className="app-modal-primary-btn text-xs px-3.5 py-1.5 rounded-lg font-medium inline-flex items-center gap-1.5"
                             >
                               <FiRotateCcw size={12} />
-                              <span>Reset search & filters</span>
+                              <span>{t('modelPicker.resetSearchFilters', 'Reset search & filters')}</span>
                             </button>
                           </div>
                         )
@@ -929,6 +945,34 @@ export const ModelSelectionModal = React.memo(({
               <div className={`${isMobile ? "h-3" : "h-6"}`} />
             </div>
           </div>
+
+          {onOpenNonTextModels && (
+            <div
+              className="flex-shrink-0 px-4 py-2.5 border-t flex items-center justify-between text-xs"
+              style={{
+                borderColor: "var(--modal-border)",
+                background: "color-mix(in srgb, var(--modal-fg) 2%, transparent)",
+                color: "var(--sidebar-muted-fg)",
+              }}
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                <FiFilm size={13} className="text-[var(--chat-accent)] shrink-0" />
+                <span className="truncate">
+                  {t('modelPicker.mediaCatalogPrompt', 'Looking for image, video, or voice generation models?')}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenNonTextModels();
+                }}
+                className="font-semibold text-[color:var(--chat-accent)] hover:underline ml-2 shrink-0 transition-colors"
+              >
+                {t('modelPicker.viewMediaCatalog', 'View media catalog →')}
+              </button>
+            </div>
+          )}
         </main>
       </div>
     </div>

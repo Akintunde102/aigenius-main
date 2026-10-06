@@ -8,14 +8,15 @@ import toast from "react-hot-toast";
 import { Folder, UserAccess, UserDetailsInLocalStorage } from "@/lib/types";
 
 import type { AvatarProps, ButtonProps } from "antd";
+import { ensureLazyDefault } from "@/lib/utils/lazy-component";
 
 // Code split Antd components to reduce bundle size
-const Avatar = dynamic<AvatarProps>(() => import("antd").then(mod => ({ default: (mod as any).Avatar || (mod.default as any)?.Avatar })), {
+const Avatar = dynamic<AvatarProps>(() => import("antd").then(mod => ensureLazyDefault<AvatarProps>((mod as any).Avatar || (mod.default as any)?.Avatar, "avatar")), {
     ssr: false,
     loading: () => <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
 });
 
-const Button = dynamic<ButtonProps>(() => import("antd").then(mod => ({ default: (mod as any).Button || (mod.default as any)?.Button })), {
+const Button = dynamic<ButtonProps>(() => import("antd").then(mod => ensureLazyDefault<ButtonProps>((mod as any).Button || (mod.default as any)?.Button, "button")), {
     ssr: false,
     loading: () => <div className="px-4 py-2 bg-gray-200 rounded animate-pulse"></div>
 });

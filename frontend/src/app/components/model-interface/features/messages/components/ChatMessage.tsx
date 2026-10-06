@@ -21,11 +21,20 @@ import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
 import { buildChatMessageDisplayBlocks } from './chatMessageDisplay.utils';
 import {
     buildOrphanReplyAnchor,
+    findMarkersAtPoint,
+    isSelectionInsideOrphanIgnoredZone,
     resolveStickyMarkerPosition,
     resolveStickyMarkerHighlightRects,
+    resolveStickyMarkerRange,
 } from '../../chat/hooks/orphanNoteAnchors';
 import { computeSelectionToolbarPosition } from '../../chat/hooks/selectionToolbarPosition.utils';
 import { OrphanNoteLayer } from './OrphanNoteLayer';
+import {
+    isOrphanLinkHighlightSupported,
+    ORPHAN_LINK_HIGHLIGHT,
+    ORPHAN_LINK_HOVER_HIGHLIGHT,
+    setOrphanLinkRanges,
+} from './orphanLinkHighlight.utils';
 import { AssistantTurnSegments } from './AssistantTurnSegments';
 import { shouldHideEmptyAssistantMessage } from '../utils/assistantMessageVisibility.utils';
 import {
@@ -152,9 +161,17 @@ export function ChatMessage({
         isBelow?: boolean;
         selection: Selection;
     } | null>(null);
+    const [threadPicker, setThreadPicker] = useState<{
+        left: number;
+        top: number;
+        markers: StickyThreadMarker[];
+    } | null>(null);
     const messageContainerRef = useRef<HTMLDivElement | null>(null);
     const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
+    const markerRangesRef = useRef<Map<string, Range>>(new Map());
+    const hoveredMarkerKeyRef = useRef('');
+    const orphanLinkOwnerKey = msg.messageId || msg.id || `ts_${msg.timestamp}`;
 
     const isLongUserText = useMemo(() => {
         if (msg.role !== 'user' || typeof msg.content !== 'string') return false;
@@ -395,6 +412,12 @@ export function ChatMessage({
                 return;
             }
 
+            // "Ask further" is for prose only: never offer it inside tool cards, work summaries, reasoning or code.
+            if (isSelectionInsideOrphanIgnoredZone(container, range)) {
+                setSelectionTrigger(null);
+                return;
+            }
+
             const titlebarOffset = Number.parseInt(
                 getComputedStyle(document.documentElement).getPropertyValue("--aigenius-desktop-titlebar-top") || "0",
                 10,
@@ -420,16 +443,27 @@ export function ChatMessage({
     }, [msg.role, disableOrphanThreads]);
 
     useEffect(() => {
+        const clearLinkRanges = () => {
+            markerRangesRef.current = new Map();
+            hoveredMarkerKeyRef.current = '';
+            setOrphanLinkRanges(ORPHAN_LINK_HIGHLIGHT, orphanLinkOwnerKey, []);
+            setOrphanLinkRanges(ORPHAN_LINK_HOVER_HIGHLIGHT, orphanLinkOwnerKey, []);
+        };
+
         if (disableOrphanThreads || !messageContainerRef.current || orphanMarkers.length === 0 || orphanMarkersHidden) {
             setResolvedMarkerPositions((prev) => (prev.length === 0 ? prev : []));
+            clearLinkRanges();
             return;
         }
 
         const container = messageContainerRef.current;
         const syncMarkerPositions = () => {
+            const ranges = new Map<string, Range>();
             setResolvedMarkerPositions(orphanMarkers.map((marker) => {
                 const position = resolveStickyMarkerPosition(container, marker.anchor);
                 const rects = resolveStickyMarkerHighlightRects(container, marker.anchor);
+                const range = resolveStickyMarkerRange(container, marker.anchor);
+                if (range) ranges.set(marker.markerId, range);
                 return {
                     marker,
                     left: position.left,
@@ -437,6 +471,8 @@ export function ChatMessage({
                     rects,
                 };
             }));
+            markerRangesRef.current = ranges;
+            setOrphanLinkRanges(ORPHAN_LINK_HIGHLIGHT, orphanLinkOwnerKey, Array.from(ranges.values()));
         };
 
         syncMarkerPositions();
@@ -451,8 +487,74 @@ export function ChatMessage({
         return () => {
             resizeObserver?.disconnect();
             window.removeEventListener('resize', syncMarkerPositions);
+            clearLinkRanges();
         };
-    }, [orphanMarkers, orphanMarkersHidden, disableOrphanThreads]);
+    }, [orphanMarkers, orphanMarkersHidden, disableOrphanThreads, orphanLinkOwnerKey]);
+
+    const getMarkersAtPointer = useCallback((event: ReactMouseEvent<HTMLDivElement>): StickyThreadMarker[] => {
+        const container = messageContainerRef.current;
+        if (!container || resolvedMarkerPositions.length === 0) return [];
+        const bounds = container.getBoundingClientRect();
+        return findMarkersAtPoint(
+            resolvedMarkerPositions,
+            event.clientX - bounds.left,
+            event.clientY - bounds.top,
+        );
+    }, [resolvedMarkerPositions]);
+
+    const handleAnchoredLinkClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+        if (msg.role !== 'assistant' || disableOrphanThreads || orphanMarkersHidden) return;
+
+        const target = event.target as HTMLElement | null;
+        if (target?.closest('button, a, input, textarea, [role="menu"], [role="menuitem"]')) return;
+
+        // A drag-selection ends in a click too; only treat a collapsed selection as a link click.
+        const selection = window.getSelection();
+        if (selection && !selection.isCollapsed && selection.toString().trim()) return;
+
+        const hits = getMarkersAtPointer(event);
+        if (hits.length === 0) return;
+
+        if (hits.length === 1) {
+            setThreadPicker(null);
+            onOpenOrphanMarker?.(hits[0]);
+            return;
+        }
+
+        const bounds = messageContainerRef.current?.getBoundingClientRect();
+        if (!bounds) return;
+        setThreadPicker({
+            left: event.clientX - bounds.left,
+            top: event.clientY - bounds.top,
+            markers: [...hits].sort((a, b) => b.updatedAt - a.updatedAt),
+        });
+    }, [msg.role, disableOrphanThreads, orphanMarkersHidden, getMarkersAtPointer, onOpenOrphanMarker]);
+
+    const handleAnchoredLinkHover = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+        if (msg.role !== 'assistant' || disableOrphanThreads || orphanMarkersHidden) return;
+
+        const container = messageContainerRef.current;
+        if (!container) return;
+
+        const hits = getMarkersAtPointer(event);
+        const hoverKey = hits.map((marker) => marker.markerId).join('|');
+        container.style.cursor = hits.length > 0 ? 'pointer' : '';
+
+        if (hoverKey === hoveredMarkerKeyRef.current) return;
+        hoveredMarkerKeyRef.current = hoverKey;
+        setOrphanLinkRanges(
+            ORPHAN_LINK_HOVER_HIGHLIGHT,
+            orphanLinkOwnerKey,
+            hits.flatMap((marker) => markerRangesRef.current.get(marker.markerId) ?? []),
+        );
+    }, [msg.role, disableOrphanThreads, orphanMarkersHidden, getMarkersAtPointer, orphanLinkOwnerKey]);
+
+    const handleAnchoredLinkLeave = useCallback(() => {
+        if (messageContainerRef.current) messageContainerRef.current.style.cursor = '';
+        if (!hoveredMarkerKeyRef.current) return;
+        hoveredMarkerKeyRef.current = '';
+        setOrphanLinkRanges(ORPHAN_LINK_HOVER_HIGHLIGHT, orphanLinkOwnerKey, []);
+    }, [orphanLinkOwnerKey]);
 
     useEffect(() => clearLongPress, [clearLongPress]);
 
@@ -482,6 +584,13 @@ export function ChatMessage({
                 : { maxWidth: isLongUserText ? '352px' : '320px' })
     }), [msg.role, isLongUserText, isEditing]);
 
+    useEffect(() => {
+        if (!threadPicker) return;
+        const handleOutside = () => setThreadPicker(null);
+        window.addEventListener('click', handleOutside);
+        return () => window.removeEventListener('click', handleOutside);
+    }, [threadPicker]);
+
     if (shouldHideEmptyAssistantMessage(msg, { streaming, displayEvents })) {
         return null;
     }
@@ -498,13 +607,15 @@ export function ChatMessage({
                     className={`${messageContainerClasses} min-w-0${msg.role === 'user' && !isEditing && !loading && !streaming ? ' cursor-text' : ''}`}
                     style={messageStyles}
                     ref={messageContainerRef}
-                    onClick={msg.role === 'user' ? handleUserBubbleClick : undefined}
+                    onClick={msg.role === 'user' ? handleUserBubbleClick : handleAnchoredLinkClick}
                     onClickCapture={msg.role === 'assistant' ? handleAssistantModifierClick : undefined}
                     onPointerDownCapture={handlePointerDownCapture}
                     onPointerMoveCapture={handlePointerMoveCapture}
                     onPointerUpCapture={clearLongPress}
                     onPointerCancel={clearLongPress}
                     onMouseUp={handleMouseUp}
+                    onMouseMove={msg.role === 'assistant' ? handleAnchoredLinkHover : undefined}
+                    onMouseLeave={msg.role === 'assistant' ? handleAnchoredLinkLeave : undefined}
                 >
                     {!orphanMarkersHidden && !disableOrphanThreads && (
                         <OrphanNoteLayer
@@ -514,6 +625,35 @@ export function ChatMessage({
                             triggerAnchoredReply={triggerAnchoredReply}
                             isSelectionActive={!!selectionTrigger}
                         />
+                    )}
+                    {threadPicker && (
+                        <div
+                            className="absolute z-[110] -translate-x-1/2 rounded-xl border border-slate-200 bg-white/95 p-1 shadow-xl backdrop-blur dark:border-slate-700 dark:bg-slate-900/95"
+                            style={{ left: threadPicker.left, top: threadPicker.top + 8 }}
+                        >
+                            <div className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                Side Threads ({threadPicker.markers.length})
+                            </div>
+                            <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto">
+                                {threadPicker.markers.map((marker, i) => (
+                                    <button
+                                        key={marker.markerId}
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setThreadPicker(null);
+                                            onOpenOrphanMarker?.(marker);
+                                        }}
+                                        className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-200 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors"
+                                    >
+                                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                                        <span className="truncate max-w-[180px]">
+                                            {marker.title || `Thread ${i + 1}`}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     )}
                     <div className="relative z-10">
                         {msg.role === 'assistant' && orphanMarkers.length > 0 && !disableOrphanThreads ? (
@@ -616,7 +756,7 @@ export function ChatMessage({
 
                                     {/* Live tool streaming (loader + logs) — legacy only */}
                                     {legacyStreamingToolBlocks.length > 0 && (
-                                        <div className="mt-2 flex w-full flex-col gap-2">
+                                        <div className="mt-2 flex w-full flex-col gap-2" data-orphan-ignore>
                                             {legacyStreamingToolBlocks.map((block, i) => {
                                                 if (block.type === 'tool_cluster') {
                                                     return (
@@ -651,7 +791,9 @@ export function ChatMessage({
 
                                     {/* Completed tool executions — legacy only */}
                                     {msg.tool_executions && msg.tool_executions.length > 0 && (
-                                        <ToolExecutionDisplay tool_executions={msg.tool_executions} />
+                                        <div data-orphan-ignore>
+                                            <ToolExecutionDisplay tool_executions={msg.tool_executions} />
+                                        </div>
                                     )}
                                 </>
                             )}

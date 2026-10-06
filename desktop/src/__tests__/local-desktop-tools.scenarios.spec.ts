@@ -79,6 +79,12 @@ jest.mock('../utils/read-file/path-resolver', () => {
   const actual = jest.requireActual('../utils/read-file/path-resolver') as Record<string, unknown>;
   return {
     ...actual,
+    resolveReadFilePath: jest.fn(async (inputPath: string) => {
+      if (!inputPath?.trim()) {
+        return { ok: false as const, error: 'Error: file not found — path is required' };
+      }
+      return { ok: true as const, resolved: inputPath, displayPath: inputPath };
+    }),
     resolveDirectoryPath: jest.fn(async (inputPath: string) => ({
       ok: true as const,
       resolved: inputPath,
@@ -185,6 +191,22 @@ jest.mock('../edit-session', () => ({
   formatEditSessionHint: jest.fn(() => ''),
   getTouchedFilesSnapshot: jest.fn(() => ['/home/user/project/src/util.ts']),
 }));
+
+jest.mock('../utils/read-file-lines', () => {
+  const actual = jest.requireActual('../utils/read-file-lines');
+  return {
+    ...actual,
+    countFileLines: jest.fn().mockResolvedValue({ totalLines: 1, lineCountOmitted: false }),
+    readFileLines: jest.fn().mockResolvedValue({
+      lines: ['export function helper() { return 1; }'],
+      totalLines: 1,
+      lineStart: 1,
+      lineEnd: 1,
+      truncatedBelow: false,
+      lineCountOmitted: false,
+    }),
+  };
+});
 
 jest.mock('fs/promises', () => ({
   open: jest.fn(),
@@ -347,10 +369,12 @@ describe('local desktop tools — full scenario suite', () => {
   describe('filesystem + code intelligence tools', () => {
     it('local_read_file reads bounded content', async () => {
       const mockFd = {
-        read: jest.fn().mockResolvedValue({
-          bytesRead: Buffer.from('hello world').length,
+        read: jest.fn(async (buf: Buffer) => {
+          const text = 'hello world';
+          buf.write(text, 0, 'utf8');
+          return { bytesRead: text.length };
         }),
-        close: jest.fn(),
+        close: jest.fn().mockResolvedValue(undefined),
       };
       (fs.open as jest.Mock).mockResolvedValue(mockFd);
       const { out } = await runTimedTool('local_read_file', {

@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { FiShield, FiX } from 'react-icons/fi';
 import { useToolPermissions } from '@/lib/hooks/useToolPermissions';
 import { type DesktopToolPermissionEntry } from '@/lib/hooks/useDesktopToolPermissions';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 interface ToolPermissionsModalProps {
   onClose: () => void;
@@ -77,6 +78,7 @@ function ToolPermissionRow({
 }
 
 export const ToolPermissionsModal: React.FC<ToolPermissionsModalProps> = ({ onClose }) => {
+  const { t } = useLanguage();
   const { loading, state, error, setAutoApproveAll, setToolRequiresApproval } =
     useToolPermissions();
   const [showAutoApproveWarning, setShowAutoApproveWarning] = useState(false);
@@ -114,14 +116,14 @@ export const ToolPermissionsModal: React.FC<ToolPermissionsModalProps> = ({ onCl
               <FiShield className="h-4 w-4" />
             </div>
             <h2 id="tool-permissions-title" className="text-base font-semibold leading-none text-gray-900 dark:text-slate-50">
-              Tool permissions
+              {t('modals.toolPermissionsTitle', 'Tool permissions')}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-slate-800"
-            aria-label="Close"
+            aria-label={t('common.close', 'Close')}
           >
             <FiX className="h-4 w-4" />
           </button>
@@ -129,16 +131,16 @@ export const ToolPermissionsModal: React.FC<ToolPermissionsModalProps> = ({ onCl
 
         <div className="overflow-y-auto px-5 py-4">
           <p className="text-sm text-gray-600 dark:text-slate-300">
-            Choose which tools should ask for your approval before running. Workflows are not included.
+            {t('modals.toolPermissionsIntro', 'Choose which tools should ask for your approval before running. Workflows are not included.')}
           </p>
 
           <div className="mt-4 flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
             <div>
               <p className="text-sm font-medium text-gray-800 dark:text-slate-100">
-                Auto-approve all tools
+                {t('modals.autoApproveAllTools', 'Auto-approve all tools')}
               </p>
               <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
-                Skip every approval prompt until you turn this off.
+                {t('modals.autoApproveSkipHint', 'Skip every approval prompt until you turn this off.')}
               </p>
             </div>
             <PermissionToggle
@@ -151,18 +153,18 @@ export const ToolPermissionsModal: React.FC<ToolPermissionsModalProps> = ({ onCl
                   setAutoApproveAll(false);
                 }
               }}
-              label="Auto-approve all tools"
+              label={t('modals.autoApproveAllTools', 'Auto-approve all tools')}
             />
           </div>
 
           {state?.autoApproveAll && (
             <p className="mt-3 text-xs text-amber-700 dark:text-amber-400">
-              All tools will run without asking. Per-tool settings apply again when auto-approve is off.
+              {t('modals.autoApproveOnNotice', 'All tools will run without asking. Per-tool settings apply again when auto-approve is off.')}
             </p>
           )}
 
           {loading && (
-            <p className="mt-4 text-sm text-gray-500 dark:text-slate-400">Loading permissions…</p>
+            <p className="mt-4 text-sm text-gray-500 dark:text-slate-400">{t('modals.loadingPermissions', 'Loading permissions…')}</p>
           )}
 
           {error && (
@@ -201,10 +203,9 @@ export const ToolPermissionsModal: React.FC<ToolPermissionsModalProps> = ({ onCl
         className="mx-4 w-full max-w-md rounded-xl bg-white p-5 shadow-2xl dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-50">Auto-approve all tools?</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-50">{t('sidebar.autoApproveWarningTitle', 'Auto-approve all tools?')}</h3>
         <p className="mt-2 text-sm text-gray-600 dark:text-slate-300">
-          Tools can run without asking — including shell commands, file changes, emails, and other
-          data-altering actions. Only enable this if you trust the current session.
+          {t('sidebar.autoApproveWarningText', 'Tools can run without asking — including shell commands, file changes, emails, and other data-altering actions. Only enable this if you trust the current session.')}
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button
@@ -212,7 +213,7 @@ export const ToolPermissionsModal: React.FC<ToolPermissionsModalProps> = ({ onCl
             className="rounded-md border border-gray-300 px-4 py-2 text-sm"
             onClick={() => setShowAutoApproveWarning(false)}
           >
-            Cancel
+            {t('common.cancel', 'Cancel')}
           </button>
           <button
             type="button"
@@ -222,7 +223,7 @@ export const ToolPermissionsModal: React.FC<ToolPermissionsModalProps> = ({ onCl
               setShowAutoApproveWarning(false);
             }}
           >
-            Turn on
+            {t('modals.turnOn', 'Turn on')}
           </button>
         </div>
       </div>

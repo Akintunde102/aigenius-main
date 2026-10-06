@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/app/components/landing/ThemeToggle";
 import { DISPLAY } from "@/app/components/landing/typography";
 import { PublicPageShell } from "@/app/components/PublicPageShell";
 import { SIGNUP_BONUS_CREDITS } from "@/lib/credits";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 export type AuthPageVariant = "login" | "signup";
 
@@ -85,6 +86,7 @@ function TrustList({ onImage = false }: TrustListProps) {
 }
 
 function LegalBlock({ variant }: { variant: AuthPageVariant }) {
+  const { t } = useLanguage();
   if (variant === "signup") {
     return (
       <p className="mt-6 text-[13px] leading-relaxed text-lp-muted">
@@ -117,7 +119,31 @@ function LegalBlock({ variant }: { variant: AuthPageVariant }) {
 }
 
 export function AuthPage({ variant }: { variant: AuthPageVariant }) {
-  const copy = COPY[variant];
+  const { t } = useLanguage();
+  const copy = variant === "login"
+    ? {
+        title: t("auth.welcomeBack", "Welcome back"),
+        subtitle: t("auth.signInSubtitle", "Sign in to continue to your workspace"),
+        swapPrompt: t("auth.dontHaveAccount", "Don't have an account?"),
+        swapLabel: t("auth.signUp", "Sign up"),
+        swapHref: "/signup",
+      }
+    : {
+        title: t("auth.createAccount", "Create your account"),
+        subtitle: t(
+          "auth.createAccountSubtitle",
+          "Start with {credits} free credits — every top AI model in one workspace",
+          { credits: SIGNUP_BONUS_CREDITS },
+        ),
+        swapPrompt: t("auth.alreadyHaveAccount", "Already have an account?"),
+        swapLabel: t("auth.signIn", "Sign in"),
+        swapHref: "/login",
+      };
+  const trustItems = [
+    { icon: BotMessageSquare, label: t("auth.trustModels", "GPT, Claude, Gemini & more") },
+    { icon: Wallet, label: t("auth.trustPay", "Pay only for what you use") },
+    { icon: MonitorDown, label: t("auth.trustApps", "Web & desktop app") },
+  ];
 
   return (
     <PublicPageShell hideHeader showFooter={false}>

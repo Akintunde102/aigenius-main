@@ -19,6 +19,7 @@ import { importModelInterfaceWithRetry } from "@/app/components/model-interface/
 import { ToolApprovalProvider } from "@/lib/tool-permissions/ToolApprovalProvider";
 import AutoUpdaterNotification from "@/app/components/AutoUpdaterNotification";
 import { trackAuthCompleted } from "@/lib/analytics/product-events";
+import { RenderErrorBoundary } from "@/app/components/RenderErrorBoundary";
 
 const ModelInterface = dynamic(importModelInterfaceWithRetry, {
   ssr: false,
@@ -155,7 +156,13 @@ export default function AuthenticatedChatPage({
   if (token) {
     return (
       <ToolApprovalProvider>
-        <ModelInterface routeConversationId={routeConversationId} />
+        <RenderErrorBoundary
+          logLabel="[chat-shell]"
+          message="Chat could not be loaded. Try again or reload the page."
+          recoverable
+        >
+          <ModelInterface routeConversationId={routeConversationId} />
+        </RenderErrorBoundary>
         <AutoUpdaterNotification />
       </ToolApprovalProvider>
     );

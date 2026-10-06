@@ -8,6 +8,7 @@ import { getModelRoundCount } from './usageMetrics.utils';
 import { formatTime } from '@/lib/utils/modelInterfaceUtils';
 
 import { formatCredits } from '@/lib/credits';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 function resolveToolUsdTotal(msg: ChatMessageType): number {
     const rows = msg.tool_usage_charges;
@@ -194,6 +195,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
     msg,
     streaming
 }) => {
+    const { t } = useLanguage();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -242,16 +244,16 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                             id="usage-details-title"
                             className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-zinc-100"
                         >
-                            Token usage
+                            {t('usageDetails.title', 'Token usage')}
                         </h3>
-                        <p className="mt-0.5 text-[11px] text-slate-500 dark:text-zinc-400">This message</p>
+                        <p className="mt-0.5 text-[11px] text-slate-500 dark:text-zinc-400">{t('usageDetails.thisMessage', 'This message')}</p>
                     </div>
                     <button
                         type="button"
                         onClick={() => setShowUsageDetails(false)}
                         className="-mr-1 -mt-1 rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/60 dark:text-zinc-500 dark:hover:bg-zinc-700/50 dark:hover:text-zinc-300"
-                        aria-label="Close token details"
-                        title="Close (Esc)"
+                        aria-label={t('usageDetails.closeAria', 'Close token details')}
+                        title={t('common.close', 'Close')}
                     >
                         <FiX size={16} strokeWidth={2} />
                     </button>
@@ -265,14 +267,14 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                                 aria-hidden
                             />
                             <span className="text-[11px] text-slate-600 dark:text-zinc-400">
-                                Calculating cost and usage…
+                                {t('usageDetails.calculating', 'Calculating cost and usage…')}
                             </span>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             {msg.tool_usage_charges && msg.tool_usage_charges.length > 0 ? (
                                 <section aria-label="Tool charges">
-                                    <SectionLabel>Tools charged</SectionLabel>
+                                    <SectionLabel>{t('usageDetails.toolsCharged', 'Tools charged')}</SectionLabel>
                                     <ul className="max-h-[12rem] space-y-1 overflow-y-auto rounded-xl bg-slate-50/80 p-1 dark:bg-zinc-900/50">
                                         {msg.tool_usage_charges.map((row, i) => (
                                             <ToolChargeRow key={`${row.tool}-${row.job_id ?? i}`} row={row} />
@@ -283,7 +285,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                                 msg.usage?.tool_cost_usd !== undefined &&
                                 msg.usage.tool_cost_usd > 0 && (
                                     <section aria-label="Tool usage">
-                                        <SectionLabel>Tool usage</SectionLabel>
+                                        <SectionLabel>{t('usageDetails.toolUsage', 'Tool usage')}</SectionLabel>
                                         <CostPair usd={msg.usage.tool_cost_usd} credits={toolCreditsTotal > 0 ? toolCreditsTotal : undefined} />
                                     </section>
                                 )
@@ -291,14 +293,14 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
 
                             {msg.cost !== undefined && modelUsd !== undefined && (
                                 <section aria-label="Model cost">
-                                    <SectionLabel>Model (tokens)</SectionLabel>
+                                    <SectionLabel>{t('usageDetails.modelTokens', 'Model (tokens)')}</SectionLabel>
                                     <CostPair usd={modelUsd} credits={modelCredits} />
                                 </section>
                             )}
 
                             {msg.cost !== undefined && (
                                 <section aria-label="Total cost">
-                                    <SectionLabel>Total cost</SectionLabel>
+                                    <SectionLabel>{t('usageDetails.totalCost', 'Total cost')}</SectionLabel>
                                     <CostPair usd={msg.cost} credits={totalCredits} />
                                 </section>
                             )}

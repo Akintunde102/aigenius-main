@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowUp, Square } from 'lucide-react';
 import { ChatTextareaProps } from './types';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 export const ChatTextarea: React.FC<ChatTextareaProps & {
   textareaRef?: React.RefObject<HTMLTextAreaElement>;
@@ -38,6 +39,7 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
   mini = false,
   actionSlot,
 }) => {
+  const { t } = useLanguage();
   // Single consolidated effect for auto-resize and overflow management
   React.useLayoutEffect(() => {
     const target = textareaRef?.current;
@@ -66,10 +68,16 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
   const isSendBlocked = responseInProgress || uploading || sendBlocked;
   const canSend = (value.trim() || hasUploadedFiles) && !isSendBlocked;
 
+  const resolvedPlaceholder = mini
+    ? t('composer.askPlaceholder', 'Ask...')
+    : (placeholder || t('composer.placeholder', 'Message AIGenius or type / for commands...'));
+
+  const resolvedSubmitTitle = submitTitle || `${t('composer.send', 'Send')} (Shift+Enter)`;
+
   return (
     <div className={`flex items-end gap-2 w-full ${mini ? 'px-1' : ''}`}>
       <label htmlFor={textareaId} className="sr-only">
-        {mini ? "Ask a question" : "Message input"}
+        {mini ? t('composer.askPlaceholder', 'Ask a question') : t('composer.messageInput', 'Message input')}
       </label>
       <textarea
         id={textareaId}
@@ -78,7 +86,7 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
         onPaste={onPaste}
-        placeholder={mini ? "Ask..." : placeholder}
+        placeholder={resolvedPlaceholder}
         disabled={textareaDisabled}
         onFocus={onFocus}
         onBlur={onBlur}
@@ -86,7 +94,7 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
             ? "min-h-[24px] max-h-[120px] py-1 text-sm leading-tight"
             : "min-h-[30px] max-h-[200px] py-2 text-[15px] leading-relaxed"
           }`}
-        aria-label="Message input"
+        aria-label={t('composer.messageInput', 'Message input')}
         rows={1}
         style={{
           minHeight: mini ? '24px' : '30px',
@@ -111,8 +119,8 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
                 onStopGeneration();
               }}
               className="chat-composer-stop flex-shrink-0 rounded-full p-2 transition-all active:scale-95"
-              title="Stop generation"
-              aria-label="Stop generation"
+              title={t('composer.stop', 'Stop generation')}
+              aria-label={t('composer.stop', 'Stop generation')}
               style={{ marginBottom: '2px' }}
             >
               <Square size={14} fill="currentColor" strokeWidth={0} />
@@ -125,8 +133,8 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
           disabled={!canSend}
           onClick={onSubmit}
           className={`chat-composer-send flex-shrink-0 rounded-full p-1.5 transition-colors ${canSend ? "chat-composer-send--enabled" : "chat-composer-send--disabled"}`}
-          title={submitTitle}
-          aria-label="Send message"
+          title={resolvedSubmitTitle}
+          aria-label={t('composer.send', 'Send message')}
           style={{ marginBottom: '2px' }}
         >
           <ArrowUp size={16} />

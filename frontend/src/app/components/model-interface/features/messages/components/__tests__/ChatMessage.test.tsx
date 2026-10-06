@@ -105,13 +105,8 @@ describe('ChatMessage', () => {
         expect(textMessages[1]).toHaveTextContent('### Plan');
         expect(textMessages[1]).toHaveTextContent('1. Search Gmail');
 
-        // Work summary accordion summarizes tools between text blocks:
-        expect(screen.getByRole('region', { name: /assistant work summary/i })).toBeInTheDocument();
-        expect(screen.getByText('1 email search')).toBeInTheDocument();
-
-        // Expanding work summary and row reveals the tool card:
-        fireEvent.click(screen.getByRole('button', { name: /1 email search/i }));
-        fireEvent.click(screen.getByRole('button', { name: /Gmail Search/i }));
+        // A single tool stays inline; work summaries collapse only multi-step runs.
+        expect(screen.queryByRole('region', { name: /assistant work summary/i })).not.toBeInTheDocument();
         expect(screen.getAllByTestId('tool-card')).toHaveLength(1);
     });
 

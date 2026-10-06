@@ -33,6 +33,7 @@ interface SidebarContentProps {
     onNewChatForProject?: (projectId: string | null) => void;
     onSelectProject?: (projectId: string | null) => void;
     onProjectInfo?: (projectId: string) => void;
+    folderMissingByProjectId?: Record<string, boolean>;
     getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
     hasDraftSession?: (sessionId: string) => boolean;
 }
@@ -61,6 +62,7 @@ const SidebarContent = React.memo<SidebarContentProps>(({
     onNewChatForProject,
     onSelectProject,
     onProjectInfo,
+    folderMissingByProjectId,
     getCachedMessages,
 }) => {
     const deferredHistorySearch = React.useDeferredValue(historySearch);
@@ -115,6 +117,7 @@ const SidebarContent = React.memo<SidebarContentProps>(({
                         onNewChatForProject={onNewChatForProject}
                         onSelectProject={onSelectProject}
                         onProjectInfo={onProjectInfo}
+                        folderMissingByProjectId={folderMissingByProjectId}
                         getCachedMessages={getCachedMessages}
                         hasDraftSession={hasDraftSession}
                     />

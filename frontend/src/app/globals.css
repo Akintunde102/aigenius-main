@@ -179,9 +179,13 @@
     -webkit-overflow-scrolling: touch;
 }
 
-.keyboard-open #chat-input {
-    min-height: 120px !important;
-    max-height: 140px !important;
+/* Do not resize the composer when the keyboard opens - that made it jump. */
+
+/* iOS Safari zooms (and shifts the layout) when focusing inputs under 16px. Touch devices only. */
+@media (hover: none) and (pointer: coarse) {
+    textarea.chat-composer-textarea {
+        font-size: 16px !important;
+    }
 }
 
 .keyboard-open-ios .chat-area {

@@ -3,14 +3,6 @@ import { render, waitFor } from '@testing-library/react';
 import { ChatArea } from '../ChatArea';
 import type { ChatMessage as ChatMessageType, Model } from '@/app/components/model-interface/shared/types';
 
-jest.mock('next/dynamic', () => ({
-  __esModule: true,
-  default: () => {
-    const { ChatAreaVirtualizedList } = require('../ChatAreaVirtualizedList');
-    return ChatAreaVirtualizedList;
-  },
-}));
-
 jest.mock('@/app/components/model-interface/shared/hooks', () => ({
   useBrowserDetection: () => ({ isMobile: false }),
 }));

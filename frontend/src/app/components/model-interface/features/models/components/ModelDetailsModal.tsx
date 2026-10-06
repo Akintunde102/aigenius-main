@@ -23,11 +23,12 @@ import {
 import {
     computeModelRequiredBalance,
     getModelCreditBurnPercentage,
-    getModelWalletLockShortHint,
+    computeCreditsShortfall,
     isModelPickLocked,
 } from '../utils/modelWalletAffordance.utils';
 import { ModelCreditBurnIndicator } from './ModelCreditBurnIndicator';
-import { isConversationPickableModel } from '../utils/modelConversationEligibility.utils';
+import { isConversationPickableModel, isNonTextModel } from '../utils/modelConversationEligibility.utils';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 interface ModelDetailsModalProps {
     isOpen: boolean;
@@ -53,6 +54,7 @@ export function ModelDetailsModal({
     wallet = null,
     onAddCredits,
 }: ModelDetailsModalProps) {
+    const { t } = useLanguage();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -77,6 +79,8 @@ export function ModelDetailsModal({
     const avgCost = getModelAverageRequestPrice(model);
     const avgCredits = getModelAverageRequestCredits(model);
     const showAvgCost = Number.isFinite(avgCredits) && avgCredits > 0;
+    const isMediaModel = isNonTextModel(model);
+    const averageUnit = model.averageUserSpendPerRequest?.averageUnit?.trim();
     const requiredBalance = computeModelRequiredBalance(model, avgCredits);
     const burnPercentage = getModelCreditBurnPercentage(model, wallet, avgCredits);
     const isWalletLocked = isModelPickLocked(wallet, requiredBalance, {
@@ -142,7 +146,7 @@ export function ModelDetailsModal({
                                             border: `1px solid ${isFree ? 'color-mix(in srgb, #10b981 30%, transparent)' : 'var(--modal-border)'}`,
                                         }}
                                     >
-                                        {isFree ? 'Free Model' : providerLabel}
+                                        {isFree ? t('modelDetails.freeModel', 'Free Model') : providerLabel}
                                     </span>
                                     {supportsTools && (
                                         <span
@@ -154,7 +158,7 @@ export function ModelDetailsModal({
                                             }}
                                         >
                                             <FiLayers size={11} strokeWidth={2} />
-                                            Tooling Ready
+                                            {t('modelDetails.toolingReady', 'Tooling Ready')}
                                         </span>
                                     )}
                                 </div>
@@ -180,8 +184,8 @@ export function ModelDetailsModal({
                                 className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors hover:bg-black/5 dark:hover:bg-white/10 shrink-0"
                                 style={{ color: 'var(--modal-muted-fg)' }}
                                 onClick={onClose}
-                                title="Close details"
-                                aria-label="Close"
+                                title={t('modelDetails.closeDetails', 'Close details')}
+                                aria-label={t('common.close', 'Close')}
                             >
                                 <FiX size={18} strokeWidth={2} />
                             </button>
@@ -205,7 +209,7 @@ export function ModelDetailsModal({
                                         className="text-[11px] font-semibold uppercase tracking-wider"
                                         style={{ color: 'var(--sidebar-muted-fg)' }}
                                     >
-                                        Est. Cost / Msg
+                                        {isMediaModel ? t('modelDetails.typicalCost', 'Typical cost') : t('modelDetails.estCostPerMsg', 'Est. Cost / Msg')}
                                     </span>
                                     <FiDollarSign size={13} style={{ color: 'var(--sidebar-muted-fg)' }} />
                                 </div>
@@ -214,13 +218,21 @@ export function ModelDetailsModal({
                                         className="text-base font-semibold tabular-nums leading-tight"
                                         style={{ color: 'var(--modal-fg)' }}
                                     >
-                                        {showAvgCost ? formatNGN(avgCredits) : isFree ? 'Free' : '—'}
+                                        {showAvgCost ? formatNGN(avgCredits) : isFree ? t('modelDetails.free', 'Free') : '—'}
                                     </div>
                                     <div
                                         className="text-[11px] mt-0.5 truncate"
                                         style={{ color: 'var(--modal-muted-fg)' }}
                                     >
-                                        {showAvgCost ? `${formatUSD(avgCost)} USD` : isFree ? '0 credits' : 'Standard rates'}
+                                        {showAvgCost
+                                            ? (isMediaModel
+                                                ? (averageUnit
+                                                    ? t('modelDetails.typicalUnit', 'Typical {unit}', { unit: averageUnit })
+                                                    : t('modelDetails.estimatedCredits', 'Estimated credits'))
+                                                : `${formatUSD(avgCost)} USD`)
+                                            : isFree
+                                                ? t('modelDetails.zeroCredits', '0 credits')
+                                                : t('modelDetails.pricingOnRequest', 'Pricing on request')}
                                     </div>
                                     {!isWalletLocked && burnPercentage !== null && burnPercentage >= 60 ? (
                                         <div className="mt-1.5">
@@ -245,7 +257,7 @@ export function ModelDetailsModal({
                                         className="text-[11px] font-semibold uppercase tracking-wider"
                                         style={{ color: 'var(--sidebar-muted-fg)' }}
                                     >
-                                        Context Window
+                                        {t('modelDetails.contextWindow', 'Context Window')}
                                     </span>
                                     <FiMaximize2 size={13} style={{ color: 'var(--sidebar-muted-fg)' }} />
                                 </div>
@@ -255,14 +267,14 @@ export function ModelDetailsModal({
                                         style={{ color: 'var(--modal-fg)' }}
                                     >
                                         {model.context_length > 0
-                                            ? `${formatContextLength(model.context_length)} tokens`
-                                            : 'Standard'}
+                                            ? `${formatContextLength(model.context_length)} ${t('modelDetails.tokens', 'tokens')}`
+                                            : t('modelDetails.standard', 'Standard')}
                                     </div>
                                     <div
                                         className="text-[11px] mt-0.5 truncate"
                                         style={{ color: 'var(--modal-muted-fg)' }}
                                     >
-                                        Max prompt + reply
+                                        {t('modelDetails.maxPromptReply', 'Max prompt + reply')}
                                     </div>
                                 </div>
                             </div>
@@ -280,7 +292,7 @@ export function ModelDetailsModal({
                                         className="text-[11px] font-semibold uppercase tracking-wider"
                                         style={{ color: 'var(--sidebar-muted-fg)' }}
                                     >
-                                        Release
+                                        {t('modelDetails.release', 'Release')}
                                     </span>
                                     <FiCalendar size={13} style={{ color: 'var(--sidebar-muted-fg)' }} />
                                 </div>
@@ -295,7 +307,7 @@ export function ModelDetailsModal({
                                         className="text-[11px] mt-0.5 truncate"
                                         style={{ color: 'var(--modal-muted-fg)' }}
                                     >
-                                        {releaseDate ? `${providerLabel}` : 'Active catalog'}
+                                        {releaseDate ? `${providerLabel}` : t('modelDetails.activeCatalog', 'Active catalog')}
                                     </div>
                                 </div>
                             </div>
@@ -307,13 +319,13 @@ export function ModelDetailsModal({
                                 className="block text-[11px] font-semibold uppercase tracking-widest mb-2"
                                 style={{ color: 'var(--sidebar-muted-fg)' }}
                             >
-                                About Model
+                                {t('modelDetails.aboutModel', 'About Model')}
                             </span>
                             <p
                                 className="text-sm leading-relaxed whitespace-pre-line"
                                 style={{ color: 'var(--modal-muted-fg)' }}
                             >
-                                {model.description || 'No detailed description available for this model.'}
+                                {model.description || t('modelDetails.noDescription', 'No detailed description available for this model.')}
                             </p>
                         </div>
 
@@ -324,7 +336,7 @@ export function ModelDetailsModal({
                                     className="block text-[11px] font-semibold uppercase tracking-widest mb-2.5"
                                     style={{ color: 'var(--sidebar-muted-fg)' }}
                                 >
-                                    Supported Modalities
+                                    {t('modelDetails.supportedModalities', 'Supported Modalities')}
                                 </span>
                                 <div className="flex flex-wrap gap-2">
                                     {inputMods.map((mod, i) => (
@@ -338,7 +350,7 @@ export function ModelDetailsModal({
                                             }}
                                         >
                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                            Input: {mod}
+                                            {t('modelDetails.inputModality', 'Input: {mod}', { mod })}
                                         </span>
                                     ))}
                                     {outputMods.map((mod, i) => (
@@ -352,7 +364,7 @@ export function ModelDetailsModal({
                                             }}
                                         >
                                             <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
-                                            Output: {mod}
+                                            {t('modelDetails.outputModality', 'Output: {mod}', { mod })}
                                         </span>
                                     ))}
                                 </div>
@@ -360,13 +372,13 @@ export function ModelDetailsModal({
                         )}
 
                         {/* Pricing Breakdown Table */}
-                        {hasPricing && (
+                        {hasPricing && !isMediaModel && (
                             <div>
                                 <span
                                     className="block text-[11px] font-semibold uppercase tracking-widest mb-2.5"
                                     style={{ color: 'var(--sidebar-muted-fg)' }}
                                 >
-                                    Detailed Pricing Rates
+                                    {t('modelDetails.detailedPricing', 'Detailed Pricing Rates')}
                                 </span>
                                 <div
                                     className="rounded-xl border overflow-hidden"
@@ -384,8 +396,8 @@ export function ModelDetailsModal({
                                             color: 'var(--sidebar-muted-fg)',
                                         }}
                                     >
-                                        <span>Item</span>
-                                        <span className="text-right">Rate</span>
+                                        <span>{t('modelDetails.item', 'Item')}</span>
+                                        <span className="text-right">{t('modelDetails.rate', 'Rate')}</span>
                                     </div>
 
                                     {scalarPricingEntries.map(([key, value], idx) => (
@@ -467,7 +479,9 @@ export function ModelDetailsModal({
                                 <div className="flex items-center gap-1.5 text-xs text-amber-500">
                                     <FiAlertCircle size={14} className="shrink-0" />
                                     <span className="truncate">
-                                        {getModelWalletLockShortHint(requiredBalance, wallet)}
+                                        {t('modelPicker.walletLockShort', 'Load {more} more credits to use', {
+                                            more: computeCreditsShortfall(wallet, requiredBalance),
+                                        })}
                                     </span>
                                     {onAddCredits && (
                                         <button
@@ -475,19 +489,19 @@ export function ModelDetailsModal({
                                             onClick={onAddCredits}
                                             className="ml-1 underline font-semibold hover:opacity-85"
                                         >
-                                            Add Credits
+                                            {t('modelDetails.addCredits', 'Add Credits')}
                                         </button>
                                     )}
                                 </div>
                             ) : !canPickForChat ? (
                                 <div className="flex items-center gap-1.5 text-xs text-[var(--modal-muted-fg)]">
                                     <FiAlertCircle size={14} className="shrink-0 opacity-80" />
-                                    <span>Catalog preview only — not available for text chat</span>
+                                    <span>{t('modelDetails.catalogPreviewOnly', 'Catalog preview only — not available for text chat')}</span>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-1.5 text-xs text-[var(--modal-muted-fg)]">
                                     <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                                    <span>Ready for active chat session</span>
+                                    <span>{t('modelDetails.readyForChat', 'Ready for active chat session')}</span>
                                 </div>
                             )}
                         </div>
@@ -500,7 +514,7 @@ export function ModelDetailsModal({
                                 className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                                 style={{ color: 'var(--modal-muted-fg)' }}
                             >
-                                Close
+                                {t('common.close', 'Close')}
                             </button>
 
                             {onPickModel && canPickForChat && (
@@ -521,7 +535,7 @@ export function ModelDetailsModal({
                                     }}
                                 >
                                     <FiCheck size={14} strokeWidth={2.5} />
-                                    Use Model
+                                    {t('modelDetails.useModel', 'Use Model')}
                                 </button>
                             )}
                         </div>

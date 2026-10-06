@@ -6,7 +6,10 @@ import { isAigeniusDesktopRuntime, getAigeniusDesktopBridgeFromBrowsingContext }
 import { waitForAccessToken } from '@/lib/api/wait-for-access-token';
 import { subscribeToTokenRefresh } from '@/lib/api/auth-client';
 import { resolveDefaultActiveModel } from '@/app/components/model-interface/shared/constants/quickPickModels';
-import { filterModelsForChatUiCatalog } from '@/app/components/model-interface/features/models/utils/modelConversationEligibility.utils';
+import {
+    filterModelsForChatUiCatalog,
+    filterNonTextModels,
+} from '@/app/components/model-interface/features/models/utils/modelConversationEligibility.utils';
 import { withLocalRuntimeDisplayName } from '@/app/components/model-interface/features/models/utils/ollamaModelDisplayName.utils';
 
 let inflightModelsPromise: Promise<any> | null = null;
@@ -97,6 +100,7 @@ async function fetchCloudModelsList(): Promise<any[]> {
 
 export function useModelData() {
     const [models, setModels] = useState<Model[]>([]);
+    const [nonTextModels, setNonTextModels] = useState<Model[]>([]);
     const [modelsLoading, setModelsLoading] = useState(true);
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
     const [error, setError] = useState("");
@@ -209,11 +213,15 @@ export function useModelData() {
                     list = list.filter((m: any) => m.provider !== 'ollama' && !(m.id && m.id.startsWith('ollama:')));
                 }
 
+                const nonTextList = filterNonTextModels(list as Model[]);
                 list = filterModelsForChatUiCatalog(list as Model[]).map((model) =>
                     withLocalRuntimeDisplayName(model),
                 );
 
-                if (!cancelled) setModels(list);
+                if (!cancelled) {
+                    setNonTextModels(nonTextList);
+                    setModels(list);
+                }
 
                 // Model selection logic
                 let lastModelId: string | null = null;
@@ -282,6 +290,7 @@ export function useModelData() {
 
     return {
         models,
+        nonTextModels,
         modelsLoading,
         selectedModel,
         setSelectedModel,

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 type AssistantStreamStatusProps = {
     /** True while waiting for the first streamed chunk (or first tool activity). */
@@ -10,7 +11,10 @@ type AssistantStreamStatusProps = {
  * Rolling ring spinner for the whole stream (connecting and generating).
  */
 export function AssistantStreamStatus({ loading }: AssistantStreamStatusProps) {
-    const label = loading ? 'Starting response' : 'Generating response';
+    const { t } = useLanguage();
+    const label = loading
+        ? t('chat.startingResponse', 'Starting response')
+        : t('chat.generatingResponse', 'Generating response');
 
     return (
         <div

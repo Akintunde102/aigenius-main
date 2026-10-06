@@ -11,6 +11,7 @@ import { Button } from "@/app/components/ui/button";
 import { scheduleWorkflowShellPrefetch } from "@/lib/workflow-shell-prefetch";
 import { fetchWorkflows, deleteWorkflow, WorkflowsApiError, type WorkflowRecord } from "./workflowsApi";
 import { workflowCanvasSurfaceStyle, workflowShellBgStyle } from "./workflow-info";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 function isAuthProblem(error: unknown) {
   if (error instanceof WorkflowsApiError && error.statusCode === 401) {
@@ -51,6 +52,7 @@ function newWorkflowHref() {
 
 export default function WorkflowsListView() {
   useTokenHandler();
+  const { t } = useLanguage();
   const router = useRouter();
   const [items, setItems] = useState<WorkflowRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +73,7 @@ export default function WorkflowsListView() {
       if (isAuthProblem(error)) {
         setAuthBlocked(true);
       } else {
-        setLoadError(error instanceof Error ? error.message : "Could not load workflows.");
+        setLoadError(error instanceof Error ? error.message : t("workflows.couldNotLoad", "Could not load workflows."));
       }
     } finally {
       setLoading(false);
@@ -79,7 +81,8 @@ export default function WorkflowsListView() {
   }, []);
 
   const handleDelete = useCallback(async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete the workflow "${name || "Untitled"}"? This cannot be undone.`)) {
+    const displayName = name || t("workflows.untitled", "Untitled");
+    if (!window.confirm(t("workflows.deleteConfirm", 'Are you sure you want to delete the workflow "{name}"? This cannot be undone.', { name: displayName }))) {
       return;
     }
 
@@ -88,16 +91,16 @@ export default function WorkflowsListView() {
       await deleteWorkflow(id);
       await fetchList();
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to delete workflow");
+      alert(error instanceof Error ? error.message : t("workflows.deleteFailed", "Failed to delete workflow"));
     } finally {
       setDeletingId(null);
       setMenuWorkflowId(null);
     }
-  }, [fetchList]);
+  }, [fetchList, t]);
 
   useEffect(() => {
     void fetchList();
-  }, [fetchList]);
+  }, [fetchList, t]);
 
   useEffect(() => {
     scheduleWorkflowShellPrefetch(router, items.map((row) => row.id));
@@ -125,12 +128,12 @@ export default function WorkflowsListView() {
         className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center"
         style={workflowShellBgStyle()}
       >
-        <p className="text-sm text-slate-700">Sign in to view and edit your workflows.</p>
+        <p className="text-sm text-slate-700">{t("workflows.signInToView", "Sign in to view and edit your workflows.")}</p>
         <Link
           href="/login"
           className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
         >
-          Go to login
+          {t("workflows.goToLogin", "Go to login")}
         </Link>
       </div>
     );
@@ -148,16 +151,16 @@ export default function WorkflowsListView() {
                 className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-100"
               >
                 <ArrowLeft className="h-3 w-3" aria-hidden />
-                Back
+                {t("common.back", "Back")}
               </Link>
               <span className="select-none text-slate-400 dark:text-slate-600" aria-hidden>
                 ›
               </span>
-              <span className="truncate text-[12px] font-medium text-slate-900 dark:text-slate-100">All workflows</span>
+              <span className="truncate text-[12px] font-medium text-slate-900 dark:text-slate-100">{t("workflows.allWorkflows", "All workflows")}</span>
             </div>
             <div className="relative min-h-[2rem] min-w-0 flex-1 sm:max-w-md">
               <label htmlFor="search-workflows" className="sr-only">
-                Search workflows
+                {t("workflows.searchWorkflows", "Search workflows")}
               </label>
               <Search
                 className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500"
@@ -168,8 +171,8 @@ export default function WorkflowsListView() {
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search workflows…"
-                aria-label="Search workflows"
+                placeholder={t("workflows.searchPlaceholder", "Search workflows…")}
+                aria-label={t("workflows.searchWorkflows", "Search workflows")}
                 className="h-8 w-full rounded-md border border-slate-300 bg-slate-100/80 py-1.5 pl-8 pr-2.5 text-[12px] text-slate-900 outline-none ring-0 placeholder:text-slate-400 focus:border-cyan-600 focus:ring-1 focus:ring-cyan-500/20 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30 sm:h-7"
               />
             </div>
@@ -178,14 +181,14 @@ export default function WorkflowsListView() {
               className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-slate-200/90 bg-slate-100/80 px-3 text-[11px] font-medium text-slate-700 transition hover:bg-slate-200/80 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 dark:border-slate-600/90 dark:bg-slate-800/40 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white sm:h-7"
             >
               <Bell className="mr-1 h-3 w-3" aria-hidden />
-              Notifications
+              {t("workflows.notifications", "Notifications")}
             </Link>
             <Link
               href="/schedules"
               className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-slate-200/90 bg-slate-100/80 px-3 text-[11px] font-medium text-slate-700 transition hover:bg-slate-200/80 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 dark:border-slate-600/90 dark:bg-slate-800/40 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white sm:h-7"
             >
               <Calendar className="mr-1 h-3 w-3" aria-hidden />
-              All schedules
+              {t("workflows.allSchedules", "All schedules")}
             </Link>
             <button
               type="button"
@@ -193,7 +196,7 @@ export default function WorkflowsListView() {
               className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-slate-900 bg-slate-900 px-3 text-[11px] font-medium text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 dark:border-slate-600/90 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white sm:h-7"
             >
               <Plus className="mr-1 h-3 w-3" aria-hidden />
-              New workflow
+              {t("workflows.newWorkflow", "New workflow")}
             </button>
           </div>
         </header>
@@ -204,7 +207,7 @@ export default function WorkflowsListView() {
               {loading ? (
                 <div className="flex flex-col items-center justify-center gap-3 py-24">
                   <Loader2 className="h-8 w-8 animate-spin text-slate-400" aria-hidden />
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Loading workflows…</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t("workflows.loading", "Loading workflows…")}</p>
                 </div>
               ) : loadError ? (
                 <div className="flex flex-col items-center gap-4 py-20 text-center">
@@ -216,7 +219,7 @@ export default function WorkflowsListView() {
                     className="rounded-lg border-slate-200 bg-white/90 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     onClick={() => void fetchList()}
                   >
-                    Retry
+                    {t("common.retry", "Retry")}
                   </Button>
                 </div>
               ) : filtered.length === 0 ? (
@@ -225,12 +228,12 @@ export default function WorkflowsListView() {
                     <Layers className="h-7 w-7 text-slate-500 dark:text-slate-400" aria-hidden />
                   </div>
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                    {items.length === 0 ? "No workflows yet" : "No workflows match your search"}
+                    {items.length === 0 ? t("workflows.noWorkflowsYet", "No workflows yet") : t("workflows.noWorkflowsMatch", "No workflows match your search")}
                   </p>
                   <p className="max-w-sm text-xs leading-relaxed text-slate-600 dark:text-slate-400">
                     {items.length === 0
-                      ? "Create a workflow to chain tools and automate steps in one place."
-                      : "Try a different search term or clear the box to see everything."}
+                      ? t("workflows.createFirstHint", "Create a workflow to chain tools and automate steps in one place.")
+                      : t("workflows.searchEmptyHint", "Try a different search term or clear the box to see everything.")}
                   </p>
                   {items.length === 0 ? (
                     <button
@@ -239,7 +242,7 @@ export default function WorkflowsListView() {
                       className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white shadow-md transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 focus-visible:ring-offset-2 dark:bg-slate-800 dark:hover:bg-slate-700"
                     >
                       <Plus className="mr-1.5 h-4 w-4" aria-hidden />
-                      Create your first workflow
+                      {t("workflows.createFirst", "Create your first workflow")}
                     </button>
                   ) : null}
                 </div>
@@ -256,7 +259,7 @@ export default function WorkflowsListView() {
                               <FiTool className="h-3.5 w-3.5" aria-hidden />
                             </div>
                             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--app-ink-800)] dark:text-slate-100">
-                              {w.name || "Untitled"}
+                              {w.name || t("workflows.untitled", "Untitled")}
                             </span>
                             <div className="flex items-center gap-1.5 shrink-0">
                               {w.schedules && w.schedules.length > 0 && (
@@ -272,23 +275,23 @@ export default function WorkflowsListView() {
                                 </span>
                               )}
                               <span className="inline-flex rounded-full border border-[rgba(58,71,87,0.12)] bg-[rgba(246,248,252,0.85)] px-2 py-0.5 text-[10px] font-medium text-[var(--app-ink-700)] dark:border-slate-700/80 dark:bg-slate-800/70 dark:text-slate-300">
-                                {stepCount} step{stepCount === 1 ? "" : "s"}
+                                {stepCount} {stepCount === 1 ? t("workflows.step", "step") : t("workflows.steps", "steps")}
                               </span>
                             </div>
                           </div>
                           <div className="rounded-b-xl border-b border-[rgba(58,71,87,0.08)] bg-[rgba(246,248,252,0.7)] px-3 py-2 dark:border-slate-800/80 dark:bg-[#141518]">
                             <p className="line-clamp-3 text-xs leading-5 text-[var(--app-ink-700)] dark:text-slate-300">
-                              {w.description?.trim() || "No description."}
+                              {w.description?.trim() || t("workflows.noDescription", "No description.")}
                             </p>
                             {updated ? (
-                              <p className="mt-1.5 text-[10px] font-medium text-[var(--app-ink-500)] dark:text-slate-400">Updated {updated}</p>
+                              <p className="mt-1.5 text-[10px] font-medium text-[var(--app-ink-500)] dark:text-slate-400">{t("workflows.updated", "Updated {date}", { date: updated })}</p>
                             ) : null}
                           </div>
                         </Link>
                         <div className="absolute right-2 top-2 z-10">
                           <button
                             type="button"
-                            aria-label="Workflow actions"
+                            aria-label={t("workflows.workflowActions", "Workflow actions")}
                             className="rounded-md border border-[rgba(58,71,87,0.12)] bg-white/95 p-1 text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -306,13 +309,13 @@ export default function WorkflowsListView() {
                                 href={`/workflow/${w.id}`}
                                 className="block px-2.5 py-1.5 text-left text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
                               >
-                                Open workflow
+                                {t("workflows.openWorkflow", "Open workflow")}
                               </Link>
                               <Link
                                 href={`/workflow/${w.id}/executions`}
                                 className="block px-2.5 py-1.5 text-left text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
                               >
-                                Executions
+                                {t("workflows.executions", "Executions")}
                               </Link>
                               <button
                                 type="button"
@@ -323,7 +326,7 @@ export default function WorkflowsListView() {
                                   void handleDelete(w.id, w.name);
                                 }}
                               >
-                                {deletingId === w.id ? "Deleting..." : "Delete"}
+                                {deletingId === w.id ? t("workflows.deleting", "Deleting...") : t("workflows.delete", "Delete")}
                               </button>
                             </div>
                           ) : null}

@@ -12,6 +12,7 @@ import {
   workflowModalPanelClassWide,
 } from "./workflow-info";
 import { WorkflowToolIcon } from "./WorkflowToolIcon";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 type WorkflowAddToolsModalProps = {
   isOpen: boolean;
@@ -26,11 +27,14 @@ export function WorkflowAddToolsModal({
   onClose,
   tools,
   onPick,
-  title = "Add a tool",
+  title,
 }: WorkflowAddToolsModalProps) {
+  const { t } = useLanguage();
+  const dialogTitle = title ?? t("workflows.addToolTitle", "Add a tool");
+  const categoryAllLabel = t("workflows.categoryAll", "All");
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<string>("All");
+  const [category, setCategory] = useState<string>(categoryAllLabel);
 
   useEffect(() => {
     setMounted(true);
@@ -39,28 +43,28 @@ export function WorkflowAddToolsModal({
   useEffect(() => {
     if (!isOpen) {
       setSearch("");
-      setCategory("All");
+      setCategory(categoryAllLabel);
     }
-  }, [isOpen]);
+  }, [isOpen, categoryAllLabel]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
     for (const t of tools) {
       set.add(categorizeTool(t.function.name));
     }
-    return ["All", ...Array.from(set).sort()];
-  }, [tools]);
+    return [categoryAllLabel, ...Array.from(set).sort()];
+  }, [tools, categoryAllLabel]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return tools.filter((tool) => {
       const cat = categorizeTool(tool.function.name);
-      if (category !== "All" && cat !== category) return false;
+      if (category !== categoryAllLabel && cat !== category) return false;
       if (!q) return true;
       const hay = `${tool.function.name} ${friendlyToolName(tool.function.name)} ${tool.workflowDescription ?? tool.function.description ?? ""} ${cat}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [tools, search, category]);
+  }, [tools, search, category, categoryAllLabel]);
 
   const handleClose = useCallback(() => onClose(), [onClose]);
 
@@ -90,7 +94,7 @@ export function WorkflowAddToolsModal({
           <div className="flex items-start justify-between gap-3 px-4 py-3 sm:px-5">
             <div className="min-w-0">
               <h2 id="workflow-add-tool-title" className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-                {title}
+                {dialogTitle}
               </h2>
               <WorkflowAddToolsDialogSubtitle id="workflow-add-tool-desc" />
             </div>
@@ -98,10 +102,10 @@ export function WorkflowAddToolsModal({
               type="button"
               className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 dark:hover:bg-slate-800 dark:hover:text-slate-200"
               onClick={handleClose}
-              title="Close"
+              title={t("common.close", "Close")}
             >
               <X className="h-5 w-5" aria-hidden />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{t("common.close", "Close")}</span>
             </button>
           </div>
         </div>
@@ -113,11 +117,11 @@ export function WorkflowAddToolsModal({
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search tools…"
+              placeholder={t("workflows.searchToolsPlaceholder", "Search tools…")}
               className="w-full rounded-full border border-slate-200/90 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm outline-none transition focus:border-sky-400/80 focus:ring-2 focus:ring-sky-500/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
-          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter by category">
+          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label={t("workflows.filterCategoryAria", "Filter by category")}>
             {categories.map((c) => (
               <button
                 key={c}
@@ -143,7 +147,10 @@ export function WorkflowAddToolsModal({
               const cat = categorizeTool(tool.function.name);
               const th = themeForWorkflowCategory(cat);
               const key = tool.function.name;
-              const desc = tool.workflowDescription?.trim() || tool.function.description?.trim() || "Add to your workflow.";
+              const desc =
+                tool.workflowDescription?.trim() ||
+                tool.function.description?.trim() ||
+                t("workflows.addToWorkflowFallback", "Add to your workflow.");
               const depBlocked =
                 tool.workflowAvailability != null && tool.workflowAvailability.ready === false;
               const blockedHint = tool.workflowAvailability?.blockedReason;
@@ -193,9 +200,9 @@ export function WorkflowAddToolsModal({
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200/90 bg-white shadow-inner dark:border-slate-800 dark:bg-slate-900">
                 <Wrench className="h-6 w-6 text-slate-400 dark:text-slate-500" aria-hidden />
               </div>
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">No tools match your search</p>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{t("workflows.noToolsMatch", "No tools match your search")}</p>
               <p className="max-w-sm text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                Try another keyword or switch category. All tools are shown when search is empty.
+                {t("workflows.noToolsMatchHint", "Try another keyword or switch category. All tools are shown when search is empty.")}
               </p>
             </div>
           )}

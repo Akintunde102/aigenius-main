@@ -7,7 +7,7 @@ import { Hanken_Grotesk, Instrument_Sans } from "next/font/google";
  * more personality at large sizes.
  */
 export const sans = Hanken_Grotesk({ subsets: ["latin"], display: "swap" });
-const display = Instrument_Sans({ subsets: ["latin"], display: "swap", weight: ["400", "500", "600", "700"] });
+const display = Instrument_Sans({ subsets: ["latin"], display: "swap", weight: ["400", "500", "600", "700"], adjustFontFallback: false });
 
 export const DISPLAY = display.className;
 export const H1 = `${DISPLAY} text-[clamp(2.75rem,7.4vw,5.75rem)] font-semibold leading-[0.98] tracking-[-0.04em]`;

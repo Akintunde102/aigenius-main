@@ -177,3 +177,26 @@ npm run prepackage:win && npm run package:win:dir
 ## OAuth / Paystack
 
 Register Google (and later GitHub) redirect URIs for `http://localhost:3001/...`. Paystack flows that must open in the system browser can use `window.aigeniusDesktop?.openExternal(url)` from the renderer when `isDesktop` is available.
+
+## Silent UI OTA Updates (Bypassing Store Submissions)
+
+Pure frontend changes (React components, styling, prompt UI, markdown streaming) can be deployed silently to desktop users without submitting a new `.appx`/MSIX package to the Microsoft Store.
+
+Detailed documentation: [`../../docs/desktop/SILENT_UI_OTA_UPDATES.md`](../../docs/desktop/SILENT_UI_OTA_UPDATES.md).
+
+### Quick Commands
+
+- **Detect release type from git changes:**
+  ```bash
+  npm run detect:release
+  ```
+- **Manually build a UI OTA package:**
+  ```bash
+  npm run package:ui:ota
+  ```
+- **Publish that package to the Cloudflare CDN** (needs R2 credentials in the environment):
+  ```bash
+  npm run publish:ui:ota
+  ```
+- **Automated CI/CD:** Pushing to `main` triggers `.github/workflows/auto-release.yml`, which evaluates `git diff`, packages the UI bundle, and publishes it to the existing Cloudflare zone (`https://ota.runpage.site`) with a `minDesktopVersion` compatibility contract.
+

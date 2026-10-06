@@ -83,7 +83,7 @@ describe('ChatHistoryList', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
     };
 
-    it('collapses project sections by default and shows chat count', async () => {
+    it('collapses project sections by default and hides their chats', async () => {
         const { findByText, queryByRole } = render(
             <ChatHistoryList
                 chatHistory={[
@@ -107,7 +107,7 @@ describe('ChatHistoryList', () => {
             />,
         );
 
-        expect(await findByText('1 chat')).toBeTruthy();
+        expect(await findByText('Project A')).toBeTruthy();
         expect(queryByRole('button', { name: 'Hidden Chat' })).toBeNull();
     });
 

@@ -210,11 +210,30 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
       | { ok: true; canceled: true }
       | { ok: false; error: string }
     >,
-  setCodeProjectIndex: (payload: { projectId: string; rootPath: string } | null): Promise<{ ok: boolean }> =>
-    ipcRenderer.invoke('set-code-project-index', payload) as Promise<{ ok: boolean }>,
+  setCodeProjectIndex: (payload: { projectId: string; rootPath: string } | null): Promise<
+    | { ok: true }
+    | { ok: false; error?: string; rootCheck?: unknown }
+  > =>
+    ipcRenderer.invoke('set-code-project-index', payload) as Promise<
+      | { ok: true }
+      | { ok: false; error?: string; rootCheck?: unknown }
+    >,
+  checkCodeProjectRoot: (rootPath: string) =>
+    ipcRenderer.invoke('check-code-project-root', rootPath) as Promise<{
+      ok: boolean;
+      status: string;
+      canRecreate: boolean;
+      resolvedPath?: string;
+    }>,
+  recreateCodeProjectRoot: (rootPath: string) =>
+    ipcRenderer.invoke('recreate-code-project-root', rootPath) as Promise<
+      | { ok: true; path: string; created: boolean }
+      | { ok: false; error: string }
+    >,
   
   // Auto-Updater hooks
   checkForUpdates: () => ipcRenderer.invoke('aigenius-check-for-updates'),
+  checkUiOta: () => ipcRenderer.invoke('aigenius-check-ui-ota'),
   downloadUpdate: () => ipcRenderer.invoke('aigenius-download-update'),
   installUpdate: () => ipcRenderer.invoke('aigenius-install-update'),
   onUpdateAvailable: (handler: (info: any) => void) => {

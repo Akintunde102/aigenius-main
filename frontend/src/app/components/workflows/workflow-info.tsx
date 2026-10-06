@@ -5,7 +5,8 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 import { JsonSyntaxBlock } from "@/app/components/JsonSyntaxBlock";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +46,7 @@ export function workflowCanvasSurfaceStyle(): CSSProperties {
       };
 }
 
-/** Shared user-facing copy for workflow dialogs and canvas cards. */
+/** @deprecated Prefer `useWorkflowInfoCopy()` in React components. */
 export const WORKFLOW_INFO_COPY = {
   stepConfigDialogSubtitleLead: "Changes apply to this workflow as you type. Use",
   stepConfigDialogSubtitleDone: "Done",
@@ -60,6 +61,36 @@ export const WORKFLOW_INFO_COPY = {
   aboutToolAriaHide: "Hide tool description",
   noApiDescription: "No API description for this tool.",
 } as const;
+
+export function useWorkflowInfoCopy() {
+  const { t } = useLanguage();
+  return useMemo(
+    () => ({
+      stepConfigDialogSubtitleLead: t("workflows.stepConfigSubtitleLead", WORKFLOW_INFO_COPY.stepConfigDialogSubtitleLead),
+      stepConfigDialogSubtitleDone: t("workflows.stepConfigSubtitleDone", WORKFLOW_INFO_COPY.stepConfigDialogSubtitleDone),
+      stepConfigDialogSubtitleTrail: t("workflows.stepConfigSubtitleTrail", WORKFLOW_INFO_COPY.stepConfigDialogSubtitleTrail),
+      addToolsDialogSubtitle: t("workflows.addToolsSubtitle", WORKFLOW_INFO_COPY.addToolsDialogSubtitle),
+      valuesHeading: t("workflows.valuesHeading", WORKFLOW_INFO_COPY.valuesHeading),
+      aboutToolHeading: t("workflows.aboutToolHeading", WORKFLOW_INFO_COPY.aboutToolHeading),
+      aboutToolExamplesHeading: t("workflows.aboutToolExamplesHeading", WORKFLOW_INFO_COPY.aboutToolExamplesHeading),
+      aboutToolTitle: t("workflows.aboutToolHeading", WORKFLOW_INFO_COPY.aboutToolTitle),
+      aboutToolAriaShow: t("workflows.aboutToolHeading", WORKFLOW_INFO_COPY.aboutToolAriaShow),
+      aboutToolAriaHide: t("workflows.aboutToolAriaHide", WORKFLOW_INFO_COPY.aboutToolAriaHide),
+      noApiDescription: t("workflows.noApiDescription", WORKFLOW_INFO_COPY.noApiDescription),
+      returnShapeHeading: t("workflows.returnShapeHeading", "Return shape (chaining)"),
+      chainingNoHints: t(
+        "workflows.chainingNoHints",
+        'No chaining hints are available for this tool yet. Use "{{ last }}" or "{{ steps.<id>.result }}" to pass the full prior result.',
+      ),
+      chainingPathsLabel: t("workflows.chainingPathsLabel", "Paths:"),
+      exampleJsonHeading: t("workflows.exampleJsonHeading", "Example JSON"),
+      responseSchemaHeading: t("workflows.responseSchemaHeading", "Response JSON Schema"),
+      responseSchemaMissing: t("workflows.responseSchemaMissing", WORKFLOW_INFO_COPY.noApiDescription),
+      chainingTabName: t("workflows.chainingTabName", "Chaining"),
+    }),
+    [t],
+  );
+}
 
 /** Teal → emerald → deep slate — distinct from generic “AI purple”. */
 export const workflowAccentBarClass =
@@ -99,20 +130,22 @@ export function WorkflowAccentBar() {
 
 /** `aria-describedby` target for the step editor dialog. */
 export function WorkflowStepConfigDialogSubtitle({ id }: { id: string }) {
+  const copy = useWorkflowInfoCopy();
   return (
     <p id={id} className="mt-1 text-[11px] leading-snug text-slate-600">
-      {WORKFLOW_INFO_COPY.stepConfigDialogSubtitleLead}{" "}
-      <span className="font-medium text-slate-600">{WORKFLOW_INFO_COPY.stepConfigDialogSubtitleDone}</span>{" "}
-      {WORKFLOW_INFO_COPY.stepConfigDialogSubtitleTrail}
+      {copy.stepConfigDialogSubtitleLead}{" "}
+      <span className="font-medium text-slate-600">{copy.stepConfigDialogSubtitleDone}</span>{" "}
+      {copy.stepConfigDialogSubtitleTrail}
     </p>
   );
 }
 
 /** `aria-describedby` target for the add-tools dialog. */
 export function WorkflowAddToolsDialogSubtitle({ id }: { id: string }) {
+  const copy = useWorkflowInfoCopy();
   return (
     <p id={id} className={dialogSubtitleClass}>
-      {WORKFLOW_INFO_COPY.addToolsDialogSubtitle}
+      {copy.addToolsDialogSubtitle}
     </p>
   );
 }
@@ -134,9 +167,10 @@ export function WorkflowValuesPanel({
   children: React.ReactNode;
   className?: string;
 }) {
+  const copy = useWorkflowInfoCopy();
   return (
     <div className={cn(valuesSurfaceClass, className)}>
-      <WorkflowSectionHeading className="mb-2">{WORKFLOW_INFO_COPY.valuesHeading}</WorkflowSectionHeading>
+      <WorkflowSectionHeading className="mb-2">{copy.valuesHeading}</WorkflowSectionHeading>
       {children}
     </div>
   );
@@ -165,6 +199,7 @@ export function WorkflowAboutToolPanel({
   resultJsonSchema?: Record<string, unknown> | null;
   className?: string;
 }) {
+  const copy = useWorkflowInfoCopy();
   const [activeTab, setActiveTab] = useState<WorkflowAboutToolTab>("about");
   const normalizedExamples = (examples ?? []).map((item) => item.trim()).filter(Boolean);
   const paths = (chainingPaths ?? []).filter((p) => p.trim().length > 0);
@@ -206,11 +241,11 @@ export function WorkflowAboutToolPanel({
 
       {activeTab === "about" ? (
         <div role="tabpanel">
-          <WorkflowSectionHeading className="mb-1">{WORKFLOW_INFO_COPY.aboutToolHeading}</WorkflowSectionHeading>
+          <WorkflowSectionHeading className="mb-1">{copy.aboutToolHeading}</WorkflowSectionHeading>
           <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">{body}</p>
           {normalizedExamples.length > 0 ? (
             <div className="mt-2.5">
-              <WorkflowSectionHeading className="mb-1">{WORKFLOW_INFO_COPY.aboutToolExamplesHeading}</WorkflowSectionHeading>
+              <WorkflowSectionHeading className="mb-1">{copy.aboutToolExamplesHeading}</WorkflowSectionHeading>
               <ul className="space-y-1 text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
                 {normalizedExamples.map((example) => (
                   <li key={example} className="flex gap-1.5">
@@ -226,27 +261,22 @@ export function WorkflowAboutToolPanel({
 
       {activeTab === "chaining" ? (
         <div role="tabpanel" className="space-y-2">
-          <WorkflowSectionHeading className="mb-1">Return shape (chaining)</WorkflowSectionHeading>
+          <WorkflowSectionHeading className="mb-1">{copy.returnShapeHeading}</WorkflowSectionHeading>
           {!hasChainingContent ? (
-            <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-              No chaining hints are available for this tool yet. Use{" "}
-              <code className="rounded bg-slate-100 px-1 font-mono text-[10px] dark:bg-slate-800 dark:text-slate-300">{"{{ last }}"}</code> or{" "}
-              <code className="rounded bg-slate-100 px-1 font-mono text-[10px] dark:bg-slate-800 dark:text-slate-300">{"{{ steps.<id>.result }}"}</code>{" "}
-              to pass the full prior result.
-            </p>
+            <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">{copy.chainingNoHints}</p>
           ) : null}
           {returnShapeSummary?.trim() ? (
             <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">{returnShapeSummary.trim()}</p>
           ) : null}
           {paths.length > 0 ? (
             <p className="text-[10px] leading-relaxed text-slate-600 dark:text-slate-400">
-              <span className="font-semibold text-slate-700 dark:text-slate-200">Paths:</span>{" "}
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{copy.chainingPathsLabel}</span>{" "}
               <span className="font-mono text-[9px] text-teal-900 dark:text-teal-300 [overflow-wrap:anywhere]">{paths.join(", ")}</span>
             </p>
           ) : null}
           {jsonPreview ? (
             <div>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-teal-900/55 dark:text-teal-400/80">Example JSON</p>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-teal-900/55 dark:text-teal-400/80">{copy.exampleJsonHeading}</p>
               <JsonSyntaxBlock
                 value={jsonPreview}
                 preClassName="workflow-scroll-light max-h-40 border-slate-200/80 bg-white dark:border-slate-800/90 dark:bg-[#18191c] dark:text-slate-200"
@@ -259,7 +289,7 @@ export function WorkflowAboutToolPanel({
 
       {activeTab === "structure" ? (
         <div role="tabpanel" className="space-y-2">
-          <WorkflowSectionHeading className="mb-1">Response JSON Schema</WorkflowSectionHeading>
+          <WorkflowSectionHeading className="mb-1">{copy.responseSchemaHeading}</WorkflowSectionHeading>
           {hasSchema ? (
             <JsonSyntaxBlock
               value={resultJsonSchema}
@@ -267,11 +297,7 @@ export function WorkflowAboutToolPanel({
               codeClassName="text-[10px] leading-snug"
             />
           ) : (
-            <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-              No formal JSON Schema is published for this tool&apos;s response. Check the{" "}
-              <span className="font-medium text-slate-800 dark:text-slate-200">Chaining</span> tab for a text summary and example payload, or inspect
-              raw output after a run.
-            </p>
+            <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">{copy.responseSchemaMissing}</p>
           )}
         </div>
       ) : null}

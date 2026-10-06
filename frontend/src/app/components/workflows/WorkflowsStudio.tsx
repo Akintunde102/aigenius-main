@@ -51,8 +51,10 @@ import {
 import { WorkflowsStudioHeader } from "./WorkflowsStudioHeader";
 import { WorkflowsStudioCanvas } from "./WorkflowsStudioCanvas";
 import { WorkflowsStudioStepMenuPanel } from "./WorkflowsStudioStepMenuPanel";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 export default function WorkflowsStudio() {
+  const { t } = useLanguage();
   useTokenHandler();
   const params = useParams();
   const router = useRouter();
@@ -249,7 +251,7 @@ export default function WorkflowsStudio() {
         if (isAuthProblem(error)) {
           setAuthBlocked(true);
         } else {
-          const message = error instanceof Error ? error.message : "Could not load.";
+          const message = error instanceof Error ? error.message : t("workflows.couldNotLoadGeneric", "Could not load.");
           setLoadError(message);
           toast.error(message);
         }
@@ -395,9 +397,9 @@ export default function WorkflowsStudio() {
         return;
       }
       await refreshRunHistory(saved.id);
-      toast.success("Workflow schedules saved.");
+      toast.success(t("workflows.schedulesSavedToast", "Workflow schedules saved."));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update the schedule.");
+      toast.error(error instanceof Error ? error.message : t("workflows.scheduleUpdateFailedToast", "Could not update the schedule."));
     } finally {
       setScheduleSaving(false);
     }

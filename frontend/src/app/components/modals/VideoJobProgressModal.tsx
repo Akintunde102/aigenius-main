@@ -14,8 +14,10 @@ import { getValidAccessToken } from '@/lib/api/auth-client';
 import { getLocalMiniServerApiRootUrl } from '@/lib/api/resolve-gateway-api-root';
 import { X, Play, Download, Copy, Check, Clock, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import copy from 'copy-to-clipboard';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 export const VideoJobProgressModal: React.FC = () => {
+    const { t } = useLanguage();
     const [payload, setPayload] = useState<VideoTrackingModalPayload | null>(null);
     const [statusData, setStatusData] = useState<VideoJobStatusResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -219,7 +221,7 @@ export const VideoJobProgressModal: React.FC = () => {
                         <div className="flex items-start gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 p-3.5 text-xs text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50">
                             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                             <div>
-                                <p className="font-medium">Connecting to generation tracker...</p>
+                                <p className="font-medium">{t('videoJob.connectingTracker', 'Connecting to generation tracker...')}</p>
                                 <p className="opacity-80 mt-0.5">{fetchError}</p>
                             </div>
                         </div>
@@ -297,7 +299,7 @@ export const VideoJobProgressModal: React.FC = () => {
                             {stage === 'finalizing' && (
                                 <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-xs text-blue-700 dark:text-blue-300">
                                     <RefreshCw className="h-3.5 w-3.5 animate-spin shrink-0 text-blue-500" />
-                                    <span>Saving video to your library... You can watch and download right now!</span>
+                                    <span>{t('videoJob.savingToLibrary', 'Saving video to your library... You can watch and download right now!')}</span>
                                 </div>
                             )}
 
@@ -359,7 +361,7 @@ export const VideoJobProgressModal: React.FC = () => {
                 {/* Footer Info */}
                 <div className="bg-zinc-50 dark:bg-zinc-800/40 px-6 py-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-500">
                     <span>Job ID: {statusData?.job_id || payload.identifier}</span>
-                    <span>You can close this window; the video will also be saved to your chat history.</span>
+                    <span>{t('videoJob.canCloseWindow', 'You can close this window; the video will also be saved to your chat history.')}</span>
                 </div>
             </div>
         </div>

@@ -14,6 +14,7 @@ import {
     PreWithCopy,
 } from './markdown-code-widgets';
 import { MermaidRenderer } from './MermaidRenderer';
+import { RenderErrorBoundary } from '@/app/components/RenderErrorBoundary';
 import { LocalFileInlineImage } from './LocalFileInlineImage';
 import { MarkdownYoutubeEmbed } from './MarkdownYoutubeEmbed';
 import { MarkdownVideoPlayer } from './MarkdownVideoPlayer';
@@ -293,7 +294,16 @@ export function MarkdownCode({
 
     if (isMarkdownBlockCode(className, inline)) {
         if (isMermaid) {
-            return <MermaidRenderer chart={String(children).replace(/\n$/, '')} />;
+            const chart = String(children).replace(/\n$/, '');
+            return (
+                <RenderErrorBoundary
+                    logLabel="[mermaid]"
+                    message="This diagram could not be shown."
+                    resetKey={chart}
+                >
+                    <MermaidRenderer chart={chart} />
+                </RenderErrorBoundary>
+            );
         }
         return (
             <code className={className} {...props}>

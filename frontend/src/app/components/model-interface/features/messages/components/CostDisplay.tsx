@@ -4,6 +4,7 @@ import { ChatMessage as ChatMessageType } from '@/app/components/model-interface
 import { timeAgo } from "@/lib/time-ago";
 import { formatTime } from '@/lib/utils/modelInterfaceUtils';
 import { getModelRoundCount } from './usageMetrics.utils';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 export type CostDisplayVariant = 'full' | 'costOnly' | 'metaOnly';
 
@@ -28,6 +29,7 @@ export const CostDisplay: React.FC<CostDisplayProps> = ({
     beforeTime,
     variant = 'full',
 }) => {
+    const { t } = useLanguage();
     const modelRoundCount = getModelRoundCount(msg.usage);
 
     const costRow =
@@ -37,13 +39,13 @@ export const CostDisplay: React.FC<CostDisplayProps> = ({
                     {formatCredits(msg.cost_credits, { compact: true })}
                     {modelRoundCount !== undefined && modelRoundCount > 1 && (
                         <span className="ml-1 font-normal text-[#94A3B8]">
-                            · {modelRoundCount} calls
+                            · {modelRoundCount} {t('chat.calls', 'calls')}
                         </span>
                     )}
                 </span>
             ) : streaming ? (
                 showCosts ? (
-                    <span className="animate-pulse text-[#94A3B8]">calculating...</span>
+                    <span className="animate-pulse text-[#94A3B8]">{t('chat.calculating', 'calculating...')}</span>
                 ) : null
             ) : showCosts ? (
                 <span className="text-[#94A3B8]">-</span>

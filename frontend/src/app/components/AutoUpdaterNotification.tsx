@@ -198,8 +198,15 @@ export default function AutoUpdaterNotification({ previewMode = false }: { previ
     });
 
     const unbindError = api.onUpdateError((info: UpdateErrorInfo) => {
-      setUpdateState("error");
-      setErrorMessage(info.message);
+      // Only display the error dialog if the user was actively attempting to download
+      setUpdateState((prev) => {
+        if (prev === "downloading") {
+          setErrorMessage(info.message);
+          return "error";
+        }
+        console.warn("[AutoUpdater] Passive update check notice:", info.message);
+        return prev;
+      });
     });
 
     const checkTimer = setTimeout(() => api.checkForUpdates(), 5000);

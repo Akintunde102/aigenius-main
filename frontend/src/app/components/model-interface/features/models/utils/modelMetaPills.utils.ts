@@ -33,6 +33,12 @@ export type ModelCardSlots = {
   supporting: ModelMetaPill[];
 };
 
+export type ModelCardSlotLabels = {
+  perMessage: string;
+  free: string;
+  burnWarning: (percent: number) => string;
+};
+
 export function formatContextLength(n: number): string {
   if (!Number.isFinite(n) || n <= 0) return "";
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M ctx`;
@@ -70,7 +76,13 @@ export function buildModelCardSlots(
   model: Model,
   averageCost: number,
   wallet?: number | null,
+  labels?: ModelCardSlotLabels,
 ): ModelCardSlots {
+  const perMessage = labels?.perMessage ?? " / msg";
+  const freeLabel = labels?.free ?? "Free";
+  const burnWarningFor =
+    labels?.burnWarning ??
+    ((percent: number) => getModelCreditBurnWarning(percent));
   const provider = getProvider(model.id);
   const providerLabel = getProviderLabel(provider);
 
@@ -93,14 +105,14 @@ export function buildModelCardSlots(
     cost =
       averageCost > 0
         ? {
-            label: `${formatNGN(averageCost, true)} / msg`,
+            label: `${formatNGN(averageCost, true)}${perMessage}`,
             isPaid: true,
             burnPercentage,
             burnWarning: isHighBurn
-              ? getModelCreditBurnWarning(burnPercentage)
+              ? burnWarningFor(burnPercentage)
               : null,
           }
-        : { label: "Free", isPaid: false };
+        : { label: freeLabel, isPaid: false };
   }
 
   return {

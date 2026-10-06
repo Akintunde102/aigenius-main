@@ -66,3 +66,15 @@ export function filterConversationPickableModelIds(
   const pickable = new Set(filterConversationPickableModels(models).map((m) => m.id));
   return ids.filter((id) => pickable.has(id));
 }
+
+/** Non-text media models: image, video, speech, audio, transcription */
+export function isNonTextModel(model: Model | null | undefined): boolean {
+  if (!model?.id) return false;
+  if (OPENROUTER_ROUTER_IDS.has(model.id)) return false;
+  const modality = catalogModalityFromModel(model);
+  return modality !== null && modality !== "text";
+}
+
+export function filterNonTextModels(models: Model[]): Model[] {
+  return models.filter(isNonTextModel);
+}

@@ -6,6 +6,7 @@ import { SHOW_LEGACY_FILTERS } from '@/app/components/model-interface/shared/con
 import { hasFileOrImageInputSupport } from '@/app/components/model-interface/shared/utils';
 import { getPinnedModels, setPinnedModels, getDeletedModels, setDeletedModels } from '@/lib/utils/modelInterfaceUtils';
 import { Model } from '@/app/components/model-interface/shared/types';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 interface ModelListSidebarOptimizedProps {
     models: Model[];
@@ -42,6 +43,7 @@ export const ModelListSidebarOptimized: React.FC<ModelListSidebarOptimizedProps>
     hasWebSearchCapability,
     showNaira = false
 }) => {
+    const { t } = useLanguage();
     const [selectedModalities, setSelectedModalities] = useState<string[]>([]);
     const [selectedOutputModalities, setSelectedOutputModalities] = useState<string[]>([]);
     const [pinnedModels, setPinnedModelsState] = useState<string[]>([]);
@@ -168,8 +170,8 @@ export const ModelListSidebarOptimized: React.FC<ModelListSidebarOptimizedProps>
                     </div>
                 ) : filteredModels.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
-                        <p>No models found</p>
-                        <p className="text-sm">Try adjusting your search or filters</p>
+                        <p>{t('modelPicker.noModelsShort', 'No models found')}</p>
+                        <p className="text-sm">{t('modelPicker.noModelsShortHint', 'Try adjusting your search or filters')}</p>
                     </div>
                 ) : (
                     filteredModels.map((model) => (

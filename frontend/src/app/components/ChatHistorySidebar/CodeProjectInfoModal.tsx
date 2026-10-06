@@ -7,6 +7,7 @@ import { FolderKanban, FolderOpen, MessageSquare, Pencil, Star } from "lucide-re
 import type { CodeProject } from "@/lib/calls/code-projects";
 import type { ChatSession } from "@/app/components/model-interface/shared/types";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
+import toast from "react-hot-toast";
 
 type CodeProjectUpdateInput = {
   name?: string;
@@ -18,6 +19,7 @@ type CodeProjectInfoModalProps = {
   project: CodeProject;
   chatHistory: ChatSession[];
   isActive: boolean;
+  folderMissing?: boolean;
   onClose: () => void;
   onDelete?: (id: string) => Promise<void>;
   onUpdate?: (id: string, input: CodeProjectUpdateInput) => Promise<unknown>;
@@ -38,6 +40,7 @@ export function CodeProjectInfoModal({
   project,
   chatHistory,
   isActive,
+  folderMissing = false,
   onClose,
   onDelete,
   onUpdate,
@@ -121,12 +124,16 @@ export function CodeProjectInfoModal({
     try {
       const result = await openFile(project.rootPath);
       if (!result.ok && result.error) {
-        console.error("[CodeProjectInfoModal] open folder:", result.error);
+        toast.error(
+          folderMissing
+            ? "Project folder is missing on disk. Relink it from the prompt in the sidebar."
+            : result.error,
+        );
       }
     } finally {
       setOpeningFolder(false);
     }
-  }, [project.rootPath]);
+  }, [folderMissing, project.rootPath]);
 
   const commitName = async () => {
     const trimmed = nameDraft.trim();

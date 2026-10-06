@@ -13,11 +13,12 @@ import { formatContextLength } from "../utils/modelMetaPills.utils";
 import {
   computeModelRequiredBalance,
   getModelCreditBurnPercentage,
-  getModelWalletLockShortHint,
+  computeCreditsShortfall,
   isModelPickLocked,
 } from "../utils/modelWalletAffordance.utils";
 import { ModelWalletLockIndicator } from "./ModelWalletLockIndicator";
 import { ModelCreditBurnIndicator } from "./ModelCreditBurnIndicator";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 type RecentModelConfirmModalProps = {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export function RecentModelConfirmModal({
   onAddCredits,
   selectedModelId,
 }: RecentModelConfirmModalProps) {
+  const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -69,8 +71,8 @@ export function RecentModelConfirmModal({
   const averageCost = getModelAverageRequestCredits(model);
   const costLabel = Number.isFinite(averageCost)
     ? averageCost > 0
-      ? `${formatNGN(averageCost, true)} / msg`
-      : "Free"
+      ? `${formatNGN(averageCost, true)} ${t("modelPicker.perMessage", "/ msg")}`
+      : t("modelPicker.freeLabel", "Free")
     : null;
   const contextLabel = formatContextLength(model.context_length);
   const requiredBalance = computeModelRequiredBalance(model, averageCost);
@@ -118,19 +120,19 @@ export function RecentModelConfirmModal({
                     className="text-[11px] font-semibold uppercase tracking-wider"
                     style={{ color: "var(--modal-muted-fg)" }}
                   >
-                    Recently Picked
+                    {t("modelPicker.recentlyPicked", "Recently Picked")}
                   </p>
                   <h2
                     id="recent-model-confirm-title"
                     className="truncate text-base font-semibold leading-snug"
                   >
-                    Use {displayName}?
+                    {t("modelPicker.useModelPrompt", "Use {name}?", { name: displayName })}
                   </h2>
                 </div>
               </div>
               <button
                 type="button"
-                aria-label="Close"
+                aria-label={t("common.close", "Close")}
                 className="shrink-0 rounded-lg p-2 transition-colors hover:[background-color:var(--sidebar-row-hover)] focus:outline-none"
                 style={{ color: "var(--modal-muted-fg)" }}
                 onClick={onClose}
@@ -172,7 +174,7 @@ export function RecentModelConfirmModal({
                 }}
                 onClick={onClose}
               >
-                Cancel
+                {t("common.cancel", "Cancel")}
               </button>
               <button
                 type="button"
@@ -183,11 +185,15 @@ export function RecentModelConfirmModal({
                 autoFocus
                 title={
                   isWalletLocked
-                    ? getModelWalletLockShortHint(requiredBalance, wallet)
+                    ? t('modelPicker.walletLockShort', 'Load {more} more credits to use', {
+                        more: computeCreditsShortfall(wallet, requiredBalance),
+                      })
                     : `Use ${displayName}`
                 }
               >
-                {isWalletLocked ? "Load credits to use" : "Use model"}
+                {isWalletLocked
+                  ? t("modelPicker.loadCreditsToUse", "Load credits to use")
+                  : t("modelPicker.useModel", "Use model")}
               </button>
             </div>
           </div>

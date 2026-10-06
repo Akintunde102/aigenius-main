@@ -2,6 +2,8 @@ import React from "react";
 import type { Personality } from "@/lib/calls/model-chat-conversation";
 import { ModalContainer } from "../features";
 import { PersonalityModal, PublishConversationModal } from "../features/modals";
+import { NonTextModelsModal } from "../features/models/components";
+import type { Model } from "../shared/types";
 import type { PublishState } from "../ModelInterface.types";
 
 type Props = {
@@ -17,6 +19,10 @@ type Props = {
   publishState: PublishState;
   setPublishState: (state: PublishState) => void;
   onPublishConversation: (title: string, description?: string) => Promise<string>;
+  showNonTextModelsModal?: boolean;
+  setShowNonTextModelsModal?: (value: boolean) => void;
+  nonTextModels?: Model[];
+  nonTextModelsLoading?: boolean;
 };
 
 export function ModelInterfaceModalStack({
@@ -30,6 +36,10 @@ export function ModelInterfaceModalStack({
   publishState,
   setPublishState,
   onPublishConversation,
+  showNonTextModelsModal = false,
+  setShowNonTextModelsModal,
+  nonTextModels = [],
+  nonTextModelsLoading = false,
 }: Props) {
   return (
     <>
@@ -58,6 +68,15 @@ export function ModelInterfaceModalStack({
           session={publishState.session}
           isRepublishing={publishState.kind === "republish"}
           existingUrl={publishState.existingUrl}
+        />
+      )}
+
+      {showNonTextModelsModal && setShowNonTextModelsModal && (
+        <NonTextModelsModal
+          isOpen={showNonTextModelsModal}
+          onClose={() => setShowNonTextModelsModal(false)}
+          models={nonTextModels}
+          modelsLoading={nonTextModelsLoading}
         />
       )}
     </>

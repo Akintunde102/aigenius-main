@@ -93,16 +93,14 @@ describe("buildModelCardSlots", () => {
   });
 
   it("includes credit burn warning when single request burns >= 60% of wallet", () => {
-    // 0.06 USD * 1000 = 60 credits. Wallet = 100 credits -> 60% burn
-    const slots = buildModelCardSlots(baseModel, 0.06, 100);
+    const slots = buildModelCardSlots(baseModel, 60, 100);
 
     expect(slots.cost?.burnPercentage).toBe(60);
     expect(slots.cost?.burnWarning).toBe("Burns ~60% of credits");
   });
 
   it("omits burn warning when cost is below 60% threshold", () => {
-    // 0.01 USD * 1000 = 10 credits. Wallet = 100 credits -> 10% burn
-    const slots = buildModelCardSlots(baseModel, 0.01, 100);
+    const slots = buildModelCardSlots(baseModel, 10, 100);
 
     expect(slots.cost?.burnPercentage).toBe(10);
     expect(slots.cost?.burnWarning).toBeNull();

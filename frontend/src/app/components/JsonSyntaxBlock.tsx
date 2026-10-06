@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, type ReactNode } from "react";
+import { RenderErrorBoundary } from "@/app/components/RenderErrorBoundary";
 import hljs from "highlight.js/lib/core";
 import json from "highlight.js/lib/languages/json";
 import "highlight.js/styles/github.css";
@@ -60,7 +61,15 @@ export type JsonOrPlainTextBlockProps = {
 /**
  * If `text` parses as JSON object/array, renders highlighted JSON; otherwise plain preformatted text.
  */
-export function JsonOrPlainTextBlock({ text, className, preClassName, codeClassName }: JsonOrPlainTextBlockProps) {
+export function JsonOrPlainTextBlock(props: JsonOrPlainTextBlockProps) {
+  return (
+    <RenderErrorBoundary logLabel="[json-or-text]">
+      <JsonOrPlainTextBlockView {...props} />
+    </RenderErrorBoundary>
+  );
+}
+
+function JsonOrPlainTextBlockView({ text, className, preClassName, codeClassName }: JsonOrPlainTextBlockProps) {
   const parsed = useMemo(() => {
     const t = text.trim();
     if (!t) {
@@ -108,7 +117,7 @@ export function JsonOrPlainTextBlock({ text, className, preClassName, codeClassN
   );
 }
 
-export function JsonSyntaxBlock({
+function JsonSyntaxBlockView({
   value,
   className,
   preClassName,
@@ -147,5 +156,13 @@ export function JsonSyntaxBlock({
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </pre>
+  );
+}
+
+export function JsonSyntaxBlock(props: JsonSyntaxBlockProps) {
+  return (
+    <RenderErrorBoundary logLabel="[json-view]">
+      <JsonSyntaxBlockView {...props} />
+    </RenderErrorBoundary>
   );
 }

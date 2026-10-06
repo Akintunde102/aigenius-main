@@ -10,6 +10,8 @@ import { useLandingScroll } from "./LandingShell";
 import { Logo } from "./Logo";
 import type { Platform } from "./platforms";
 import { ThemeToggle } from "./ThemeToggle";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
+import { FiGlobe } from "react-icons/fi";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
@@ -22,6 +24,7 @@ interface SiteHeaderProps {
 }
 
 export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
+  const { t, openLanguageModal } = useLanguage();
   const container = useLandingScroll();
   const { scrollY } = useScroll({ container: container ?? undefined });
   const [atTop, setAtTop] = useState(true);
@@ -41,6 +44,14 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
   const onImage = atTop && !menuOpen;
   const linkTone = onImage ? "text-white/75 hover:text-white" : "text-lp-muted hover:text-lp-fg";
 
+  const getNavLinkLabel = (label: string, href: string) => {
+    if (href === "#models") return t("landing.models", label);
+    if (href === "#desktop") return t("landing.desktop", label);
+    if (href === "#tools") return t("landing.tools", label);
+    if (href === "#pricing") return t("landing.pricing", label);
+    return label;
+  };
+
   return (
     // -mb-16 pulls the hero up underneath the transparent header.
     <header
@@ -55,7 +66,7 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
           {NAV_LINKS.map((link) => (
             <li key={link.href}>
               <a href={link.href} className={`transition-colors duration-150 ${linkTone}`}>
-                {link.label}
+                {getNavLinkLabel(link.label, link.href)}
               </a>
             </li>
           ))}
@@ -66,15 +77,28 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
             href="/login"
             className={`inline-flex h-9 items-center rounded-full px-3.5 text-sm ${linkTone} ${PRESS}`}
           >
-            Sign in
+            {t("landing.signIn", "Sign in")}
           </Link>
+          <button
+            type="button"
+            aria-label={t("landing.selectLanguage", "Select Language")}
+            title={t("landing.selectLanguage", "Select Language")}
+            onClick={openLanguageModal}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${
+              onImage
+                ? "text-white/80 hover:bg-white/15 hover:text-white"
+                : "text-lp-muted hover:bg-lp-tint hover:text-lp-fg"
+            } ${PRESS}`}
+          >
+            <FiGlobe className="h-[18px] w-[18px]" />
+          </button>
           <ThemeToggle onImage={onImage} />
           <div className="ml-1 hidden sm:block">
             <DownloadCta size="sm" initialPlatform={initialPlatform} onImage={onImage} />
           </div>
           <button
             type="button"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-label={menuOpen ? t("common.close", "Close menu") : t("common.search", "Open menu")}
             aria-expanded={menuOpen}
             aria-controls={MENU_ID}
             onClick={() => setMenuOpen((open) => !open)}
@@ -103,7 +127,7 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
                     onClick={() => setMenuOpen(false)}
                     className="block rounded-xl px-3 py-3 text-lg transition-colors duration-150 hover:bg-lp-tint"
                   >
-                    {link.label}
+                    {getNavLinkLabel(link.label, link.href)}
                   </a>
                 </li>
               ))}

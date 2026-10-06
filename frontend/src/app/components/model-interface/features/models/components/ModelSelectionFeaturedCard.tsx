@@ -11,6 +11,7 @@ import {
 import { isConversationPickableModel } from '../utils/modelConversationEligibility.utils';
 import { ModelWalletLockIndicator } from './ModelWalletLockIndicator';
 import { ModelCreditBurnIndicator } from './ModelCreditBurnIndicator';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 const ToolsCapabilityIcon = ({ size = 10, className = '' }: { size?: number; className?: string }) => (
     <FiLayers size={size} className={className} aria-hidden strokeWidth={1.75} />
@@ -48,6 +49,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
     onAddCredits,
     isPreviewedRecent = false,
 }: ModelSelectionFeaturedCardProps) {
+    const { t } = useLanguage();
     const supportsTools = hasExtraToolingCapability(model);
     const displayName = getModelDisplayName(model);
     const requiredBalance = useMemo(
@@ -64,9 +66,18 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
     );
     const isCatalogOnly = !isConversationPickableModel(model);
     const isPrimaryDisabled = isWalletLocked || isCatalogOnly;
+    const slotLabels = useMemo(
+        () => ({
+            perMessage: ` ${t('modelPicker.perMessage', '/ msg')}`,
+            free: t('modelPicker.freeLabel', 'Free'),
+            burnWarning: (percent: number) =>
+                t('modelPicker.burnWarning', 'Burns ~{percent}% of credits', { percent }),
+        }),
+        [t],
+    );
     const slots = useMemo(
-        () => buildModelCardSlots(model, averageCost, wallet),
-        [model, averageCost, wallet],
+        () => buildModelCardSlots(model, averageCost, wallet, slotLabels),
+        [model, averageCost, wallet, slotLabels],
     );
 
     const handlePrimaryAction = () => {
@@ -100,7 +111,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                 }
             }}
             aria-disabled={isWalletLocked}
-            aria-label={isCatalogOnly ? `${displayName} — catalog preview, not for text chat` : undefined}
+            aria-label={isCatalogOnly ? t('modelPicker.catalogPreviewCardAria', '{name} — catalog preview, not for text chat', { name: displayName }) : undefined}
         >
             <div className="app-model-card__layout">
                 <div className="min-w-0 flex-1">
@@ -111,7 +122,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                         {supportsTools && (
                             <span
                                 className="app-model-card__tools-hint shrink-0 inline-flex items-center"
-                                title="Extra tooling (Gmail, Keep, etc.)"
+                                title={t('modelPicker.extraToolingTitle', 'Extra tooling (Gmail, Keep, etc.)')}
                             >
                                 <ToolsCapabilityIcon size={10} />
                             </span>
@@ -130,7 +141,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                         />
                     ) : isCatalogOnly ? (
                         <span className="block truncate app-model-card__cost text-[var(--sidebar-muted-fg)]">
-                            Catalog only — not for text chat
+                            {t('modelPicker.catalogOnlyHint', 'Catalog only — not for text chat')}
                         </span>
                     ) : slots.cost ? (
                         <span className="block truncate app-model-card__cost">
@@ -144,7 +155,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                         className={`app-model-card__date shrink-0 ${
                             isMobile ? '!text-[9.5px]' : ''
                         }`}
-                        title={`Released: ${slots.release}`}
+                        title={t('modelPicker.releasedTitle', 'Released: {date}', { date: slots.release })}
                     >
                         {slots.release}
                     </span>
@@ -153,10 +164,10 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                 {isPreviewedRecent && !isCatalogOnly && (
                     <span
                         className="app-model-card__previewed-cta shrink-0"
-                        aria-label="Click to use this model for chat"
+                        aria-label={t('modelPicker.useModelForChatAria', 'Click to use this model for chat')}
                     >
                         <FiArrowRight size={10} strokeWidth={2.5} />
-                        <span>Click to use</span>
+                        <span>{t('modelPicker.clickToUse', 'Click to use')}</span>
                     </span>
                 )}
 

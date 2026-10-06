@@ -186,6 +186,47 @@ async function executeReadFile(args: Record<string, unknown>): Promise<ToolExecu
     if (st.size > MAX_READ_CHARS * 4) {
       return { ok: false, error: 'file too large for read_file preview' };
     }
+
+    const ext = path.extname(resolved).slice(1).toLowerCase();
+    if (ext === 'pdf') {
+      try {
+        const { readPdfText } = await import('../search/pdf-text-extract.js');
+        const modelsDir = process.env.AIGENIUS_MODELS_DIR?.trim() || path.join(process.cwd(), 'models');
+        const pdfRes = await readPdfText({ filePath: resolved, modelsDir });
+        const body = pdfRes.content.trim();
+        if (!body) {
+          return {
+            ok: false,
+            error: `Error: could not extract text from PDF document — ${path.basename(resolved)}. The PDF may be scanned, encrypted, or empty.`,
+          };
+        }
+        const note = pdfRes.method === 'ocr'
+          ? '> Note: Text extracted from PDF via OCR.'
+          : '> Note: Text extracted from PDF document (.pdf). Embedded text layer used when available.';
+        return {
+          ok: true,
+          result: `# ${path.basename(resolved)}\n${note}\n\n${body}`,
+          rawData: { path: resolved, content: body, method: pdfRes.method },
+        };
+      } catch (pdfErr) {
+        return {
+          ok: false,
+          error: `Error: could not extract text from PDF document — ${path.basename(resolved)} (${pdfErr instanceof Error ? pdfErr.message : String(pdfErr)})`,
+        };
+      }
+    }
+
+    const handle = await fs.open(resolved, 'r');
+    const probeBuf = Buffer.alloc(8192);
+    const { bytesRead } = await handle.read(probeBuf, 0, 8192, 0);
+    await handle.close();
+    if (bytesRead > 0 && probeBuf.subarray(0, bytesRead).includes(0)) {
+      return {
+        ok: false,
+        error: `Error: unsupported file type — ${path.basename(resolved)} (binary)`,
+      };
+    }
+
     const text = await fs.readFile(resolved, 'utf8');
     const limit = typeof args.limit === 'number' ? args.limit : MAX_READ_CHARS;
     const offset = typeof args.offset === 'number' ? Math.max(0, args.offset) : 0;
