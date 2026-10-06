@@ -6,7 +6,7 @@ import { Hanken_Grotesk, Newsreader } from "next/font/google";
  * If either import fails on your Next version, delete it and use the app font.
  */
 export const sans = Hanken_Grotesk({ subsets: ["latin"], display: "swap" });
-const display = Newsreader({ subsets: ["latin"], display: "swap" });
+const display = Newsreader({ subsets: ["latin"], display: "swap", adjustFontFallback: false });
 
 export const DISPLAY = display.className;
 export const H1 = `${DISPLAY} text-[clamp(2.75rem,7.4vw,5.75rem)] font-normal leading-[0.98] tracking-[-0.035em]`;

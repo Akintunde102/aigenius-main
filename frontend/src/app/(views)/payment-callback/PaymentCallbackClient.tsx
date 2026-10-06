@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { motion, useReducedMotion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { clearUserDetailsCache } from '@/lib/calls/get-logged-user-details';
@@ -24,8 +23,6 @@ import {
     reconcilePaymentWithBackend,
     type WalletPaymentVerification,
 } from '@/lib/wallet-pending-payment-poll';
-import { LandingAmbientBackground } from '@/app/components/ui';
-import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
 import { cn } from '@/lib/utils';
 import {
   trackWalletTopUpCompleted,
@@ -35,70 +32,21 @@ import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 type VerifyPaymentResponse = WalletPaymentVerification;
 
-type StatusTone = 'loading' | 'success' | 'confirming' | 'failed';
+import {
+    StatusCard,
+    StatusIcon,
+    StatusShell,
+    PRIMARY_BUTTON,
+    STATUS_TITLE,
+    STATUS_TEXT,
+    type StatusTone,
+} from "./PaymentStatusUi";
 
 type ServerCallEnvelope<T> = {
     dataReturned: T;
 };
 
 const VERIFY_TRIGGER_KEY_PREFIX = 'aigenius:payment-verify-triggered:';
-
-function StatusCard({ tone, children }: { tone: StatusTone; children: React.ReactNode }) {
-    return (
-        <div style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            textAlign: "center"
-        }}>
-            {children}
-        </div>
-    );
-}
-
-function StatusShell({ children }: { children: React.ReactNode }) {
-    return (
-        <div className="content-centered">
-            {children}
-        </div>
-    );
-}
-
-function StatusIcon({
-    tone,
-    children,
-}: {
-    tone: StatusTone;
-    children: React.ReactNode;
-}) {
-    const toneColors: Record<StatusTone, { border: string; bg: string; color: string }> = {
-        loading: { border: "rgba(6, 182, 212, 0.2)", bg: "rgba(6, 182, 212, 0.1)", color: "#06b6d4" },
-        success: { border: "rgba(16, 185, 129, 0.2)", bg: "rgba(16, 185, 129, 0.1)", color: "#10b981" },
-        confirming: { border: "rgba(245, 158, 11, 0.2)", bg: "rgba(245, 158, 11, 0.1)", color: "#f59e0b" },
-        failed: { border: "rgba(244, 63, 94, 0.2)", bg: "rgba(244, 63, 94, 0.1)", color: "#f43f5e" }
-    };
-    const colors = toneColors[tone];
-
-    return (
-        <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "3.5rem",
-            height: "3.5rem",
-            borderRadius: "1rem",
-            border: `1px solid ${colors.border}`,
-            background: colors.bg,
-            color: colors.color,
-            marginBottom: "1.5rem"
-        }}>
-            {children}
-        </div>
-    );
-}
-
-const PRIMARY_BUTTON =
-    'mt-8 inline-flex items-center justify-center rounded-xl bg-[#18181b] px-6 py-3 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99] border-none cursor-pointer';
 
 export function PaymentCallbackLoadingView() {
     const { t } = useLanguage();
@@ -108,11 +56,14 @@ export function PaymentCallbackLoadingView() {
                 <StatusIcon tone="loading">
                     <Loader2 size={32} className="animate-spin" aria-hidden />
                 </StatusIcon>
-                <h1 className="headline">
+                <h1 className={STATUS_TITLE}>
                     {t('payment.processingTitle', 'Processing payment')}
                 </h1>
-                <p className="subtext">
-                    {t('payment.verifyingSubtitle', 'Verifying your transaction…')}
+                <p className={STATUS_TEXT}>
+                    {t(
+                        'payment.verifyingSubtitle',
+                        'Verifying your transaction with your payment provider…',
+                    )}
                 </p>
             </StatusCard>
         </StatusShell>
@@ -486,16 +437,18 @@ export default function PaymentCallbackClient() {
                     <StatusIcon tone="success">
                         <CheckCircle2 size={32} aria-hidden />
                     </StatusIcon>
-                    <h1 className="headline">
+                    <h1 className={STATUS_TITLE}>
                         Payment successful
                     </h1>
-                    <p className="subtext">
+                    <p className={STATUS_TEXT}>
                         {searchParams.get('desktop') === '1'
                             ? 'Return to the app — your wallet will update automatically.'
                             : 'Your wallet has been verified and updated.'}
                     </p>
                     {searchParams.get('desktop') !== '1' ? (
-                        <p className="subtext" style={{ marginTop: '0.5rem' }}>{t('payment.returningToWallet', 'Returning you to your wallet…')}</p>
+                        <p className={cn(STATUS_TEXT, 'mt-2')}>
+                            {t('payment.returningToWallet', 'Returning you to your wallet…')}
+                        </p>
                     ) : null}
                 </StatusCard>
             </StatusShell>
@@ -515,10 +468,10 @@ export default function PaymentCallbackClient() {
                     <StatusIcon tone="confirming">
                         <AlertTriangle size={32} aria-hidden />
                     </StatusIcon>
-                    <h1 className="headline">
+                    <h1 className={STATUS_TITLE}>
                         Confirming payment
                     </h1>
-                    <p className="subtext">
+                    <p className={STATUS_TEXT}>
                         {isDesktopHandoff
                             ? 'We could not verify your payment in this browser yet. Return to the app — it will confirm your payment and update your wallet automatically.'
                             : 'We could not verify your payment yet. You can wait here or return to your wallet — your balance will update automatically once payment is confirmed.'}
@@ -547,10 +500,10 @@ export default function PaymentCallbackClient() {
                 <StatusIcon tone="failed">
                     <XCircle size={32} aria-hidden />
                 </StatusIcon>
-                <h1 className="headline">
+                <h1 className={STATUS_TITLE}>
                     Payment failed
                 </h1>
-                <p className="subtext">
+                <p className={STATUS_TEXT}>
                     There was an issue processing your payment.
                 </p>
                 <button

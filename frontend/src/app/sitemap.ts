@@ -8,6 +8,7 @@ import {
 import { hostedFileAbsoluteUrl } from '@/app/(views)/h/hostedFileSeo.utils';
 
 export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const now = new Date();

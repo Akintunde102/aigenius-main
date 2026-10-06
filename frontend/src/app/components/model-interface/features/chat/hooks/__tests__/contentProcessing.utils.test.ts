@@ -101,6 +101,35 @@ describe('contentToMarkdownText', () => {
     });
 });
 
+describe('processStreamingContent', () => {
+    it('preserves image_url blocks from array chunks', () => {
+        const result = processStreamingContent([
+            { type: CONTENT_TYPES.TEXT, text: 'caption' },
+            { type: CONTENT_TYPES.IMAGE_URL, image_url: { url: 'https://img.test/1.png' } },
+        ]);
+
+        expect(result).toEqual([
+            { type: CONTENT_TYPES.TEXT, text: 'caption', image_url: undefined, input_audio: undefined },
+            {
+                type: CONTENT_TYPES.IMAGE_URL,
+                text: undefined,
+                image_url: { url: 'https://img.test/1.png' },
+                input_audio: undefined,
+            },
+        ]);
+    });
+});
+
+describe('contentToMarkdownText', () => {
+    it('emits markdown images instead of a placeholder', () => {
+        const blocks = [
+            { type: CONTENT_TYPES.TEXT, text: 'caption ' },
+            { type: CONTENT_TYPES.IMAGE_URL, image_url: { url: 'https://img.test/1.png' } },
+        ];
+        expect(contentToMarkdownText(blocks as any)).toBe('caption \n![image](https://img.test/1.png)\n');
+    });
+});
+
 describe('contentToDisplayText', () => {
     it('flattens nested text parts in blocks', () => {
         const blocks = [
