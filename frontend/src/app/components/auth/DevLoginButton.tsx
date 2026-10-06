@@ -8,6 +8,10 @@ import {
 import { resolveDevLoginEmail } from "@/app/components/auth/dev-login.utils";
 import { useDesktopAuthFlow } from "@/lib/hooks/use-desktop-auth-flow";
 
+/** Dev-only control. Dashed so it never reads as a real sign-in option. Styling only: the logic below is unchanged. */
+const DEV_BUTTON_CLASS =
+  "inline-flex h-10 w-full items-center justify-center rounded-full border border-dashed border-lp-line bg-lp-tint px-4 text-xs font-medium text-lp-muted transition-[background-color,color,transform] duration-150 hover:bg-lp-tint-hover hover:text-lp-fg active:scale-[0.97]";
+
 export function DevLoginButton() {
   const { finishOAuthToken } = useDesktopAuthFlow();
 
@@ -47,7 +51,7 @@ export function DevLoginButton() {
   };
 
   return (
-    <button type="button" onClick={handleDevLogin} className="secondary-btn">
+    <button type="button" onClick={handleDevLogin} className={DEV_BUTTON_CLASS}>
       Developer Login (Bypass)
     </button>
   );

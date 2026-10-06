@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { getStoredUserDetailsSnapshot } from '@/lib/calls/get-logged-user-details';
 import { hasAuthSession } from '@/lib/utils/auth-session';
 import { getViewableHostedFileBySlug, type HostedFilePublic } from '@/lib/calls/hosted-file';
+import { DISPLAY } from '@/app/components/landing/typography';
+import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
+import { cn } from '@/lib/utils';
 import HostedMarkdownDetailClient from './HostedMarkdownDetailClient';
 
 export default function HostedMarkdownAccessClient({ slug }: { slug: string }) {
@@ -58,26 +61,30 @@ export default function HostedMarkdownAccessClient({ slug }: { slug: string }) {
                 };
 
     return (
-        <div className="flex min-h-[50vh] flex-col items-center justify-center bg-[var(--chat-canvas-bg)] px-4 py-16 text-center text-[var(--app-ink-900)]">
-            <div className="max-w-md rounded-2xl border border-[var(--chat-composer-border)] bg-[var(--chat-composer-bg)] px-8 py-10">
-                <h1 className="text-xl font-semibold">{copy.title}</h1>
-                <p className="mt-3 text-sm text-[var(--chat-muted-fg)]">{copy.body}</p>
-                <div className="mt-6 flex flex-wrap justify-center gap-3">
-                    {status === 'signin' ? (
-                        <Link
-                            href={signInHref}
-                            className="inline-flex h-10 items-center rounded-lg bg-[var(--chat-accent)] px-4 text-sm font-semibold text-white"
-                        >
-                            Sign in
-                        </Link>
-                    ) : null}
+        <div className="mx-auto flex min-h-[50vh] w-full max-w-md flex-col items-center justify-center px-5 py-24 text-center">
+            <h1 className={`${DISPLAY} text-4xl font-normal leading-[1.05] tracking-[-0.03em] sm:text-5xl`}>{copy.title}</h1>
+            <p className="mt-4 text-lg leading-relaxed text-lp-muted">{copy.body}</p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+                {status === 'signin' ? (
                     <Link
-                        href="/h"
-                        className="inline-flex font-medium text-[var(--chat-accent)] underline underline-offset-4"
+                        href={signInHref}
+                        className={cn(
+                            'inline-flex h-11 items-center rounded-full bg-stone-900 px-6 text-[15px] font-medium text-white transition-[transform,opacity] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97] dark:bg-white dark:text-stone-900',
+                            FOCUS_RING,
+                        )}
                     >
-                        Browse public pages
+                        Sign in
                     </Link>
-                </div>
+                ) : null}
+                <Link
+                    href="/h"
+                    className={cn(
+                        'font-medium underline underline-offset-4 transition-colors duration-150 hover:text-lp-muted',
+                        FOCUS_RING,
+                    )}
+                >
+                    Browse public pages
+                </Link>
             </div>
         </div>
     );

@@ -1,16 +1,32 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+  type SyntheticEvent,
+} from "react";
 import { XIcon } from "./icons";
 
 /** Exit is faster than enter (200ms in, 150ms out): the system responds quickly once you decide. */
 const EXIT_MS = 150;
+
+type ModalSize = "md" | "lg";
+
+const SIZE_CLASS: Record<ModalSize, string> = {
+  md: "max-w-md",
+  lg: "max-w-2xl",
+};
 
 interface ModalProps {
   open: boolean;
   onClose: () => void;
   title: string;
   description?: string;
+  /** Panel width. Defaults to "md". */
+  size?: ModalSize;
   children: ReactNode;
 }
 
@@ -21,7 +37,14 @@ interface ModalProps {
  * light = near-white panel on a dark scrim, dark = lifted stone panel on a near-black scrim.
  * Opacity + transform only, centered origin, scale starts at 0.97 never 0, reduced motion removes it.
  */
-export function Modal({ open, onClose, title, description, children }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  description,
+  size = "md",
+  children,
+}: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [visible, setVisible] = useState(false);
   const titleId = useId();
@@ -64,7 +87,7 @@ export function Modal({ open, onClose, title, description, children }: ModalProp
       }}
       aria-labelledby={titleId}
       aria-describedby={description ? descId : undefined}
-      className={`m-auto max-h-[calc(100%-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl bg-stone-50 p-0 text-stone-900 shadow-2xl transition-[opacity,transform] ease-out-strong dark:bg-stone-800 dark:text-stone-100 motion-reduce:transition-none ${duration} ${
+      className={`m-auto max-h-[calc(100%-2rem)] w-[calc(100%-2rem)] ${SIZE_CLASS[size]} overflow-y-auto rounded-2xl bg-stone-50 p-0 text-stone-900 shadow-2xl transition-[opacity,transform] ease-out-strong dark:bg-stone-800 dark:text-stone-100 motion-reduce:transition-none ${duration} ${
         visible ? "scale-100 opacity-100" : "scale-[0.97] opacity-0"
       } backdrop:bg-black/0 backdrop:backdrop-blur-none backdrop:transition-[background-color,backdrop-filter] backdrop:duration-200 backdrop:ease-out-strong data-[visible=true]:backdrop:bg-black/70 data-[visible=true]:backdrop:backdrop-blur-sm motion-reduce:backdrop:transition-none`}
     >
@@ -73,7 +96,10 @@ export function Modal({ open, onClose, title, description, children }: ModalProp
           {title}
         </h2>
         {description && (
-          <p id={descId} className="mt-1.5 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+          <p
+            id={descId}
+            className="mt-1.5 text-sm leading-relaxed text-stone-500 dark:text-stone-400"
+          >
             {description}
           </p>
         )}
