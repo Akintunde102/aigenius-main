@@ -17,3 +17,6 @@ export { default as ModelSelectionRecentlyPicked } from './ModelSelectionRecentl
 export { default as ModelSelectionDetailsModal } from './ModelSelectionDetailsModal';
 export { ModelWalletLockIndicator } from './ModelWalletLockIndicator';
 export { ModelCreditBurnIndicator } from './ModelCreditBurnIndicator';
+export { NonTextModelsModal } from './NonTextModelsModal';
+export { NonTextModelCard } from './NonTextModelCard';
+export { NonTextModelFilters } from './NonTextModelFilters';

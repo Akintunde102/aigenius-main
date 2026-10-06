@@ -1,14 +1,9 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { FiLoader } from 'react-icons/fi';
-
-const JsonSyntaxBlock = dynamic(
-  () => import('@/app/components/JsonSyntaxBlock').then((mod) => mod.JsonSyntaxBlock),
-  { ssr: false, loading: () => <div className="text-[10px] opacity-70 p-1">Loading JSON...</div> }
-);
+import { JsonSyntaxBlock } from '@/app/components/JsonSyntaxBlock';
 
 import { valueToDisplayString } from '@/lib/utils/messageTextUtils';
 import {
@@ -19,6 +14,7 @@ import {
 import { ERROR_MESSAGES } from '../hooks/chatOperations.constants';
 import { WorkflowIntentTranscriptExpand } from './WorkflowIntentTranscriptExpand';
 import { MarkdownRenderer } from '@/app/components/model-interface/shared/components/MarkdownRenderer';
+import { RenderErrorBoundary } from '@/app/components/RenderErrorBoundary';
 import { ToolSearchFilesHover } from './tool-ui/ToolSearchFilesHover';
 import { resolveStreamingToolRowLabel } from './cluster-tool-display-blocks';
 import type { ToolStreamingCardProps } from './tool-streaming-card.types';
@@ -258,17 +254,19 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
                     className={`${cardStyles.ioBlockContent} ${success === false ? cardStyles.ioBlockContentError : ''}`}
                   >
                     {parsedResult !== null ? (
-                      contentToRender ? (
-                        <MarkdownRenderer content={contentToRender} className="markdown-tool-result" />
-                      ) : (
-                        <div className={cardStyles.ioJsonWrap}>
-                          <JsonSyntaxBlock
-                            value={parsedResult}
-                            preClassName="max-h-60 border-none bg-transparent p-0"
-                            codeClassName="text-[10px] leading-snug"
-                          />
-                        </div>
-                      )
+                      <RenderErrorBoundary logLabel="[tool-output]">
+                        {contentToRender ? (
+                          <MarkdownRenderer content={contentToRender} className="markdown-tool-result" />
+                        ) : (
+                          <div className={cardStyles.ioJsonWrap}>
+                            <JsonSyntaxBlock
+                              value={parsedResult}
+                              preClassName="max-h-60 border-none bg-transparent p-0"
+                              codeClassName="text-[10px] leading-snug"
+                            />
+                          </div>
+                        )}
+                      </RenderErrorBoundary>
                     ) : (
                       <span className="text-[10px] italic opacity-60">
                         Waiting for output…

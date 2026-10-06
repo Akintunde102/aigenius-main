@@ -5,6 +5,7 @@ interface UseMobileLayoutProps {
     isMobile: boolean;
     keyboardHeight: number;
     browserInfo: BrowserInfo | null;
+    visualViewportRect?: { top: number; height: number } | null;
 }
 
 interface MobileLayoutStyles {
@@ -22,19 +23,27 @@ interface MobileLayoutStyles {
 export function useMobileLayout({
     isMobile,
     keyboardHeight,
-    browserInfo
+    browserInfo,
+    visualViewportRect = null
 }: UseMobileLayoutProps): MobileLayoutStyles {
     void browserInfo;
     const isFullScreenMobile = isMobile;
 
-    const containerStyle = useMemo(() => ({
-        position: isMobile ? 'fixed' as const : 'relative' as const,
-        zIndex: isMobile ? 45 : 40,
-        top: isMobile ? 0 : 'auto',
-        left: isMobile ? 0 : 'auto',
-        width: isMobile ? '100vw' : '100%',
-        height: isMobile ? (keyboardHeight > 0 ? `calc(100% - ${keyboardHeight}px)` : '100%') : '100%'
-    }), [isMobile, keyboardHeight]);
+    const containerStyle = useMemo(() => {
+        const followVisibleViewport = isMobile && keyboardHeight > 0 && !!visualViewportRect;
+        return {
+            position: isMobile ? 'fixed' as const : 'relative' as const,
+            zIndex: isMobile ? 45 : 40,
+            top: isMobile ? (followVisibleViewport ? visualViewportRect!.top : 0) : 'auto',
+            left: isMobile ? 0 : 'auto',
+            width: isMobile ? '100vw' : '100%',
+            height: isMobile
+                ? (followVisibleViewport
+                    ? `${visualViewportRect!.height}px`
+                    : (keyboardHeight > 0 ? `calc(100% - ${keyboardHeight}px)` : '100%'))
+                : '100%'
+        };
+    }, [isMobile, keyboardHeight, visualViewportRect]);
 
     const chatAreaStyle = useMemo(() => ({
         minHeight: 0,

@@ -5,52 +5,22 @@ import { BotMessageSquare, MonitorDown, Wallet } from "lucide-react";
 import { GoogleSignIn } from "@/app/components/auth/GoogleSignIn";
 import { PublicPageShell } from "@/app/components/PublicPageShell";
 import { SIGNUP_BONUS_CREDITS } from "@/lib/credits";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 export type AuthPageVariant = "login" | "signup";
 
-const COPY: Record<
-  AuthPageVariant,
-  {
-    title: string;
-    subtitle: string;
-    swapPrompt: string;
-    swapLabel: string;
-    swapHref: string;
-  }
-> = {
-  login: {
-    title: "Welcome back",
-    subtitle: "Sign in to continue to your workspace",
-    swapPrompt: "Don't have an account?",
-    swapLabel: "Sign up",
-    swapHref: "/signup",
-  },
-  signup: {
-    title: "Create your account",
-    subtitle: `Start with ${SIGNUP_BONUS_CREDITS} free credits — every top AI model in one workspace`,
-    swapPrompt: "Already have an account?",
-    swapLabel: "Sign in",
-    swapHref: "/login",
-  },
-};
-
-const TRUST_ITEMS = [
-  { icon: BotMessageSquare, label: "GPT, Claude, Gemini & more" },
-  { icon: Wallet, label: "Pay only for what you use" },
-  { icon: MonitorDown, label: "Web & desktop app" },
-] as const;
-
 function LegalBlock({ variant }: { variant: AuthPageVariant }) {
+  const { t } = useLanguage();
   if (variant === "signup") {
     return (
       <p style={{ fontSize: "13px", color: "#71717a", marginTop: "1.5rem" }}>
-        By creating an account, you agree to our{" "}
+        {t("auth.agreeLead", "By creating an account, you agree to our")}{" "}
         <Link prefetch href="/docs/terms-and-conditions" style={{ color: "inherit", textDecoration: "underline" }}>
-          Terms of Service
+          {t("landing.termsOfService", "Terms of Service")}
         </Link>{" "}
         and{" "}
         <Link prefetch href="/docs/privacy-policy" style={{ color: "inherit", textDecoration: "underline" }}>
-          Privacy Policy
+          {t("landing.privacyPolicy", "Privacy Policy")}
         </Link>
         .
       </p>
@@ -60,18 +30,42 @@ function LegalBlock({ variant }: { variant: AuthPageVariant }) {
   return (
     <p style={{ fontSize: "13px", color: "#71717a", marginTop: "1.5rem" }}>
       <Link prefetch href="/docs/privacy-policy" style={{ color: "inherit", textDecoration: "underline" }}>
-        Privacy Policy
+        {t("landing.privacyPolicy", "Privacy Policy")}
       </Link>
       <span style={{ margin: "0 0.5rem" }} aria-hidden>·</span>
       <Link prefetch href="/docs/terms-and-conditions" style={{ color: "inherit", textDecoration: "underline" }}>
-        Terms of Service
+        {t("landing.termsOfService", "Terms of Service")}
       </Link>
     </p>
   );
 }
 
 export function AuthPage({ variant }: { variant: AuthPageVariant }) {
-  const copy = COPY[variant];
+  const { t } = useLanguage();
+  const copy = variant === "login"
+    ? {
+        title: t("auth.welcomeBack", "Welcome back"),
+        subtitle: t("auth.signInSubtitle", "Sign in to continue to your workspace"),
+        swapPrompt: t("auth.dontHaveAccount", "Don't have an account?"),
+        swapLabel: t("auth.signUp", "Sign up"),
+        swapHref: "/signup",
+      }
+    : {
+        title: t("auth.createAccount", "Create your account"),
+        subtitle: t(
+          "auth.createAccountSubtitle",
+          "Start with {credits} free credits — every top AI model in one workspace",
+          { credits: SIGNUP_BONUS_CREDITS },
+        ),
+        swapPrompt: t("auth.alreadyHaveAccount", "Already have an account?"),
+        swapLabel: t("auth.signIn", "Sign in"),
+        swapHref: "/login",
+      };
+  const trustItems = [
+    { icon: BotMessageSquare, label: t("auth.trustModels", "GPT, Claude, Gemini & more") },
+    { icon: Wallet, label: t("auth.trustPay", "Pay only for what you use") },
+    { icon: MonitorDown, label: t("auth.trustApps", "Web & desktop app") },
+  ];
 
   return (
     <PublicPageShell>
@@ -90,7 +84,11 @@ export function AuthPage({ variant }: { variant: AuthPageVariant }) {
             color: "#f97316",
             lineHeight: "1.5"
           }}>
-            <span style={{ fontWeight: 600 }}>{SIGNUP_BONUS_CREDITS} free credits</span> land in your wallet when you sign up — no credit card required.
+            {t(
+              "auth.signUpBonusNotice",
+              "{credits} free credits land in your wallet when you sign up — no credit card required.",
+              { credits: SIGNUP_BONUS_CREDITS },
+            )}
           </div>
         ) : null}
 
@@ -102,12 +100,14 @@ export function AuthPage({ variant }: { variant: AuthPageVariant }) {
         </div>
 
         <div style={{ fontSize: "0.6875rem", color: "#52525b", marginBottom: "1.5rem", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600 }}>
-          Secure authentication
+          {t("auth.secureAuth", "Secure authentication")}
         </div>
 
         <p style={{ fontSize: "0.8125rem", color: "#71717a", marginBottom: "1.5rem", lineHeight: "1.6" }}>
-          We use Google&apos;s secure authentication system.<br />
-          Your data is protected and never shared with third parties.
+          {t(
+            "auth.googleAuthNote",
+            "We use Google's secure authentication system. Your data is protected and never shared with third parties.",
+          )}
         </p>
 
         <p style={{ fontSize: "0.9375rem" }}>
@@ -133,7 +133,7 @@ export function AuthPage({ variant }: { variant: AuthPageVariant }) {
           fontSize: "0.75rem",
           color: "#71717a"
         }}>
-          {TRUST_ITEMS.map(({ icon: Icon, label }) => (
+          {trustItems.map(({ icon: Icon, label }) => (
             <li key={label} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Icon style={{ width: "1rem", height: "1rem", color: "#52525b" }} aria-hidden />
               <span>{label}</span>

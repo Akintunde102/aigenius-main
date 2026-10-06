@@ -71,7 +71,7 @@ describe('project-root-snapshot', () => {
     expect(overview.architectureMarkdown).toContain('Project structural map');
     expect(overview.directory.entries.length).toBeGreaterThan(0);
     expect(overview.git).toBeDefined();
-    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     db.close();
   });
 
@@ -79,6 +79,6 @@ describe('project-root-snapshot', () => {
     const root = makeTempProject();
     const snap = collectGitSnapshot(root);
     expect(snap.isRepo).toBe(false);
-    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   });
 });

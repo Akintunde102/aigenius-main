@@ -7,6 +7,7 @@ import { serverCalls } from "@/servercall/store";
 import { getAdminCreditsHistory, CreditGrantRecord, searchAdminUsers, AdminUserSearchResult } from "@/lib/calls/admin";
 import toast from "react-hot-toast";
 import { clearUserDetailsCache } from "@/lib/calls/get-logged-user-details";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -34,6 +35,7 @@ function formatDate(raw: string | null): string {
 }
 
 const GrantCreditsModal: React.FC<GrantCreditsModalProps> = ({ onClose, onWalletUpdate }) => {
+    const { t } = useLanguage();
     const [tab, setTab] = useState<Tab>("give");
 
     // ── Give tab state ──────────────────────────────────────────────────────
@@ -183,16 +185,16 @@ const GrantCreditsModal: React.FC<GrantCreditsModalProps> = ({ onClose, onWallet
                                     id="grant-credits-modal-title"
                                     className="text-base font-semibold leading-snug"
                                 >
-                                    Grant credits
+                                    {t("modals.grantCreditsTitle", "Grant credits")}
                                 </h2>
                                 <p className="mt-0.5 text-xs" style={{ color: "var(--modal-muted-fg)" }}>
-                                    Add credits to a user&apos;s wallet (admin)
+                                    {t("modals.grantCreditsSubtitle", "Add credits to a user's wallet (admin)")}
                                 </p>
                             </div>
                         </div>
                         <button
                             type="button"
-                            aria-label="Close"
+                            aria-label={t("common.close", "Close")}
                             className="shrink-0 rounded-lg p-2 transition-colors hover:[background-color:var(--sidebar-row-hover)] focus:outline-none"
                             style={{ color: "var(--modal-muted-fg)" }}
                             onClick={onClose}
@@ -340,7 +342,7 @@ const GrantCreditsModal: React.FC<GrantCreditsModalProps> = ({ onClose, onWallet
                                 {historyLoading ? (
                                     <div className="py-10 flex flex-col items-center justify-center">
                                         <svg className="mb-3 animate-spin" style={{ color: "var(--chat-accent)" }} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" strokeOpacity="0.2" /><path d="M12 2a10 10 0 0 1 10 10" /></svg>
-                                        <span className="animate-pulse text-[13px] font-medium" style={{ color: "var(--modal-muted-fg)" }}>Loading history…</span>
+                                        <span className="animate-pulse text-[13px] font-medium" style={{ color: "var(--modal-muted-fg)" }}>{t("modals.grantCreditsLoadingHistory", "Loading history…")}</span>
                                     </div>
                                 ) : historyError ? (
                                     <div className="py-8 bg-red-50/50 rounded-lg border border-red-100 flex flex-col items-center justify-center mt-2">
@@ -355,7 +357,7 @@ const GrantCreditsModal: React.FC<GrantCreditsModalProps> = ({ onClose, onWallet
                                 ) : history.length === 0 ? (
                                     <div className="app-surface-card mt-2 flex flex-col items-center justify-center rounded-lg py-12">
                                         <FiGift className="mb-3" size={32} style={{ color: "var(--modal-muted-fg)" }} />
-                                        <p className="text-[14px] font-medium" style={{ color: "var(--modal-muted-fg)" }}>No credits granted yet</p>
+                                        <p className="text-[14px] font-medium" style={{ color: "var(--modal-muted-fg)" }}>{t("modals.grantCreditsNoHistory", "No credits granted yet")}</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 pb-1 mt-1">

@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { ArrowUp, Loader2, Maximize2, Mic, Phone, MessageSquare } from 'lucide-react';
 import { AudioModeOverlay } from './AudioModeOverlay';
 import { ChatArea } from './ChatArea';
-import { ChatAreaVirtualizedList } from './ChatAreaVirtualizedList';
 import { ChatBoxInput } from '@/app/components/ChatBoxInput';
 import { OrphanThreadModal } from './OrphanThreadModal';
 import { ContextSummaryBadge } from './ContextSummaryBadge';
@@ -315,7 +314,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
 
     // Use our new hooks for cleaner separation of concerns
     const { isMobile, browserInfo } = useBrowserDetection();
-    const { keyboardHeight, isKeyboardOpen } = useMobileKeyboard({ isMobile, chatAreaRef });
+    const { keyboardHeight, isKeyboardOpen, visualViewportRect } = useMobileKeyboard({ isMobile, chatAreaRef });
     const {
         containerStyle,
         chatAreaStyle,
@@ -325,7 +324,8 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     } = useMobileLayout({
         isMobile,
         keyboardHeight,
-        browserInfo
+        browserInfo,
+        visualViewportRect
     });
 
     const [isDragging, setIsDragging] = useState(false);

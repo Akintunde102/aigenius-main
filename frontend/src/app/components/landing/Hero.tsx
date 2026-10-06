@@ -19,6 +19,7 @@ import { Magnetic } from "./Magnetic";
 import { ParallaxPhoto } from "./ParallaxPhoto";
 import type { Platform } from "./platforms";
 import { H1 } from "./typography";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 const POINTER_SPRING = { stiffness: 120, damping: 20, mass: 0.6 } as const;
@@ -71,6 +72,7 @@ interface HeroProps {
 }
 
 export function Hero({ initialPlatform }: HeroProps) {
+  const { t } = useLanguage();
   const reduceMotion = useReducedMotion();
   const container = useLandingScroll();
   const sectionRef = useRef<HTMLElement>(null);
@@ -91,6 +93,12 @@ export function Hero({ initialPlatform }: HeroProps) {
   const copyY = useTransform(scrollYProgress, [0, 0.6], [0, -90]);
   const copyOpacity = useTransform(scrollYProgress, [0, 0.45], [1, 0]);
   const shotY = useTransform(scrollYProgress, [0, 1], [0, -60]);
+
+  const headlineLines = [
+    t("landing.headline1", HEADLINE[0]),
+    t("landing.headline2", HEADLINE[1]),
+    t("landing.headline3", HEADLINE[2]),
+  ];
 
   const handlePointerMove = (event: PointerEvent<HTMLElement>) => {
     if (reduceMotion || event.pointerType === "touch") return;
@@ -125,7 +133,7 @@ export function Hero({ initialPlatform }: HeroProps) {
 
           <motion.div style={reduceMotion ? undefined : { y: copyY, opacity: copyOpacity }}>
             <h1 className={`mx-auto max-w-5xl ${H1}`}>
-              {HEADLINE.map((line, index) => (
+              {headlineLines.map((line, index) => (
                 <span key={line} className="block overflow-hidden pb-[0.1em]">
                   <motion.span
                     className="block"
@@ -145,8 +153,10 @@ export function Hero({ initialPlatform }: HeroProps) {
               transition={{ duration: 0.7, ease: EASE, delay: 0.6 }}
             >
               <p className="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-white/85">
-                Use Claude, GPT and Gemini from one desktop and web app, with direct access to your
-                files, code and Gmail. Top up a wallet from $1 and pay for each request.
+                {t(
+                  "landing.heroSubtitle",
+                  "Use Claude, GPT and Gemini from one desktop and web app, with direct access to your files, code and Gmail. Top up a wallet from $1 and pay for each request.",
+                )}
               </p>
 
               <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:items-start">
@@ -156,13 +166,17 @@ export function Hero({ initialPlatform }: HeroProps) {
                     href="/login"
                     className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-white/15 font-medium text-white backdrop-blur-md hover:bg-white/25 ${BUTTON_SIZE.lg} ${PRESS}`}
                   >
-                    Use it on the web
+                    {t("landing.useOnWeb", "Use it on the web")}
                   </Link>
                 </Magnetic>
               </div>
 
               <p className="mt-6 text-sm text-white/75">
-                {FREE_CREDITS} free credits when you sign up. Top up in USD or NGN when you need more.
+                {t(
+                  "landing.heroCreditsNotice",
+                  `${FREE_CREDITS} free credits when you sign up. Top up in USD or NGN when you need more.`,
+                  { credits: FREE_CREDITS },
+                )}
               </p>
             </motion.div>
           </motion.div>

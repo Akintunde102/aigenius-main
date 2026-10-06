@@ -18,6 +18,7 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
     keep_delete_note: 'Delete Note',
     host_markdown: 'Host Markdown',
     publish_html: 'Publish Web App',
+    create_site_favicon: 'Create Site Favicon',
     check_slug_availability: 'Check Slug',
     list_user_pages: 'List Published Apps',
     convert_to_pdf_and_upload: 'Convert to PDF',
@@ -29,6 +30,7 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
     workflow_agent: 'Workflow agent',
     subagent: 'Subagent',
     call_model: 'Call model (non-streaming)',
+    make_decision: 'Make decision (System 1)',
     workflow_intent: 'Workflow agent',
     workflow_inner_create: 'Create workflow (agent)',
     workflow_inner_update: 'Update workflow (agent)',
@@ -140,6 +142,8 @@ export function getToolActivityHint(
             }
             return isDraft ? 'Saving draft preview…' : 'Publishing web app…';
         }
+        case 'create_site_favicon':
+            return 'Creating site favicon…';
         case 'check_slug_availability': {
             const slug = args.slug;
             if (typeof slug === 'string' && slug.trim()) return `Checking availability of "${slug}"…`;

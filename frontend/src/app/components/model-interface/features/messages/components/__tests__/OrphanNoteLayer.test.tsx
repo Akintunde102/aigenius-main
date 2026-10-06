@@ -91,7 +91,7 @@ describe('OrphanNoteLayer', () => {
             </div>,
         );
 
-        const chip = screen.getByRole('button', { name: /reply in side thread/i }).parentElement?.parentElement;
+        const chip = screen.getByRole('button', { name: /ask further/i }).parentElement?.parentElement;
         expect(chip?.className).toContain('-translate-y-full');
         expect(chip?.className).toContain('-translate-x-1/2');
         expect(chip).toHaveStyle({ left: '80px', top: '40px' });

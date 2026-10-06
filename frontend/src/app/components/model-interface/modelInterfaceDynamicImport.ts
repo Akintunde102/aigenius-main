@@ -5,12 +5,13 @@ import {
   isChunkLoadError,
   tryAutoReloadOnChunkLoadError,
 } from "@/lib/utils/chunk-load-recovery";
+import { ensureLazyDefault } from "@/lib/utils/lazy-component";
 
 export function importModelInterfaceWithRetry() {
   return import("@/app/components/model-interface/ModelInterface")
     .then((m) => {
       clearChunkReloadGuard();
-      return m;
+      return ensureLazyDefault(m.default, "chat");
     })
     .catch((err) => {
       if (typeof window === "undefined" || !isChunkLoadError(err)) {

@@ -14,6 +14,7 @@ import { isIntegrationCallbackOriginTrusted } from '@/lib/oauth-callback-origin'
 import { FEATURE_FLAGS } from '@/lib/config/features';
 import { FiMail, FiX, FiInfo, FiChevronUp } from 'react-icons/fi';
 import { SiLinkedin } from 'react-icons/si';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 interface IntegrationsModalProps {
   onClose: () => void;
@@ -23,6 +24,7 @@ const GMAIL_CONNECT_RESULT_KEY = 'gmail_connect_result';
 const LINKEDIN_CONNECT_RESULT_KEY = 'linkedin_connect_result';
 
 export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose }) => {
+  const { t } = useLanguage();
   const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
   const [linkedinConnected, setLinkedinConnected] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,7 +51,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
       setGmailConnected(gmailStatus.connected);
       setLinkedinConnected(linkedinStatus.connected);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load status');
+      setError(e instanceof Error ? e.message : t('modals.integrationsFailedLoadStatus', 'Failed to load status'));
       setGmailConnected(false);
       setLinkedinConnected(false);
     } finally {
@@ -388,20 +390,20 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h2 id="integrations-modal-title" className="text-base font-semibold leading-none">
-                    Integrations
+                    {t('sidebar.integrations', 'Integrations')}
                   </h2>
                   {loading && (
                     <span className="text-[10px] animate-pulse font-medium text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                      Syncing...
+                      {t('modals.syncing', 'Syncing...')}
                     </span>
                   )}
                 </div>
-                <p className="mt-1 text-xs" style={{ color: "var(--modal-muted-fg)" }}>Connect external accounts for tools</p>
+                <p className="mt-1 text-xs" style={{ color: "var(--modal-muted-fg)" }}>{t('modals.integrationsSubtitle', 'Connect external accounts for tools')}</p>
               </div>
             </div>
             <button
               type="button"
-              aria-label="Close"
+              aria-label={t('common.close', 'Close')}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md p-1 transition-colors hover:bg-red-500/10 focus:outline-none"
               style={{ color: "var(--modal-muted-fg)" }}
               onClick={onClose}
@@ -412,11 +414,10 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         <p className="text-sm mb-4" style={{ color: "var(--modal-muted-fg)" }}>
-          Connect your accounts so AI models with tool support can use them (e.g. Gmail or your LinkedIn
-          profile).
+          {t('modals.integrationsIntro', 'Connect your accounts so AI models with tool support can use them (e.g. Gmail or your LinkedIn profile).')}
         </p>
         {initialLoading ? (
-          <div className="py-6 text-center" style={{ color: "var(--modal-muted-fg)" }}>Loading…</div>
+          <div className="py-6 text-center" style={{ color: "var(--modal-muted-fg)" }}>{t('common.loading', 'Loading…')}</div>
         ) : (
           <div className="space-y-4">
             {/* Gmail */}
@@ -427,7 +428,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                   <div>
                     <p className="font-medium" style={{ color: "var(--modal-fg)" }}>Gmail</p>
                     <p className="text-xs" style={{ color: "var(--modal-muted-fg)" }}>
-                      {gmailConnected ? 'Connected' : 'Not connected'}
+                      {gmailConnected ? t('modals.connected', 'Connected') : t('modals.notConnected', 'Not connected')}
                     </p>
                   </div>
                 </div>
@@ -435,7 +436,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                   <button
                     onClick={() => setShowGmailInfo(!showGmailInfo)}
                     className="p-1 hover:text-red-500 transition-colors"
-                    aria-label="Info"
+                    aria-label={t('modals.integrationsInfoAria', 'Info')}
                     style={{ color: "var(--modal-muted-fg)" }}
                   >
                     {showGmailInfo ? <FiChevronUp size={18} /> : <FiInfo size={18} />}
@@ -446,7 +447,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                       onClick={handleDisconnectGmail}
                       disabled={actionLoading}
                     >
-                      Disconnect
+                      {t('modals.disconnect', 'Disconnect')}
                     </button>
                   ) : (
                     <button
@@ -454,7 +455,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                       onClick={handleConnectGmail}
                       disabled={actionLoading}
                     >
-                      Connect
+                      {t('modals.connect', 'Connect')}
                     </button>
                   )}
                 </div>
@@ -463,27 +464,27 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
               {/* Info section */}
               {showGmailInfo && (
                 <div className="px-3 pb-3 pt-1 border-t text-xs" style={{ background: "var(--modal-bg-muted)", borderColor: "var(--modal-border)" }}>
-                  <p className="font-medium mb-2" style={{ color: "var(--modal-fg)" }}>What Gmail integration enables:</p>
+                  <p className="font-medium mb-2" style={{ color: "var(--modal-fg)" }}>{t('modals.gmailEnablesTitle', 'What Gmail integration enables:')}</p>
                   <ul className="space-y-1" style={{ color: "var(--modal-muted-fg)" }}>
                     <li className="flex items-start gap-1.5">
                       <span className="text-green-600 mt-0.5">✓</span>
-                      <span><strong>List emails:</strong> AI can see your recent emails</span>
+                      <span>{t('modals.gmailListEmails', 'List emails: AI can see your recent emails')}</span>
                     </li>
                     <li className="flex items-start gap-1.5">
                       <span className="text-green-600 mt-0.5">✓</span>
-                      <span><strong>Read emails:</strong> AI can read full email content</span>
+                      <span>{t('modals.gmailReadEmails', 'Read emails: AI can read full email content')}</span>
                     </li>
                     <li className="flex items-start gap-1.5">
                       <span className="text-green-600 mt-0.5">✓</span>
-                      <span><strong>Send emails:</strong> AI can send emails on your behalf</span>
+                      <span>{t('modals.gmailSendEmails', 'Send emails: AI can send emails on your behalf')}</span>
                     </li>
                     <li className="flex items-start gap-1.5">
                       <span className="text-green-600 mt-0.5">✓</span>
-                      <span><strong>Search inbox:</strong> AI can search your emails with Gmail syntax</span>
+                      <span>{t('modals.gmailSearchInbox', 'Search inbox: AI can search your emails with Gmail syntax')}</span>
                     </li>
                   </ul>
                   <p className="mt-2 italic opacity-85" style={{ color: "var(--modal-muted-fg)" }}>
-                    Only works with AI models that support tools (e.g. GPT-4, Claude Opus, Gemini Pro)
+                    {t('modals.integrationsGmailToolsHint', 'Only works with AI models that support tools (e.g. GPT-4, Claude Opus, Gemini Pro)')}
                   </p>
                 </div>
               )}
@@ -497,7 +498,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                   <div>
                     <p className="font-medium" style={{ color: "var(--modal-fg)" }}>LinkedIn</p>
                     <p className="text-xs" style={{ color: "var(--modal-muted-fg)" }}>
-                      {linkedinConnected ? 'Connected' : 'Not connected'}
+                      {linkedinConnected ? t('modals.connected', 'Connected') : t('modals.notConnected', 'Not connected')}
                     </p>
                   </div>
                 </div>
@@ -506,7 +507,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                     type="button"
                     onClick={() => setShowLinkedInInfo(!showLinkedInInfo)}
                     className="p-1 hover:text-blue-500 transition-colors"
-                    aria-label="LinkedIn info"
+                    aria-label={t('modals.integrationsLinkedInInfoAria', 'LinkedIn info')}
                     style={{ color: "var(--modal-muted-fg)" }}
                   >
                     {showLinkedInInfo ? <FiChevronUp size={18} /> : <FiInfo size={18} />}
@@ -519,7 +520,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                         onClick={handleDisconnectLinkedIn}
                         disabled={actionLoading}
                       >
-                        Disconnect
+                        {t('modals.disconnect', 'Disconnect')}
                       </button>
                     </div>
                   ) : (
@@ -529,33 +530,26 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                       onClick={handleConnectLinkedIn}
                       disabled={actionLoading}
                     >
-                      Connect
+                      {t('modals.connect', 'Connect')}
                     </button>
                   )}
                 </div>
               </div>
               {showLinkedInInfo && (
                 <div className="px-3 pb-3 pt-1 border-t text-xs" style={{ background: "var(--modal-bg-muted)", borderColor: "var(--modal-border)" }}>
-                  <p className="font-medium mb-2" style={{ color: "var(--modal-fg)" }}>What LinkedIn integration enables:</p>
+                  <p className="font-medium mb-2" style={{ color: "var(--modal-fg)" }}>{t('modals.linkedInEnablesTitle', 'What LinkedIn integration enables:')}</p>
                   <ul className="space-y-1" style={{ color: "var(--modal-muted-fg)" }}>
                     <li className="flex items-start gap-1.5">
                       <span className="text-green-600 mt-0.5">✓</span>
-                      <span>
-                        <strong>Profile (userinfo):</strong> AI can read your name, email (when allowed), and
-                        picture from LinkedIn
-                      </span>
+                      <span>{t('modals.linkedInProfile', 'Profile (userinfo): AI can read your name, email (when allowed), and profile details')}</span>
                     </li>
                     <li className="flex items-start gap-1.5">
                       <span className="text-green-600 mt-0.5">✓</span>
-                      <span>
-                        <strong>Post updates:</strong> AI can publish text or link posts when LinkedIn app
-                        permissions include Share on LinkedIn (`w_member_social`)
-                      </span>
+                      <span>{t('modals.linkedInPost', 'Post updates: AI can publish text or link posts when LinkedIn app permissions allow')}</span>
                     </li>
                   </ul>
                   <p className="mt-2 italic opacity-85" style={{ color: "var(--modal-muted-fg)" }}>
-                    Only works with AI models that support tools. Requires LinkedIn app with Sign In with
-                    LinkedIn (OpenID Connect).
+                    {t('modals.integrationsLinkedInToolsHint', 'Only works with AI models that support tools. Requires LinkedIn app with Sign In with LinkedIn (OpenID Connect).')}
                   </p>
                   {linkedinConnected && (
                     <div className="mt-3 pt-2 border-t" style={{ borderColor: "var(--modal-border)" }}>
@@ -566,7 +560,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
                         disabled={actionLoading}
                         title="Opens LinkedIn again so you can grant any new permissions (e.g. posting)"
                       >
-                        Update permissions / Re-authorize
+                        {t('modals.integrationsReauthorize', 'Update permissions / Re-authorize')}
                       </button>
                     </div>
                   )}

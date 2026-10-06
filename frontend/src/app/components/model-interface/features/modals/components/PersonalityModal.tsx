@@ -3,6 +3,7 @@ import { FiX, FiPlus, FiSearch, FiEdit2, FiTrash2, FiChevronRight } from 'react-
 import { upsertPersonality, deletePersonality, Personality } from '@/lib/calls/model-chat-conversation';
 import { uploadFile } from '@/lib/calls/upload-file';
 import type { CloudFile } from '@/app/components/file/file.interface';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 interface PersonalityModalProps {
     isOpen: boolean;
@@ -183,6 +184,7 @@ function Editor({
     currentModelId?: string;
     currentModelName?: string;
 }) {
+    const { t } = useLanguage();
     const [name, setName] = useState(initial.name || '');
     const [description, setDescription] = useState(initial.description || '');
     const [prompt, setPrompt] = useState(initial.prompt || '');
@@ -232,10 +234,10 @@ function Editor({
             <div className="flex items-start justify-between shrink-0">
                 <div>
                     <h3 className="text-sm font-semibold" style={{ color: 'var(--modal-fg)' }}>
-                        {isEditing ? 'Edit Personality' : 'New Personality'}
+                        {isEditing ? t('modals.editPersonality', 'Edit Personality') : t('modals.newPersonality', 'New Personality')}
                     </h3>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--modal-muted-fg)' }}>
-                        {isEditing ? "Update this personality's details." : 'Define a new AI personality for your chats.'}
+                        {isEditing ? t('modals.personalityUpdateSubtitle', "Update this personality's details.") : t('modals.personalityNewSubtitle', 'Define a new AI personality for your chats.')}
                     </p>
                 </div>
                 <button
@@ -243,7 +245,7 @@ function Editor({
                     onClick={onCancel}
                     className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
                     style={{ color: 'var(--modal-muted-fg)' }}
-                    aria-label="Cancel"
+                    aria-label={t('common.cancel', 'Cancel')}
                 >
                     <FiX size={15} strokeWidth={2} />
                 </button>
@@ -315,7 +317,7 @@ function Editor({
                     className="text-xs font-medium px-3.5 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                     style={{ color: 'var(--modal-muted-fg)' }}
                 >
-                    Cancel
+                    {t('common.cancel', 'Cancel')}
                 </button>
                 <button
                     type="button"
@@ -342,6 +344,7 @@ export function PersonalityModal({
     setPersonalities,
     currentUser,
 }: PersonalityModalProps) {
+    const { t } = useLanguage();
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState<ViewTab>('browse');
     const [showEditor, setShowEditor] = useState(false);
@@ -486,12 +489,14 @@ export function PersonalityModal({
                         <div className="flex justify-between items-start gap-3">
                             <div className="min-w-0 flex-1">
                                 <h2 className="text-lg font-bold tracking-tight mt-0.5" style={{ color: 'var(--modal-fg)' }}>
-                                    {activeTab === 'mine' ? 'My Personalities' : 'All Personalities'}
+                                    {activeTab === 'mine'
+                                        ? t('modals.personalitiesMine', 'My Personalities')
+                                        : t('modals.personalitiesAll', 'All Personalities')}
                                 </h2>
                                 <p className="text-xs mt-0.5" style={{ color: 'var(--modal-muted-fg)' }}>
                                     {activeTab === 'mine'
-                                        ? "Personalities you've created and can edit."
-                                        : 'Browse and activate any AI personality for your chat.'}
+                                        ? t('modals.personalitiesMineHint', "Personalities you've created and can edit.")
+                                        : t('modals.personalitiesAllHint', 'Browse and activate any AI personality for your chat.')}
                                 </p>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">

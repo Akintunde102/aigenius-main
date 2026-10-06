@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 import type { WorkflowStepMenuState } from "./useWorkflowsStudioStepMenu";
 
 export function WorkflowsStudioStepMenuPanel({
@@ -17,6 +20,8 @@ export function WorkflowsStudioStepMenuPanel({
   moveStep: (stepLocalId: string, direction: "up" | "down") => void;
   removeStep: (stepLocalId: string) => void;
 }) {
+  const { t } = useLanguage();
+
   return (
     <div
       ref={menuRef}
@@ -32,7 +37,7 @@ export function WorkflowsStudioStepMenuPanel({
           setMenu(null);
         }}
       >
-        Edit…
+        {t("workflows.stepMenuEdit", "Edit…")}
       </button>
       <button
         type="button"
@@ -43,7 +48,7 @@ export function WorkflowsStudioStepMenuPanel({
         }}
       >
         <ChevronUp className="mr-2 inline h-4 w-4" />
-        Move up
+        {t("workflows.stepMenuMoveUp", "Move up")}
       </button>
       <button
         type="button"
@@ -54,7 +59,7 @@ export function WorkflowsStudioStepMenuPanel({
         }}
       >
         <ChevronDown className="mr-2 inline h-4 w-4" />
-        Move down
+        {t("workflows.stepMenuMoveDown", "Move down")}
       </button>
       <button
         type="button"
@@ -64,7 +69,7 @@ export function WorkflowsStudioStepMenuPanel({
           setMenu(null);
         }}
       >
-        Remove step
+        {t("workflows.stepMenuRemove", "Remove step")}
       </button>
     </div>
   );

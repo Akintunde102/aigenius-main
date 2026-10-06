@@ -6,9 +6,10 @@ import {
     StickyThreadMarker,
 } from '@/app/components/model-interface/shared/types';
 import { ChatMessage } from './ChatMessage';
-import { TimeDivider } from '../../chat/components';
+import { TimeDivider } from '../../chat/components/TimeDivider';
 import { formatCost } from '@/lib/utils/modelInterfaceUtils';
 import type { MessageEditDraft } from '../utils/messageEdit.utils';
+import { RenderErrorBoundary } from '@/app/components/RenderErrorBoundary';
 
 export interface ChatMessageWrapperProps {
     msg: ChatMessageType;
@@ -103,6 +104,11 @@ function ChatMessageWrapperInner({
     }, []);
 
     return (
+        <RenderErrorBoundary
+            logLabel="[chat-message]"
+            message="This message could not be shown."
+            resetKey={msg.id ?? idx}
+        >
         <div data-chat-message-index={idx}>
             {shouldShowTimeDivider && <TimeDivider timestamp={msg.timestamp} />}
             <ChatMessage
@@ -141,6 +147,7 @@ function ChatMessageWrapperInner({
                 isLastVisibleMessage={isLastVisibleMessage}
             />
         </div>
+        </RenderErrorBoundary>
     );
 }
 

@@ -16,7 +16,6 @@ describe('analytics-props.utils', () => {
 
   it('detects structured attachments without message text', () => {
     expect(messageHasAttachments([
-      { type: 'text', text: 'hello' },
       { type: 'image_url', image_url: { url: 'https://example.com/a.png' } },
     ])).toBe(true);
   });

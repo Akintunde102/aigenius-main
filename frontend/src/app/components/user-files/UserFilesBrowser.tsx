@@ -35,6 +35,7 @@ export type {
   UserFilesBrowserProps,
   UserFilesBrowserVariant,
 } from "./components";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 export function UserFilesBrowser({
   variant,
@@ -45,6 +46,7 @@ export function UserFilesBrowser({
   maxPickCount = 10,
   onConfirmPick,
 }: UserFilesBrowserProps) {
+  const { t } = useLanguage();
   const isPickMode = mode === "pick";
   const isModal = variant === "modal";
   const internalLibrary = useUploadedFilesList({ skip: !!libraryProp });
@@ -493,7 +495,7 @@ export function UserFilesBrowser({
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-sm">
       <div className="border-b border-gray-100 px-4 py-3 sm:px-5">
-        <h2 className="text-base font-bold text-gray-900">Your files</h2>
+        <h2 className="text-base font-bold text-gray-900">{t('userFiles.browserTitle', 'Your files')}</h2>
         <p className="text-xs text-gray-500">
           Filter by type · gallery or list · copy or open each file
         </p>

@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 import {
   ArrowLeft,
   Clock3,
@@ -137,6 +140,8 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
     handleLoadHistoryRun,
   } = props;
 
+  const { t } = useLanguage();
+
   return (
     <div className="sticky top-0 z-30 w-full shrink-0 border-b border-slate-200/90 bg-white/95 text-slate-800 shadow-sm backdrop-blur-md dark:border-slate-800/90 dark:bg-[#141416] dark:text-slate-200 dark:shadow-[0_1px_0_0_rgba(0,0,0,0.4)]">
       <div className="flex h-9 min-h-9 flex-nowrap items-center gap-x-1.5 px-2.5 sm:h-10 sm:min-h-10 sm:gap-x-2 sm:px-3">
@@ -145,7 +150,7 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
           className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-100"
         >
           <ArrowLeft className="h-3 w-3" aria-hidden />
-          Back
+          {t("workflows.navBack", "Back")}
         </Link>
         <span className="select-none text-slate-400 dark:text-slate-600" aria-hidden>
           ›
@@ -154,7 +159,7 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
           href="/workflows"
           className="shrink-0 text-[11px] font-normal text-slate-500 transition hover:text-slate-900 hover:underline dark:text-slate-400 dark:hover:text-slate-100"
         >
-          Workflows
+          {t("workflows.navWorkflows", "Workflows")}
         </Link>
         <span className="select-none text-slate-400 dark:text-slate-600" aria-hidden>
           ›
@@ -169,17 +174,19 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
             }`}
           aria-expanded={descriptionOpen}
           aria-controls="workflow-description-panel"
-          title={descriptionOpen ? "Hide description" : "Edit description"}
+          title={descriptionOpen ? t("workflows.hideDescription", "Hide description") : t("workflows.editDescription", "Edit description")}
         >
           <Info className="h-3.5 w-3.5" aria-hidden />
-          <span className="sr-only">{descriptionOpen ? "Hide description" : "Edit description"}</span>
+          <span className="sr-only">
+            {descriptionOpen ? t("workflows.hideDescription", "Hide description") : t("workflows.editDescription", "Edit description")}
+          </span>
         </button>
         <input
           type="text"
           value={draft.name}
           onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-          placeholder="Untitled workflow"
-          aria-label="Workflow name"
+          placeholder={t("workflows.untitledWorkflowPlaceholder", "Untitled workflow")}
+          aria-label={t("workflows.workflowNameAria", "Workflow name")}
           className="h-6 min-w-0 flex-1 border-0 bg-transparent px-0.5 py-0 text-[12px] font-medium leading-none text-slate-900 outline-none ring-0 placeholder:text-slate-400 focus:ring-1 focus:ring-cyan-500/50 focus:ring-offset-0 rounded-sm dark:text-slate-100 dark:placeholder:text-slate-500"
         />
         <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-0.5 sm:gap-2">
@@ -193,7 +200,7 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
             )}
             title={
               saveState === "saved" && lastSavedAt
-                ? `Last saved at ${formatShortTime(lastSavedAt)}`
+                ? t("workflows.lastSavedAtTitle", "Last saved at {time}", { time: formatShortTime(lastSavedAt) })
                 : saveMessage || undefined
             }
           >
@@ -208,14 +215,16 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
               }`}
             aria-expanded={headerMenuOpen}
             aria-controls="workflow-header-menu-panel"
-            title={headerMenuOpen ? "Close workflow header menu" : "Open workflow header menu"}
+            title={headerMenuOpen ? t("workflows.closeHeaderMenu", "Close workflow header menu") : t("workflows.openHeaderMenu", "Open workflow header menu")}
           >
             <span className="flex h-3.5 w-3.5 flex-col items-center justify-between" aria-hidden>
               <span className="block h-[1.5px] w-3 rounded-full bg-current" />
               <span className="block h-[1.5px] w-3 rounded-full bg-current" />
               <span className="block h-[1.5px] w-3 rounded-full bg-current" />
             </span>
-            <span className="sr-only">{headerMenuOpen ? "Close workflow header menu" : "Open workflow header menu"}</span>
+            <span className="sr-only">
+              {headerMenuOpen ? t("workflows.closeHeaderMenu", "Close workflow header menu") : t("workflows.openHeaderMenu", "Open workflow header menu")}
+            </span>
           </button>
           {FEATURE_FLAGS.INTEGRATIONS ? (
             <Button
@@ -224,10 +233,10 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
               size="sm"
               className="h-7 shrink-0 rounded-md border-slate-200/90 bg-slate-100/80 px-2 text-[11px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-200/80 hover:text-slate-900 dark:border-slate-600/90 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white sm:px-2.5"
               onClick={() => setIntegrationsOpen(true)}
-              title="Manage integrations (e.g. Gmail)"
+              title={t("workflows.manageIntegrationsTitle", "Manage integrations (e.g. Gmail)")}
             >
               <Plug className="h-3 w-3 sm:mr-1" aria-hidden />
-              <span className="sr-only sm:not-sr-only sm:inline">Integrations</span>
+              <span className="sr-only sm:not-sr-only sm:inline">{t("sidebar.integrations", "Integrations")}</span>
             </Button>
           ) : null}
           <Button
@@ -239,7 +248,7 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
             title={creditsHoverTitle}
           >
             <Coins className="h-3 w-3 sm:mr-1" aria-hidden />
-            <span className="sr-only sm:not-sr-only sm:inline">Credits</span>
+            <span className="sr-only sm:not-sr-only sm:inline">{t("workflows.studioCredits", "Credits")}</span>
           </Button>
           <Button
             type="button"
@@ -258,11 +267,11 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
             title={
               playState === "running"
                 ? cancelState === "cancelling"
-                  ? "Stopping run…"
-                  : "Stop this manual run"
+                  ? t("workflows.stoppingRun", "Stopping run…")
+                  : t("workflows.stopThisRun", "Stop this manual run")
                 : !runReadiness.isValid
-                  ? runReadiness.issues[0] ?? "Complete the workflow first"
-                  : "Save and run this workflow"
+                  ? runReadiness.issues[0] ?? t("workflows.completeWorkflowFirst", "Complete the workflow first")
+                  : t("workflows.saveAndRunTitle", "Save and run this workflow")
             }
           >
             {playState === "running" ? (
@@ -274,7 +283,7 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
             ) : (
               <Play className="mr-1 h-3 w-3" aria-hidden />
             )}
-            {playState === "running" ? "Stop" : "Play"}
+            {playState === "running" ? t("workflows.stop", "Stop") : t("workflows.play", "Play")}
           </Button>
           <Button
             type="button"
@@ -284,12 +293,12 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
             onClick={() => void persistDraft("manual")}
             title={
               persistValidation.isValid
-                ? "Save now (also autosaves after edits)"
-                : persistValidation.issues[0] ?? "Fix issues before saving"
+                ? t("workflows.saveNowTitle", "Save now (also autosaves after edits)")
+                : persistValidation.issues[0] ?? t("workflows.fixBeforeSave", "Fix issues before saving")
             }
           >
             <Save className="mr-1 h-3 w-3" aria-hidden />
-            Save
+            {t("workflows.save", "Save")}
           </Button>
         </div>
       </div>
@@ -299,13 +308,16 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
             {descriptionOpen ? (
               <label id="workflow-description-panel" className="block">
                 <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                  Description
+                  {t("workflows.descriptionLabel", "Description")}
                 </span>
                 <textarea
                   aria-labelledby="workflow-description-panel"
                   value={draft.description}
                   onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
-                  placeholder="What does this workflow do? Shown when you need context for this automation."
+                  placeholder={t(
+                    "workflows.descriptionPlaceholder",
+                    "What does this workflow do? Shown when you need context for this automation.",
+                  )}
                   rows={4}
                   className="w-full resize-y rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] leading-relaxed text-slate-800 outline-none placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400/30 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-cyan-500/50 dark:focus:ring-cyan-500/30"
                 />
@@ -325,7 +337,7 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
                         }`}
                     >
                       <Clock3 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                      Schedule
+                      {t("workflows.scheduleTab", "Schedule")}
                       <sup className="ml-1 text-[8px] font-semibold leading-none">{draft.schedules.length}</sup>
                     </button>
                     <button
@@ -335,10 +347,10 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
                           ? "border-teal-500/60 bg-teal-50 text-teal-900 font-semibold dark:border-cyan-500/60 dark:bg-cyan-500/10 dark:text-cyan-200"
                           : "border-slate-200/90 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700/80 dark:bg-slate-950/35 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900/60"
                         }`}
-                      title="Add schedule"
+                      title={t("workflows.addScheduleTitle", "Add schedule")}
                     >
                       <Plus className="h-3.5 w-3.5" aria-hidden />
-                      <span className="sr-only">Add schedule</span>
+                      <span className="sr-only">{t("workflows.addScheduleSr", "Add schedule")}</span>
                     </button>
                   </div>
                   <button
@@ -350,7 +362,7 @@ export function WorkflowsStudioHeader(props: WorkflowsStudioHeaderProps) {
                       }`}
                   >
                     <History className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                    History
+                    {t("workflows.historyTab", "History")}
                     <sup className="ml-1 text-[8px] font-semibold leading-none">{Math.min(runHistory.length, 99)}</sup>
                   </button>
                 </div>

@@ -7,6 +7,7 @@ import { LocalApplyPatchToolCard } from './tool-ui/LocalApplyPatchToolCard';
 import { buildInProgressClusterHeader } from './cluster-tool-display-blocks';
 import { buildToolClusterSummary } from './work-activity-summary.utils';
 import styles from './ToolStreamingGroup.module.scss';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 const PATCH_TOOL = 'local_apply_patch';
 
@@ -26,6 +27,7 @@ export const ToolStreamingGroup = React.memo(function ToolStreamingGroup({
    */
   messageStreaming?: boolean;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const wasWorkingRef = useRef(false);
 
@@ -45,8 +47,8 @@ export const ToolStreamingGroup = React.memo(function ToolStreamingGroup({
   const toolsInFlight = events.some((e) => e.loading);
   const completedSummary = useMemo(() => buildToolClusterSummary(events), [events]);
   const headerLabel = toolsInFlight
-    ? buildInProgressClusterHeader(events) ?? 'Working…'
-    : completedSummary ?? 'Worked';
+    ? buildInProgressClusterHeader(events) ?? t('toolStream.working', 'Working…')
+    : completedSummary ?? t('toolStream.worked', 'Worked');
 
   useEffect(() => {
     if (toolsInFlight) {
@@ -110,7 +112,7 @@ export const ToolStreamingGroup = React.memo(function ToolStreamingGroup({
           ) : null}
 
           {patchEvents.length > 0 ? (
-            <div className={styles.patchSection} aria-label="File patches">
+            <div className={styles.patchSection} aria-label={t('toolStream.filePatchesAria', 'File patches')}>
               {patchEvents.map((evt, idx) => (
                 <div key={`patch-${evt.timestamp}-${idx}`} className={styles.patchItem}>
                   <LocalApplyPatchToolCard

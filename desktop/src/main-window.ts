@@ -27,6 +27,7 @@ import { desktopUiAppUrl, shouldUseDesktopUiCustomProtocol } from './desktop-ui-
 import { listWindowIconCandidates } from './window-icon-paths';
 import { hasStoredAuthSession } from './desktop-auth-store';
 import { attachShowWindowWhenReady, revealShowableWindow } from './show-window-when-ready';
+import { rollbackOtaUi } from './desktop-ui-ota';
 
 export function resolveWindowIconPath(): string | undefined {
   const repoRoot = repoRootFromDesktopDist();
@@ -222,6 +223,16 @@ export function createWindow(relativePathOrOptions?: string | CreateWindowOption
       win.webContents.on('did-finish-load', openDevToolsOnce);
       win.webContents.once('did-fail-load', openDevToolsOnce);
     }
+  } else {
+    win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+      console.error(
+        '[aigenius-desktop] did-fail-load in packaged mode',
+        { errorCode, errorDescription, validatedURL },
+      );
+      if (validatedURL && (validatedURL.startsWith('aigenius://app') || validatedURL.includes('127.0.0.1'))) {
+        rollbackOtaUi(app.getPath('userData'), `did-fail-load: ${errorCode} ${errorDescription}`);
+      }
+    });
   }
 
   const loadShellUrl = (): void => {

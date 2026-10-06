@@ -20,6 +20,7 @@ import {
 } from "@/lib/utils/resolve-auth-api-root";
 import { DevLoginButton } from "@/app/components/auth/DevLoginButton";
 import { trackAuthCompleted, trackAuthGoogleStarted } from "@/lib/analytics/product-events";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 export type DesktopAuthFlowPhase = "idle" | "awaiting-browser" | "completing";
 
@@ -44,6 +45,7 @@ export const GoogleSignIn = ({
     onDesktopAuthFlowChange,
     onDesktopOAuthToken,
 }: GoogleSignInProps) => {
+    const { t } = useLanguage();
     const [isDesktopSigningIn, setIsDesktopSigningIn] = useState(false);
 
     const setDesktopAuthFlow = (phase: DesktopAuthFlowPhase) => {
@@ -129,7 +131,9 @@ export const GoogleSignIn = ({
         window.location.href = url;
     };
 
-    const buttonText = variant === 'signup' ? 'Continue with Google' : 'Sign in with Google';
+    const buttonText = variant === 'signup'
+        ? t('auth.continueWithGoogle', 'Continue with Google')
+        : t('auth.signInWithGoogle', 'Sign in with Google');
 
     return (
         <div className="flex flex-col gap-3 w-full">

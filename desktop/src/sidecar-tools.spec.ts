@@ -22,6 +22,12 @@ describe('shouldRouteToolViaSidecar', () => {
     expect(shouldRouteToolViaSidecar('read_file', { path: 'src/index.ts' })).toBe(true);
   });
 
+  it('skips read_file for PDF, Word documents, and images so main process runs document extractors', () => {
+    expect(shouldRouteToolViaSidecar('read_file', { path: 'docs/report.pdf' })).toBe(false);
+    expect(shouldRouteToolViaSidecar('local_read_file', { path: 'docs/report.docx' })).toBe(false);
+    expect(shouldRouteToolViaSidecar('read_file', { path: 'images/photo.png' })).toBe(false);
+  });
+
   it('skips read_file batch reads[] for main-process executor', () => {
     expect(
       shouldRouteToolViaSidecar('read_file', {

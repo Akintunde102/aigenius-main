@@ -22,8 +22,8 @@ const PRIVACY_SECTIONS = [
 export default function PrivacyPolicyPage() {
   return (
     <DocPage
-      effectiveDate="30 September 2025"
-      effectiveDateIso="2025-09-30"
+      effectiveDate="5 October 2026"
+      effectiveDateIso="2026-10-05"
       sections={PRIVACY_SECTIONS}
     >
       <p className="text-stone-700 leading-[1.7]">
@@ -54,6 +54,7 @@ export default function PrivacyPolicyPage() {
             <><strong className="text-stone-900">Conversations and AI usage:</strong> chat messages, model identifiers, token usage, cost per request, custom personalities (name, description, prompt, icon).</>,
             <><strong className="text-stone-900">Uploads:</strong> file names, sizes, MIME types, storage URLs, and metadata for files you upload.</>,
             <><strong className="text-stone-900">Usage and logs:</strong> request identifiers, user IDs, project and record-space references, client details, request details (e.g. timings, URLs), IP address, and user agent where logged.</>,
+            <><strong className="text-stone-900">Crash diagnostics:</strong> when a page throws an error, the browser sends our API the error name, a short message, a stack trace, and the page path. Query strings, emails, and secrets are stripped. We do not send chat message text or your account id. Our API logs the report and may forward that same redacted report to PostHog so we can fix the failure. This is separate from optional product analytics and does not depend on the cookie banner.</>,
             <><strong className="text-stone-900">Product analytics (with consent):</strong> when you accept analytics in our cookie banner, we use <strong className="text-stone-900">PostHog</strong> to collect anonymous usage events (e.g. pages visited, features used, sign-in and wallet actions). We configure PostHog <strong className="text-stone-900">not</strong> to record your chat message content. PostHog may store a pseudonymous identifier, device/browser metadata, and event properties such as model IDs and conversation IDs (not message text).</>,
             <><strong className="text-stone-900">Local storage and similar tech:</strong> we use browser localStorage and sessionStorage for authentication tokens, user details, model preferences, integration states, and your analytics consent choice. We may use cookies where required for session management. See &quot;Cookies and local storage&quot; below.</>,
             <><strong className="text-stone-900">Integrations:</strong> data we receive from third-party services you connect (e.g. Google OAuth, Gmail, Paystack), governed by their policies.</>,
@@ -75,6 +76,7 @@ export default function PrivacyPolicyPage() {
             "Process payments, manage your credit wallet, and deduct usage costs.",
             "Monitor performance, fix issues, and improve features.",
             "Measure product usage through PostHog when you consent to analytics (see Cookies and local storage).",
+            "Diagnose crashes from redacted error reports sent to our API, which we may forward to PostHog.",
             "Communicate important updates, security notices, and support responses.",
             "Comply with legal obligations and defend legal claims.",
             "Create aggregated or de-identified insights that cannot reasonably identify you.",
@@ -103,7 +105,10 @@ export default function PrivacyPolicyPage() {
           <strong className="text-stone-900">Essential storage</strong> (required for the Services to work) includes sign-in tokens and session data. These are not used for marketing analytics.
         </p>
         <p className="mb-4">
-          <strong className="text-stone-900">Analytics (optional)</strong> — if you click <strong className="text-stone-900">Accept</strong> in our cookie banner on public pages, we load PostHog (US cloud: posthog.com) to understand how AIGenius is used. PostHog receives pseudonymous events such as page views, feature usage, and high-level product actions. We do <strong className="text-stone-900">not</strong> send chat message text in analytics events. If you choose <strong className="text-stone-900">Decline</strong>, PostHog is not loaded.
+          <strong className="text-stone-900">Crash reports</strong> — if the page throws, we send a redacted diagnostic to our API even when you decline analytics. It contains the error name, a short message, a stack, and the page path. It does not contain chat text. Our servers may forward that report to PostHog. The PostHog browser library is still not loaded when you decline.
+        </p>
+        <p className="mb-4">
+          <strong className="text-stone-900">Analytics (optional)</strong> — if you click <strong className="text-stone-900">Accept</strong> in our cookie banner on public pages, we load PostHog (US cloud: posthog.com) to understand how AIGenius is used. PostHog receives pseudonymous events such as page views, feature usage, and high-level product actions. We do <strong className="text-stone-900">not</strong> send chat message text in analytics events. If you choose <strong className="text-stone-900">Decline</strong>, PostHog is not loaded in the browser.
         </p>
         <p>
           <strong className="text-stone-900">Session replay</strong> — when you accept analytics, PostHog may also record a replay of on-screen interactions (similar to a video) to help us improve the product. Chat message areas and text inputs are masked in replays where possible; we still treat chat content as sensitive and do not intentionally send message text to PostHog as analytics event payloads.
@@ -115,7 +120,8 @@ export default function PrivacyPolicyPage() {
           items={[
             <><strong className="text-stone-900">AI providers:</strong> prompts and conversation content are sent to OpenRouter and underlying providers (OpenAI, Anthropic, Google, etc.) to generate responses.</>,
             <><strong className="text-stone-900">Payment providers:</strong> Paystack, Payaza, or Flutterwave process payment data depending on your checkout flow; their policies apply.</>,
-            <><strong className="text-stone-900">Analytics:</strong> PostHog (PostHog, Inc.) processes pseudonymous product analytics when you consent. See PostHog&apos;s privacy documentation at <DocLink href="https://posthog.com/privacy" external>posthog.com/privacy</DocLink>.</>,
+            <><strong className="text-stone-900">Crash diagnostics:</strong> our API may forward a redacted crash report (error name, short message, stack, page path) to PostHog (PostHog, Inc.) so we can fix failures. This does not include chat text. Optional product analytics and session replay still require consent. See PostHog&apos;s privacy documentation at <DocLink href="https://posthog.com/privacy" external>posthog.com/privacy</DocLink>.</>,
+            <><strong className="text-stone-900">Analytics:</strong> PostHog processes pseudonymous product analytics when you consent.</>,
             <><strong className="text-stone-900">OAuth providers:</strong> Google and GitHub handle sign-in; their policies apply.</>,
             <><strong className="text-stone-900">Storage:</strong> AWS S3 or Cloudinary may store uploaded files; their policies apply.</>,
             <><strong className="text-stone-900">Service providers/subprocessors:</strong> bound by confidentiality and security obligations.</>,

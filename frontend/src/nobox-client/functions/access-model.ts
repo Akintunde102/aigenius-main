@@ -20,8 +20,11 @@ import {
 } from '@/lib/tool-permissions';
 import { activeEditorForRuntime } from '@/lib/code-projects/active-editor-context';
 import { resolveProjectScopeForChatRequest } from '@/lib/code-projects/chat-project-scope';
+import { getCodeProjectRootHealth } from '@/lib/code-projects/code-project-root-health-store';
+import { enrichActiveCodeProjectWithFolderHealth } from '@/lib/code-projects/enrich-active-code-project-folder-health';
 import { runCreateCodeProjectFromToolArgs } from '@/lib/code-projects/create-code-project-workflow';
 import { clientVerboseDebug, isClientVerboseDebugEnabled } from '@/lib/utils/client-verbose-debug';
+import { getActiveClientLanguage } from '@/lib/providers/LanguageProvider';
 
 // Constants
 const OPENAI_CHAT_COMPLETIONS_PATH = '/gateway/*/openai/v1/chat/completions';
@@ -371,7 +374,17 @@ async function mergeRuntimeContextIntoRequestBody(
   } catch {
     clientTimezone = 'UTC';
   }
-  const base = { clientNowIso, clientTimezone };
+  const clientLang = getActiveClientLanguage();
+  const base: Record<string, unknown> = {
+    clientNowIso,
+    clientTimezone,
+    ...(clientLang
+      ? {
+          clientLanguage: clientLang.code,
+          clientLanguageName: clientLang.name,
+        }
+      : {}),
+  };
 
   const desktop = getAigeniusDesktopBridgeFromBrowsingContext() as
     | AigeniusDesktopBridge
@@ -429,12 +442,16 @@ async function mergeRuntimeContextIntoRequestBody(
       localSearchIndex
       && typeof localSearchIndex === 'object'
       && (localSearchIndex as { mode?: string }).mode;
-    const activeCodeProject =
+    const withDigest =
       activeProjectPayload
       && mode === 'active_project_ready'
       && digest
         ? { ...activeProjectPayload, structuralDigest: digest }
         : activeProjectPayload;
+    const activeCodeProject = enrichActiveCodeProjectWithFolderHealth(
+      withDigest,
+      withDigest ? getCodeProjectRootHealth(withDigest.id) : undefined,
+    );
     const activeEditor = activeEditorForRuntime();
 
     requestBody.runtimeContext = omitLocalToolCapabilitiesForGateway({

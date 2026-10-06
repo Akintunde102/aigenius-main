@@ -17,6 +17,8 @@ export interface Model {
         expectedImageCost: number;
         totalAverageCost: number;
         totalAverageCostCredits?: number;
+        /** What the average covers for media models, e.g. "image" or "5s video". */
+        averageUnit?: string;
     };
     featured?: boolean;
     /** When true, listed under "Main models" in the All Models tab. */

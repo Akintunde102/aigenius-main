@@ -78,3 +78,26 @@
         }
     }
 }
+
+/* Side-thread anchors render like links (see orphanLinkHighlight.utils.ts). Blue-600 / blue-400 matches existing link accents. */
+:root {
+    --orphan-link-color: #2563eb;
+    --orphan-link-underline: rgba(37, 99, 235, 0.35);
+}
+
+.dark {
+    --orphan-link-color: #60a5fa;
+    --orphan-link-underline: rgba(96, 165, 250, 0.4);
+}
+
+::highlight(orphan-thread-link) {
+    color: var(--orphan-link-color);
+    text-decoration: underline;
+    text-decoration-color: var(--orphan-link-underline);
+}
+
+::highlight(orphan-thread-link-hover) {
+    color: var(--orphan-link-color);
+    text-decoration: underline;
+    text-decoration-color: var(--orphan-link-color);
+}

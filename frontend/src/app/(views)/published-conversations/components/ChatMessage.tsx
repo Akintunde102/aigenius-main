@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { FiCopy, FiCheck } from 'react-icons/fi';
+import { RenderErrorBoundary } from '@/app/components/RenderErrorBoundary';
 import { JsonSyntaxBlock } from '@/app/components/JsonSyntaxBlock';
 import {
     ChatMessage as ChatMessageType,
@@ -52,6 +53,7 @@ interface ChatMessageProps {
 
 export function ChatMessage({
     msg,
+    idx,
     models = [],
     showCosts,
     onCopy,
@@ -175,6 +177,11 @@ export function ChatMessage({
             <div className={`relative flex w-full items-end gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start md:max-w-[720px]'}`}>
                 <div className={`${messageContainerClasses} min-w-0`} style={messageStyles}>
                     <div className="min-w-0">
+                        <RenderErrorBoundary
+                            logLabel="[published-message]"
+                            resetKey={msg.id ?? idx}
+                            message="This message could not be shown."
+                        >
                         {msg.role === 'assistant' && renderSegments.length > 0 ? (
                             <AssistantTurnSegments
                                 segments={renderSegments}
@@ -228,6 +235,7 @@ export function ChatMessage({
                                 codeClassName="text-[11px]"
                             />
                         ) : null}
+                        </RenderErrorBoundary>
                     </div>
 
                     <div className={`mt-2 flex items-center gap-2 text-[11px] text-[var(--chat-muted-fg)] ${msg.role === 'user' ? 'justify-end' : 'justify-between'}`}>

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import dynamic from "next/dynamic";
 import {
   ChatMessage as ChatMessageType,
   Model,
@@ -9,31 +8,13 @@ import {
 import { EmptyState } from "./EmptyState";
 import { TypingIndicator } from "./TypingIndicator";
 import { JumpToLatestButton } from "./JumpToLatestButton";
-import type { ChatAreaVirtualizedListProps } from "./ChatAreaVirtualizedList";
+import {
+  ChatAreaVirtualizedList,
+  type ChatAreaVirtualizedListProps,
+} from "./ChatAreaVirtualizedList";
 import { isVisibleChatMessage } from "@/lib/utils/messageContentUtils";
 import type { MessageEditDraft } from "../../messages/utils/messageEdit.utils";
 import { useChatAreaPinchZoom } from "../hooks/useChatAreaPinchZoom";
-
-function ChatAreaMessagesChunkFallback() {
-  return (
-    <div
-      className="w-full space-y-4 px-3 py-4 md:px-6"
-      aria-busy="true"
-      aria-label="Loading messages"
-    >
-      <div className="h-24 animate-pulse rounded-lg bg-slate-200/50 dark:bg-zinc-700/45" />
-      <div className="ml-auto h-20 max-w-sm animate-pulse rounded-lg bg-slate-200/40 dark:bg-zinc-700/35" />
-    </div>
-  );
-}
-
-const ChatAreaVirtualizedListLazy = dynamic(
-  () =>
-    import("./ChatAreaVirtualizedList").then((m) => ({
-      default: m.ChatAreaVirtualizedList,
-    })),
-  { ssr: false, loading: () => <ChatAreaMessagesChunkFallback /> },
-);
 
 interface ChatAreaProps {
   chat: ChatMessageType[];
@@ -222,7 +203,7 @@ export function ChatArea({
       {visibleNonSystemCount === 0 && <EmptyState />}
 
       {visibleNonSystemCount > 0 && (
-        <ChatAreaVirtualizedListLazy {...listProps} />
+        <ChatAreaVirtualizedList {...listProps} />
       )}
 
       <TypingIndicator

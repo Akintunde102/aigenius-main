@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Folder } from "lucide-react";
 import { FiX } from "react-icons/fi";
 import { UserFilesBrowser } from "@/app/components/user-files/UserFilesBrowser";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 import type { UploadedFilesLibraryState } from "@/app/components/user-files/useUploadedFilesList";
 
 export interface MyFilesModalProps {
@@ -13,6 +14,7 @@ export interface MyFilesModalProps {
 }
 
 const MyFilesModal: React.FC<MyFilesModalProps> = ({ onClose, library }) => {
+  const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -81,7 +83,7 @@ const MyFilesModal: React.FC<MyFilesModalProps> = ({ onClose, library }) => {
                     className="text-base font-semibold leading-none"
                     style={{ color: "var(--modal-fg)" }}
                   >
-                    My files
+                    {t("modals.myFilesTitle", "My files")}
                   </h2>
                   {filesCount > 0 && (
                     <span
@@ -96,13 +98,13 @@ const MyFilesModal: React.FC<MyFilesModalProps> = ({ onClose, library }) => {
                   )}
                 </div>
                 <p className="mt-1 text-xs" style={{ color: "var(--modal-muted-fg)" }}>
-                  Browse, search, and manage your uploaded files
+                  {t("modals.myFilesSubtitle", "Browse, search, and manage your uploaded files")}
                 </p>
               </div>
             </div>
             <button
               type="button"
-              aria-label="Close"
+              aria-label={t("common.close", "Close")}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-none"
               style={{ color: "var(--modal-muted-fg)" }}
               onClick={onClose}

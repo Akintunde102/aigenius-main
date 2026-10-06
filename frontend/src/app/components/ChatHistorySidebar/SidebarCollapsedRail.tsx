@@ -3,6 +3,7 @@
 import React from "react";
 import { PanelLeftOpen } from "lucide-react";
 import { FiPlus } from "react-icons/fi";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 export interface SidebarCollapsedRailProps {
   userInitials: string;
@@ -18,6 +19,7 @@ export interface SidebarCollapsedRailProps {
  */
 export const SidebarCollapsedRail = React.memo<SidebarCollapsedRailProps>(
   ({ userInitials, onExpand, onNewChat, onOpenAccountMenu }) => {
+    const { t } = useLanguage();
     const letter = userInitials.trim().slice(0, 2).toUpperCase() || "U";
 
     return (
@@ -26,8 +28,8 @@ export const SidebarCollapsedRail = React.memo<SidebarCollapsedRailProps>(
           <button
             type="button"
             data-mobile-toggle
-            aria-label="Open sidebar"
-            title="Show conversations (⌘B)"
+            aria-label={t("sidebar.openSidebar", "Open sidebar")}
+            title={`${t("sidebar.showConversations", "Show conversations")} (⌘B)`}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 sm:h-7 sm:w-7"
             style={{
               backgroundColor: "transparent",
@@ -41,8 +43,8 @@ export const SidebarCollapsedRail = React.memo<SidebarCollapsedRailProps>(
           </button>
           <button
             type="button"
-            aria-label="New chat"
-            title="New chat"
+            aria-label={t("sidebar.newChat", "New chat")}
+            title={t("sidebar.newChat", "New chat")}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 sm:h-7 sm:w-7"
             style={{
               backgroundColor: "transparent",
@@ -61,9 +63,9 @@ export const SidebarCollapsedRail = React.memo<SidebarCollapsedRailProps>(
         <div className="relative flex shrink-0 flex-col justify-end">
           <button
             type="button"
-            aria-label="Open account menu"
+            aria-label={t("sidebar.openAccountMenu", "Open account menu")}
             aria-haspopup="menu"
-            title="Account"
+            title={t("sidebar.account", "Account")}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-normal transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 sm:h-7 sm:w-7"
             style={{
               backgroundColor: "transparent",

@@ -7,9 +7,9 @@ import {
 } from "./messageActionsMenu.collision";
 import { MoreHorizontal } from "lucide-react";
 import { FiTrash2, FiInfo, FiCopy, FiRepeat, FiBookmark } from "react-icons/fi";
-import { Sparkles } from "lucide-react";
-import { GitBranchPlus } from "lucide-react";
+import { Sparkles, GitBranchPlus } from "lucide-react";
 import type { ChatMessage as ChatMessageType } from "@/app/components/model-interface/shared/types";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 export type MessageActionsMenuAlign = "start" | "end";
 
@@ -53,6 +53,7 @@ export function MessageActionsMenu({
   onOpenUsageDetails,
   onOpenChange,
 }: MessageActionsMenuProps) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [menuVerticalDirection, setMenuVerticalDirection] = useState<"up" | "down">("down");
   const rootRef = useRef<HTMLDivElement>(null);
@@ -130,8 +131,8 @@ export function MessageActionsMenu({
         className={messageActionIconButtonClassName}
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label="Message actions"
-        title="Message actions"
+        aria-label={t('chat.messageActions', 'Message actions')}
+        title={t('chat.messageActions', 'Message actions')}
         onClick={(e) => {
           e.stopPropagation();
           setOpen((v) => !v);
@@ -155,7 +156,7 @@ export function MessageActionsMenu({
             }}
           >
             <FiTrash2 size={14} className="shrink-0 text-slate-500 dark:text-zinc-400" aria-hidden />
-            Delete
+            {t('chat.delete', 'Delete')}
           </button>
           {msg.role === "assistant" ? (
             <button
@@ -168,7 +169,7 @@ export function MessageActionsMenu({
               }}
             >
               <FiInfo size={14} className="shrink-0 text-slate-500 dark:text-zinc-400" aria-hidden />
-              Token details
+              {t('chat.tokenDetails', 'Token details')}
             </button>
           ) : null}
           <button
@@ -181,7 +182,7 @@ export function MessageActionsMenu({
             }}
           >
             <FiCopy size={14} className="shrink-0 text-slate-500 dark:text-zinc-400" aria-hidden />
-            Copy
+            {t('chat.copy', 'Copy')}
           </button>
           <button
             type="button"
@@ -203,7 +204,7 @@ export function MessageActionsMenu({
                 />
               ) : null}
             </span>
-            {isSaved ? "Saved" : "Save message"}
+            {isSaved ? t('chat.saved', 'Saved') : t('chat.saveMessage', 'Save message')}
           </button>
           {onStartOrphanReply ? (
             <button
@@ -217,7 +218,7 @@ export function MessageActionsMenu({
               }}
             >
               <GitBranchPlus size={14} className="shrink-0 text-slate-500 dark:text-zinc-400" aria-hidden />
-              Reply in side thread
+              {t('chat.replyInSideThread', 'Reply in side thread')}
             </button>
           ) : null}
           {msg.role === "user" ? (
@@ -232,7 +233,7 @@ export function MessageActionsMenu({
               }}
             >
               <FiRepeat size={14} className="shrink-0 text-slate-500 dark:text-zinc-400" aria-hidden />
-              Replay
+              {t('chat.replay', 'Replay')}
             </button>
           ) : null}
         </div>

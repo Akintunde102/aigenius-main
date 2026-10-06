@@ -19,18 +19,23 @@ import { usePanelDisplayMode } from './usePanelDisplayMode';
 import { copyLocalItem } from './file-preview-os-actions.utils';
 import copy from 'copy-to-clipboard';
 import type { EditorProps } from '@monaco-editor/react';
+import { ensureLazyDefault } from '@/lib/utils/lazy-component';
+import { RenderErrorBoundary } from '@/app/components/RenderErrorBoundary';
 
 const Editor = dynamic<EditorProps>(
   () =>
-    import('@monaco-editor/react').then((mod) => {
-      const monacoMod = mod as any;
-      if (monacoMod.loader) {
-        monacoMod.loader.config({
-          paths: { vs: '/monaco-editor/min/vs' },
-        });
-      }
-      return { default: monacoMod.default ?? monacoMod };
-    }),
+    import('@monaco-editor/react')
+      .then((mod) => {
+        const monacoMod = mod as any;
+        if (monacoMod.loader) {
+          monacoMod.loader.config({
+            paths: { vs: '/monaco-editor/min/vs' },
+          });
+        }
+        const component = monacoMod.default ?? monacoMod.MonacoEditor ?? null;
+        return ensureLazyDefault(component, 'monaco-editor');
+      })
+      .catch(() => ensureLazyDefault(null, 'monaco-editor')),
   { ssr: false, loading: () => <div className="p-4 text-sm text-muted-foreground">Loading editor…</div> },
 );
 
@@ -559,15 +564,26 @@ export const FilePreviewModal: React.FC = () => {
                 const isCodeLoading = typeof payload.textContent !== 'string' || payload.textContent === '// Loading code...';
                 if (showMarkdownPreview && isMarkdown) {
                     return (
+                      <RenderErrorBoundary
+                        logLabel="[file-preview]"
+                        resetKey={`${payload.localPath ?? payload.name}-md`}
+                        message="This preview could not be shown."
+                      >
                         <div
                             className={`flex-1 w-full overflow-auto p-8 ${resolvedTheme === 'dark' ? 'workflow-scroll' : 'workflow-scroll-light'}`}
                             style={{ background: 'var(--modal-bg)', color: 'var(--modal-fg)' }}
                         >
                             <MarkdownRenderer content={editedContent} />
                         </div>
+                      </RenderErrorBoundary>
                     );
                 }
                 return (
+                  <RenderErrorBoundary
+                    logLabel="[file-preview]"
+                    resetKey={payload.localPath ?? payload.name}
+                    message="This preview could not be shown."
+                  >
                     <div className="flex-1 w-full overflow-hidden relative" style={{ background: 'var(--modal-bg)' }}>
                         {isCodeLoading && <div className="absolute inset-0 flex items-center justify-center z-10" style={{ background: 'color-mix(in srgb, var(--modal-bg) 82%, transparent)' }}><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}
                         <Editor
@@ -591,6 +607,7 @@ export const FilePreviewModal: React.FC = () => {
                             }}
                         />
                     </div>
+                  </RenderErrorBoundary>
                 );
             case 'folder':
                 return (

@@ -33,7 +33,7 @@ describe("MyFilesModal", () => {
     render(<MyFilesModal onClose={onClose} library={libraryStub()} />);
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("My files")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "My Files" })).toBeInTheDocument();
     expect(screen.getByTestId("user-files-browser")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /close/i }));

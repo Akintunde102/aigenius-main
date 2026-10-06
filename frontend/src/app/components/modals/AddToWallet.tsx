@@ -38,6 +38,7 @@ import { serverCalls } from "@/servercall/store";
 import React, { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import toast from "react-hot-toast";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 interface AddToWalletProps {
   paymentModalLoading: boolean;
@@ -116,6 +117,7 @@ const AddToWallet = ({
   showInsufficientFundsWarning,
   insufficientFundsMessage,
 }: AddToWalletProps) => {
+  const { t } = useLanguage();
   const [amount, setAmount] = useState<string>("10000");
   const [updating, setUpdating] = useState(false);
   const [loadingCredits, setLoadingCredits] = useState(true);
@@ -224,7 +226,7 @@ const AddToWallet = ({
       await fetchWallet();
     }
     setShowSuccess(true);
-    toast.success("Payment verified. Your wallet has been updated.");
+    toast.success(t("wallet.paymentVerifiedToast", "Payment verified. Your wallet has been updated."));
     notifyWalletCreditsUpdated(newWalletBalance ?? null);
     void onSuccessfulPayment(amountInNaira, newWalletBalance ?? null, {
       keepModalOpen: true,
@@ -241,7 +243,7 @@ const AddToWallet = ({
       submitInFlightRef.current = false;
       setConfirmingPayment(false);
       setUpdating(false);
-      toast.error("Payment failed. Please try again.");
+      toast.error(t("wallet.paymentFailedToast", "Payment failed. Please try again."));
     },
     onTimedOut: () => {
       submitInFlightRef.current = false;
@@ -294,7 +296,7 @@ const AddToWallet = ({
     if (verification.status === "failed") {
       clearPendingPaymentStorage();
       setUpdating(false);
-      toast.error("Payment failed. Please try again.");
+      toast.error(t("wallet.paymentFailedToast", "Payment failed. Please try again."));
       return verification.status;
     }
 
@@ -653,15 +655,15 @@ const AddToWallet = ({
               className="text-[17px] font-bold tracking-tight"
               style={{ color: "var(--modal-fg)" }}
             >
-              {showSuccess ? "Payment successful" : "Add credits"}
+              {showSuccess ? t("wallet.paymentSuccessful", "Payment successful") : t("wallet.addCredits", "Add credits")}
             </h2>
             <p
               className="text-[13px] mt-0.5"
               style={{ color: "var(--modal-muted-fg)" }}
             >
               {showSuccess
-                ? "Your balance has been updated."
-                : "Top up your balance to keep using AIGenius."}
+                ? t("wallet.balanceUpdated", "Your balance has been updated.")
+                : t("wallet.topUpSubtitle", "Top up your balance to keep using AIGenius.")}
             </p>
           </div>
           <button
@@ -715,7 +717,7 @@ const AddToWallet = ({
                 <line x1="12" y1="17" x2="12" y2="17" />
               </svg>
               <span>
-                {insufficientFundsMessage || "You need more credits to use this model."}
+                {insufficientFundsMessage || t("wallet.needMoreCredits", "You need more credits to use this model.")}
               </span>
             </div>
           )}

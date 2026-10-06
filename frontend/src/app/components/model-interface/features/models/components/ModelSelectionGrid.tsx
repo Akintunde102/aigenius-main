@@ -13,6 +13,7 @@ import {
   getModelSelectionRowKey,
   isModelSectionCollapsed,
 } from "./modelSelectionGrid.utils";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 export interface ModelSelectionSection {
   title: string;
@@ -124,6 +125,7 @@ export const ModelSelectionGrid = React.memo(({
   onAddCredits,
   previewedModelId,
 }: ModelSelectionGridProps) => {
+  const { t } = useLanguage();
   const [scrollPaneHeight, setScrollPaneHeight] = useState(0);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
@@ -196,7 +198,11 @@ export const ModelSelectionGrid = React.memo(({
   }
 
   if (totalModelCount === 0) {
-    return <div className="text-sm" style={{ color: "var(--modal-muted-fg)" }}>No models found.</div>;
+    return (
+      <div className="text-sm" style={{ color: "var(--modal-muted-fg)" }}>
+        {t("modelPicker.noModelsShort", "No models found")}
+      </div>
+    );
   }
 
   return (

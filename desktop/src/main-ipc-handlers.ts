@@ -25,6 +25,8 @@ import {
   runCreateNamedProjectDirectoryRequest,
   runCreateNamedProjectDirectorySilent,
 } from './create-named-project-folder';
+import { checkCodeProjectRootPath } from './check-code-project-root-path';
+import { recreateCodeProjectRootAtPath } from './recreate-code-project-root-at-path';
 import {
   clearDesktopRefreshToken,
   readDesktopRefreshToken,
@@ -428,6 +430,14 @@ export function registerMainIpcHandlers(): void {
     return applySyncedToolPermissionPreferences(prefs);
   });
 
+  ipcMain.handle('check-code-project-root', async (_event, rootPath: unknown) => {
+    return checkCodeProjectRootPath(rootPath);
+  });
+
+  ipcMain.handle('recreate-code-project-root', async (_event, rootPath: unknown) => {
+    return recreateCodeProjectRootAtPath(rootPath);
+  });
+
   ipcMain.handle('pick-project-directory', async () => {
     const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
     const result = await dialog.showOpenDialog(win, {
@@ -497,6 +507,15 @@ export function registerMainIpcHandlers(): void {
         projectId: payload.projectId,
         rootPath: payload.rootPath,
       });
+
+      const rootCheck = await checkCodeProjectRootPath(payload.rootPath);
+      if (!rootCheck.ok) {
+        return {
+          ok: false,
+          error: `project_root_${rootCheck.status}`,
+          rootCheck,
+        };
+      }
 
       try {
         const port = MINI_SERVER_PORT;

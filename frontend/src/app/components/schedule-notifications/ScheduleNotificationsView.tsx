@@ -12,6 +12,7 @@ import {
   type ScheduleRunNotificationDto,
 } from "@/lib/schedule-notifications/scheduleNotificationsApi";
 import { SCHEDULE_NOTIFICATIONS_REFRESH_EVENT } from "@/lib/hooks/useScheduleNotificationEvents";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 function formatWhen(iso: string | null): string {
   if (!iso) return "—";
@@ -67,6 +68,7 @@ function groupNotifications(items: ScheduleRunNotificationDto[]): ScheduleRunNot
 }
 
 export default function ScheduleNotificationsView() {
+  const { t } = useLanguage();
   const router = useRouter();
   const [items, setItems] = useState<ScheduleRunNotificationDto[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -141,13 +143,13 @@ export default function ScheduleNotificationsView() {
                 type="button"
                 onClick={() => router.back()}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:border-slate-600/80 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-sky-500/40 dark:hover:bg-slate-800 dark:hover:text-white"
-                aria-label="Go back"
+                aria-label={t("schedule.goBack", "Go back")}
               >
                 <ArrowLeft className="h-4 w-4" aria-hidden />
               </button>
               <div className="min-w-0">
-                <h1 className="truncate text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">Schedule activity</h1>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">Quiet timeline of scheduled workflow runs</p>
+                <h1 className="truncate text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">{t("modals.scheduleActivity", "Schedule activity")}</h1>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{t("schedule.timelineSubtitle", "Quiet timeline of scheduled workflow runs")}</p>
               </div>
             </div>
             <button
@@ -156,7 +158,7 @@ export default function ScheduleNotificationsView() {
               onClick={() => void handleMarkAllRead()}
               className="rounded-lg border border-slate-200 bg-slate-100/80 px-3 py-1.5 text-[12px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-200/80 hover:text-slate-900 disabled:opacity-40 dark:border-slate-600/80 dark:bg-slate-800/40 dark:text-slate-200 dark:hover:border-sky-500/35 dark:hover:bg-slate-700"
             >
-              Mark all read
+              {t("schedule.markAllRead", "Mark all read")}
             </button>
           </div>
         </header>
@@ -169,11 +171,11 @@ export default function ScheduleNotificationsView() {
               ) : null}
 
               {loading && items.length === 0 ? (
-                <p className="text-center text-[13px] text-slate-600 dark:text-slate-400">Loading…</p>
+                <p className="text-center text-[13px] text-slate-600 dark:text-slate-400">{t("schedule.loading", "Loading…")}</p>
               ) : null}
 
               {!loading && items.length === 0 && !error ? (
-                <p className="text-center text-[13px] text-slate-600 dark:text-slate-400">No scheduled run notifications yet.</p>
+                <p className="text-center text-[13px] text-slate-600 dark:text-slate-400">{t("schedule.noNotifications", "No scheduled run notifications yet.")}</p>
               ) : null}
 
               <ul className="space-y-4">
@@ -208,7 +210,7 @@ export default function ScheduleNotificationsView() {
                               className="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180 dark:text-slate-500"
                               aria-hidden
                             />
-                            <span className="text-[12px] font-semibold text-slate-800 dark:text-slate-200">Run stages</span>
+                            <span className="text-[12px] font-semibold text-slate-800 dark:text-slate-200">{t('schedule.runStages', 'Run stages')}</span>
                             <span className="rounded-full border border-slate-200/90 bg-slate-50 px-2 py-0.5 text-[10px] font-medium tabular-nums text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                               {group.length}
                             </span>

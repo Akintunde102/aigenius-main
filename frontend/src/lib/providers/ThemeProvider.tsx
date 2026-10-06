@@ -94,10 +94,22 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+const themeFallback: ThemeContextType = {
+  theme: "system",
+  resolvedTheme: "dark",
+  setTheme: () => {},
+};
+
+let warnedMissingThemeProvider = false;
+
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (context === undefined) {
-    throw new Error("useTheme must be used within a ThemeProvider");
+    if (!warnedMissingThemeProvider) {
+      warnedMissingThemeProvider = true;
+      console.error("useTheme was called outside ThemeProvider. Using a safe fallback.");
+    }
+    return themeFallback;
   }
   return context;
 };

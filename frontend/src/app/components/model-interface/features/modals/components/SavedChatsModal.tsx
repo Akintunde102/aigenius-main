@@ -8,6 +8,7 @@ import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
 import { useMessageContent } from '../../messages/hooks';
 import { ImageMessage, StructuredMessage } from '../../message-types';
 import { ImagePreviewLightbox } from '../../message-types/components/ImagePreviewLightbox';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 
 
@@ -173,6 +174,7 @@ export function SavedChatsModal({
     onInsertSaved,
     onRemoveSaved,
 }: SavedChatsModalProps) {
+    const { t } = useLanguage();
     const [expandedMsg, setExpandedMsg] = useState<number | null>(null);
     const [search, setSearch] = useState('');
 
@@ -212,14 +214,14 @@ export function SavedChatsModal({
                             <input
                                 type="text"
                                 className="app-modal-input pl-8 pr-3 py-2 rounded-full w-full text-sm focus:outline-none"
-                                placeholder="Search saved messages..."
+                                placeholder={t('modals.searchSavedMessages', 'Search saved messages...')}
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                             />
                             <FiSearch className="absolute left-2.5 top-3" size={16} style={{ color: "var(--modal-muted-fg)" }} />
                         </div>
                     </div>
-                    <button className="hover:text-red-500 transition-colors ml-4" onClick={onClose} aria-label="Close" style={{ color: "var(--modal-muted-fg)" }}>
+                    <button className="hover:text-red-500 transition-colors ml-4" onClick={onClose} aria-label={t('common.close', 'Close')} style={{ color: "var(--modal-muted-fg)" }}>
                         <FiX size={24} />
                     </button>
                 </div>
@@ -228,8 +230,8 @@ export function SavedChatsModal({
                     <ul className="space-y-2 px-2">
                         {filteredMessages.length === 0 ? (
                             <div className="text-center py-12 text-lg flex flex-col items-center" style={{ color: "var(--modal-muted-fg)" }}>
-                                <span className="mb-2">No saved messages.</span>
-                                <span className="text-sm">Save a message to see it here!</span>
+                                <span className="mb-2">{t('modals.noSavedMessages', 'No saved messages.')}</span>
+                                <span className="text-sm">{t('modals.saveMessageHint', 'Save a message to see it here!')}</span>
                             </div>
                         ) : (
                             filteredMessages.sort((a, b) => b.timestamp - a.timestamp).map((msg: ChatMessage, idx: number) => (

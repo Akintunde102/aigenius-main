@@ -1,7 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import { getActiveCodeProjectRootPath } from '../../active-code-project';
+import { getActiveCodeProjectId, getActiveCodeProjectRootPath } from '../../active-code-project';
+import { checkCodeProjectRootPath } from '../../check-code-project-root-path';
 import { isImageExtension, formatSupportedImageExtensions } from '../image-extensions';
 
 export type PathResolveResult =
@@ -9,7 +10,41 @@ export type PathResolveResult =
   | { ok: false; error: string };
 
 function workspaceRoot(): string {
-  return path.resolve(getActiveCodeProjectRootPath() ?? os.homedir());
+  const activeRoot = getActiveCodeProjectRootPath();
+  if (activeRoot?.trim()) {
+    return path.resolve(activeRoot);
+  }
+  if (getActiveCodeProjectId()) {
+    return path.resolve(activeRoot ?? '');
+  }
+  return path.resolve(os.homedir());
+}
+
+async function ensureWorkspaceRootAccessible(): Promise<PathResolveResult | null> {
+  const projectId = getActiveCodeProjectId();
+  const rootPath = getActiveCodeProjectRootPath();
+  if (!projectId) {
+    return null;
+  }
+  if (!rootPath?.trim()) {
+    return {
+      ok: false,
+      error:
+        'Error: project folder is not available — relink the folder in the sidebar project menu',
+    };
+  }
+  const check = await checkCodeProjectRootPath(rootPath);
+  if (!check.ok) {
+    const hint =
+      check.status === 'permission_denied'
+        ? 'fix folder permissions or relink the project'
+        : 'relink or recreate the folder in the sidebar project menu';
+    return {
+      ok: false,
+      error: `Error: project folder is missing or unavailable — ${hint} (${rootPath})`,
+    };
+  }
+  return null;
 }
 
 function normalizePathForComparison(p: string): string {
@@ -47,6 +82,11 @@ function outsideWorkspaceError(workspaceRootPath: string): string {
 export async function resolveReadFilePath(inputPath: string): Promise<PathResolveResult> {
   if (!inputPath || typeof inputPath !== 'string' || !inputPath.trim()) {
     return { ok: false, error: 'Error: file not found — path is required' };
+  }
+
+  const workspaceBlock = await ensureWorkspaceRootAccessible();
+  if (workspaceBlock) {
+    return workspaceBlock;
   }
 
   const root = workspaceRoot();
@@ -100,6 +140,11 @@ export async function resolveReadFilePath(inputPath: string): Promise<PathResolv
 export async function resolveDirectoryPath(inputPath: string): Promise<PathResolveResult> {
   if (!inputPath || typeof inputPath !== 'string' || !inputPath.trim()) {
     return { ok: false, error: 'Error: directory not found — path is required' };
+  }
+
+  const workspaceBlock = await ensureWorkspaceRootAccessible();
+  if (workspaceBlock) {
+    return workspaceBlock;
   }
 
   const root = workspaceRoot();

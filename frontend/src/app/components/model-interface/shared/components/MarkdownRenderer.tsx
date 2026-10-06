@@ -21,6 +21,7 @@ import {
     markdownRendererComponents,
     markdownUrlTransform,
 } from './markdown-renderer-components';
+import { RenderErrorBoundary } from '@/app/components/RenderErrorBoundary';
 
 export { shouldOpenWorkflowStudioLinkInNewTab };
 
@@ -76,14 +77,27 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({ content, 
                 className,
             )}
         >
-            <ReactMarkdown
-                urlTransform={markdownUrlTransform}
-                remarkPlugins={REMARK_PLUGINS}
-                rehypePlugins={REHYPE_PLUGINS as Pluggable[]}
-                components={markdownRendererComponents}
+            <RenderErrorBoundary
+                logLabel="[markdown]"
+                resetKey={processedContent}
+                fallback={
+                    <pre
+                        role="alert"
+                        className="whitespace-pre-wrap break-words font-sans text-sm"
+                    >
+                        {processedContent}
+                    </pre>
+                }
             >
-                {processedContent}
-            </ReactMarkdown>
+                <ReactMarkdown
+                    urlTransform={markdownUrlTransform}
+                    remarkPlugins={REMARK_PLUGINS}
+                    rehypePlugins={REHYPE_PLUGINS as Pluggable[]}
+                    components={markdownRendererComponents}
+                >
+                    {processedContent}
+                </ReactMarkdown>
+            </RenderErrorBoundary>
         </div>
     );
 });

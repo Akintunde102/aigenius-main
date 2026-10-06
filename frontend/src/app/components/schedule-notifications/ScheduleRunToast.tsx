@@ -3,33 +3,37 @@
 import React from "react";
 import { X } from "lucide-react";
 import toast, { type Toast as HotToast } from "react-hot-toast";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 export type ScheduleRunToastVariant = "started" | "ended_ok" | "ended_error" | "ended_cancelled";
 
-function copyFor(variant: ScheduleRunToastVariant): { title: string; detail: string; barClass: string } {
+function copyFor(
+  variant: ScheduleRunToastVariant,
+  t: ReturnType<typeof useLanguage>["t"],
+): { title: string; detail: string; barClass: string } {
   switch (variant) {
     case "started":
       return {
-        title: "Started",
-        detail: "Your scheduled workflow is running.",
+        title: t("schedule.toastStartedTitle", "Started"),
+        detail: t("schedule.toastStartedDetail", "Your scheduled workflow is running."),
         barClass: "bg-teal-500",
       };
     case "ended_ok":
       return {
-        title: "Finished",
-        detail: "Completed successfully.",
+        title: t("schedule.toastFinishedTitle", "Finished"),
+        detail: t("schedule.toastFinishedOk", "Completed successfully."),
         barClass: "bg-emerald-500",
       };
     case "ended_error":
       return {
-        title: "Finished",
-        detail: "It didn't finish successfully. Open the run for details.",
+        title: t("schedule.toastFinishedTitle", "Finished"),
+        detail: t("schedule.toastFinishedError", "It didn't finish successfully. Open the run for details."),
         barClass: "bg-rose-500",
       };
     case "ended_cancelled":
       return {
-        title: "Finished",
-        detail: "This run was cancelled.",
+        title: t("schedule.toastFinishedTitle", "Finished"),
+        detail: t("schedule.toastFinishedCancelled", "This run was cancelled."),
         barClass: "bg-slate-400",
       };
     default:
@@ -39,7 +43,7 @@ function copyFor(variant: ScheduleRunToastVariant): { title: string; detail: str
 
 /** Custom react-hot-toast body: compact, side-aligned, easy to dismiss. */
 export function ScheduleRunToast({
-  t,
+  t: toastItem,
   variant,
   workflowName,
 }: {
@@ -47,7 +51,8 @@ export function ScheduleRunToast({
   variant: ScheduleRunToastVariant;
   workflowName: string;
 }): React.ReactElement {
-  const { title, detail, barClass } = copyFor(variant);
+  const { t } = useLanguage();
+  const { title, detail, barClass } = copyFor(variant, t);
 
   return (
     <div
@@ -63,8 +68,8 @@ export function ScheduleRunToast({
       <button
         type="button"
         className="my-1.5 mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40"
-        onClick={() => toast.dismiss(t.id)}
-        aria-label="Dismiss notification"
+        onClick={() => toast.dismiss(toastItem.id)}
+        aria-label={t("schedule.dismissAria", "Dismiss notification")}
       >
         <X className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
       </button>

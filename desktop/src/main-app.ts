@@ -74,7 +74,7 @@ import { installDesktopUiProtocolHandler } from './desktop-ui-protocol';
 import path from 'path';
 import { DESKTOP_APP_USER_MODEL_ID, resolveDesktopUserDataDirName } from './desktop-app-identity';
 import { installVcRuntimeElevated, isVcRuntimeInstalled } from './vcredist-guard';
-import { setupAutoUpdater } from './main-auto-updater';
+import { setupAutoUpdater, runSilentUiOtaCheck } from './main-auto-updater';
 
 if (process.platform === 'win32' && !process.windowsStore) {
   app.setAppUserModelId(DESKTOP_APP_USER_MODEL_ID);
@@ -275,6 +275,11 @@ if (!gotLock) {
     startupMark('ipc_handlers_registered');
 
     await navigateMainShellToApp(mainWindow);
+
+    // Silently check for UI OTA update in the background (staggered so it never slows down boot)
+    setTimeout(() => {
+      void runSilentUiOtaCheck();
+    }, 15_000);
 
     const registeredGlobalShot = globalShortcut.register(CHAT_SCREENSHOT_GLOBAL_ACCELERATOR, () => {
       void attachFullDesktopToChatShell(null);

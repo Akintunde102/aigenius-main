@@ -23,11 +23,12 @@ import { getChainingPathsForWorkflowTool } from "./workflowChainingPaths.utils";
 import { WorkflowDynamicValueInserter } from "./WorkflowDynamicValueInserter";
 import { findResultLinkFromArgs, WorkflowSchemaEditor } from "./WorkflowSchemaForm";
 import {
-  WORKFLOW_INFO_COPY,
+  useWorkflowInfoCopy,
   WorkflowAboutToolPanel,
   workflowModalOverlayClassConfig,
   workflowModalPanelClassConfig,
 } from "./workflow-info";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 type WorkflowStepConfigModalProps = {
   isOpen: boolean;
@@ -49,6 +50,7 @@ function workflowStepConfigActiveTabId(tab: ConfigModalTab): string {
 }
 
 function WorkflowStepConfigLastRunPanel({ execution }: { execution?: WorkflowStepExecutionInfo }) {
+  const { t } = useLanguage();
   const err = execution?.error?.trim() ?? "";
   const result = execution?.result?.trim() ?? "";
   const displayErr = useMemo(() => (err ? formatWorkflowToolOutputForDisplay(err) : ""), [err]);
@@ -57,7 +59,7 @@ function WorkflowStepConfigLastRunPanel({ execution }: { execution?: WorkflowSte
   if (!execution) {
     return (
       <p className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-3 text-xs leading-relaxed text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
-        Run the workflow once to capture this step&apos;s result or error here.
+        {t("workflows.runOnceHint", "Run the workflow once to capture this step's result or error here.")}
       </p>
     );
   }
@@ -68,25 +70,25 @@ function WorkflowStepConfigLastRunPanel({ execution }: { execution?: WorkflowSte
 
   const idleHint =
     execution.status === "pending"
-      ? "This step has not run yet."
+      ? t("workflows.stepNotRunYet", "This step has not run yet.")
       : execution.status === "running"
-        ? "This step is running…"
+        ? t("workflows.stepRunningHint", "This step is running…")
         : execution.status === "skipped"
-          ? "This step was skipped."
+          ? t("workflows.stepSkipped", "This step was skipped.")
           : execution.status === "completed" && !showResult && !showError
-            ? "No output was recorded for this run."
+            ? t("workflows.stepNoOutput", "No output was recorded for this run.")
             : null;
 
   return (
     <div className="space-y-4">
       <p className="text-[11px] text-stone-600 dark:text-slate-400">
-        Status:{" "}
+        {t("workflows.statusPrefix", "Status:")}{" "}
         <span className="font-semibold text-stone-800 dark:text-slate-200">{statusLabel}</span>
       </p>
 
       {showError ? (
         <div className="rounded-xl border border-rose-200/80 bg-rose-50/90 px-3 py-2.5 dark:border-rose-900/60 dark:bg-rose-950/60">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-800 dark:text-rose-200">Error</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-800 dark:text-rose-200">{t("workflows.errorHeading", "Error")}</p>
           <div className="workflow-scroll-light mt-1 max-h-[min(50vh,280px)] overflow-y-auto">
             {err ? (
               <JsonOrPlainTextBlock
@@ -95,7 +97,7 @@ function WorkflowStepConfigLastRunPanel({ execution }: { execution?: WorkflowSte
                 codeClassName="text-[11px] text-rose-950 dark:text-rose-200"
               />
             ) : (
-              <p className="text-[11px] text-rose-950 dark:text-rose-200">No error message was returned.</p>
+              <p className="text-[11px] text-rose-950 dark:text-rose-200">{t("workflows.noErrorReturned", "No error message was returned.")}</p>
             )}
           </div>
         </div>
@@ -103,7 +105,7 @@ function WorkflowStepConfigLastRunPanel({ execution }: { execution?: WorkflowSte
 
       {showResult ? (
         <div className="rounded-xl border border-slate-200/80 bg-slate-50/90 px-3 py-2.5 dark:border-slate-800 dark:bg-[#141518]">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Result</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">{t("workflows.resultHeading", "Result")}</p>
           <div className="workflow-scroll-light mt-1 max-h-[min(50vh,280px)] overflow-y-auto">
             <JsonOrPlainTextBlock
               text={displayResult}
@@ -130,6 +132,8 @@ export function WorkflowStepConfigModal({
   onSave,
   execution,
 }: WorkflowStepConfigModalProps) {
+  const workflowCopy = useWorkflowInfoCopy();
+  const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<ConfigModalTab>("configure");
 
@@ -199,11 +203,13 @@ export function WorkflowStepConfigModal({
     >
       <div className={workflowModalPanelClassConfig} onClick={(e) => e.stopPropagation()}>
         <h2 id="workflow-step-config-title" className="sr-only">
-          Configure step
+          {t("workflows.configureStepSrTitle", "Configure step")}
         </h2>
         <p id="workflow-step-config-desc" className="sr-only">
-          Edit tool fields for this step. Use the Response tab for return shape, example JSON, and response schema.
-          Changes apply as you type.
+          {t(
+            "workflows.configureStepSrDesc",
+            "Edit tool fields for this step. Use the Response tab for return shape, example JSON, and response schema. Changes apply as you type.",
+          )}
         </p>
         <div className="flex shrink-0 items-center gap-3 border-b border-stone-200/80 bg-gradient-to-r from-white via-stone-50/90 to-white px-3 py-3 sm:px-4 dark:border-slate-800/80 dark:from-[#18191c] dark:via-[#16171a] dark:to-[#18191c]">
           <BrandLogo size="compact" asStatic className="min-w-0 shrink [&_span]:sr-only" />
@@ -217,17 +223,17 @@ export function WorkflowStepConfigModal({
             type="button"
             className="shrink-0 rounded-lg p-1.5 text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             onClick={handleClose}
-            title="Close"
+            title={t("common.close", "Close")}
           >
             <X className="h-5 w-5" aria-hidden />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{t("common.close", "Close")}</span>
           </button>
         </div>
 
         <div
           className="flex shrink-0 gap-1 border-b border-stone-200/80 bg-stone-50/40 px-2 py-1.5 sm:px-3 dark:border-slate-800/80 dark:bg-[#141518]"
           role="tablist"
-          aria-label="Configure step sections"
+          aria-label={t("workflows.stepSectionsAria", "Configure step sections")}
         >
           <button
             type="button"
@@ -241,7 +247,7 @@ export function WorkflowStepConfigModal({
             }`}
             onClick={() => setActiveTab("configure")}
           >
-            Configure
+            {t("workflows.stepTabConfigure", "Configure")}
           </button>
           <button
             type="button"
@@ -255,7 +261,7 @@ export function WorkflowStepConfigModal({
             }`}
             onClick={() => setActiveTab("response")}
           >
-            Response
+            {t("workflows.stepTabResponse", "Response")}
           </button>
           <button
             type="button"
@@ -269,7 +275,7 @@ export function WorkflowStepConfigModal({
             }`}
             onClick={() => setActiveTab("lastRun")}
           >
-            Last run
+            {t("workflows.stepTabLastRun", "Last run")}
           </button>
         </div>
 
@@ -285,14 +291,14 @@ export function WorkflowStepConfigModal({
             <div className="space-y-3">
               {!stepTool ? (
                 <p className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs leading-relaxed text-amber-950/90 dark:border-amber-900/60 dark:bg-amber-950/80 dark:text-amber-200">
-                  This step has no tool metadata. Remove it from the canvas and add a tool again.
+                  {t("workflows.stepNoMetadata", "This step has no tool metadata. Remove it from the canvas and add a tool again.")}
                 </p>
               ) : (
                 <WorkflowAboutToolPanel
                   body={
                     stepTool.workflowDescription?.trim() ||
                     stepTool.function.description?.trim() ||
-                    WORKFLOW_INFO_COPY.noApiDescription
+                    workflowCopy.noApiDescription
                   }
                   examples={stepTool.workflowExamples ?? []}
                   returnShapeSummary={stepTool.workflowToolResponse?.summary}
@@ -307,7 +313,7 @@ export function WorkflowStepConfigModal({
             <div className="space-y-5">
               {!stepTool ? (
                 <p className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs leading-relaxed text-amber-950/90 dark:border-amber-900/60 dark:bg-amber-950/80 dark:text-amber-200">
-                  This step has no tool metadata. Remove it from the canvas and add a tool again.
+                  {t("workflows.stepNoMetadata", "This step has no tool metadata. Remove it from the canvas and add a tool again.")}
                 </p>
               ) : null}
 
@@ -343,8 +349,8 @@ export function WorkflowStepConfigModal({
                       <span className="font-mono text-[10px] tracking-tight text-slate-500 group-open:text-slate-700 dark:text-slate-400">
                         {"{…}"}
                       </span>
-                      <span className="ml-1.5 font-medium">Args as JSON</span>
-                      <span className="ml-1.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">advanced</span>
+                      <span className="ml-1.5 font-medium">{t("workflows.argsAsJson", "Args as JSON")}</span>
+                      <span className="ml-1.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">{t("workflows.argsAdvanced", "advanced")}</span>
                     </summary>
                     <div className="border-t border-slate-200/80 px-3 pb-3 pt-2 dark:border-slate-800">
                       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">

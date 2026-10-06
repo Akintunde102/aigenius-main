@@ -72,6 +72,7 @@ import { useModelInterfacePublishFlow } from "./hooks/useModelInterfacePublishFl
 import { useModelInterfaceChatBoxSend } from "./hooks/useModelInterfaceChatBoxSend";
 import { useSignupWelcomeCredits } from "./hooks/useSignupWelcomeCredits";
 import { getSidebarUserInitials } from "./utils/sidebarUserInitials.utils";
+import { RenderErrorBoundary } from "@/app/components/RenderErrorBoundary";
 
 interface ModelInterfaceProps {
   routeConversationId?: string | null;
@@ -136,7 +137,8 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     actions,
   } = modelInterface;
 
-  const { models, modelsLoading, selectedModel, setSelectedModel, recentModels, modalSortedModels, supportsImageUpload, selectedModelForDetails, setSelectedModelForDetails, handleShowModelDetails, isModelPinned, togglePinModel } = modelState;
+  const { models, nonTextModels, modelsLoading, selectedModel, setSelectedModel, recentModels, modalSortedModels, supportsImageUpload, selectedModelForDetails, setSelectedModelForDetails, handleShowModelDetails, isModelPinned, togglePinModel } = modelState;
+  const [showNonTextModelsModal, setShowNonTextModelsModal] = useState(false);
   const {
     personalities,
     setPersonalities,
@@ -447,15 +449,20 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
       dragActive={dragActive}
       supportsFileUpload={supportsImageUpload || false}
     >
-      {renderWalletModal()}
+      <RenderErrorBoundary logLabel="[wallet-modal]" message="The credits dialog could not be opened.">
+        {renderWalletModal()}
+      </RenderErrorBoundary>
 
-      {showWelcomeModal ? (
-        <WelcomeSignupCreditsModal
-          credits={welcomeCredits}
-          onClose={dismissWelcomeModal}
-        />
-      ) : null}
+      <RenderErrorBoundary logLabel="[welcome-modal]" message="The welcome dialog could not be opened.">
+        {showWelcomeModal ? (
+          <WelcomeSignupCreditsModal
+            credits={welcomeCredits}
+            onClose={dismissWelcomeModal}
+          />
+        ) : null}
+      </RenderErrorBoundary>
 
+      <RenderErrorBoundary logLabel="[chat-chrome]" message="This notice could not be shown.">
       <ModelInterfaceChrome
         error={error}
         optimizationMessage={optimizationMessage}
@@ -500,6 +507,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
           }
         }}
       />
+      </RenderErrorBoundary>
 
       <div
         className={
@@ -536,6 +544,11 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                       !isMobile
                     }
                   />
+                  <RenderErrorBoundary
+                    logLabel="[chat-sidebar]"
+                    recoverable
+                    message="The conversation list hit a problem. The chat is still open."
+                  >
                   <ModelInterfaceSidebarPanel
                     isMobile={isMobile}
                     mobileSidebarOpen={mobileSidebarOpen}
@@ -562,6 +575,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     onPublish={handlePublishFromSidebar}
                     onOpenWorkflows={FEATURE_FLAGS.WORKFLOWS ? handleOpenWorkflows : undefined}
                     onOpenNotifications={() => router.push("/notifications")}
+                    onOpenNonTextModels={() => setShowNonTextModelsModal(true)}
                     switchToSession={handleSessionSwitch}
                     createNewSessionAndSwitch={createNewSessionAndSwitchWrapper}
                     isSessionActive={isSessionActive}
@@ -572,6 +586,13 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     getCachedMessages={getCachedMessages}
                     hasDraftSession={hasDraftSession}
                   />
+                  </RenderErrorBoundary>
+                  <RenderErrorBoundary
+                    logLabel="[chat-column]"
+                    recoverable
+                    className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-3 px-4 py-6 text-center"
+                    message="This conversation hit a problem. The sidebar is still available."
+                  >
                   <ModelInterfaceChatColumn
                     chat={chat}
                     chatHistory={chatHistory}
@@ -659,10 +680,12 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     isMiniMode={isMiniMode}
                     analyzer={analyzer}
                   />
+                  </RenderErrorBoundary>
                 </div>
               )}
             </MobileSidebarHandler>
 
+            <RenderErrorBoundary logLabel="[chat-modals]" message="A dialog could not be opened.">
             <ModelInterfaceModalStack
               modalContainerProps={{
                 showSaved,
@@ -710,6 +733,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                 setImageFilterOnly,
                 wallet,
                 onAddCredits: handleAddCredits,
+                onOpenNonTextModels: () => setShowNonTextModelsModal(true),
               }}
               showPersonalityModal={showPersonalityModal}
               setShowPersonalityModal={setShowPersonalityModal}
@@ -720,6 +744,10 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
               publishState={publishState}
               setPublishState={setPublishState}
               onPublishConversation={handlePublishConversation}
+              showNonTextModelsModal={showNonTextModelsModal}
+              setShowNonTextModelsModal={setShowNonTextModelsModal}
+              nonTextModels={nonTextModels}
+              nonTextModelsLoading={modelsLoading}
             />
 
             {showAttachmentSourcePicker && (
@@ -744,6 +772,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                 onConfirm={handleAttachSavedFiles}
               />
             )}
+            </RenderErrorBoundary>
           </div>
         </div>
       </div>

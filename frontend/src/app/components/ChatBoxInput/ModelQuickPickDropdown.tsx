@@ -3,8 +3,9 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FiCheck, FiChevronDown, FiPlus } from "react-icons/fi";
-import type { Model } from "@/app/components/model-interface/shared/types";
+import { Model } from "@/app/components/model-interface/shared/types";
 import { getModelDisplayName } from "@/app/components/model-interface/shared/utils";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 import {
   computeModelRequiredBalance,
   getModelCreditBurnPercentage,
@@ -193,6 +194,7 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
   wallet = null,
   onAddCredits,
 }) => {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
@@ -206,7 +208,7 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
 
   const displayName = displayModel
     ? getModelDisplayName(displayModel)
-    : "Select model";
+    : t('modelPicker.title', "Select model");
 
   const selectedModelBurnPercentage = useMemo(
     () => getModelCreditBurnPercentage(selectedModel, wallet),
@@ -414,13 +416,13 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
 
           {!favoritesLoaded ? null : quickPickModels.length === 0 && !activeOutsideQuickPicks ? (
             <div className="px-3 py-2.5 text-[11px] [color:var(--chat-muted-fg)]">
-              No models in your quick picks yet.
+              {t('composer.noQuickPicks', "No models in your quick picks yet.")}
             </div>
           ) : quickPickModels.length > 0 ? (
             <>
               {activeOutsideQuickPicks ? (
                 <div className="px-3 pt-0.5 pb-1 text-[9px] font-medium uppercase tracking-wide [color:var(--chat-muted-fg)]">
-                  Quick picks
+                  {t('composer.quickPicks', "Quick picks")}
                 </div>
               ) : null}
               {quickPickModels.map((model) => (
@@ -447,7 +449,7 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
             className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] transition-colors hover:[background-color:color-mix(in_srgb,var(--chat-composer-border)_35%,transparent)] [color:var(--sidebar-muted-fg)] hover:[color:var(--sidebar-fg)]"
           >
             <FiPlus size={12} className="shrink-0" />
-            <span>Add models</span>
+            <span>{t('composer.addModels', "Add models")}</span>
           </button>
         </div>
       </div>
@@ -463,7 +465,7 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
         aria-haspopup="listbox"
         aria-expanded={open}
         className={`inline-flex items-center gap-1 rounded-full border text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 [border-color:var(--chat-composer-border)] [background-color:color-mix(in_srgb,var(--chat-composer-bg)_88%,transparent)] [color:var(--sidebar-muted-fg)] hover:[color:var(--sidebar-fg)] hover:[background-color:var(--chat-composer-bg)] ${mini ? "px-1.5 py-0.5" : "px-2 py-0.5"}`}
-        title={selectedModel ? `Model: ${displayName}` : "Select model"}
+        title={selectedModel ? `${t('composer.currentModel', 'Current model')}: ${displayName}` : t('modelPicker.title', "Select model")}
       >
         <span
           className={`${mini ? "text-[10px]" : "text-xs"} font-medium truncate max-w-32`}

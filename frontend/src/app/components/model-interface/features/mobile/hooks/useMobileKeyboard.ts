@@ -6,15 +6,23 @@ interface UseMobileKeyboardProps {
     chatAreaRef: RefObject<HTMLDivElement>;
 }
 
+export interface VisualViewportRect {
+    top: number;
+    height: number;
+}
+
 interface MobileKeyboardState {
     keyboardHeight: number;
     isKeyboardOpen: boolean;
     browserInfo: any;
+    /** Visible area while the keyboard is open (null otherwise or when unsupported). */
+    visualViewportRect: VisualViewportRect | null;
 }
 
 export function useMobileKeyboard({ isMobile, chatAreaRef }: UseMobileKeyboardProps): MobileKeyboardState {
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [browserInfo, setBrowserInfo] = useState<any>(null);
+    const [visualViewportRect, setVisualViewportRect] = useState<VisualViewportRect | null>(null);
 
     // Initialize browser detection
     useEffect(() => {
@@ -29,6 +37,7 @@ export function useMobileKeyboard({ isMobile, chatAreaRef }: UseMobileKeyboardPr
         if (!isMobile || !browserInfo || typeof window === 'undefined') return;
 
         let timeoutId: NodeJS.Timeout;
+        let rafId = 0;
         let chatAreaScrollPosition = 0;
         const initialViewportHeight = window.innerHeight;
         let bodyScrollPosition = 0;
@@ -100,20 +109,23 @@ export function useMobileKeyboard({ isMobile, chatAreaRef }: UseMobileKeyboardPr
             }
         };
 
-        const handleViewportChange = () => {
-            if (timeoutId) clearTimeout(timeoutId);
-
-            // Browser-specific debounce timing
-            const debounceTime = browserInfo.isIOS ? 150 : 100;
-
-            timeoutId = setTimeout(() => {
+        const measureViewport = () => {
                 try {
                     let keyboardHeight = 0;
                     let isKeyboardOpen = false;
 
                     if (strategy === 'visualViewport' && window.visualViewport) {
-                        keyboardHeight = Math.max(0, window.innerHeight - window.visualViewport.height);
+                        const vv = window.visualViewport;
+                        keyboardHeight = Math.max(0, window.innerHeight - vv.height);
                         isKeyboardOpen = keyboardHeight > 50; // 50px threshold
+                        // Track the visible area so the fixed container follows it when the
+                        // browser pans the layout viewport (iOS) instead of resizing it.
+                        setVisualViewportRect(isKeyboardOpen
+                            ? { top: Math.max(0, Math.round(vv.offsetTop)), height: Math.round(vv.height) }
+                            : null);
+                        if (isKeyboardOpen && browserInfo.isIOS && window.scrollY !== 0) {
+                            window.scrollTo(0, 0);
+                        }
                     } else if (strategy === 'hybrid') {
                         // iOS Safari hybrid approach
                         const currentHeight = getViewportHeight();
@@ -137,7 +149,21 @@ export function useMobileKeyboard({ isMobile, chatAreaRef }: UseMobileKeyboardPr
                 } catch (error) {
                     console.warn('useMobileKeyboard: Error in keyboard detection', error);
                 }
-            }, debounceTime);
+        };
+
+        const handleViewportChange = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            if (rafId) cancelAnimationFrame(rafId);
+
+            if (strategy === 'visualViewport' && window.visualViewport) {
+                // No debounce: waiting lets the browser shove the composer up before we react.
+                rafId = requestAnimationFrame(measureViewport);
+                return;
+            }
+
+            // Browser-specific debounce timing
+            const debounceTime = browserInfo.isIOS ? 150 : 100;
+            timeoutId = setTimeout(measureViewport, debounceTime);
         };
 
         // Set up event listeners based on browser capabilities
@@ -164,6 +190,7 @@ export function useMobileKeyboard({ isMobile, chatAreaRef }: UseMobileKeyboardPr
 
         return () => {
             if (timeoutId) clearTimeout(timeoutId);
+            if (rafId) cancelAnimationFrame(rafId);
 
             // Clean up event listeners based on strategy
             if (strategy === 'visualViewport' && window.visualViewport) {
@@ -199,6 +226,7 @@ export function useMobileKeyboard({ isMobile, chatAreaRef }: UseMobileKeyboardPr
     return {
         keyboardHeight,
         isKeyboardOpen,
-        browserInfo
+        browserInfo,
+        visualViewportRect
     };
 }

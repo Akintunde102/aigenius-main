@@ -11,6 +11,7 @@ import {
   storeDesktopApiRoot,
   storeDesktopHandoff,
 } from "@/lib/utils/desktop-google-auth-url";
+import { shouldAutoStartDesktopGoogleOAuth } from "@/lib/utils/desktop-oauth-handoff";
 import { resolveAuthApiRootUrl } from "@/lib/utils/resolve-auth-api-root";
 
 const Login = () => {
@@ -29,13 +30,16 @@ const Login = () => {
           storeDesktopApiRoot(apiRoot);
         }
 
-        if (params.get("auto") === "google") {
+        // If already logged in, request a desktop handoff code so the desktop gets both an access and refresh token.
+        const token = storage(storageConstants.NOBOX_TOKEN).getString();
+        const startGoogle =
+          params.get("auto") === "google" ||
+          (!token && shouldAutoStartDesktopGoogleOAuth(window.location.search));
+        if (startGoogle) {
           window.location.href = resolveDesktopGoogleOAuthUrl(callback, resolveAuthApiRootUrl(), pkceChallenge);
           return;
         }
 
-        // If already logged in, request a desktop handoff code so the desktop gets both an access and refresh token.
-        const token = storage(storageConstants.NOBOX_TOKEN).getString();
         if (token) {
           clearDesktopHandoff();
           const authApiRoot = resolveAuthApiRootUrl();

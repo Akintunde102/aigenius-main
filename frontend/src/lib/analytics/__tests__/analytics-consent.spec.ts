@@ -12,7 +12,22 @@ describe('analytics-consent', () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
-    window.localStorage.clear();
+    const store = new Map<string, string>();
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          store.set(key, String(value));
+        },
+        removeItem: (key: string) => {
+          store.delete(key);
+        },
+        clear: () => {
+          store.clear();
+        },
+      },
+    });
     delete process.env.NEXT_PUBLIC_ENABLE_ANALYTICS;
     delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
   });

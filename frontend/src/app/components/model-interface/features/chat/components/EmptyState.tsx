@@ -1,6 +1,8 @@
 import React from 'react';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 export const EmptyState: React.FC = () => {
+    const { t } = useLanguage();
 
     return (
         <div
@@ -11,9 +13,8 @@ export const EmptyState: React.FC = () => {
                 className="max-w-md font-normal leading-relaxed tracking-[0.01em]"
                 style={{ fontSize: "var(--chat-body-size)" }}
             >
-                Start a conversation with the model…
+                {t('chat.emptyState', 'Start a conversation with the model…')}
             </span>
         </div>
     );
-
 };

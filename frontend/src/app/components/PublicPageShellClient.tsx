@@ -12,6 +12,8 @@ import {
   COLOR_MODE_STORAGE_KEY,
   LEGACY_THEME_STORAGE_KEY,
 } from "@/lib/color-mode";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
+import { FiGlobe } from "react-icons/fi";
 
 function PrefetchPublicNavRoutes() {
   const router = useRouter();
@@ -39,6 +41,7 @@ function readPublicHeaderSession(): { signedIn: boolean; label: string } {
 }
 
 export function PublicHeader() {
+  const { t, openLanguageModal } = useLanguage();
   const pathname = usePathname();
   const [signedIn, setSignedIn] = useState(false);
   const [label, setLabel] = useState("Open app");
@@ -76,12 +79,21 @@ export function PublicHeader() {
           <span className="nav-logo-text">AIGenius</span>
         </Link>
         <div className="nav-links">
-          <Link prefetch href="/docs">About</Link>
+          <Link prefetch href="/docs">{t('landing.about', 'About')}</Link>
           {signedIn ? (
-            <Link prefetch href="/" className="nav-signin">{label}</Link>
+            <Link prefetch href="/" className="nav-signin">{label === 'Open app' ? t('landing.openApp', 'Open app') : label}</Link>
           ) : (
-            <Link prefetch href={signInHref} className="nav-signin">Sign in</Link>
+            <Link prefetch href={signInHref} className="nav-signin">{t('landing.signIn', 'Sign in')}</Link>
           )}
+          <button
+            type="button"
+            className="theme-toggle"
+            aria-label={t('landing.selectLanguage', 'Select Language')}
+            title={t('landing.selectLanguage', 'Select Language')}
+            onClick={openLanguageModal}
+          >
+            <FiGlobe size={14} aria-hidden={true} />
+          </button>
           <button type="button" className="theme-toggle" aria-label="Toggle theme" onClick={toggleTheme}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" aria-hidden={true}>
               <circle cx="12" cy="12" r="9" />

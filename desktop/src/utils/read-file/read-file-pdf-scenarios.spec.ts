@@ -130,4 +130,19 @@ describe('read-file PDF scenarios', () => {
 
     await fs.rm(path.dirname(spaced), { recursive: true, force: true });
   });
+
+  it('extracts PDF text instead of reading raw binary bytes when max_bytes is specified', async () => {
+    workspaceRoot = await createTestWorkspace();
+    readPdfMock.mockResolvedValue({
+      text: 'Quarterly financial overview — Q3 revenue $4.2M',
+      method: 'text',
+    });
+
+    const batch = await executeReadFile({ path: outsidePdf, max_bytes: 4000 });
+    const item = batch.results[0]!;
+
+    expect(item.status).toBe('ok');
+    expect(item.content).toContain('Quarterly financial overview');
+    expect(item.content).not.toContain('%PDF-1.4');
+  });
 });

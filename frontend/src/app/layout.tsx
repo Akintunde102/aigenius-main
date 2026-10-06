@@ -11,12 +11,16 @@ import DesktopToolApprovalHost from './components/DesktopToolApprovalHost';
 import DesktopShellDocumentFlag from './components/DesktopShellDocumentFlag';
 import EarlyDesktopAuthCookieSync from './components/EarlyDesktopAuthCookieSync';
 import ErrorBoundary from './components/ErrorBoundary';
+import { ClientErrorTracker } from './components/ClientErrorTracker';
 import GlobalToaster from "@/app/components/GlobalToaster";
 import ScheduleNotificationListener from "@/app/components/ScheduleNotificationListener";
 import { ColorModeBootstrapScript } from "@/app/components/ColorModeBootstrapScript";
+import { CrashBootstrapScript } from "@/app/components/CrashBootstrapScript";
 import { FilePreviewModal } from "@/app/components/modals/FilePreviewModal";
 import { VideoJobProgressModal } from "@/app/components/modals/VideoJobProgressModal";
 import { ThemeProvider } from "@/lib/providers/ThemeProvider";
+import { LanguageProvider } from "@/lib/providers/LanguageProvider";
+import { LanguageSelectionModal } from "@/app/components/modals/LanguageSelectionModal";
 const Euclid = localFont({
   src: [
     {
@@ -155,6 +159,7 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
         <ColorModeBootstrapScript />
+        <CrashBootstrapScript />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -163,22 +168,26 @@ export default function RootLayout({
       <body suppressHydrationWarning={true} className={Euclid.className}>
         <DesktopShellDocumentFlag />
         <ThemeProvider>
-          <DesktopShellChrome>
-            <EarlyDesktopAuthCookieSync />
-            <ViewportHeightSetter />
-            <ErrorBoundary>
-              <ReactQueryProvider>
-                {children}
-              </ReactQueryProvider>
-              <ScheduleNotificationListener />
-              <GlobalToaster />
-              <FilePreviewModal />
-              <VideoJobProgressModal />
-              <DesktopToolApprovalHost />
-            </ErrorBoundary>
-            <div id="modal-root" />
-          </DesktopShellChrome>
-          <ClientAnalytics />
+          <LanguageProvider>
+            <DesktopShellChrome>
+              <EarlyDesktopAuthCookieSync />
+              <ViewportHeightSetter />
+              <ClientErrorTracker />
+              <ErrorBoundary>
+                <ReactQueryProvider>
+                  {children}
+                </ReactQueryProvider>
+                <ScheduleNotificationListener />
+                <GlobalToaster />
+                <FilePreviewModal />
+                <VideoJobProgressModal />
+                <DesktopToolApprovalHost />
+                <LanguageSelectionModal />
+              </ErrorBoundary>
+              <div id="modal-root" />
+            </DesktopShellChrome>
+            <ClientAnalytics />
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>

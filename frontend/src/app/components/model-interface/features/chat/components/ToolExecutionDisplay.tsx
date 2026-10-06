@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { RenderErrorBoundary } from '@/app/components/RenderErrorBoundary';
 import { ToolExecution } from '@/app/components/model-interface/shared/types';
 import { FiTool, FiChevronDown, FiChevronUp, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
 import { valueToDisplayString } from '@/lib/utils/messageTextUtils';
@@ -50,8 +51,12 @@ export function ToolExecutionDisplay({ tool_executions }: ToolExecutionDisplayPr
                 const isExpanded = expandedIndex === index;
 
                 return (
-                    <div 
+                    <RenderErrorBoundary
                         key={index}
+                        logLabel="[tool-execution]"
+                        resetKey={`${execution.tool}-${index}`}
+                    >
+                    <div 
                         className="border border-gray-200 dark:border-zinc-700/80 rounded-lg bg-gray-50 dark:bg-zinc-900/50 overflow-hidden"
                     >
                         {/* Header */}
@@ -114,7 +119,7 @@ export function ToolExecutionDisplay({ tool_executions }: ToolExecutionDisplayPr
                                             <div className="text-green-700 dark:text-green-300 font-medium">
                                                 {valueToDisplayString(parsed.message)}
                                             </div>
-                                        ) : parsed.messages ? (
+                                        ) : Array.isArray(parsed.messages) ? (
                                             <div className="space-y-1">
                                                 <div className="text-gray-700 dark:text-zinc-200 font-medium">
                                                     Found {parsed.messages.length} email(s)
@@ -142,6 +147,7 @@ export function ToolExecutionDisplay({ tool_executions }: ToolExecutionDisplayPr
                             </div>
                         )}
                     </div>
+                    </RenderErrorBoundary>
                 );
             })}
         </div>

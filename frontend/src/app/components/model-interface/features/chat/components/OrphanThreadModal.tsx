@@ -1,9 +1,10 @@
 import React from 'react';
-import { ChevronDown, Trash2, Minus } from 'lucide-react';
+import { ChevronDown, Trash2, Minus, X, Quote, MessageSquarePlus, CornerDownRight } from 'lucide-react';
 import { ChatAreaVirtualizedList } from './ChatAreaVirtualizedList';
 import { ChatBoxInput } from '@/app/components/ChatBoxInput';
 import { OrphanTetherLayer } from './OrphanTetherLayer';
 import { Model, ChatMessage, StickyThreadMarker } from '@/app/components/model-interface/shared/types';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 interface OrphanThreadModalProps {
     activeMarker: any; // StickyThreadRecord
@@ -58,6 +59,7 @@ export const OrphanThreadModal: React.FC<OrphanThreadModalProps> = React.memo(({
     imagePreview,
     setImagePreview,
 }) => {
+    const { t } = useLanguage();
     const modalRef = React.useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
@@ -74,7 +76,7 @@ export const OrphanThreadModal: React.FC<OrphanThreadModalProps> = React.memo(({
 
         const handleMouseDownOutside = (e: MouseEvent) => {
             if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-                // Fix #3: Improved portal check. If click is inside a portal but NOT inside the side thread modal, ignore it.
+                // If click is inside a portal but NOT inside the side thread modal, ignore it.
                 const target = e.target as HTMLElement;
                 const isPortal = target.closest('[role="dialog"]') || target.closest('[data-radix-popper-content]');
                 const isInsideThisModal = target.closest('.side-thread-modal-content');
@@ -83,7 +85,6 @@ export const OrphanThreadModal: React.FC<OrphanThreadModalProps> = React.memo(({
                     return;
                 }
                 
-                // Also ignore if clicking on something that is inside the modal but portaled (unlikely for mousedown but safe)
                 if (isInsideThisModal) {
                     return;
                 }
@@ -117,8 +118,8 @@ export const OrphanThreadModal: React.FC<OrphanThreadModalProps> = React.memo(({
             >
                 <div
                     ref={modalRef}
-                    className={`side-thread-modal-content pointer-events-auto fixed flex flex-col rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[#0F172A] dark:text-slate-200 shadow-[0_24px_60px_rgba(0,0,0,0.18)] w-[552px] max-w-[calc(100vw-24px)] ${
-                        activeMarker.messages.length > 0 ? 'h-[531px]' : 'h-[450px]'
+                    className={`side-thread-modal-content pointer-events-auto fixed flex flex-col rounded-[22px] border border-slate-200/80 bg-white/95 text-[#0F172A] shadow-[0_24px_64px_rgba(15,23,42,0.16)] backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/95 dark:text-slate-100 w-[552px] max-w-[calc(100vw-24px)] ${
+                        activeMarker.messages.length > 0 ? 'h-[531px]' : 'h-[460px]'
                     }`}
                     style={{
                         left: `${activeModalPosition.left}px`,
@@ -131,112 +132,109 @@ export const OrphanThreadModal: React.FC<OrphanThreadModalProps> = React.memo(({
                         overflow: 'hidden',
                     }}
                 >
-                    {/* Drag Handle / Header - Slimmer with contextual focus */}
+                    {/* Drag Handle / Header */}
                     <div 
                         onPointerDown={handlePointerDown}
                         onPointerMove={handlePointerMove}
                         onPointerUp={handlePointerUp}
                         onPointerCancel={handlePointerUp}
-                        className={`relative flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 px-4 py-2 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} select-none active:cursor-grabbing rounded-t-[24px]`}
+                        className={`relative flex flex-col border-b border-slate-100 bg-slate-50/80 px-4 pt-1.5 pb-2.5 dark:border-slate-800 dark:bg-slate-800/40 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} select-none active:cursor-grabbing rounded-t-[22px]`}
                     >
-                        <div className="flex items-center gap-2 min-w-0">
-                            {/* Dot navigation (only if not a highlight thread) */}
-                            {!activeMarker.anchor.anchorText && (
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        const element = document.querySelector(`[data-orphan-marker-id="${activeMarker.markerId}"]`) as HTMLElement;
-                                        if (element) {
-                                            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                            // Fix #2: Visual Ping
-                                            element.classList.add('animate-bounce');
-                                            setTimeout(() => element.classList.remove('animate-bounce'), 1000);
-                                        } else {
-                                            const msg = document.getElementById(`chat-message-${activeMarker.parentMessageId}`);
-                                            if (msg) {
-                                                msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                msg.classList.add('source-ping-effect');
-                                                setTimeout(() => msg.classList.remove('source-ping-effect'), 2000);
-                                            }
-                                        }
-                                    }}
-                                    className="relative flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 transition hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                                    title="Focus anchored dot"
-                                >
-                                    <div className="absolute inset-0 animate-ping rounded-full bg-blue-400 dark:bg-blue-500 opacity-20" />
-                                    <div className="h-2 w-2 rounded-full bg-blue-600 dark:bg-blue-500 shadow-[0_0_8px_rgba(37,99,235,0.4)] dark:shadow-[0_0_8px_rgba(59,130,246,0.4)]" />
-                                </button>
-                            )}
-                            
-                            {/* Text navigation (only if a highlight thread) */}
-                            {activeMarker.anchor.anchorText && (
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        const element = document.querySelector(`[data-orphan-highlight-id="${activeMarker.markerId}"]`) as HTMLElement;
-                                        if (element) {
-                                            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                            // Fix #2: Visual Ping
-                                            element.style.backgroundColor = 'rgba(250, 204, 21, 0.6)';
-                                            setTimeout(() => { element.style.backgroundColor = ''; }, 1500);
-                                        } else {
-                                            const msg = document.getElementById(`chat-message-${activeMarker.parentMessageId}`);
-                                            if (msg) {
-                                                msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                msg.classList.add('source-ping-effect');
-                                                setTimeout(() => msg.classList.remove('source-ping-effect'), 2000);
-                                            }
-                                        }
-                                    }}
-                                    className="min-w-0 truncate text-[11px] font-medium text-slate-500 dark:text-slate-400 italic hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left"
-                                    title="Take me back to highlight"
-                                >
-                                    {`"${activeMarker.anchor.anchorText}"`}
-                                </button>
-                            )}
-                        </div>
+                        {/* Drag indicator pill */}
+                        <div className="h-1 w-8 rounded-full bg-slate-300/80 dark:bg-slate-600/70 mx-auto mb-2" />
 
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                type="button"
-                                onClick={() => void deleteMarker(activeMarker)}
-                                className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500"
-                                title="Discard side thread"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={closeActiveMarker}
-                                className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200/50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 transition hover:bg-slate-200 dark:hover:bg-slate-700"
-                                aria-label="Minimize side thread"
-                                title="Minimize"
-                            >
-                                <Minus size={16} />
-                            </button>
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-100 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
+                                    <MessageSquarePlus className="h-3.5 w-3.5" />
+                                </div>
+                                <span className="text-xs font-semibold tracking-tight text-slate-800 dark:text-slate-200">
+                                    {t('orphanThread.title', 'Side Thread')}
+                                </span>
+
+                                {/* Context navigation link (if highlight thread) */}
+                                {activeMarker.anchor.anchorText && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const element = document.querySelector(`[data-orphan-highlight-id="${activeMarker.markerId}"]`) as HTMLElement;
+                                            if (element) {
+                                                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                element.style.backgroundColor = 'rgba(56, 189, 248, 0.3)';
+                                                setTimeout(() => { element.style.backgroundColor = ''; }, 1200);
+                                            } else {
+                                                const msg = document.getElementById(`chat-message-${activeMarker.parentMessageId}`);
+                                                if (msg) {
+                                                    msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                    msg.classList.add('source-ping-effect');
+                                                    setTimeout(() => msg.classList.remove('source-ping-effect'), 2000);
+                                                }
+                                            }
+                                        }}
+                                        className="min-w-0 max-w-[210px] truncate text-[11px] font-medium text-slate-400 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-400 transition-colors text-left flex items-center gap-1"
+                                        title={t('orphanThread.jumpToSourceTitle', 'Jump back to source text in the main conversation')}
+                                    >
+                                        <CornerDownRight className="h-3 w-3 shrink-0" />
+                                        <span className="truncate italic">
+                                            &ldquo;{activeMarker.anchor.anchorText}&rdquo;
+                                        </span>
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => void deleteMarker(activeMarker)}
+                                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                                    title={t('orphanThread.discardAria', 'Discard side thread')}
+                                    aria-label={t('orphanThread.discardAria', 'Discard side thread')}
+                                >
+                                    <Trash2 size={13} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={closeActiveMarker}
+                                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200/70 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                                    aria-label="Close side thread"
+                                    title="Close"
+                                >
+                                    <X size={15} />
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Message Area Reusing ChatAreaVirtualizedList */}
+                    {/* Message Area */}
                     <div className="flex min-h-0 flex-1 flex-col bg-transparent px-2">
-                        {/* Context Chip - Fix #1: Visibility of context */}
+                        {/* Context Quote Banner */}
                         {activeMarker.anchor.anchorText && (
-                            <div className="mx-2 mt-3 flex items-center gap-2 rounded-xl bg-blue-50/80 dark:bg-blue-900/20 px-3 py-2 border border-blue-100/50 dark:border-blue-800/50">
-                                <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                                <div className="text-[11px] font-medium text-blue-700 dark:text-blue-300 truncate">
-                                    Referencing: <span className="italic">{`"${activeMarker.anchor.anchorText}"`}</span>
+                            <div className="mx-2 mt-3 flex items-start gap-2.5 rounded-xl border border-sky-100 bg-sky-50/70 p-2.5 text-xs text-sky-950 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-200">
+                                <Quote className="h-3.5 w-3.5 mt-0.5 shrink-0 text-sky-500 dark:text-sky-400" />
+                                <div className="min-w-0 flex-1">
+                                    <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                                        {t('orphanThread.referencedContext', 'Referenced Context')}
+                                    </div>
+                                    <div className="line-clamp-2 text-[12px] italic text-slate-700 dark:text-slate-300">
+                                        &ldquo;{activeMarker.anchor.anchorText}&rdquo;
+                                    </div>
                                 </div>
                             </div>
                         )}
                         
-                        <div className="min-h-0 flex-1 overflow-y-auto px-2 py-4 chat-scrollbar">
+                        <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3 chat-scrollbar">
                             {activeMarker.messages.length === 0 && (
-                                <div className="flex flex-col items-center justify-center py-20 text-center text-slate-400 dark:text-slate-500">
-                                    <div className="mb-2 text-2xl">✨</div>
-                                    <div className="text-sm font-medium dark:text-slate-400">New Side Thread</div>
-                                    <div className="text-xs opacity-70">Ask a question about this selection.</div>
+                                <div className="flex flex-col items-center justify-center py-14 text-center px-6">
+                                    <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-200/60 dark:bg-sky-950/50 dark:text-sky-400 dark:ring-sky-800/50">
+                                        <MessageSquarePlus className="h-5 w-5" />
+                                    </div>
+                                    <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                        Ask further
+                                    </div>
+                                    <div className="mt-1 max-w-[260px] text-xs text-slate-500 dark:text-slate-400">
+                                        Ask questions or explore ideas anchored to this excerpt without interrupting the main chat.
+                                    </div>
                                 </div>
                             )}
                             <ChatAreaVirtualizedList

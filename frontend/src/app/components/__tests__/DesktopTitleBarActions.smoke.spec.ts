@@ -2,8 +2,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import DesktopTitleBarActions from '../DesktopTitleBarActions';
+import { LanguageProvider, useLanguage } from '@/lib/providers/LanguageProvider';
 import toast from 'react-hot-toast';
 
 jest.mock('react-hot-toast', () => ({
@@ -189,6 +190,31 @@ describe('DesktopTitleBarActions smoke', () => {
 
       // Confirm Official Website row / icon is not present
       expect(screen.queryByText('Official Website')).toBeNull();
+    });
+
+    it('localizes product menu when Spanish locale is active', async () => {
+      function SpanishMenu() {
+        const { setLanguage } = useLanguage();
+        React.useEffect(() => {
+          setLanguage('es');
+        }, [setLanguage]);
+        return React.createElement(DesktopTitleBarActions);
+      }
+
+      await act(async () => {
+        render(
+          React.createElement(LanguageProvider, null, React.createElement(SpanishMenu)),
+        );
+      });
+
+      const productButton = await waitFor(() =>
+        screen.getByRole('button', { name: /menú de producto aigenius/i }),
+      );
+      fireEvent.click(productButton);
+
+      expect(screen.getByText('Ventana y pantalla')).toBeInTheDocument();
+      expect(screen.getByText('Opacidad')).toBeInTheDocument();
+      expect(screen.getByText('Te queremos')).toBeInTheDocument();
     });
 
     it('handles Email Support and Report Bug actions', async () => {

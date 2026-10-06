@@ -4,9 +4,16 @@ import { capitalizeFirstLetter } from "@/lib/gen";
 import { BooleanField } from "@/app/components/form/BooleanInputField";
 import { CSSProperties } from "react";
 import dynamic from "next/dynamic";
+import { ensureLazyDefault } from "@/lib/utils/lazy-component";
+
+type CodeMirrorFieldProps = {
+  height?: string;
+  value: string;
+  onChange: (value: string) => void;
+};
 
 // Code split heavy components
-const CodeMirrorComponent = dynamic(() =>
+const CodeMirrorComponent = dynamic<CodeMirrorFieldProps>(() =>
   Promise.all([
     import('@uiw/react-codemirror'),
     import('@codemirror/lang-javascript')
@@ -14,17 +21,30 @@ const CodeMirrorComponent = dynamic(() =>
     const CodeMirror = codeMirror.default;
     const javascript = jsLang.javascript;
 
-    return {
-      default: ({ value, onChange, ...props }: any) => (
-        <CodeMirror
-          {...props}
-          value={value}
-          extensions={[javascript({ jsx: true })]}
-          onChange={onChange}
-        />
-      )
-    };
-  }),
+        return ensureLazyDefault(
+          ({ value, onChange, ...props }: CodeMirrorFieldProps) => {
+        if (typeof CodeMirror !== "function" || typeof javascript !== "function") {
+          return (
+            <textarea
+              readOnly
+              aria-label="Code editor unavailable"
+              className="h-24 w-full rounded border p-2 text-xs"
+              value={typeof value === "string" ? value : ""}
+            />
+          );
+        }
+        return (
+          <CodeMirror
+            {...props}
+            value={value}
+            extensions={[javascript({ jsx: true })]}
+            onChange={onChange}
+          />
+        );
+      },
+          'codemirror',
+        );
+  }).catch(() => ensureLazyDefault<CodeMirrorFieldProps>(null, 'codemirror')),
   {
     ssr: false,
     loading: () => (
@@ -35,7 +55,9 @@ const CodeMirrorComponent = dynamic(() =>
   }
 );
 
-const Editor = dynamic(() => import("@/app/components/editor/Editor"), {
+const Editor = dynamic(
+  () => import("@/app/components/editor/Editor").then((mod) => ensureLazyDefault(mod.default, "editor")),
+  {
   ssr: false,
   loading: () => (
     <div className="w-full h-32 bg-gray-100 rounded border animate-pulse flex items-center justify-center">

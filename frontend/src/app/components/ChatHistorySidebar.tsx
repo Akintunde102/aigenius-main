@@ -7,7 +7,20 @@ import SidebarContent from "./ChatHistorySidebar/SidebarContent";
 import SidebarFooter from "./ChatHistorySidebar/SidebarFooter";
 import { CreateCodeProjectModal } from "./ChatHistorySidebar/CreateCodeProjectModal";
 import { CodeProjectInfoModal } from "./ChatHistorySidebar/CodeProjectInfoModal";
+import { MissingProjectFolderModal } from "./ChatHistorySidebar/MissingProjectFolderModal";
 import { useCodeProjects } from "@/lib/hooks/useCodeProjects";
+import { useCodeProjectRootHealth } from "@/lib/hooks/useCodeProjectRootHealth";
+import { isProjectFolderMissing } from "@/lib/code-projects/check-code-project-root-health";
+import {
+  dismissMissingFolderPrompt,
+  isMissingFolderDismissed,
+  shouldPromptMissingFolderModal,
+  clearMissingFolderDismiss,
+} from "@/lib/code-projects/missing-project-folder-dismiss";
+import { runRelinkCodeProjectWorkflow } from "@/lib/code-projects/relink-code-project-workflow";
+import { runRecreateCodeProjectRootWorkflow } from "@/lib/code-projects/recreate-code-project-root-workflow";
+import { syncCodeProjectToDesktop } from "@/lib/code-projects/sync-code-project-to-desktop";
+import toast from "react-hot-toast";
 import { applyChatProjectScopeFromSession, resolveSidebarActiveProjectId } from "@/lib/code-projects/apply-chat-project-scope";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
 import { FEATURE_FLAGS } from "@/lib/config/features";
@@ -58,6 +71,7 @@ interface ChatHistorySidebarProps {
     onPublish?: (session: ChatSession, isRepublishing?: boolean, existingUrl?: string) => void;
     onOpenWorkflows?: () => void;
     onOpenNotifications?: () => void;
+    onOpenNonTextModels?: () => void;
     // Session management functions
     switchToSession?: (session: ChatSession) => void;
     createNewSessionAndSwitch?: (modelId: string) => void;
@@ -97,6 +111,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     onPublish,
     onOpenWorkflows,
     onOpenNotifications,
+    onOpenNonTextModels,
     // New session management functions
     switchToSession,
     createNewSessionAndSwitch,
@@ -136,6 +151,19 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         editProject,
         removeProject,
     } = useCodeProjects();
+    const { healthByProjectId, refreshProject, refreshAll } = useCodeProjectRootHealth(codeProjects);
+    const [missingFolderModalProjectId, setMissingFolderModalProjectId] = React.useState<string | null>(null);
+
+    const folderMissingByProjectId = React.useMemo(() => {
+        const map: Record<string, boolean> = {};
+        for (const project of codeProjects) {
+            const health = healthByProjectId[project.id];
+            if (isProjectFolderMissing(health)) {
+                map[project.id] = true;
+            }
+        }
+        return map;
+    }, [codeProjects, healthByProjectId]);
 
     const sidebarActiveProjectId = resolveSidebarActiveProjectId(
         activeSessionId,
@@ -160,6 +188,35 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
 
         void bridge.setCodeProjectIndex(null);
     }, [desktopSyncProject?.id, desktopSyncProject?.rootPath]);
+
+    React.useEffect(() => {
+        if (!isAigeniusDesktopRuntime() || !desktopSyncProject) {
+            setMissingFolderModalProjectId(null);
+            return;
+        }
+        const health = healthByProjectId[desktopSyncProject.id];
+        if (!health || health.ok) {
+            setMissingFolderModalProjectId(null);
+            return;
+        }
+        const shouldPrompt = shouldPromptMissingFolderModal({
+            projectId: desktopSyncProject.id,
+            isDesktop: true,
+            rootOk: health.ok,
+            isActiveProject: true,
+            dismissed: isMissingFolderDismissed(desktopSyncProject.id),
+        });
+        if (shouldPrompt) {
+            setMissingFolderModalProjectId(desktopSyncProject.id);
+        }
+    }, [desktopSyncProject, healthByProjectId]);
+
+    React.useEffect(() => {
+        if (!isAigeniusDesktopRuntime() || !desktopSyncProject) {
+            return;
+        }
+        void refreshProject(desktopSyncProject);
+    }, [desktopSyncProject?.id, desktopSyncProject?.rootPath, refreshProject]);
 
     // Check if the logged-in user is the master admin — determines visibility of "Give Credits"
     React.useEffect(() => {
@@ -280,6 +337,66 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         ? codeProjects.find((p) => p.id === infoProjectId) ?? null
         : null;
 
+    const missingFolderProject =
+        missingFolderModalProjectId
+            ? codeProjects.find((p) => p.id === missingFolderModalProjectId) ?? null
+            : null;
+    const missingFolderHealth = missingFolderProject
+        ? healthByProjectId[missingFolderProject.id]
+        : undefined;
+
+    const handleRelinkMissingFolder = React.useCallback(async () => {
+        if (!missingFolderProject) return;
+        const bridge = window.aigeniusDesktop;
+        if (!bridge?.pickProjectDirectory) {
+            throw new Error("Folder picker is available in the desktop app only");
+        }
+        const result = await runRelinkCodeProjectWorkflow(missingFolderProject, {
+            pickDirectory: () => bridge.pickProjectDirectory!(),
+            updateProject: (id, input) => editProject(id, input),
+            syncDesktop: (project) =>
+                syncCodeProjectToDesktop({
+                    id: project.id,
+                    name: project.name,
+                    rootPath: project.rootPath,
+                    rules: project.rules,
+                }),
+            clearDismiss: clearMissingFolderDismiss,
+        });
+        if (!result.success) {
+            if (result.canceled) {
+                return;
+            }
+            throw new Error(result.error);
+        }
+        await refreshAll();
+        toast.success("Project folder relinked");
+    }, [editProject, missingFolderProject, refreshAll]);
+
+    const handleRecreateMissingFolder = React.useCallback(async () => {
+        if (!missingFolderProject) return;
+        const recreate = window.aigeniusDesktop?.recreateCodeProjectRoot;
+        if (!recreate) {
+            throw new Error("Recreate folder is available in the desktop app only");
+        }
+        const result = await runRecreateCodeProjectRootWorkflow(missingFolderProject, {
+            recreateRoot: recreate,
+            syncDesktop: (project) =>
+                syncCodeProjectToDesktop({
+                    id: project.id,
+                    name: project.name,
+                    rootPath: project.rootPath,
+                    rules: project.rules,
+                }),
+            clearDismiss: clearMissingFolderDismiss,
+            refreshHealth: refreshProject,
+        });
+        if (!result.success) {
+            throw new Error(result.error);
+        }
+        toast.success(result.created ? "Empty project folder created" : "Project folder is available again");
+    }, [missingFolderProject, refreshProject]);
+
     const open = mobileSidebarOpen;
 
     const modals = (
@@ -317,9 +434,25 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                     project={infoProject}
                     chatHistory={(chatHistory || []).filter((s) => s.conversationKind !== "orphan_question")}
                     isActive={sidebarActiveProjectId === infoProject.id}
+                    folderMissing={folderMissingByProjectId[infoProject.id] === true}
                     onClose={() => setInfoProjectId(null)}
                     onDelete={handleDeleteProject}
                     onUpdate={editProject}
+                />
+            ) : null}
+
+            {missingFolderProject && missingFolderHealth && isProjectFolderMissing(missingFolderHealth) ? (
+                <MissingProjectFolderModal
+                    project={missingFolderProject}
+                    health={missingFolderHealth}
+                    onClose={() => setMissingFolderModalProjectId(null)}
+                    onDismiss={() => dismissMissingFolderPrompt(missingFolderProject.id)}
+                    onRelink={handleRelinkMissingFolder}
+                    onRecreate={handleRecreateMissingFolder}
+                    onRemoveProject={async () => {
+                        await handleDeleteProject(missingFolderProject.id);
+                        clearMissingFolderDismiss(missingFolderProject.id);
+                    }}
                 />
             ) : null}
 
@@ -373,6 +506,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 activeProjectId={sidebarActiveProjectId}
                 onNewChatForProject={handleNewChatForProject}
                 onProjectInfo={setInfoProjectId}
+                folderMissingByProjectId={folderMissingByProjectId}
                 getCachedMessages={getCachedMessages}
                 hasDraftSession={hasDraftSession}
             />
@@ -386,6 +520,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 onOpenNotifications={onOpenNotifications}
                 onIntegrations={FEATURE_FLAGS.INTEGRATIONS ? () => setShowIntegrationsModal(true) : undefined}
                 onOpenToolPermissions={() => setShowToolPermissionsModal(true)}
+                onOpenNonTextModels={onOpenNonTextModels}
                 onGiveCredits={isMaster ? () => setShowGrantCreditsModal(true) : undefined}
                 onLogout={onLogout}
                 openMenuSignal={accountMenuSignal}

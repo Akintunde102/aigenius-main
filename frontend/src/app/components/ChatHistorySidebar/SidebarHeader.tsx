@@ -7,6 +7,7 @@ import ChatHistorySearchBar from "../ChatHistorySearchBar";
 import { useRouter } from "next/navigation";
 import { LINKS } from "@/lib/links";
 import { clearAuthSession } from "@/lib/utils/auth-session";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 interface SidebarHeaderProps {
   isMobile: boolean;
@@ -74,6 +75,7 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
     onNewProject,
   }) => {
     void mobileSidebarOpen;
+    const { t } = useLanguage();
     const router = useRouter();
 
     const [draftHistorySearch, setDraftHistorySearch] =
@@ -121,7 +123,8 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
         <div className="flex min-h-9 flex-nowrap items-center gap-x-1 px-3 py-2 sm:min-h-10">
           {isMobile && setMobileSidebarOpen ? (
             <button
-              aria-label="Close Sidebar"
+              aria-label={t("sidebar.closeSidebar", "Close sidebar")}
+              title={t("sidebar.closeSidebar", "Close sidebar")}
               type="button"
               className="flex shrink-0 touch-manipulation items-center justify-center rounded p-2 transition hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
               style={{ minWidth: 40, minHeight: 40, color: "var(--sidebar-muted-fg)" }}
@@ -134,8 +137,8 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
           {!isMobile && setMobileSidebarOpen ? (
             <SidebarIconButton
               isMobile={isMobile}
-              ariaLabel="Close sidebar"
-              title="Close sidebar (⌘B)"
+              ariaLabel={t("sidebar.closeSidebar", "Close sidebar")}
+              title={`${t("sidebar.closeSidebar", "Close sidebar")} (⌘B)`}
               onClick={() => setMobileSidebarOpen(false)}
             >
               <PanelLeftClose
@@ -149,8 +152,8 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
           {onNewChat ? (
             <SidebarIconButton
               isMobile={isMobile}
-              ariaLabel="New chat"
-              title="New chat"
+              ariaLabel={t("sidebar.newChat", "New Chat")}
+              title={t("sidebar.newChat", "New Chat")}
               onClick={onNewChat}
             >
               <FiPlus size={isMobile ? 20 : 18} strokeWidth={1.5} aria-hidden />
@@ -160,8 +163,8 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
           {onNewProject ? (
             <SidebarIconButton
               isMobile={isMobile}
-              ariaLabel="New project"
-              title="New project"
+              ariaLabel={t("sidebar.newProject", "New project")}
+              title={t("sidebar.newProject", "New project")}
               onClick={onNewProject}
             >
               <FolderPlus
@@ -193,8 +196,8 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
                 />
                 <button
                   type="button"
-                  aria-label="Close search"
-                  title="Close search"
+                  aria-label={t("common.close", "Close search")}
+                  title={t("common.close", "Close search")}
                   onClick={handleCloseSearch}
                   className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded transition hover:opacity-80"
                   style={{ color: "var(--sidebar-muted-fg)" }}
@@ -206,8 +209,8 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
           ) : (
             <SidebarIconButton
               isMobile={isMobile}
-              ariaLabel="Search conversations"
-              title="Search conversations"
+              ariaLabel={t("sidebar.searchConversations", "Search conversations")}
+              title={t("sidebar.searchConversations", "Search conversations")}
               onClick={() => setIsSearchOpen(true)}
             >
               <Search

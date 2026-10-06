@@ -13,6 +13,7 @@ import { getContainerStyles } from './utils/styles';
 import { ComposerMessageQueue } from './ComposerMessageQueue';
 import { computeModelRequiredBalance } from '@/app/components/model-interface/features/models/utils/modelWalletAffordance.utils';
 import { FEATURE_FLAGS } from '@/lib/config/features';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 /** True when viewport is wide (PC); false for mobile viewport. Uses 768px breakpoint to match app layout. */
 function useIsPc() {
@@ -95,6 +96,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
 
     // Custom hooks
     const isPc = useIsPc();
+    const { t } = useLanguage();
 
     const handleQuickPickSelect = useCallback(
         (model: Model) => {
@@ -451,7 +453,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
             {hasFilesButModelUnsupported && (
                 <div className="mx-1 mb-2 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200">
                     <svg className="h-4 w-4 shrink-0 text-amber-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.168 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
-                    <span>This model doesn&apos;t support file attachments. Remove the attached files or switch to a compatible model to send your message.</span>
+                    <span>{t('composer.unsupportedFileAttachments', "This model doesn't support file attachments. Remove the attached files or switch to a compatible model to send your message.")}</span>
                 </div>
             )}
 

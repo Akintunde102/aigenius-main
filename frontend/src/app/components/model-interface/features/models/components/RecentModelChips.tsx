@@ -2,6 +2,7 @@ import React from "react";
 import { FiClock } from "react-icons/fi";
 import { Model } from "@/app/components/model-interface/shared/types";
 import { getModelDisplayName } from "@/app/components/model-interface/shared/utils";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 interface RecentModelChipsProps {
   recentModels: Model[];
@@ -16,15 +17,16 @@ export function RecentModelChips({
   onPick,
   isMobile,
 }: RecentModelChipsProps) {
+  const { t } = useLanguage();
   if (recentModels.length === 0) return null;
 
   return (
-    <section aria-label="Recently Picked" className="min-w-0">
+    <section aria-label={t("modelPicker.recentlyPickedAria", "Recently Picked")} className="min-w-0">
       <div
         className={`font-semibold uppercase tracking-wider mb-1 ${isMobile ? "text-[9.5px]" : "text-[10px]"}`}
         style={{ color: "var(--modal-muted-fg)" }}
       >
-        Recently Picked
+        {t("modelPicker.recentlyPicked", "Recently Picked")}
       </div>
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto min-w-0 pb-0.5">
         {recentModels.map((model) => (

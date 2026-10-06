@@ -8,8 +8,6 @@ jest.mock('lucide-react', () => {
     return new Proxy({}, { get: () => () => null });
 });
 
-jest.mock('next/dynamic', () => () => () => null);
-
 import { DefaultToolStreamingCard } from '../DefaultToolStreamingCard';
 
 const streamingTool = {
@@ -53,6 +51,50 @@ describe('DefaultToolStreamingCard subagent', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /Subagent/i }));
         expect(screen.queryByRole('link', { name: /Open subagent conversation/i })).not.toBeInTheDocument();
+    });
+
+    it('shows a Check Slug result without crashing the card', () => {
+        render(
+            <DefaultToolStreamingCard
+                streaming_tool={{
+                    ...streamingTool,
+                    tool: 'check_slug_availability',
+                    displayName: 'Check Slug',
+                    success: true,
+                }}
+                result={JSON.stringify({
+                    success: true,
+                    slug: 'roi-calc',
+                    available: true,
+                    normalized: 'roi-calc',
+                    suggestions: ['roi-calc-1'],
+                })}
+            />,
+        );
+
+        expect(document.body.textContent).toContain('roi-calc');
+        expect(document.body.textContent).toContain('"available": true');
+    });
+
+    it('renders a multi-field error payload as JSON instead of crashing', () => {
+        render(
+            <DefaultToolStreamingCard
+                streaming_tool={{
+                    ...streamingTool,
+                    tool: 'get_wallet_balance',
+                    displayName: 'Wallet',
+                    success: false,
+                }}
+                result={JSON.stringify({
+                    code: 'insufficient_funds',
+                    wallet: 0,
+                    required: 12,
+                })}
+            />,
+        );
+
+        expect(document.body.textContent).toContain('insufficient_funds');
+        expect(document.body.textContent).toContain('"wallet": 0');
     });
 
     it('does not show a subagent link for a different tool', () => {
