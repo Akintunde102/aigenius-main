@@ -1,10 +1,11 @@
-import { sendUpload } from "@/app/components/file/constants";
 import { AxiosProgressEvent } from "axios";
 import toast from "react-hot-toast";
 import _ from "lodash";
 import { CloudFile } from "@/app/components/file/file.interface";
 import { logger } from '@/lib/logger';
 import { authHttp } from '@/lib/api/auth-client';
+import { resolveGatewayApiRootUrl } from "@/lib/api/resolve-gateway-api-root";
+import { gatewayUploadStreamUrl } from "@/lib/api/gateway-upload-paths";
 
 export const uploadFile = async (options: {
     onSuccess: (data: CloudFile) => void,
@@ -13,11 +14,6 @@ export const uploadFile = async (options: {
     onProgress: (progress: { percent: number }) => void;
 }) => {
     const { onSuccess, onError, file, onProgress } = options;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-
 
     logger.debug('File upload initiated', {
         feature: 'file-upload',
@@ -35,14 +31,15 @@ export const uploadFile = async (options: {
             throw new Error("No File to upload");
         }
 
-        const uploadUrl = `${sendUpload}?fileName=${file.name}`;
+        const apiRoot = await resolveGatewayApiRootUrl();
+        const uploadUrl = `${gatewayUploadStreamUrl(apiRoot)}?fileName=${encodeURIComponent(file.name)}`;
 
         const response = await authHttp.post(
             uploadUrl,
-            formData,
+            file,
             {
                 headers: {
-                    // 'Content-Type': 'multipart/form-data',
+                    'Content-Type': file.type || 'application/octet-stream',
                 },
                 onUploadProgress: (progressEvent: AxiosProgressEvent) => {
                     const val = (progressEvent.loaded / (progressEvent.total || progressEvent.loaded));

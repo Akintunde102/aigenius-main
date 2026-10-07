@@ -566,6 +566,12 @@ export async function refreshAccessToken(): Promise<string> {
         if (shouldLogoutOnRefreshFailure(error)) {
             handleSessionExpired();
         } else {
+            // Do not increment failure counts or show the sign-in banner if the user
+            // is legitimately offline. It's confusing to ask them to sign in again.
+            if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                throw error;
+            }
+
             consecutiveRefreshFailures++;
             if (consecutiveRefreshFailures >= 3) {
                 toast(

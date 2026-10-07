@@ -40,7 +40,8 @@ interface LanguageContextValue {
   dictionary: TranslationDictionary;
   catalog: LanguageCatalogItem[];
   isLanguageModalOpen: boolean;
-  openLanguageModal: () => void;
+  languageModalVariant: 'app' | 'landing';
+  openLanguageModal: (variant?: 'app' | 'landing') => void;
   closeLanguageModal: () => void;
 }
 
@@ -66,6 +67,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
+  const [languageModalVariant, setLanguageModalVariant] = useState<'app' | 'landing'>('app');
 
   const languageInfo = useMemo(() => resolveLanguageItem(language), [language]);
 
@@ -115,7 +117,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     [languageInfo.code],
   );
 
-  const openLanguageModal = useCallback(() => setIsLanguageModalOpen(true), []);
+  const openLanguageModal = useCallback((variant: 'app' | 'landing' = 'app') => {
+    setLanguageModalVariant(variant);
+    setIsLanguageModalOpen(true);
+  }, []);
   const closeLanguageModal = useCallback(() => setIsLanguageModalOpen(false), []);
 
   const value = useMemo<LanguageContextValue>(
@@ -127,10 +132,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       dictionary,
       catalog: LANGUAGE_CATALOG,
       isLanguageModalOpen,
+      languageModalVariant,
       openLanguageModal,
       closeLanguageModal,
     }),
-    [languageInfo, setLanguage, t, dictionary, isLanguageModalOpen, openLanguageModal, closeLanguageModal],
+    [languageInfo, setLanguage, t, dictionary, isLanguageModalOpen, languageModalVariant, openLanguageModal, closeLanguageModal],
   );
 
   return (
@@ -152,6 +158,7 @@ export function useLanguage(): LanguageContextValue {
       dictionary: getDictionary(fallbackItem.code),
       catalog: LANGUAGE_CATALOG,
       isLanguageModalOpen: false,
+      languageModalVariant: 'app',
       openLanguageModal: () => {},
       closeLanguageModal: () => {},
     };

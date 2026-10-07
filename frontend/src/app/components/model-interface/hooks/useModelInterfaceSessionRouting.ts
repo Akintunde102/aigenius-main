@@ -399,10 +399,14 @@ export function useModelInterfaceSessionRouting({
 
       // Force URL reset to ensure clean state
       if (typeof window !== "undefined") {
-        // Use replace to avoid adding to browser history
-        router.replace("/");
-        // Also update the active route state immediately
-        router.replace("/", { scroll: false });
+        if (!navigator.onLine) {
+            window.history.replaceState(null, "", "/");
+        } else {
+            // Use replace to avoid adding to browser history
+            router.replace("/");
+            // Also update the active route state immediately
+            router.replace("/", { scroll: false });
+        }
       }
     },
     [
@@ -430,7 +434,11 @@ export function useModelInterfaceSessionRouting({
     lastInitiatedSwitchIdRef.current = null;
 
     if (typeof window !== "undefined" && window.location.pathname !== "/") {
-      router.replace("/");
+      if (!navigator.onLine) {
+        window.history.replaceState(null, "", "/");
+      } else {
+        router.replace("/");
+      }
     }
   }, [router]);
 
@@ -459,9 +467,13 @@ export function useModelInterfaceSessionRouting({
         window.location.pathname !== `/chat/${session.id}`
       ) {
         const href = `/chat/${session.id}`;
-        startTransition(() => {
-          router.push(href);
-        });
+        if (!navigator.onLine) {
+            window.history.pushState(null, "", href);
+        } else {
+            startTransition(() => {
+              router.push(href);
+            });
+        }
       }
     },
     [
@@ -549,7 +561,11 @@ export function useModelInterfaceSessionRouting({
             setError(CHAT_UI_ERRORS.conversationMissing);
             setActiveRouteConversationId(null);
             if (typeof window !== "undefined") {
-              router.replace("/");
+              if (!navigator.onLine) {
+                  window.history.replaceState(null, "", "/");
+              } else {
+                  router.replace("/");
+              }
             }
             resetDraftConversation();
           }
@@ -609,7 +625,11 @@ export function useModelInterfaceSessionRouting({
           }
           setActiveRouteConversationId(null);
           if (typeof window !== "undefined") {
-            router.replace("/");
+            if (!navigator.onLine) {
+                window.history.replaceState(null, "", "/");
+            } else {
+                router.replace("/");
+            }
           }
           resetDraftConversation();
         }

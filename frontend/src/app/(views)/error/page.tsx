@@ -1,57 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { DISPLAY } from "@/app/components/landing/typography";
 import { PublicPageShell } from "@/app/components/PublicPageShell";
 
 const ErrorPage = () => {
   return (
     <PublicPageShell>
-      <div className="content-centered">
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "3rem",
-          height: "3rem",
-          borderRadius: "0.75rem",
-          border: "1px solid rgba(245, 158, 11, 0.2)",
-          background: "rgba(245, 158, 11, 0.1)",
-          color: "#f59e0b",
-          marginBottom: "1.5rem"
-        }}>
-          <AlertTriangle className="h-6 w-6" aria-hidden />
-        </div>
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-5 py-24 text-center">
+        <h1 className={`${DISPLAY} text-4xl font-normal leading-[1.05] tracking-[-0.03em] sm:text-5xl`}>
+          Something went wrong
+        </h1>
 
-        <h1 className="headline">Something went wrong</h1>
-
-        <p className="subtext">
-          An unexpected error occurred. Please try again, or head back to
-          the home page.
+        <p className="mt-4 text-lg leading-relaxed text-lp-muted">
+          An unexpected error occurred. Please try again, or head back to the home page.
         </p>
 
-        <div style={{ marginTop: "2rem" }}>
-          <Link
-            href="/"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              borderRadius: "0.75rem",
-              background: "#18181b",
-              color: "#fff",
-              padding: "0.75rem 1.5rem",
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              transition: "transform 0.1s, filter 0.1s"
-            }}
-            onMouseOver={(e) => (e.currentTarget.style.filter = "brightness(1.2)")}
-            onMouseOut={(e) => (e.currentTarget.style.filter = "brightness(1)")}
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Go back to the home page
-          </Link>
-        </div>
+        <Link
+          href="/"
+          className="mt-10 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-stone-900 px-7 text-[15px] font-medium text-white transition-[transform,opacity] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97] dark:bg-white dark:text-stone-900"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          Go back to the home page
+        </Link>
       </div>
     </PublicPageShell>
   );

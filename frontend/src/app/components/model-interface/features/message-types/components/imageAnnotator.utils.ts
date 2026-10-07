@@ -173,7 +173,9 @@ export async function compositeAnnotatedImageToBlob(
 
     return new Promise<Blob | null>((resolve) => {
         try {
-            out.toBlob((b) => resolve(b), 'image/png');
+            // Use webp for significantly faster encoding than PNG, especially for large photos,
+            // while preserving transparency.
+            out.toBlob((b) => resolve(b), 'image/webp', 0.9);
         } catch {
             resolve(null);
         }

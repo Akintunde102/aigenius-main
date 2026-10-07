@@ -3,17 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { BUTTON_PRIMARY, BUTTON_SIZE, BUTTON_TONAL, PRESS } from "@/app/components/landing/constants";
+import { Logo } from "@/app/components/landing/Logo";
+import { ThemeToggle } from "@/app/components/landing/ThemeToggle";
 import { prefetchPublicRoutes } from "@/lib/public-route-prefetch";
 import { scheduleChatShellPrefetch } from "@/lib/chat-shell-prefetch";
 import { hasAuthSession } from "@/lib/utils/auth-session";
 import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-details";
-import {
-  applyResolvedColorMode,
-  COLOR_MODE_STORAGE_KEY,
-  LEGACY_THEME_STORAGE_KEY,
-} from "@/lib/color-mode";
-import { useLanguage } from "@/lib/providers/LanguageProvider";
-import { FiGlobe } from "react-icons/fi";
 
 function PrefetchPublicNavRoutes() {
   const router = useRouter();
@@ -40,8 +36,12 @@ function readPublicHeaderSession(): { signedIn: boolean; label: string } {
   return { signedIn, label: firstName || "Open app" };
 }
 
+/**
+ * Same behaviour as before (route prefetching, signed-in label, sign-in link that remembers the
+ * current path, theme toggle). Only the markup and styling are new. The theme toggle is the landing
+ * page's ThemeToggle, which runs the identical localStorage + applyResolvedColorMode logic.
+ */
 export function PublicHeader() {
-  const { t, openLanguageModal } = useLanguage();
   const pathname = usePathname();
   const [signedIn, setSignedIn] = useState(false);
   const [label, setLabel] = useState("Open app");
@@ -52,56 +52,35 @@ export function PublicHeader() {
     setLabel(session.label);
   }, []);
 
-  const toggleTheme = () => {
-    const html = document.documentElement;
-    const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    try {
-      localStorage.setItem(LEGACY_THEME_STORAGE_KEY, next);
-      localStorage.setItem(COLOR_MODE_STORAGE_KEY, next);
-    } catch {
-      /* ignore */
-    }
-    applyResolvedColorMode(next);
-  };
-
   const signInHref = `/login?next=${encodeURIComponent(pathname || "/")}`;
 
   return (
     <>
       <PrefetchPublicNavRoutes />
-      <nav className="nav">
-        <Link href="/" className="nav-logo">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-primary shadow-md shadow-cyan-900/40 transition-transform group-hover:scale-105">
-            <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden={true}>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
+      <header className="sticky top-0 z-40 bg-lp-glass backdrop-blur-md">
+        <nav aria-label="Primary" className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
+          <Logo />
+          <div className="flex items-center gap-1.5">
+            <Link
+              prefetch
+              href="/docs"
+              className={`inline-flex h-9 items-center rounded-full px-3.5 text-sm text-lp-muted hover:text-lp-fg ${PRESS}`}
+            >
+              About
+            </Link>
+            {signedIn ? (
+              <Link prefetch href="/" className={`${BUTTON_PRIMARY} ${BUTTON_SIZE.sm} ${PRESS}`}>
+                {label}
+              </Link>
+            ) : (
+              <Link prefetch href={signInHref} className={`${BUTTON_TONAL} ${BUTTON_SIZE.sm} ${PRESS}`}>
+                Sign in
+              </Link>
+            )}
+            <ThemeToggle />
           </div>
-          <span className="nav-logo-text">AIGenius</span>
-        </Link>
-        <div className="nav-links">
-          <Link prefetch href="/docs">{t('landing.about', 'About')}</Link>
-          {signedIn ? (
-            <Link prefetch href="/" className="nav-signin">{label === 'Open app' ? t('landing.openApp', 'Open app') : label}</Link>
-          ) : (
-            <Link prefetch href={signInHref} className="nav-signin">{t('landing.signIn', 'Sign in')}</Link>
-          )}
-          <button
-            type="button"
-            className="theme-toggle"
-            aria-label={t('landing.selectLanguage', 'Select Language')}
-            title={t('landing.selectLanguage', 'Select Language')}
-            onClick={openLanguageModal}
-          >
-            <FiGlobe size={14} aria-hidden={true} />
-          </button>
-          <button type="button" className="theme-toggle" aria-label="Toggle theme" onClick={toggleTheme}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" aria-hidden={true}>
-              <circle cx="12" cy="12" r="9" />
-              <line x1="12" y1="3" x2="12" y2="21" />
-            </svg>
-          </button>
-        </div>
-      </nav>
+        </nav>
+      </header>
     </>
   );
 }

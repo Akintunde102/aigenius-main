@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { DocPage, DocSection, DocList, DocLink } from "../components/DocPage";
 
 const TERMS_SECTIONS = [
@@ -24,8 +23,8 @@ export default function TermsAndConditionsPage() {
       effectiveDateIso="2025-02-15"
       sections={TERMS_SECTIONS}
     >
-      <p className="text-stone-700 leading-[1.7]">
-        These Terms of Service (&quot;Terms&quot;) govern your access to and use of <strong className="text-stone-900">AIGenius</strong>, a pay-as-you-go AI chat platform offered by Nobox Labs Limited (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;). By using the Services, you agree to these Terms.
+      <p>
+        These Terms of Service (&quot;Terms&quot;) govern your access to and use of <strong>AIGenius</strong>, a pay-as-you-go AI chat platform offered by Nobox Labs Limited (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;). By using the Services, you agree to these Terms.
       </p>
 
       <DocSection id="account-responsibilities" title="1) Your account and responsibilities">
@@ -64,7 +63,7 @@ export default function TermsAndConditionsPage() {
 
       <DocSection id="customer-data-privacy" title="4) Customer Data and privacy">
         <p className="mb-4">
-          You retain ownership of your content and data. We process it solely to provide the Services and as directed by you. Our <Link href="/docs/privacy-policy" className="font-medium text-cyan-600 hover:text-cyan-700 hover:underline">Privacy Policy</Link> explains how we handle your personal information.
+          You retain ownership of your content and data. We process it solely to provide the Services and as directed by you. Our <DocLink href="/docs/privacy-policy">Privacy Policy</DocLink> explains how we handle your personal information.
         </p>
         <DocList
           items={[
@@ -94,11 +93,11 @@ export default function TermsAndConditionsPage() {
         </p>
         <DocList
           items={[
-            <><strong className="text-stone-900">Credits:</strong> Credits are purchased in USD (1,000 credits = $1). Checkout is processed by our payment provider. A minimum top-up may apply.</>,
-            <><strong className="text-stone-900">Usage:</strong> Each AI request consumes credits based on model pricing and token usage. You must maintain a sufficient balance to use models.</>,
-            <><strong className="text-stone-900">Insufficient funds:</strong> If your balance is below the required minimum, you may be unable to use certain models until you add credits.</>,
-            <><strong className="text-stone-900">Refunds:</strong> Refunds are handled according to our refund policy. Contact us for refund requests.</>,
-            <><strong className="text-stone-900">Payment provider:</strong> Payaza or Paystack processes payments; their terms and policies apply.</>,
+            <><strong>Credits:</strong> Credits are purchased in USD (1,000 credits = $1). Checkout is processed by our payment provider. A minimum top-up may apply.</>,
+            <><strong>Usage:</strong> Each AI request consumes credits based on model pricing and token usage. You must maintain a sufficient balance to use models.</>,
+            <><strong>Insufficient funds:</strong> If your balance is below the required minimum, you may be unable to use certain models until you add credits.</>,
+            <><strong>Refunds:</strong> Refunds are handled according to our refund policy. Contact us for refund requests.</>,
+            <><strong>Payment provider:</strong> Payaza or Paystack processes payments; their terms and policies apply.</>,
           ]}
         />
       </DocSection>
@@ -178,11 +177,11 @@ export default function TermsAndConditionsPage() {
       </DocSection>
 
       <DocSection id="contact" title="13) Contact">
-        <div className="space-y-2 text-stone-700">
-          <p className="font-semibold text-stone-900">Nobox Labs Limited</p>
+        <div className="space-y-2">
+          <p className="font-semibold">Nobox Labs Limited</p>
           <p>Website: <DocLink href="https://aigenius.noboxlabs.xyz" external>https://aigenius.noboxlabs.xyz</DocLink></p>
           <p>Email: <DocLink href="mailto:nobox.hq@gmail.com">nobox.hq@gmail.com</DocLink></p>
-          <p className="mt-4 text-sm text-stone-600">
+          <p className="mt-4 text-sm text-lp-muted">
             For questions about these Terms or to request a copy of our DPA, contact us using the information above.
           </p>
         </div>

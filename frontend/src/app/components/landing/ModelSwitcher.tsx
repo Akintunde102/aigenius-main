@@ -59,7 +59,9 @@ export function ModelSwitcher() {
     /* Outer card — matches AppPreview rounded window look */
     <div className={`overflow-hidden rounded-2xl shadow-lp-pop ${APP.frame}`}>
       {/* Title bar */}
-      <div className={`flex h-10 shrink-0 items-center gap-3 border-b px-4 ${APP.topBar} ${APP.line}`}>
+      <div
+        className={`flex h-10 shrink-0 items-center gap-3 border-b px-4 ${APP.topBar} ${APP.line}`}
+      >
         <div className="flex items-center gap-[7px]">
           <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
           <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
@@ -72,7 +74,9 @@ export function ModelSwitcher() {
       <div className="px-5 pb-5 pt-4">
         {/* User message */}
         <div className="flex justify-end">
-          <div className={`max-w-[82%] rounded-3xl rounded-br-md px-4 py-3 text-[14px] leading-relaxed ${APP.bubble}`}>
+          <div
+            className={`max-w-[82%] rounded-3xl rounded-br-md px-4 py-3 text-[14px] leading-relaxed ${APP.bubble}`}
+          >
             Summarize the vendor contract and flag anything risky.
           </div>
         </div>
@@ -93,7 +97,9 @@ export function ModelSwitcher() {
                 aria-selected={selected}
                 onClick={() => setActiveId(model.id)}
                 className={`relative rounded-lg px-3 py-1 text-[13px] font-medium transition-colors duration-150 ${
-                  selected ? APP.active + " text-[#1f1f1e] dark:text-[#e6e6e8]" : APP.muted + " " + APP.hover
+                  selected
+                    ? APP.active + " text-[#1f1f1e] dark:text-[#e6e6e8]"
+                    : APP.muted + " " + APP.hover
                 }`}
               >
                 {selected && (
@@ -120,7 +126,9 @@ export function ModelSwitcher() {
               transition={{ duration: 0.22, ease: EASE }}
               className="max-w-[88%]"
             >
-              <p className={`rounded-3xl rounded-bl-md px-4 py-3 text-[14px] leading-relaxed ${APP.bubble}`}>
+              <p
+                className={`rounded-3xl rounded-bl-md px-4 py-3 text-[14px] leading-relaxed ${APP.bubble}`}
+              >
                 {active.reply}
               </p>
               <p className={`mt-2 pl-1 text-[12px] ${APP.muted}`}>
@@ -134,7 +142,9 @@ export function ModelSwitcher() {
         </div>
 
         {/* Composer area stub */}
-        <div className={`mt-4 rounded-2xl border px-4 py-3 ${APP.panel} ${APP.line}`}>
+        <div
+          className={`mt-4 rounded-2xl border px-4 py-3 ${APP.panel} ${APP.line}`}
+        >
           <p className={`text-[14px] ${APP.muted}`}>
             Same question, different model, different price. Try them.
           </p>

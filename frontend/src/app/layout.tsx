@@ -17,10 +17,10 @@ import ScheduleNotificationListener from "@/app/components/ScheduleNotificationL
 import { ColorModeBootstrapScript } from "@/app/components/ColorModeBootstrapScript";
 import { CrashBootstrapScript } from "@/app/components/CrashBootstrapScript";
 import { FilePreviewModal } from "@/app/components/modals/FilePreviewModal";
-import { VideoJobProgressModal } from "@/app/components/modals/VideoJobProgressModal";
 import { ThemeProvider } from "@/lib/providers/ThemeProvider";
 import { LanguageProvider } from "@/lib/providers/LanguageProvider";
 import { LanguageSelectionModal } from "@/app/components/modals/LanguageSelectionModal";
+import { VideoJobProgressModal } from "@/app/components/modals/VideoJobProgressModal";
 const Euclid = localFont({
   src: [
     {
@@ -155,7 +155,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="scroll-smooth">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
         <ColorModeBootstrapScript />

@@ -23,6 +23,13 @@ export function tryAutoReloadOnChunkLoadError(err: unknown): boolean {
   if (typeof window === "undefined" || !isChunkLoadError(err)) {
     return false;
   }
+  
+  // If the browser is explicitly offline, a reload will just fail entirely (blank screen).
+  // Let the ErrorBoundary render the fallback UI instead so the user can manually retry when online.
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return false;
+  }
+
   if (sessionStorage.getItem(CHUNK_RELOAD_KEY) === "1") {
     sessionStorage.removeItem(CHUNK_RELOAD_KEY);
     return false;
