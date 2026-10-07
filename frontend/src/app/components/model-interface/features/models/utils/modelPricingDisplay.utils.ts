@@ -1,3 +1,5 @@
+import { billedUsdToDisplayCredits } from '@/lib/credits';
+
 export interface PricingTierOverride {
     min_prompt_tokens?: number;
     prompt?: string;
@@ -23,6 +25,16 @@ export function pricingLabel(key: string): string {
     if (k === 'request') return 'Per Request';
 
     return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+export function resolveModelPricingTable(
+    pricing?: Record<string, unknown>,
+    pricingCredits?: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+    if (pricingCredits && Object.keys(pricingCredits).length > 0) {
+        return pricingCredits;
+    }
+    return pricing;
 }
 
 export function getScalarPricingEntries(
@@ -60,12 +72,15 @@ export function formatPricingTierLabel(minPromptTokens?: number): string {
     return 'Additional tier';
 }
 
-export function formatPricingAmount(key: string, rawValue: string): string {
+export function formatPricingAmount(
+    key: string,
+    rawValue: string,
+    options?: { valuesAreCredits?: boolean },
+): string {
     const numValue = parseFloat(rawValue);
     const k = key.toLowerCase();
     const isTokenBased = k === 'prompt' || k === 'completion' || k.includes('cache');
 
-    const multiplier = isTokenBased ? 1_000_000 : 1;
     let unit = isTokenBased ? '/ 1M tokens' : '';
 
     if (k === 'image') unit = '/ image';
@@ -75,8 +90,12 @@ export function formatPricingAmount(key: string, rawValue: string): string {
 
     if (Number.isNaN(numValue)) return rawValue;
 
-    const decimals = k === 'web_search' || k === 'request' || k === 'image' ? 3 : 2;
-    return `$${(numValue * multiplier).toFixed(decimals)} ${unit}`.trim();
+    const credits = options?.valuesAreCredits
+        ? numValue
+        : billedUsdToDisplayCredits(numValue * (isTokenBased ? 1_000_000 : 1));
+    const decimals =
+        credits >= 100 ? 0 : credits >= 1 ? 1 : credits >= 0.01 ? 2 : 3;
+    return `~${credits.toFixed(decimals)} credits ${unit}`.trim();
 }
 
 export function getTierPricingEntries(tier: PricingTierOverride): Array<[string, string]> {

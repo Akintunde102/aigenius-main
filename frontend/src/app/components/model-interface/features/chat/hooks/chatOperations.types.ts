@@ -65,7 +65,7 @@ export interface MessageOptimizationResult {
 // Stream result from API calls
 export interface StreamResult {
     usage?: UsageInfo;
-    cost?: number;
+    cost_credits?: number;
     wallet?: number;
     conversationId?: string;
     tool_usage_charges?: ToolUsageCharge[];

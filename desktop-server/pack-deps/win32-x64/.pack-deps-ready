@@ -1,7 +1,7 @@
 {
   "platform": "win32",
   "arch": "x64",
-  "depsFingerprint": "d5d41ee5ee9093b2",
+  "depsFingerprint": "1d8d20c50aa14031",
   "electronVersion": "native-prebuilds",
-  "builtAt": "2026-09-25T20:37:00.228Z"
+  "builtAt": "2026-10-06T17:12:46.288Z"
 }

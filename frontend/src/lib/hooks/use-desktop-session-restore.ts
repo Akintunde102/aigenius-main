@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ensureGatewayAuthReady, getValidAccessToken } from "@/lib/api/auth-client";
+import {
+  desktopUrlIndicatesStoredSession,
+  ensureGatewayAuthReady,
+  getValidAccessToken,
+} from "@/lib/api/auth-client";
 import { hasAuthSession, syncAuthSessionCookiesFromStorage } from "@/lib/utils/auth-session";
+import { readDesktopStoredRefreshToken } from "@/lib/utils/desktop-auth-refresh";
 import {
   DESKTOP_SHELL_ENTRY_QUERY_PARAM,
   getDesktopShellEntryRuntimeResolveOptions,
@@ -11,8 +16,15 @@ import {
   isDesktopShellFromBuild,
   isLikelyElectronRenderer,
   resolveAigeniusDesktopRuntime,
+  waitForAigeniusDesktopBridge,
 } from "@/lib/utils/desktop-runtime";
 import { resolveAuthenticatedDesktopShellRedirect } from "@/lib/utils/safe-internal-next-path";
+
+const SESSION_RESTORE_TIMEOUT_MS = 15_000;
+const KEYCHAIN_ONLY_BRIDGE_WAIT_MS = 800;
+
+/** Dev compiles already sit on the route loading shell. Do not cover the sign-in form again. */
+const blockUiOnRestore = process.env.NODE_ENV !== 'development';
 
 function isLikelyDesktopShellEntry(): boolean {
   if (typeof window === "undefined") {
@@ -31,14 +43,30 @@ function isLikelyDesktopShellEntry(): boolean {
   }
 }
 
+function localSessionMarkersPresent(): boolean {
+  return hasAuthSession() || desktopUrlIndicatesStoredSession();
+}
+
+async function ensureGatewayAuthReadyWithTimeout(): Promise<void> {
+  await Promise.race([
+    ensureGatewayAuthReady(),
+    new Promise<never>((_, reject) => {
+      window.setTimeout(
+        () => reject(new Error("desktop session restore timed out")),
+        SESSION_RESTORE_TIMEOUT_MS,
+      );
+    }),
+  ]);
+}
+
 /**
  * On desktop cold start, restore access JWT from the main-process refresh token (or HttpOnly
  * cookie on web) before showing the sign-in form.
  */
 export function useDesktopSessionRestore(): { restoring: boolean } {
   const pathname = usePathname();
-  // Start true so SSR matches the client first paint (desktop detection needs window).
-  const [restoring, setRestoring] = useState(true);
+  // Production starts true so SSR matches the first paint. Dev shows sign-in immediately.
+  const [restoring, setRestoring] = useState(blockUiOnRestore);
 
   useEffect(() => {
     if (!isLikelyDesktopShellEntry()) {
@@ -49,9 +77,14 @@ export function useDesktopSessionRestore(): { restoring: boolean } {
     let cancelled = false;
 
     const run = async () => {
-      setRestoring(true);
+      if (blockUiOnRestore) {
+        setRestoring(true);
+      }
 
-      const shellOptions = getDesktopShellEntryRuntimeResolveOptions();
+      const expectStoredSession = localSessionMarkersPresent();
+      const shellOptions = getDesktopShellEntryRuntimeResolveOptions({
+        expectStoredSession,
+      });
       const isDesktop = await new Promise<boolean>((resolve) => {
         if (isAigeniusDesktopRuntime()) {
           resolve(true);
@@ -65,8 +98,21 @@ export function useDesktopSessionRestore(): { restoring: boolean } {
         return;
       }
 
+      if (!expectStoredSession) {
+        if (!isAigeniusDesktopRuntime()) {
+          await waitForAigeniusDesktopBridge(KEYCHAIN_ONLY_BRIDGE_WAIT_MS);
+        }
+        const refreshToken = await readDesktopStoredRefreshToken();
+        if (!refreshToken) {
+          if (!cancelled) {
+            setRestoring(false);
+          }
+          return;
+        }
+      }
+
       try {
-        await ensureGatewayAuthReady();
+        await ensureGatewayAuthReadyWithTimeout();
       } catch {
         // Desktop cold-boot refresh failed (e.g. upstream unreachable at startup).
         // Show the login screen rather than redirecting with a stale/expired token.
@@ -80,7 +126,7 @@ export function useDesktopSessionRestore(): { restoring: boolean } {
       }
 
       const token = getValidAccessToken();
-      if (token || hasAuthSession()) {
+      if (token) {
         syncAuthSessionCookiesFromStorage();
         const target = resolveAuthenticatedDesktopShellRedirect(
           pathname,

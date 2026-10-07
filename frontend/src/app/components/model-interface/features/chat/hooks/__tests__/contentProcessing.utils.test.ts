@@ -3,6 +3,8 @@ import {
     contentToDisplayText,
     contentToMarkdownText,
     processStreamingContent,
+    updateLastMessageWithMetrics,
+    createChatMessage,
 } from '../contentProcessing.utils';
 import { CONTENT_TYPES } from '../chatOperations.constants';
 
@@ -127,6 +129,29 @@ describe('contentToMarkdownText', () => {
             { type: CONTENT_TYPES.IMAGE_URL, image_url: { url: 'https://img.test/1.png' } },
         ];
         expect(contentToMarkdownText(blocks as any)).toBe('caption \n![image](https://img.test/1.png)\n');
+    });
+});
+
+describe('chat message metrics', () => {
+    it('createChatMessage stores cost_credits from the gateway', () => {
+        const msg = createChatMessage('assistant', 'ok', 'm1', 'Model', null, undefined, 12.5);
+        expect(msg.cost_credits).toBe(12.5);
+        expect(msg).not.toHaveProperty('cost');
+    });
+
+    it('updateLastMessageWithMetrics attaches credits-only billing fields once', () => {
+        const chat = [createChatMessage('assistant', 'hi', 'm1', 'Model')];
+        const updated = updateLastMessageWithMetrics(
+            chat,
+            { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3, tool_cost_credits: 1 },
+            5,
+            [{ tool: 't', display_name: 'T', cost_credits: 1 }],
+        );
+        expect(updated[0].cost_credits).toBe(5);
+        expect(updated[0].usage?.tool_cost_credits).toBe(1);
+        expect(updated[0].tool_usage_charges?.[0].cost_credits).toBe(1);
+        const again = updateLastMessageWithMetrics(updated, undefined, 99);
+        expect(again[0].cost_credits).toBe(5);
     });
 });
 

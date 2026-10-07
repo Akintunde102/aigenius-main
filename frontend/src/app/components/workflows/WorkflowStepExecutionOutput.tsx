@@ -13,9 +13,9 @@ export function WorkflowStepExecutionOutput({ execution }: { execution: Workflow
   const result = execution.result?.trim() ?? "";
   const showFailed = execution.status === "failed";
   const showOutput = execution.status === "completed" && result.length > 0;
-  const billedUsd = formatWorkflowBilledUsd(execution.billedUsd);
+  const billedCredits = formatWorkflowBilledUsd(execution.billedCredits);
   const walletAfter = formatWorkflowWalletBalance(execution.walletAfter);
-  const showMeta = billedUsd !== null || walletAfter !== null;
+  const showMeta = billedCredits !== null || walletAfter !== null;
 
   const displayErr = useMemo(() => (err ? formatWorkflowToolOutputForDisplay(err) : ""), [err]);
   const displayResult = useMemo(() => formatWorkflowToolOutputForDisplay(result), [result]);
@@ -33,9 +33,9 @@ export function WorkflowStepExecutionOutput({ execution }: { execution: Workflow
       {showMeta ? (
         <div className="border-b border-slate-200/60 bg-slate-50/85 px-2.5 py-2 dark:border-slate-800/80 dark:bg-[#141518]">
           <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-600 dark:text-slate-400">
-            {billedUsd ? (
+            {billedCredits ? (
               <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-medium dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                Cost {billedUsd}
+                Cost {billedCredits}
               </span>
             ) : null}
             {walletAfter ? (

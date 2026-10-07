@@ -46,12 +46,16 @@ const AUTH_TOKEN_REFRESHED_EVENT = 'auth:token-refreshed';
  * wait on cold-start when the user isn't logged in, so they reach the login
  * screen instantly instead of after a long timeout.
  */
-function desktopBuildHasSession(): boolean {
+export function desktopUrlIndicatesStoredSession(): boolean {
     try {
         return new URLSearchParams(window.location.search).get('aigenius_desktop_has_session') === '1';
     } catch {
-        return true; // default to waiting (safe fallback)
+        return false;
     }
+}
+
+function desktopBuildHasSession(): boolean {
+    return desktopUrlIndicatesStoredSession();
 }
 
 let refreshPromise: Promise<string> | null = null;

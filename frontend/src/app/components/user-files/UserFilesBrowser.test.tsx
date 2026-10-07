@@ -239,6 +239,30 @@ describe("UserFilesBrowser", () => {
     expect(screen.getByTestId("image-preview-lightbox")).toBeInTheDocument();
   });
 
+  it("modal browse opens per-file actions menu with Open file", () => {
+    const files = [
+      file({
+        id: "doc-1",
+        name: "notes.pdf",
+        originalName: "notes.pdf",
+        s3Link: "https://cdn.example.com/notes.pdf",
+        createdAt: "2020-01-01T00:00:00.000Z",
+      }),
+    ];
+
+    render(
+      <UserFilesBrowser
+        variant="modal"
+        library={libraryState({ files })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /more file actions/i }));
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /open file/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /copy link/i })).toBeInTheDocument();
+  });
+
   it("modal browse opens openFilePreview for non-image files", () => {
     const files = [
       file({

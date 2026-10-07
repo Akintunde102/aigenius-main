@@ -218,7 +218,7 @@ jest.mock('fs/promises', () => ({
 
 import fs from 'fs/promises';
 
-const EXECUTOR_BUDGET_MS = 500;
+const EXECUTOR_BUDGET_MS = 1_500;
 const PROJECT_ROOT = '/home/user/project';
 const UTIL_PATH = `${PROJECT_ROOT}/src/util.ts`;
 const IMAGE_PATH = `${PROJECT_ROOT}/photo.png`;

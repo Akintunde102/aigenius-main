@@ -411,7 +411,7 @@ describe('conversationId in access-model', () => {
                         .mockResolvedValueOnce({
                             done: false,
                             value: Buffer.from(
-                                'data: {"usage":{"prompt_tokens":7,"completion_tokens":9,"total_tokens":16},"cost":0.00021,"wallet":999}\n',
+                                'data: {"usage":{"prompt_tokens":7,"completion_tokens":9,"total_tokens":16},"cost_credits":0.21,"wallet":999}\n',
                                 'utf8',
                             ),
                         })
@@ -449,7 +449,7 @@ describe('conversationId in access-model', () => {
                 message: 'Preparing payload',
             });
             expect(result.usage).toEqual({ prompt_tokens: 7, completion_tokens: 9, total_tokens: 16 });
-            expect(result.cost).toBe(0.00021);
+            expect(result.cost_credits).toBe(0.21);
             expect(result.wallet).toBe(999);
         });
 

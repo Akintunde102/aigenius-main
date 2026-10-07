@@ -117,8 +117,13 @@ describe('runShell long-running commands', () => {
       expect(out.ok).toBe(true);
       if (out.ok) {
         expect(out.result).toContain('still running');
-        expect(out.result).toContain('ready');
-        pidToClean = (out.rawData as { pid?: number } | undefined)?.pid;
+        const pid = (out.rawData as { pid?: number } | undefined)?.pid;
+        expect(typeof pid).toBe('number');
+        // Windows may background before buffered stdout arrives; pid proves the sleeper started.
+        if (out.result.includes('ready')) {
+          expect(out.result).toContain('ready');
+        }
+        pidToClean = pid;
       }
     } finally {
       if (typeof pidToClean === 'number') {

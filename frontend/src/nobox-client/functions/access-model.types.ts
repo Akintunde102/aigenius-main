@@ -54,12 +54,11 @@ export type OpenRouterContentBlock =
   | { type: 'image_url'; image_url: { url: string } }
   | { type: 'input_audio'; input_audio: { data: string; format: string } };
 
-/** Per-tool billed amounts from the gateway (USD + ₦). */
+/** Per-tool billed amounts from the gateway (platform credits only). */
 export interface ToolUsageCharge {
   tool: string;
   display_name: string;
-  cost_usd: number;
-  cost_naira: number;
+  cost_credits: number;
 }
 
 /**
@@ -95,8 +94,8 @@ export interface UsageInfo {
   completion_tokens: number;
   /** Total number of tokens used (prompt + completion) */
   total_tokens: number;
-  /** USD charged for tool invocations in this completion (aggregated). */
-  tool_cost_usd?: number;
+  /** Platform credits charged for tool invocations in this completion (aggregated). */
+  tool_cost_credits?: number;
   session_prompt_tokens?: number;
   session_completion_tokens?: number;
   session_total_tokens?: number;
@@ -227,8 +226,8 @@ export type AccessModelResponse<T> = {
 export interface StreamingResult {
   /** Token usage statistics for the entire streaming session */
   usage?: UsageInfo;
-  /** Total cost of the streaming interaction */
-  cost?: number;
+  /** Total platform credits for the streaming interaction */
+  cost_credits?: number;
   /** Remaining wallet balance after the interaction */
   wallet?: number;
   /** Conversation id when backend created or updated a session (from X-Conversation-Id) */

@@ -1,7 +1,8 @@
 import React, { memo, useMemo, useState } from 'react';
 import { FiBookmark, FiInfo } from 'react-icons/fi';
 import { Model } from '@/app/components/model-interface/shared/types';
-import { formatNGN, formatUSD, getModelAverageRequestPrice } from '@/app/components/model-interface/shared/utils';
+import { formatNGN } from '@/app/components/model-interface/shared/utils';
+import { formatPricingAmount, pricingLabel } from '../utils/modelPricingDisplay.utils';
 import {
     computeModelRequiredBalance,
     getModelCreditBurnPercentage,
@@ -148,28 +149,11 @@ const ModelSelectionListItem = memo(function ModelListItem({
                         <span className="font-semibold">Pricing:</span>
                         {model.pricing ? (
                             <ul className={isMobile ? 'ml-2 list-disc' : 'ml-4 list-disc'}>
-                                {Object.entries(model.pricing).map(([k, v]) => {
-                                    const numV = parseFloat(String(v));
-                                    const key = k.toLowerCase();
-                                    const isTokenBased = key === 'prompt' || key === 'completion' || key.includes('cache');
-
-                                    const multiplier = isTokenBased ? 1000000 : 1;
-                                    let unit = isTokenBased ? '/ 1M tokens' : '';
-
-                                    if (key === 'image') unit = '/ image';
-                                    if (key === 'web_search') unit = '/ search';
-                                    if (key === 'request') unit = '/ request';
-                                    if (key === 'audio') unit = '/ second';
-
-                                    const displayV = isNaN(numV) ? v : `$${(numV * multiplier).toFixed(key === 'web_search' || key === 'request' || key === 'image' ? 3 : 2)} ${unit}`;
-                                    const label = k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-
-                                    return (
-                                        <li key={k} className={`font-mono ${isMobile ? 'text-[10px]' : 'text-[13px]'}`}>
-                                            {label}: {displayV}
-                                        </li>
-                                    );
-                                })}
+                                {Object.entries(model.pricing).map(([k, v]) => (
+                                    <li key={k} className={`font-mono ${isMobile ? 'text-[10px]' : 'text-[13px]'}`}>
+                                        {pricingLabel(k)}: {formatPricingAmount(k, String(v))}
+                                    </li>
+                                ))}
                             </ul>
                         ) : (
                             <span className="text-gray-500"> No pricing info.</span>
@@ -178,7 +162,7 @@ const ModelSelectionListItem = memo(function ModelListItem({
                     {isFinite(averageCost) && averageCost > 0 && (
                         <div className={`text-blue-700 font-semibold ${isMobile ? 'text-[10px] mt-1' : 'text-xs mt-2'
                             }`}>
-                            Avg. price (est. 800 tokens): {formatUSD(getModelAverageRequestPrice(model))} · {formatNGN(averageCost)}
+                            Avg. price (est. 800 tokens): {formatNGN(averageCost)}
                         </div>
                     )}
                 </div>

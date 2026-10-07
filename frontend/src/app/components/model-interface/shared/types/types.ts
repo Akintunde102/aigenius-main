@@ -11,11 +11,9 @@ export interface Model {
     };
     created?: number;
     pricing?: Record<string, string>;
+    /** Platform credits per pricing unit (from API). */
+    pricing_credits?: Record<string, string>;
     averageUserSpendPerRequest?: {
-        promptCost: number;
-        completionCost: number;
-        expectedImageCost: number;
-        totalAverageCost: number;
         totalAverageCostCredits?: number;
         /** What the average covers for media models, e.g. "image" or "5s video". */
         averageUnit?: string;
@@ -32,8 +30,8 @@ export interface UsageInfo {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
-    /** USD charged for tool invocations in this completion (aggregated). */
-    tool_cost_usd?: number;
+    /** Platform credits charged for tool invocations in this completion (aggregated). */
+    tool_cost_credits?: number;
     /** Cumulative prompt tokens across all model API rounds in this agent run. */
     session_prompt_tokens?: number;
     /** Cumulative completion tokens across all model API rounds in this agent run. */
@@ -67,14 +65,11 @@ export type ToolUsageChargeStatus = 'reserved' | 'settled' | 'refunded';
 export interface ToolUsageCharge {
     tool: string;
     display_name: string;
-    cost_usd: number;
-    cost_naira: number;
+    cost_credits: number;
     status?: ToolUsageChargeStatus;
     job_id?: string;
     reservation_id?: string;
-    reserved_usd?: number;
     reserved_credits?: number;
-    settled_usd?: number;
     settled_credits?: number;
     reserved_at?: number;
     released_at?: number;

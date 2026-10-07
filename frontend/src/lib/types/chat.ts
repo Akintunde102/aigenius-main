@@ -15,8 +15,8 @@ export interface UsageInfo {
     completion_tokens: number;
     /** Total tokens used (prompt + completion) */
     total_tokens: number;
-    /** USD charged for tool invocations in this completion (aggregated). */
-    tool_cost_usd?: number;
+    /** Platform credits charged for tool invocations in this completion (aggregated). */
+    tool_cost_credits?: number;
 }
 
 /**

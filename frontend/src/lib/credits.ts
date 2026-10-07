@@ -16,6 +16,20 @@ export const MIN_TOP_UP_CREDITS = parsePositiveRate(
   1000,
 );
 
+/** Matches backend `USD_TO_CREDITS_RATE` default for display-only conversion of API USD rates. */
+export const DEFAULT_CREDITS_PER_USD = parsePositiveRate(
+  process.env.NEXT_PUBLIC_CREDITS_PER_USD,
+  1000,
+);
+
+/** Convert a billed USD amount from the models API into platform credits for UI. */
+export function billedUsdToDisplayCredits(usd: number): number {
+  if (!Number.isFinite(usd) || usd < 0) {
+    return 0;
+  }
+  return usd * DEFAULT_CREDITS_PER_USD;
+}
+
 /** Free credits granted to new accounts at registration. */
 export const SIGNUP_BONUS_CREDITS = 100;
 

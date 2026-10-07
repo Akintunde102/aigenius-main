@@ -148,8 +148,8 @@ export const HistorySnapshotStepCard = memo(function HistorySnapshotStepCard({
     : runStep?.result?.trim()
       ? formatWorkflowToolOutputForDisplay(String(runStep.result))
       : "";
-  const billedUsd = formatWorkflowBilledUsd(
-    typeof runStep?.billedUsd === "number" ? runStep.billedUsd : null,
+  const billedCredits = formatWorkflowBilledUsd(
+    typeof runStep?.billedCredits === "number" ? runStep.billedCredits : null,
   );
   const walletAfter = formatWorkflowWalletBalance(
     typeof runStep?.walletAfter === "number" ? runStep.walletAfter : null,
@@ -198,12 +198,12 @@ export const HistorySnapshotStepCard = memo(function HistorySnapshotStepCard({
           </ul>
         </WorkflowValuesPanel>
 
-        {billedUsd || walletAfter ? (
+        {billedCredits || walletAfter ? (
           <div className="border-t border-slate-200/70 bg-slate-50/85 px-2.5 py-2 dark:border-slate-800/80 dark:bg-[#141518]">
             <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-600 dark:text-slate-400">
-              {billedUsd ? (
+              {billedCredits ? (
                 <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-medium dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-200">
-                  Cost {billedUsd}
+                  Cost {billedCredits}
                 </span>
               ) : null}
               {walletAfter ? (
@@ -307,11 +307,11 @@ export function HistoryTimelinePanel({
                 <StatusGlyph status={step.status} />
               </span>
             </div>
-            {typeof step.billedUsd === "number" || typeof step.walletAfter === "number" ? (
+            {typeof step.billedCredits === "number" || typeof step.walletAfter === "number" ? (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
-                {typeof step.billedUsd === "number" ? (
+                {typeof step.billedCredits === "number" ? (
                   <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 dark:border-slate-700/80 dark:bg-slate-900/70">
-                    Cost {formatWorkflowBilledUsd(step.billedUsd)}
+                    Cost {formatWorkflowBilledUsd(step.billedCredits)}
                   </span>
                 ) : null}
                 {typeof step.walletAfter === "number" ? (

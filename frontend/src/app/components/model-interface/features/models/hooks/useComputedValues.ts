@@ -68,18 +68,17 @@ export function useComputedValues({
         return sortModelsNew(modalFilteredModels, orderBy, orderDir);
     }, [modalFilteredModels, orderByCost, orderBy, orderDir]);
 
-    const currentChatCostUSD = useMemo(
-        () => chat.reduce((sum, msg) => sum + (typeof msg.cost === 'number' ? msg.cost : 0), 0),
-        [chat],
-    );
-
-    const currentChatCostNaira = useMemo(
+    const sumChatCostCredits = useMemo(
         () => chat.reduce(
             (sum, msg) => sum + (typeof msg.cost_credits === 'number' ? msg.cost_credits : 0),
             0,
         ),
         [chat],
     );
+
+    /** @deprecated Legacy name; value is platform credits, not USD. */
+    const currentChatCostUSD = sumChatCostCredits;
+    const currentChatCostNaira = sumChatCostCredits;
 
     const supportsImageUpload = useMemo(() =>
         selectedModel?.architecture?.input_modalities?.some((mod: string) =>

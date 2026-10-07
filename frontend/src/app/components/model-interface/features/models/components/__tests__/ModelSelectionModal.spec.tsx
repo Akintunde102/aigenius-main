@@ -178,10 +178,6 @@ describe('ModelSelectionModal', () => {
             id: 'expensive',
             name: 'Model Expensive',
             averageUserSpendPerRequest: {
-                promptCost: 0,
-                completionCost: 0,
-                expectedImageCost: 0,
-                totalAverageCost: 0,
                 totalAverageCostCredits: 50,
             },
         };

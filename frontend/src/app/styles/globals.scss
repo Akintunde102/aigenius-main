@@ -35,6 +35,11 @@
 
     --radius: 0.9rem;
 
+    /* Modal stacking (see lib/utils/modal-z-index.ts) */
+    --z-modal-overlay: 9999;
+    --z-modal-popover: 10050;
+    --z-modal-elevated: 10060;
+
     /* ── App-level design tokens (Stone Mono) */
     --app-ink-900: #1c1c1a;
     --app-ink-700: #3d3d3a;
@@ -279,7 +284,7 @@
   .app-modal-overlay {
     position: fixed;
     inset: 0;
-    z-index: 9999;
+    z-index: var(--z-modal-overlay);
     display: flex;
     align-items: center;
     justify-content: center;

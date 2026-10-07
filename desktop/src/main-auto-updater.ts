@@ -3,39 +3,46 @@ import { ipcMain, BrowserWindow, app } from 'electron';
 import { shutdownDesktopApp } from './main-backend-lifecycle';
 import { checkForSilentUiUpdate, type OtaCheckResult } from './desktop-ui-ota';
 
-export function setupAutoUpdater(mainWindow: BrowserWindow): void {
-  // If running inside Microsoft Store AppX container, full updates are handled natively by Windows Store.
-  const isWindowsStore = Boolean(process.windowsStore);
+const UPDATE_IPC_CHANNELS = [
+  'aigenius-check-for-updates',
+  'aigenius-download-update',
+  'aigenius-install-update',
+  'aigenius-check-ui-ota',
+] as const;
 
-  if (!isWindowsStore) {
-    // Disable auto-download so the user can choose when to download.
-    autoUpdater.autoDownload = false;
+let ipcHandlersRegistered = false;
+let updaterEventsAttached = false;
+let updaterShellWindow: BrowserWindow | undefined;
 
-    autoUpdater.on('update-available', (info) => {
-      mainWindow.webContents.send('aigenius-update-available', info);
-    });
+function isWindowsStoreBuild(): boolean {
+  return Boolean(process.windowsStore);
+}
 
-    autoUpdater.on('update-downloaded', (info) => {
-      mainWindow.webContents.send('aigenius-update-downloaded', info);
-    });
+function isDevBinaryUpdateCheckSkipped(): boolean {
+  return process.env.NODE_ENV === 'development';
+}
 
-    autoUpdater.on('error', (err) => {
-      mainWindow.webContents.send('aigenius-update-error', err?.message || String(err));
-    });
+/**
+ * Register IPC handlers as early as possible so the renderer cannot invoke
+ * before `setupAutoUpdater` runs (dev loads the UI immediately on window create).
+ */
+export function registerAutoUpdaterIpcHandlers(): void {
+  if (ipcHandlersRegistered) {
+    return;
+  }
+  ipcHandlersRegistered = true;
 
-    autoUpdater.on('download-progress', (progressObj) => {
-      mainWindow.webContents.send('aigenius-update-progress', progressObj);
-    });
+  for (const channel of UPDATE_IPC_CHANNELS) {
+    ipcMain.removeHandler(channel);
   }
 
   ipcMain.handle('aigenius-check-for-updates', async () => {
-    if (isWindowsStore) {
+    if (isWindowsStoreBuild()) {
       console.info('[aigenius-desktop] Running in Microsoft Store container; binary updates managed by Store.');
       return { ok: false, error: 'Managed by Microsoft Store' };
     }
 
-    // electron-updater will fail in development without dev-app-update.yml
-    if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+    if (isDevBinaryUpdateCheckSkipped()) {
       console.warn('[aigenius-desktop] Skipping binary update check in development mode');
       return { ok: false, error: 'Cannot check for updates in development mode' };
     }
@@ -49,7 +56,7 @@ export function setupAutoUpdater(mainWindow: BrowserWindow): void {
   });
 
   ipcMain.handle('aigenius-download-update', async () => {
-    if (isWindowsStore) {
+    if (isWindowsStoreBuild()) {
       return { ok: false, error: 'Managed by Microsoft Store' };
     }
     try {
@@ -71,9 +78,36 @@ export function setupAutoUpdater(mainWindow: BrowserWindow): void {
     autoUpdater.quitAndInstall(false, true);
   });
 
-  // Silent UI OTA handler
   ipcMain.handle('aigenius-check-ui-ota', async (): Promise<OtaCheckResult> => {
     return runSilentUiOtaCheck();
+  });
+}
+
+export function setupAutoUpdater(mainWindow: BrowserWindow): void {
+  registerAutoUpdaterIpcHandlers();
+  updaterShellWindow = mainWindow;
+
+  if (isWindowsStoreBuild() || updaterEventsAttached) {
+    return;
+  }
+  updaterEventsAttached = true;
+
+  autoUpdater.autoDownload = false;
+
+  autoUpdater.on('update-available', (info) => {
+    updaterShellWindow?.webContents.send('aigenius-update-available', info);
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    updaterShellWindow?.webContents.send('aigenius-update-downloaded', info);
+  });
+
+  autoUpdater.on('error', (err) => {
+    updaterShellWindow?.webContents.send('aigenius-update-error', err?.message || String(err));
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    updaterShellWindow?.webContents.send('aigenius-update-progress', progressObj);
   });
 }
 

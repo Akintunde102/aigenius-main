@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useEffect } from 'react';
+import { MODAL_ELEVATED_Z_INDEX } from '@/lib/utils/modal-z-index';
 
 interface LightweightModalProps {
     isOpen: boolean;
@@ -94,7 +95,7 @@ export const LightweightModal: React.FC<LightweightModalProps> = ({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                zIndex: 1000,
+                zIndex: MODAL_ELEVATED_Z_INDEX,
                 backgroundColor: 'var(--modal-overlay)',
                 display: 'flex',
                 alignItems: 'center',
@@ -151,7 +152,7 @@ export const MinimalModal: React.FC<{
             style={{
                 position: 'fixed',
                 inset: 0,
-                zIndex: 1000,
+                zIndex: MODAL_ELEVATED_Z_INDEX,
                 backgroundColor: 'rgba(0,0,0,0.5)',
                 display: 'flex',
                 alignItems: 'center',

@@ -16,7 +16,7 @@ import {
   isImageCloudFile,
 } from "../user-files.utils";
 import { categoryIcon } from "./category-icon";
-
+import { MODAL_POPOVER_Z_INDEX } from "@/lib/utils/modal-z-index";
 
 function formatLibraryFileDate(iso: string): string {
   const d = new Date(iso);
@@ -185,8 +185,9 @@ function LibraryFileActionsMenu({
             <div
               ref={menuRef}
               role="menu"
-              className="fixed z-[120] w-52 rounded-xl border p-1 shadow-xl animate-in fade-in zoom-in-95 duration-100"
+              className="fixed w-52 rounded-xl border p-1 shadow-xl animate-in fade-in zoom-in-95 duration-100"
               style={{
+                zIndex: MODAL_POPOVER_Z_INDEX,
                 top: position.top,
                 left: position.left,
                 background: "var(--modal-bg)",

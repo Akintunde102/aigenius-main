@@ -21,6 +21,7 @@ import copy from 'copy-to-clipboard';
 import type { EditorProps } from '@monaco-editor/react';
 import { ensureLazyDefault } from '@/lib/utils/lazy-component';
 import { RenderErrorBoundary } from '@/app/components/RenderErrorBoundary';
+import { MODAL_ELEVATED_Z_INDEX } from '@/lib/utils/modal-z-index';
 
 const Editor = dynamic<EditorProps>(
   () =>
@@ -709,8 +710,8 @@ export const FilePreviewModal: React.FC = () => {
         return (
             <div
                 ref={panelRef}
-                className="file-preview-side-host fixed z-[120] flex animate-in slide-in-from-right duration-300"
-                style={sideHostStyle}
+                className="file-preview-side-host fixed flex animate-in slide-in-from-right duration-300"
+                style={{ ...sideHostStyle, zIndex: MODAL_ELEVATED_Z_INDEX }}
             >
                 <div
                     className={panelChromeClassName}
@@ -735,10 +736,13 @@ export const FilePreviewModal: React.FC = () => {
 
     return (
         <div
-            className={`fixed inset-0 z-[9999] animate-in fade-in duration-300 ${
+            className={`fixed inset-0 animate-in fade-in duration-300 ${
                 isFullscreen ? '' : 'backdrop-blur-md'
             }`}
-            style={{ background: isFullscreen ? 'transparent' : 'var(--modal-overlay)' }}
+            style={{
+              zIndex: MODAL_ELEVATED_Z_INDEX,
+              background: isFullscreen ? 'transparent' : 'var(--modal-overlay)',
+            }}
             onClick={isFullscreen ? undefined : closeFilePreview}
         >
             <div

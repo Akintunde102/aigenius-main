@@ -59,7 +59,7 @@ describe('WorkflowIntentTranscriptExpand', () => {
             parentToolCallId: null,
             messages,
             metadata: null,
-            totalCostUsd: 0.01,
+            totalCostCredits: 10,
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
         });
@@ -86,7 +86,7 @@ describe('WorkflowIntentTranscriptExpand', () => {
             parentToolCallId: null,
             messages: [{ role: 'user', content: 'x', timestamp: 1 }],
             metadata: null,
-            totalCostUsd: null,
+            totalCostCredits: null,
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
         });
@@ -121,7 +121,7 @@ describe('WorkflowIntentTranscriptExpand', () => {
             parentToolCallId: null,
             messages: [],
             metadata: null,
-            totalCostUsd: null,
+            totalCostCredits: null,
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
         });

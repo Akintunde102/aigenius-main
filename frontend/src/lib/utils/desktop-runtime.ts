@@ -96,9 +96,12 @@ export const DESKTOP_SHELL_ENTRY_QUERY_PARAM = "aigenius_shell";
 
 /**
  * Poll options for `/desktop-login` (and legacy `/desktop-welcome`): extended budget only when this is
- * almost certainly the Electron shell (entry query, HTML shell flag, or `Electron/` in UA).
+ * almost certainly the Electron shell (entry query, HTML shell flag, or `Electron/` in UA) **and**
+ * there is a sign of a persisted session (local tokens or main-process `aigenius_desktop_has_session`).
  */
-export function getDesktopShellEntryRuntimeResolveOptions(): {
+export function getDesktopShellEntryRuntimeResolveOptions(options?: {
+  expectStoredSession?: boolean;
+}): {
   pollMs: number;
   maxAttempts: number;
 } {
@@ -114,10 +117,12 @@ export function getDesktopShellEntryRuntimeResolveOptions(): {
   } catch {
     fromEntryQuery = false;
   }
-  const extended =
+  const looksLikeElectronShell =
     fromEntryQuery ||
     isDesktopShellFromBuild() ||
     isLikelyElectronRenderer();
+  const expectStoredSession = options?.expectStoredSession === true;
+  const extended = looksLikeElectronShell && expectStoredSession;
   return {
     pollMs: 25,
     maxAttempts: extended

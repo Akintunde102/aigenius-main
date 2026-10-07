@@ -5,7 +5,10 @@ import { PublicPageShell } from "@/app/components/PublicPageShell";
 export default function DesktopLoginLoading() {
   return (
     <PublicPageShell hideHeader showFooter={false} contentClassName="justify-center">
-      <DesktopSessionRestoringView />
+      <DesktopSessionRestoringView
+        message="Opening AIGenius…"
+        detail="Loading the sign-in screen…"
+      />
     </PublicPageShell>
   );
 }

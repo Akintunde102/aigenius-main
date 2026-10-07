@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => ({
       'next/link': path.join(shims, 'next-link.tsx'),
       'next/image': path.join(shims, 'next-image.tsx'),
       'next/font/local': path.join(shims, 'next-font-local.ts'),
+      'next/font/google': path.join(shims, 'next-font-google.ts'),
       'next/script': path.join(shims, 'next-script.tsx'),
       'next/document': path.join(shims, 'next-document.tsx'),
     },

@@ -119,7 +119,7 @@ describe('access-model ollama offline', () => {
     expect(result).toEqual(expect.objectContaining({
       content: 'Desktop roundtrip response',
       usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-      cost: 0,
+      cost_credits: 0,
     }));
   });
 
@@ -183,7 +183,7 @@ describe('access-model ollama offline', () => {
     expect(onComplete).toHaveBeenCalledWith(result);
     expect(result).toEqual(expect.objectContaining({
       usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-      cost: 0,
+      cost_credits: 0,
     }));
   });
 

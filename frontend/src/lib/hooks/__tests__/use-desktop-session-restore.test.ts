@@ -4,9 +4,12 @@ import { useDesktopSessionRestore } from '../use-desktop-session-restore';
 const mockEnsureGatewayAuthReady = jest.fn();
 const mockGetValidAccessToken = jest.fn();
 const mockHasAuthSession = jest.fn();
+const mockDesktopUrlIndicatesStoredSession = jest.fn();
 const mockSyncAuthSessionCookiesFromStorage = jest.fn();
 const mockResolveAigeniusDesktopRuntime = jest.fn();
 const mockResolveAuthenticatedDesktopShellRedirect = jest.fn();
+const mockReadDesktopStoredRefreshToken = jest.fn();
+const mockWaitForAigeniusDesktopBridge = jest.fn();
 
 jest.mock('next/navigation', () => ({
     usePathname: () => '/desktop-login',
@@ -15,6 +18,7 @@ jest.mock('next/navigation', () => ({
 jest.mock('@/lib/api/auth-client', () => ({
     ensureGatewayAuthReady: () => mockEnsureGatewayAuthReady(),
     getValidAccessToken: () => mockGetValidAccessToken(),
+    desktopUrlIndicatesStoredSession: () => mockDesktopUrlIndicatesStoredSession(),
 }));
 
 jest.mock('@/lib/utils/auth-session', () => ({
@@ -27,12 +31,17 @@ jest.mock('@/lib/utils/safe-internal-next-path', () => ({
         mockResolveAuthenticatedDesktopShellRedirect(...args),
 }));
 
+jest.mock('@/lib/utils/desktop-auth-refresh', () => ({
+    readDesktopStoredRefreshToken: () => mockReadDesktopStoredRefreshToken(),
+}));
+
 jest.mock('@/lib/utils/desktop-runtime', () => ({
     DESKTOP_SHELL_ENTRY_QUERY_PARAM: 'aigenius_shell',
     getDesktopShellEntryRuntimeResolveOptions: () => ({ pollMs: 1, maxAttempts: 1 }),
     isAigeniusDesktopRuntime: jest.fn().mockReturnValue(false),
     isDesktopShellFromBuild: jest.fn().mockReturnValue(true),
     isLikelyElectronRenderer: jest.fn().mockReturnValue(false),
+    waitForAigeniusDesktopBridge: (...args: unknown[]) => mockWaitForAigeniusDesktopBridge(...args),
     resolveAigeniusDesktopRuntime: (onResolved: (isDesktop: boolean) => void) => {
         mockResolveAigeniusDesktopRuntime();
         onResolved(true);
@@ -46,6 +55,9 @@ describe('useDesktopSessionRestore', () => {
         mockEnsureGatewayAuthReady.mockResolvedValue(undefined);
         mockGetValidAccessToken.mockReturnValue(undefined);
         mockHasAuthSession.mockReturnValue(false);
+        mockDesktopUrlIndicatesStoredSession.mockReturnValue(false);
+        mockReadDesktopStoredRefreshToken.mockResolvedValue(undefined);
+        mockWaitForAigeniusDesktopBridge.mockResolvedValue(false);
         mockResolveAuthenticatedDesktopShellRedirect.mockReturnValue('/');
         window.history.replaceState({}, '', '/desktop-login?aigenius_shell=1');
     });
@@ -60,6 +72,7 @@ describe('useDesktopSessionRestore', () => {
     });
 
     it('restores a stored desktop session on cold start', async () => {
+        mockHasAuthSession.mockReturnValue(true);
         mockEnsureGatewayAuthReady.mockResolvedValue('restored-jwt');
         mockGetValidAccessToken.mockReturnValue('restored-jwt');
 
@@ -78,6 +91,20 @@ describe('useDesktopSessionRestore', () => {
     });
 
     it('stops restoring and shows sign-in when no session exists', async () => {
+        const { result } = renderHook(() => useDesktopSessionRestore());
+
+        await waitFor(() => {
+            expect(result.current.restoring).toBe(false);
+        });
+
+        expect(mockEnsureGatewayAuthReady).not.toHaveBeenCalled();
+        expect(mockResolveAuthenticatedDesktopShellRedirect).not.toHaveBeenCalled();
+    });
+
+    it('does not redirect when only stale local tokens exist after restore', async () => {
+        mockHasAuthSession.mockReturnValue(true);
+        mockGetValidAccessToken.mockReturnValue(undefined);
+
         const { result } = renderHook(() => useDesktopSessionRestore());
 
         await waitFor(() => {

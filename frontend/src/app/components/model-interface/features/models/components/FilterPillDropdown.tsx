@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef,
 import { createPortal } from "react-dom";
 import { FiChevronDown, FiSearch, FiX } from "react-icons/fi";
 import { cn } from "@/lib/utils";
+import { MODAL_POPOVER_Z_INDEX } from "@/lib/utils/modal-z-index";
 
 export interface FilterPillOption {
   value: string;
@@ -31,7 +32,7 @@ type MenuPosition = {
 
 const MENU_GAP = 4;
 const VIEWPORT_PADDING = 8;
-const MENU_Z_INDEX = 120;
+const MENU_Z_INDEX = MODAL_POPOVER_Z_INDEX;
 
 function computeMenuPosition(
   triggerEl: HTMLElement,

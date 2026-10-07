@@ -1,7 +1,6 @@
 import React from 'react';
 import { Model } from './types';
-import { getModelAverageRequestPrice, getModelAverageRequestCredits } from '@/app/components/model-interface/shared/utils';
-import { formatUSD, formatNGN } from '@/app/components/model-interface/shared/utils';
+import { getModelAverageRequestCredits, formatNGN } from '@/app/components/model-interface/shared/utils';
 
 interface ModelLineProps {
     model: Model | null;
@@ -26,7 +25,6 @@ export const ModelLine: React.FC<ModelLineProps> = ({ model }) => {
         }).join(' ');
     };
 
-    const avgUSD = model ? getModelAverageRequestPrice(model as any) : 0;
     const avgCredits = model ? getModelAverageRequestCredits(model as any) : 0;
 
     return (
@@ -46,10 +44,10 @@ export const ModelLine: React.FC<ModelLineProps> = ({ model }) => {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    {isFinite(avgUSD) && avgUSD > 0 && (
-                        <>
-                            <span className="text-blue-700 font-medium">~<span className="text-green-700">{formatUSD(avgUSD)} · {formatNGN(avgCredits)} credits/msg</span></span>
-                        </>
+                    {isFinite(avgCredits) && avgCredits > 0 && (
+                        <span className="text-blue-700 font-medium">
+                            ~<span className="text-green-700">{formatNGN(avgCredits)} credits/msg</span>
+                        </span>
                     )}
                     <span className="text-gray-400 font-mono">{model.id}</span>
                 </div>
