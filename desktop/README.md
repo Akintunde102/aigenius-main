@@ -204,7 +204,3 @@ Detailed documentation: [`../../docs/desktop/SILENT_UI_OTA_UPDATES.md`](../../do
   ```
 - **Automated CI/CD:** Pushing to `main` triggers `.github/workflows/auto-release.yml`, which evaluates `git diff`, packages the UI bundle, and publishes it to the existing Cloudflare zone (`https://ota.runpage.site`) with a `minDesktopVersion` compatibility contract.
 
-### Microsoft Store shell update prompt
-
-When the UI manifest requires a newer native shell (`minDesktopVersion`), Store builds show an in-app banner with **Open Microsoft Store**. The default deep link uses Store ID `9NGQQ3GF2WHL` (`microsoft-store-update.ts`). Override with `AIGENIUS_MS_STORE_PRODUCT_ID` or `AIGENIUS_MS_STORE_URL` if the listing changes.
-

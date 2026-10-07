@@ -13,8 +13,6 @@
   "scripts": {
     "postinstall": "exit 0",
     "test": "cross-env NODE_ENV=test jest --config jest.config.cjs",
-    "test:live:shell-update": "cross-env NODE_ENV=test jest --config jest.config.cjs --testPathPattern=store-update-flow.live.integration",
-    "test:live:shell-update:electron": "npm run compile && electron scripts/live-test-shell-update-electron.cjs",
     "test:tools:scenarios": "cross-env NODE_ENV=test jest --config jest.config.cjs --testPathPattern=local-desktop-tools\\.scenarios",
     "test:tools:all": "cross-env NODE_ENV=test jest --config jest.config.cjs --testPathPattern=\"local-desktop-tools|local-tool-executor|tool-formatter|read-file\"",
     "compile": "npm run sync-brand-icon && node scripts/compile-tsc.cjs",
@@ -192,7 +190,7 @@
         "zip"
       ],
       "icon": "build/icon.ico",
-      "artifactName": "AIGenius-Setup-0.4.${ext}",
+      "artifactName": "AIGenius-Setup-${version}.${ext}",
       "signAndEditExecutable": false,
       "extraResources": [
         {

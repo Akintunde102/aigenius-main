@@ -145,4 +145,21 @@ describe("DesktopLoginPage", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText("Opening AIGenius…")).toBeInTheDocument();
   });
+
+  it("centers the loading state while awaiting browser sign-in", () => {
+    mockUseDesktopAuthFlow.mockReturnValue({
+      authFlow: "awaiting-browser",
+      authError: null,
+      setAuthError: mockSetAuthError,
+      setAuthFlowWithPersist: mockSetAuthFlowWithPersist,
+      finishOAuthToken: mockFinishOAuthToken,
+      cancelBrowserSignIn: jest.fn(),
+    });
+    render(<DesktopLoginPage />);
+
+    const message = screen.getByText("Complete sign-in in your browser");
+    expect(
+      message.closest(".flex.w-full.flex-col.items-center.text-center"),
+    ).toBeTruthy();
+  });
 });
