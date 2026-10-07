@@ -1,6 +1,6 @@
 {
   "name": "aigenius-desktop",
-  "version": "0.4",
+  "version": "0.4.0",
   "private": true,
   "description": "AIGenius",
   "dependencies": {
@@ -190,7 +190,7 @@
         "zip"
       ],
       "icon": "build/icon.ico",
-      "artifactName": "AIGenius-Setup-${version}.${ext}",
+      "artifactName": "AIGenius-Setup-0.4.${ext}",
       "signAndEditExecutable": false,
       "extraResources": [
         {
