@@ -300,7 +300,7 @@ export function optimizeMessagesForAPI(messages: ChatMessage[]): MessageOptimiza
             ...(msg.modelId && { modelId: msg.modelId }),
             ...(msg.modelName && { modelName: msg.modelName }),
             ...(msg.usage && { usage: msg.usage }),
-            ...(msg.cost !== undefined && { cost: msg.cost }),
+            ...(msg.cost_credits !== undefined && { cost_credits: msg.cost_credits }),
             ...(msg.tool_usage_charges?.length && { tool_usage_charges: msg.tool_usage_charges }),
         });
     }

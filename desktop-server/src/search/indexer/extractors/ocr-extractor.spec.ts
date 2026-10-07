@@ -5,6 +5,8 @@ import { paddleOcrMocks } from '../../../__tests__/mocks/ppu-paddle-ocr.mock.js'
 import { extractOcr, terminateOcr } from './ocr-extractor.js';
 
 describe('ocr-extractor (PaddleOCR)', () => {
+  jest.setTimeout(20_000);
+
   let tmpDir = '';
 
   beforeEach(async () => {

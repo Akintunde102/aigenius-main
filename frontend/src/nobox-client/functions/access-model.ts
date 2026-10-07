@@ -950,8 +950,8 @@ function updateStreamingResult(result: StreamingResult, chunk: any): void {
   if (chunk.usage) {
     result.usage = chunk.usage;
   }
-  if (chunk.cost) {
-    result.cost = chunk.cost;
+  if (typeof chunk.cost_credits === 'number') {
+    result.cost_credits = chunk.cost_credits;
   }
   if (chunk.wallet !== undefined) {
     result.wallet = chunk.wallet;
@@ -1125,20 +1125,17 @@ export type OpenRouterContentBlock =
   | { type: 'image_url'; image_url: { url: string } }
   | { type: 'input_audio'; input_audio: { data: string; format: string } };
 
-/** Per-tool billed amounts from the gateway (USD + platform credits). */
+/** Per-tool billed amounts from the gateway (platform credits only). */
 export type ToolUsageChargeStatus = 'reserved' | 'settled' | 'refunded';
 
 export interface ToolUsageCharge {
   tool: string;
   display_name: string;
-  cost_usd: number;
-  cost_naira: number;
+  cost_credits: number;
   status?: ToolUsageChargeStatus;
   job_id?: string;
   reservation_id?: string;
-  reserved_usd?: number;
   reserved_credits?: number;
-  settled_usd?: number;
   settled_credits?: number;
   reserved_at?: number;
   released_at?: number;
@@ -1162,7 +1159,9 @@ export interface OpenRouterMessage {
   modelName?: string;
   /** Optional usage/cost metadata for already-completed assistant turns */
   usage?: UsageInfo;
+  /** @deprecated Prefer cost_credits from the gateway. */
   cost?: number;
+  cost_credits?: number;
   tool_usage_charges?: ToolUsageCharge[];
 }
 
@@ -1177,8 +1176,8 @@ export interface UsageInfo {
   completion_tokens: number;
   /** Total number of tokens used (prompt + completion) */
   total_tokens: number;
-  /** USD charged for tool invocations in this completion (aggregated). */
-  tool_cost_usd?: number;
+  /** Platform credits charged for tool invocations in this completion (aggregated). */
+  tool_cost_credits?: number;
   session_prompt_tokens?: number;
   session_completion_tokens?: number;
   session_total_tokens?: number;
@@ -1264,8 +1263,8 @@ export type AccessModelResponse<T> = {
   content: string;
   /** Token usage statistics */
   usage?: UsageInfo;
-  /** Cost of the model interaction */
-  cost?: number;
+  /** Platform credits charged for the model interaction */
+  cost_credits?: number;
   /** Conversation id when backend created/updated a session (from X-Conversation-Id) */
   conversationId?: string;
   /** Authentication token used */
@@ -1321,7 +1320,7 @@ export const _accessModel = async <T>(args: AccessModelArgs<T> & { signal?: Abor
       return {
         content: out.result,
         usage: OLLAMA_LOCAL_USAGE,
-        cost: 0,
+        cost_credits: 0,
         token: config.token,
         user: undefined as T,
       };
@@ -1361,7 +1360,7 @@ export const _accessModel = async <T>(args: AccessModelArgs<T> & { signal?: Abor
     return {
       content: openAIResponse.choices[0]?.message?.content || DEFAULT_EMPTY_CONTENT,
       usage: openAIResponse.usage,
-      cost: openAIResponse.cost,
+      cost_credits: openAIResponse.cost_credits,
       conversationId,
       token: config.token,
       user: undefined as T,
@@ -1388,8 +1387,8 @@ export const _accessModel = async <T>(args: AccessModelArgs<T> & { signal?: Abor
 export interface StreamingResult {
   /** Token usage statistics for the entire streaming session */
   usage?: UsageInfo;
-  /** Total cost of the streaming interaction */
-  cost?: number;
+  /** Total platform credits for the streaming interaction */
+  cost_credits?: number;
   /** Remaining wallet balance after the interaction */
   wallet?: number;
   /** Conversation id when backend created or updated a session (from X-Conversation-Id) */
@@ -1494,7 +1493,7 @@ export const accessModelStream = async <T>(args: AccessModelArgs<T> & {
     }
     const finalResult: StreamingResult = {
       usage: OLLAMA_LOCAL_USAGE,
-      cost: 0,
+      cost_credits: 0,
     };
     onComplete?.(finalResult);
     return finalResult;

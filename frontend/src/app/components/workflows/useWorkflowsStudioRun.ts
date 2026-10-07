@@ -58,7 +58,7 @@ export function useWorkflowsStudioRun({
         result: row.result ?? null,
         error: row.error ?? null,
         invokeCode: tryInvokeCodeFromToolResultJson(row.result) ?? null,
-        billedUsd: row.billedUsd ?? null,
+        billedCredits: row.billedCredits ?? null,
         walletAfter: row.walletAfter ?? null,
       });
     }
@@ -149,7 +149,7 @@ export function useWorkflowsStudioRun({
                   result: null,
                   error: null,
                   invokeCode: null,
-                  billedUsd: null,
+                  billedCredits: null,
                   walletAfter: null,
                 };
               } else if (ev.type === "step_completed") {
@@ -158,7 +158,7 @@ export function useWorkflowsStudioRun({
                   result: ev.result ?? null,
                   error: null,
                   invokeCode: ev.invokeCode ?? tryInvokeCodeFromToolResultJson(ev.result) ?? null,
-                  billedUsd: ev.billedUsd ?? null,
+                  billedCredits: ev.billedCredits ?? null,
                   walletAfter: ev.walletAfter ?? null,
                 });
               } else if (ev.type === "step_failed") {
@@ -167,7 +167,7 @@ export function useWorkflowsStudioRun({
                   result: null,
                   error: sanitizeWorkflowErrorMessage(ev.error) ?? "Step failed",
                   invokeCode: ev.invokeCode ?? null,
-                  billedUsd: ev.billedUsd ?? null,
+                  billedCredits: ev.billedCredits ?? null,
                   walletAfter: ev.walletAfter ?? null,
                 };
               }

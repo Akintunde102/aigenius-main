@@ -105,11 +105,6 @@ const ModelListSidebar: React.FC<ModelListSidebarProps> = ({ models, selectedMod
         setDeletedModelsState(updated);
     };
 
-    // Display average cost per request in USD and NGN when available
-    function getAvgCostUSD(model: Model) {
-        const val = model?.averageUserSpendPerRequest?.totalAverageCost;
-        return typeof val === 'number' && isFinite(val) && val > 0 ? `$${val.toFixed(4)}` : null;
-    }
     function getAvgCostCredits(model: Model) {
         const credits = model?.averageUserSpendPerRequest?.totalAverageCostCredits;
         if (!(typeof credits === 'number' && isFinite(credits) && credits > 0)) return null;
@@ -254,7 +249,7 @@ const ModelListSidebar: React.FC<ModelListSidebarProps> = ({ models, selectedMod
                                 {getModalityIcons(model.architecture?.output_modalities)}
                             </div>
                             <div className="text-xs text-cyan-700 mt-1 font-semibold">
-                                {getAvgCostUSD(model) ? `~${getAvgCostUSD(model)} · ${getAvgCostCredits(model)} credits/msg` : 'No price info'}
+                                {getAvgCostCredits(model) ? `~${getAvgCostCredits(model)} credits/msg` : 'No price info'}
                             </div>
                         </li>
                     ))}

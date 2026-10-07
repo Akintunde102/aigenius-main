@@ -51,7 +51,7 @@ export interface UsageInfo {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
-    tool_cost_usd?: number;
+    tool_cost_credits?: number;
 }
 
 export interface CostCalculation {

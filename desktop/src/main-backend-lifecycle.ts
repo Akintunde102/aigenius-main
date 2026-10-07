@@ -297,14 +297,27 @@ export function scheduleIndexerStartAfterShellReady(): void {
     return;
   }
   indexerStartScheduled = true;
-  if (process.env.AIGENIUS_EXTERNAL_INDEXER === '0' || !deferredIndexerContext) {
+  if (process.env.AIGENIUS_EXTERNAL_INDEXER === '0') {
     return;
   }
-  const ctx = deferredIndexerContext;
-  console.info('[aigenius-desktop] Shell ready — starting indexer utility process in background.');
-  void startIndexerProcess(ctx.userDataPath, ctx.modelsDir, ctx.token, ctx.logsDir).catch((err) => {
-    console.error('[aigenius-desktop] Deferred indexer start failed:', err);
-  });
+
+  const deadline = Date.now() + 120_000;
+  const tryStart = (): void => {
+    if (!deferredIndexerContext) {
+      if (Date.now() < deadline) {
+        setTimeout(tryStart, 250);
+        return;
+      }
+      console.warn('[aigenius-desktop] Indexer start skipped — backend context not ready');
+      return;
+    }
+    const ctx = deferredIndexerContext;
+    console.info('[aigenius-desktop] Shell ready — starting indexer utility process in background.');
+    void startIndexerProcess(ctx.userDataPath, ctx.modelsDir, ctx.token, ctx.logsDir).catch((err) => {
+      console.error('[aigenius-desktop] Deferred indexer start failed:', err);
+    });
+  };
+  tryStart();
 }
 
 export function miniServerChildEnv(
@@ -371,6 +384,8 @@ export async function startBackendProcesses(): Promise<void> {
   const useExternalServer = process.env.AIGENIUS_EXTERNAL_MINI_SERVER === '1';
   const token = process.env.AIGENIUS_SECRET_TOKEN || SECRET_TOKEN;
 
+  deferredIndexerContext = { userDataPath, modelsDir, token, logsDir };
+
   if (!useExternalServer) {
     children.push(
       spawnDesktopChild(serverEntry, {
@@ -428,13 +443,33 @@ export async function startBackendProcesses(): Promise<void> {
 
   const useCustomUiProtocol = shouldUseDesktopUiCustomProtocol();
   const frontendWaitMs = app.isPackaged ? 120_000 : 180_000;
-  const waitTargets: Promise<void>[] = [
-    waitForHttpOk(loopbackHttpUrl(miniPort, '/health'), 180_000, 1000),
-  ];
-  if (!useCustomUiProtocol) {
-    waitTargets.push(waitForFrontendPageReady(FRONTEND_URL, frontendWaitMs, 400));
-  }
-  await Promise.all(waitTargets);
+  const miniReady = waitForHttpOk(loopbackHttpUrl(miniPort, '/health'), 180_000, 1000);
+  const frontendReady = useCustomUiProtocol
+    ? Promise.resolve()
+    : waitForFrontendPageReady(FRONTEND_URL, frontendWaitMs, 400);
 
-  deferredIndexerContext = { userDataPath, modelsDir, token, logsDir };
+  const logMiniStartupDelay = (err: unknown): void => {
+    console.warn('[aigenius-desktop] mini-server not ready yet (continuing)', err);
+  };
+
+  if (!app.isPackaged) {
+    // Dev: never block the shell on sidecars. Tilt/Next may still be warming.
+    await Promise.race([
+      frontendReady,
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, 3_000);
+      }),
+    ]);
+    void miniReady.catch(logMiniStartupDelay);
+    return;
+  }
+
+  if (useCustomUiProtocol) {
+    // Bundled aigenius:// UI does not need the mini-server to paint sign-in.
+    await frontendReady;
+    void miniReady.catch(logMiniStartupDelay);
+    return;
+  }
+
+  await Promise.all([miniReady, frontendReady]);
 }

@@ -81,6 +81,10 @@ The main BrowserWindow only stays on the embedded Next app (`AIGENIUS_FRONTEND_P
 - **electron-builder** also uses `build.icon` for Linux menu / `.desktop` icons.
 - **Linux taskbar / dock** may cache icons. After replacing the asset, fully quit the app, run `npm run compile` from `desktop/`, and reinstall or rerun; if the dock still shows the old mark, log out/in or clear the shell’s icon cache.
 
+## Desktop release versioning
+
+Shipped installers and auto-update metadata use a **two-part** version in `desktop/package.json` (`major.minor`, e.g. `0.4`). Bump that field before `package:win:*`, `package:mac:*`, or store submissions. Keep `desktop-renderer/package.json` on the same version when publishing UI OTA bundles.
+
 ## Production packages (`.deb` + Flatpak)
 
 Prerequisites on the build machine:

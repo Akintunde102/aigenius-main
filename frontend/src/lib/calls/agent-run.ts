@@ -11,7 +11,7 @@ export type AgentRunApiPayload = {
     parentToolCallId: string | null;
     messages: ChatMessage[];
     metadata: Record<string, unknown> | null;
-    totalCostUsd: number | null;
+    totalCostCredits: number | null;
     createdAt: string;
     updatedAt: string;
 };

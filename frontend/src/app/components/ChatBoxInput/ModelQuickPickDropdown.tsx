@@ -6,6 +6,7 @@ import { FiCheck, FiChevronDown, FiPlus } from "react-icons/fi";
 import { Model } from "@/app/components/model-interface/shared/types";
 import { getModelDisplayName } from "@/app/components/model-interface/shared/utils";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
+import { MODAL_POPOVER_Z_INDEX } from "@/lib/utils/modal-z-index";
 import {
   computeModelRequiredBalance,
   getModelCreditBurnPercentage,
@@ -312,8 +313,9 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
         ref={menuRef}
         role="listbox"
         aria-label="Quick pick models"
-        className="fixed z-[250] overflow-hidden rounded-xl border shadow-2xl"
+        className="fixed overflow-hidden rounded-xl border shadow-2xl"
         style={{
+          zIndex: MODAL_POPOVER_Z_INDEX,
           top: menuPosition?.top ?? 0,
           left: menuPosition?.left ?? 0,
           width: menuPosition?.width ?? QUICK_PICK_DROPDOWN_MAX_WIDTH,

@@ -42,9 +42,9 @@ describe('modelPricingDisplay.utils', () => {
         expect(getPricingOverrides(tieredPricing)[0].min_prompt_tokens).toBe(32000);
     });
 
-    it('formats token-based pricing for display', () => {
-        expect(formatPricingAmount('prompt', '0.00000078')).toBe('$0.78 / 1M tokens');
-        expect(formatPricingAmount('web_search', '0.035')).toBe('$0.035 / search');
+    it('formats token-based pricing as platform credits for display', () => {
+        expect(formatPricingAmount('prompt', '0.00000078')).toBe('~780 credits / 1M tokens');
+        expect(formatPricingAmount('web_search', '0.035')).toBe('~35.0 credits / search');
     });
 
     it('formats tier labels from min_prompt_tokens', () => {

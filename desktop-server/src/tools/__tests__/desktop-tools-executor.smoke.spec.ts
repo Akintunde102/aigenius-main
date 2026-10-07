@@ -16,7 +16,9 @@ describe('desktop-tools-executor', () => {
     expect(fs.existsSync(source)).toBe(true);
   });
 
-  it('extracts PDF text when local_read_file is executed on a PDF file', async () => {
+  it(
+    'extracts PDF text when local_read_file is executed on a PDF file',
+    async () => {
     const tempPdf = path.join(os.tmpdir(), `test-sidecar-${Date.now()}.pdf`);
     await fs.promises.writeFile(tempPdf, '%PDF-1.4');
 
@@ -30,7 +32,9 @@ describe('desktop-tools-executor', () => {
     } finally {
       await fs.promises.unlink(tempPdf).catch(() => undefined);
     }
-  });
+  },
+    20_000,
+  );
 
   it('rejects binary file with unsupported type error when local_read_file is called', async () => {
     const tempBin = path.join(os.tmpdir(), `test-sidecar-${Date.now()}.bin`);

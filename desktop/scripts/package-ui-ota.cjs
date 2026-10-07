@@ -22,7 +22,7 @@ if (fs.existsSync(rendererPkgPath)) {
 
 // Parse command line args: --min-desktop-version <v> --bundle-url <url>
 const args = process.argv.slice(2);
-let minDesktopVersion = '1.0.0';
+let minDesktopVersion = desktopPkg.version || '0.4';
 
 const defaultCdnBase =
   process.env.CLOUDFLARE_CDN_URL ||

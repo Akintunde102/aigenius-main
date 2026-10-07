@@ -10,24 +10,22 @@ import { formatTime } from '@/lib/utils/modelInterfaceUtils';
 import { formatCredits } from '@/lib/credits';
 import { useLanguage } from '@/lib/providers/LanguageProvider';
 
-function resolveToolUsdTotal(msg: ChatMessageType): number {
+function resolveToolCreditsTotal(msg: ChatMessageType): number {
     const rows = msg.tool_usage_charges;
     if (rows && rows.length > 0) {
-        return rows.reduce((sum, row) => sum + row.cost_usd, 0);
+        return rows.reduce((sum, row) => sum + (typeof row.cost_credits === 'number' ? row.cost_credits : 0), 0);
     }
-    const fromUsage = msg.usage?.tool_cost_usd;
-    if (fromUsage !== undefined && fromUsage > 0) {
-        return fromUsage;
+    if (typeof msg.usage?.tool_cost_credits === 'number' && msg.usage.tool_cost_credits > 0) {
+        return msg.usage.tool_cost_credits;
     }
     return 0;
 }
 
-function resolveToolCreditsTotal(msg: ChatMessageType): number {
-    const rows = msg.tool_usage_charges;
-    if (rows && rows.length > 0) {
-        return rows.reduce((sum, row) => sum + (typeof row.cost_naira === 'number' ? row.cost_naira : 0), 0);
+function resolveMessageCredits(msg: ChatMessageType): number | undefined {
+    if (typeof msg.cost_credits === 'number' && Number.isFinite(msg.cost_credits)) {
+        return msg.cost_credits;
     }
-    return 0;
+    return undefined;
 }
 
 /** Width: 87% of `max-w-md` (~13% narrower than Integrations). Max-height/scroll match that modal. Portals to `document.body` so fixed positioning is not trapped by message `backdrop-blur` ancestors. */
@@ -63,29 +61,12 @@ function MetricStat({
     );
 }
 
-function CostPair({
-    usd,
-    credits,
-}: {
-    usd: number;
-    credits?: number;
-}) {
+function CreditsAmount({ credits }: { credits: number }) {
     return (
-        <div className="overflow-hidden rounded-xl bg-slate-50/80 dark:bg-zinc-900/50">
-            <div className="flex items-baseline justify-between gap-3 px-3 py-2">
-                <span className="text-[11px] text-slate-500 dark:text-zinc-400">USD</span>
-                <span className="text-xs font-semibold tabular-nums text-slate-900 dark:text-zinc-100">
-                    ${usd.toFixed(6)}
-                </span>
-            </div>
-            {typeof credits === 'number' && Number.isFinite(credits) && (
-                <div className="flex items-baseline justify-between gap-3 bg-white/50 px-3 py-2 dark:bg-zinc-800/30">
-                    <span className="text-[11px] text-slate-500 dark:text-zinc-400">Credits</span>
-                    <span className="text-xs font-semibold tabular-nums text-slate-900 dark:text-zinc-100">
-                        {formatCredits(credits, { compact: true })}
-                    </span>
-                </div>
-            )}
+        <div className="overflow-hidden rounded-xl bg-slate-50/80 px-3 py-2 dark:bg-zinc-900/50">
+            <span className="text-xs font-semibold tabular-nums text-slate-900 dark:text-zinc-100">
+                {formatCredits(credits, { compact: true })}
+            </span>
         </div>
     );
 }
@@ -110,12 +91,10 @@ function ToolChargeLedgerLine({
     label,
     at,
     credits,
-    usd,
 }: {
     label: string;
     at?: number;
     credits?: number;
-    usd?: number;
 }) {
     return (
         <div className="mt-1.5 border-t border-slate-200/70 pt-1.5 dark:border-zinc-700/50">
@@ -127,15 +106,10 @@ function ToolChargeLedgerLine({
                     </span>
                 )}
             </div>
-            <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-2 text-[10px] tabular-nums text-slate-500 dark:text-zinc-500">
-                <span>
-                    {typeof credits === 'number' && Number.isFinite(credits)
-                        ? formatCredits(credits, { compact: true })
-                        : '—'}
-                </span>
-                {typeof usd === 'number' && Number.isFinite(usd) && (
-                    <span>${usd.toFixed(6)}</span>
-                )}
+            <div className="mt-0.5 text-[10px] tabular-nums text-slate-500 dark:text-zinc-500">
+                {typeof credits === 'number' && Number.isFinite(credits)
+                    ? formatCredits(credits, { compact: true })
+                    : '—'}
             </div>
         </div>
     );
@@ -145,7 +119,8 @@ function ToolChargeRow({ row }: { row: ToolUsageCharge }) {
     const statusText = toolStatusLabel(row.status);
     const showLedger = Boolean(row.reserved_at || row.released_at || row.status === 'reserved' || row.status === 'settled' || row.status === 'refunded');
     const releasedCredits = row.status === 'refunded' ? (row.settled_credits ?? 0) : row.settled_credits;
-    const releasedUsd = row.status === 'refunded' ? (row.settled_usd ?? 0) : row.settled_usd;
+
+    const chargeCredits = row.cost_credits;
 
     return (
         <li className="rounded-lg bg-white/50 px-3 py-2 dark:bg-zinc-800/40">
@@ -162,9 +137,7 @@ function ToolChargeRow({ row }: { row: ToolUsageCharge }) {
                     {row.tool}
                 </span>
                 <span className="tabular-nums">
-                    {formatCredits(row.cost_naira, { compact: true })}
-                    <span className="text-slate-400 dark:text-zinc-600"> · </span>
-                    ${row.cost_usd.toFixed(6)}
+                    {formatCredits(chargeCredits, { compact: true })}
                 </span>
             </div>
             {showLedger ? (
@@ -172,15 +145,13 @@ function ToolChargeRow({ row }: { row: ToolUsageCharge }) {
                     <ToolChargeLedgerLine
                         label="Reserved"
                         at={row.reserved_at}
-                        credits={row.reserved_credits ?? (row.status === 'reserved' ? row.cost_naira : undefined)}
-                        usd={row.reserved_usd ?? (row.status === 'reserved' ? row.cost_usd : undefined)}
+                        credits={row.reserved_credits ?? (row.status === 'reserved' ? chargeCredits : undefined)}
                     />
                     {row.released_at !== undefined ? (
                         <ToolChargeLedgerLine
                             label="Released"
                             at={row.released_at}
                             credits={releasedCredits}
-                            usd={releasedUsd}
                         />
                     ) : null}
                 </>
@@ -211,18 +182,13 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [showUsageDetails, setShowUsageDetails]);
 
-    const toolUsdTotal = resolveToolUsdTotal(msg);
     const toolCreditsTotal = resolveToolCreditsTotal(msg);
     const modelRoundCount = getModelRoundCount(msg.usage);
-    const modelUsd =
-        msg.cost !== undefined && toolUsdTotal > 0
-            ? Math.max(0, msg.cost - toolUsdTotal)
-            : undefined;
-    const totalCredits = typeof msg.cost_credits === 'number' ? msg.cost_credits : undefined;
+    const totalCredits = resolveMessageCredits(msg);
     const modelCredits =
         totalCredits !== undefined && toolCreditsTotal > 0
             ? Math.max(0, totalCredits - toolCreditsTotal)
-            : undefined;
+            : totalCredits;
 
     if (!showUsageDetails || !mounted) return null;
 
@@ -282,26 +248,25 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                                     </ul>
                                 </section>
                             ) : (
-                                msg.usage?.tool_cost_usd !== undefined &&
-                                msg.usage.tool_cost_usd > 0 && (
+                                toolCreditsTotal > 0 && (
                                     <section aria-label="Tool usage">
                                         <SectionLabel>{t('usageDetails.toolUsage', 'Tool usage')}</SectionLabel>
-                                        <CostPair usd={msg.usage.tool_cost_usd} credits={toolCreditsTotal > 0 ? toolCreditsTotal : undefined} />
+                                        <CreditsAmount credits={toolCreditsTotal} />
                                     </section>
                                 )
                             )}
 
-                            {msg.cost !== undefined && modelUsd !== undefined && (
+                            {modelCredits !== undefined && toolCreditsTotal > 0 && (
                                 <section aria-label="Model cost">
                                     <SectionLabel>{t('usageDetails.modelTokens', 'Model (tokens)')}</SectionLabel>
-                                    <CostPair usd={modelUsd} credits={modelCredits} />
+                                    <CreditsAmount credits={modelCredits} />
                                 </section>
                             )}
 
-                            {msg.cost !== undefined && (
+                            {totalCredits !== undefined && (
                                 <section aria-label="Total cost">
                                     <SectionLabel>{t('usageDetails.totalCost', 'Total cost')}</SectionLabel>
-                                    <CostPair usd={msg.cost} credits={totalCredits} />
+                                    <CreditsAmount credits={totalCredits} />
                                 </section>
                             )}
 
@@ -353,35 +318,19 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                                 </details>
                             )}
 
-                            {!msg.usage &&
-                                !msg.cost &&
-                                !(msg.tool_usage_charges && msg.tool_usage_charges.length > 0) && (
-                                    <div className="py-6 text-center">
-                                        <FiInfo
-                                            size={22}
-                                            className="mx-auto text-slate-300 dark:text-zinc-600"
-                                            strokeWidth={1.5}
-                                            aria-hidden
-                                        />
-                                        <p className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-zinc-400">
-                                            No usage or cost information for this message.
-                                        </p>
-                                    </div>
-                                )}
+                            {!totalCredits && !msg.usage && (
+                                <div className="flex items-start gap-2 rounded-xl bg-slate-50/80 px-3 py-3 text-[11px] text-slate-600 dark:bg-zinc-900/50 dark:text-zinc-400">
+                                    <FiInfo className="mt-0.5 shrink-0 opacity-70" size={14} aria-hidden />
+                                    <span>
+                                        {t(
+                                            'usageDetails.noUsageYet',
+                                            'Usage and cost appear here after the assistant finishes responding.',
+                                        )}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     )}
-                </div>
-
-                <div className="shrink-0 px-4 pb-4 pt-1">
-                    <div className="flex justify-end">
-                        <button
-                            type="button"
-                            onClick={() => setShowUsageDetails(false)}
-                            className="rounded-lg bg-slate-900 px-4 py-1.5 text-[11px] font-medium text-white shadow-sm transition-colors hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-300"
-                        >
-                            Close
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>

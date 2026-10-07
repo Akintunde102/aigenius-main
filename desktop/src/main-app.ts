@@ -74,7 +74,11 @@ import { installDesktopUiProtocolHandler } from './desktop-ui-protocol';
 import path from 'path';
 import { DESKTOP_APP_USER_MODEL_ID, resolveDesktopUserDataDirName } from './desktop-app-identity';
 import { installVcRuntimeElevated, isVcRuntimeInstalled } from './vcredist-guard';
-import { setupAutoUpdater, runSilentUiOtaCheck } from './main-auto-updater';
+import {
+  registerAutoUpdaterIpcHandlers,
+  setupAutoUpdater,
+  runSilentUiOtaCheck,
+} from './main-auto-updater';
 
 if (process.platform === 'win32' && !process.windowsStore) {
   app.setAppUserModelId(DESKTOP_APP_USER_MODEL_ID);
@@ -161,6 +165,7 @@ if (!gotLock) {
   });
 
   registerMainIpcHandlers();
+  registerAutoUpdaterIpcHandlers();
 
   app.whenReady().then(async () => {
     startupMark('app_when_ready');
@@ -197,8 +202,9 @@ if (!gotLock) {
     await loadToolPermissionPreferences();
     registerIpcHandlers();
 
-    const mainWindow = createWindow({ deferAppLoad: true });
-    
+    const useBootSplash = app.isPackaged;
+    const mainWindow = createWindow({ deferAppLoad: useBootSplash });
+
     // Initialize auto-updater
     setupAutoUpdater(mainWindow);
 
@@ -227,9 +233,15 @@ if (!gotLock) {
       }
     }
 
-    try {
+    const finishBackendStartup = async (): Promise<void> => {
       await startBackendProcesses();
-    } catch (err) {
+      startupMark('backend_processes_ready');
+      const { registerAudioRecorderHandlers } = await import('./audio-recorder-handler');
+      registerAudioRecorderHandlers();
+      startupMark('ipc_handlers_registered');
+    };
+
+    const reportBackendStartupFailure = async (err: unknown): Promise<void> => {
       console.error(err);
       if (app.isPackaged) {
         const logsDir = app.getPath('logs');
@@ -250,31 +262,37 @@ if (!gotLock) {
         if (response === 0) {
           await shell.openPath(logsDir);
         }
-      } else {
-        await dialog.showErrorBox(
-          'AIGenius',
-          [
-            'Development: the mini-server or the Next UI is not ready.',
-            '',
-            `Terminal 1 (leave running): cd frontend && npx next dev -p ${FRONTEND_PORT}`,
-            `Terminal 2: cd desktop && npm run dev`,
-            '',
-            `(After the first successful setup you can use npm run dev:quick in desktop/ if desktop-server is already built.)`,
-            '',
-            String(err),
-          ].join('\n'),
-        );
+        app.quit();
+        return;
       }
-      app.quit();
-      return;
+      await dialog.showMessageBox({
+        type: 'warning',
+        title: 'AIGenius',
+        message: 'Local services are still starting or failed.',
+        detail: [
+          'The sign-in screen may still work. If local tools fail, ensure Tilt is running:',
+          '',
+          '  npm run dev:tilt',
+          '',
+          String(err),
+        ].join('\n'),
+        buttons: ['OK'],
+      });
+    };
+
+    if (useBootSplash) {
+      try {
+        await finishBackendStartup();
+      } catch (err) {
+        await reportBackendStartupFailure(err);
+        return;
+      }
+      await navigateMainShellToApp(mainWindow);
+    } else {
+      void finishBackendStartup().catch((err) => {
+        void reportBackendStartupFailure(err);
+      });
     }
-    startupMark('backend_processes_ready');
-
-    const { registerAudioRecorderHandlers } = await import('./audio-recorder-handler');
-    registerAudioRecorderHandlers();
-    startupMark('ipc_handlers_registered');
-
-    await navigateMainShellToApp(mainWindow);
 
     // Silently check for UI OTA update in the background (staggered so it never slows down boot)
     setTimeout(() => {

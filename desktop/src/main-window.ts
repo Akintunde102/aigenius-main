@@ -68,11 +68,21 @@ let mainShellWindowsCreated = 0;
 let devSessionCacheCleared = false;
 
 async function prefetchShellUrl(url: string): Promise<void> {
+  // Next dev often holds the document body until compilation finishes. Waiting on
+  // the full body keeps the boot splash up ("Verifying your saved session") with
+  // no upper bound. Packaged builds prefetch briefly; dev navigates immediately.
+  if (!app.isPackaged) {
+    return;
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
   try {
-    const response = await net.fetch(url);
+    const response = await net.fetch(url, { signal: controller.signal });
     await response.text();
   } catch (err) {
     console.warn('[aigenius-desktop] shell prefetch failed', { url, err });
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -237,7 +247,8 @@ export function createWindow(relativePathOrOptions?: string | CreateWindowOption
 
   const loadShellUrl = (): void => {
     if (deferAppLoad || isAdditionalWindow) {
-      const sessionRestoreHint = hasStoredAuthSession();
+      // Unpackaged dev is waiting on Next/the sidecar, not an auth round-trip.
+      const sessionRestoreHint = app.isPackaged && hasStoredAuthSession();
       void win.loadURL(createShellBootDataUrl(sessionRestoreHint));
       if (!deferAppLoad && isAdditionalWindow) {
         void prefetchShellUrl(appUrl).then(() => {
@@ -312,7 +323,18 @@ export async function navigateMainShellToApp(
   }
   await prefetchShellUrl(url);
   if (!win.isDestroyed()) {
-    await win.loadURL(url);
+    const navigation = win.loadURL(url);
+    if (!app.isPackaged) {
+      // Next dev can hold the document open during compile; do not block the splash forever.
+      await Promise.race([
+        navigation,
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, 8_000);
+        }),
+      ]);
+    } else {
+      await navigation;
+    }
     revealShowableWindow(win);
   }
 }

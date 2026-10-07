@@ -349,7 +349,7 @@ type WorkflowStepRunRowWire = {
   status: WorkflowStepRunStatus;
   result?: string | null;
   error?: string | null;
-  billedUsd?: number | string | null;
+  billedCredits?: number | string | null;
   walletAfter?: number | string | null;
 };
 
@@ -360,7 +360,7 @@ export type WorkflowStepRunRow = {
   status: WorkflowStepRunStatus;
   result?: string | null;
   error?: string | null;
-  billedUsd?: number | null;
+  billedCredits?: number | null;
   walletAfter?: number | null;
 };
 
@@ -384,11 +384,11 @@ export type WorkflowScheduleListItem = WorkflowScheduleRecord & {
 };
 
 function normalizeWorkflowStepRunRow(row: WorkflowStepRunRowWire): WorkflowStepRunRow {
-  const billedUsd =
-    typeof row.billedUsd === "number"
-      ? row.billedUsd
-      : typeof row.billedUsd === "string" && row.billedUsd.trim() !== ""
-        ? Number(row.billedUsd)
+  const billedCredits =
+    typeof row.billedCredits === "number"
+      ? row.billedCredits
+      : typeof row.billedCredits === "string" && row.billedCredits.trim() !== ""
+        ? Number(row.billedCredits)
         : null;
   const walletAfter =
     typeof row.walletAfter === "number"
@@ -399,7 +399,7 @@ function normalizeWorkflowStepRunRow(row: WorkflowStepRunRowWire): WorkflowStepR
 
   return {
     ...row,
-    billedUsd: Number.isFinite(billedUsd as number) ? (billedUsd as number) : null,
+    billedCredits: Number.isFinite(billedCredits as number) ? (billedCredits as number) : null,
     walletAfter: Number.isFinite(walletAfter as number) ? (walletAfter as number) : null,
   };
 }

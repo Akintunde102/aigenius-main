@@ -209,7 +209,16 @@ export default function AutoUpdaterNotification({ previewMode = false }: { previ
       });
     });
 
-    const checkTimer = setTimeout(() => api.checkForUpdates(), 5000);
+    const checkTimer = setTimeout(() => {
+      void api.checkForUpdates?.().catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes('No handler registered')) {
+          console.warn('[AutoUpdater] Update IPC not ready yet; skipping passive check');
+          return;
+        }
+        console.warn('[AutoUpdater] Passive update check failed:', message);
+      });
+    }, 5000);
 
     return () => {
       unbindAvailable();

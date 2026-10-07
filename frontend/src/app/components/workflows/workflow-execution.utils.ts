@@ -26,7 +26,7 @@ export type WorkflowStepExecutionInfo = {
   error?: string | null;
   /** From SSE `invokeCode` or parsed tool result JSON `code` (e.g. wallet preflight). */
   invokeCode?: string | null;
-  billedUsd?: number | null;
+  billedCredits?: number | null;
   walletAfter?: number | null;
 };
 
@@ -74,7 +74,7 @@ export function isBlockedWorkflowInvokeCode(invokeCode: string | null | undefine
 export function normalizeWorkflowStepExecutionInfo(execution: WorkflowStepExecutionInfo): WorkflowStepExecutionInfo {
   const normalized: WorkflowStepExecutionInfo = {
     ...execution,
-    billedUsd: normalizeFiniteWorkflowNumber(execution.billedUsd) ?? null,
+    billedCredits: normalizeFiniteWorkflowNumber(execution.billedCredits) ?? null,
     walletAfter: normalizeFiniteWorkflowNumber(execution.walletAfter) ?? null,
   };
 
@@ -89,18 +89,18 @@ export function normalizeWorkflowStepExecutionInfo(execution: WorkflowStepExecut
   };
 }
 
-export function formatWorkflowBilledUsd(value: number | null | undefined): string | null {
+export function formatWorkflowBilledCredits(value: number | null | undefined): string | null {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return null;
   }
-  if (value === 0) {
-    return "$0.00";
-  }
-  if (value >= 0.01) {
-    return `$${value.toFixed(2)}`;
-  }
-  return `$${value.toFixed(4)}`;
+  const formatted = value.toLocaleString(undefined, {
+    maximumFractionDigits: value >= 1 ? 1 : 2,
+  });
+  return `${formatted} credits`;
 }
+
+/** @deprecated Use formatWorkflowBilledCredits */
+export const formatWorkflowBilledUsd = formatWorkflowBilledCredits;
 
 export function formatWorkflowWalletBalance(value: number | null | undefined): string | null {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -238,7 +238,7 @@ export type WorkflowStepStreamEvent = {
   error?: string;
   /** Preflight / dependency blocks from `invokeTool` (e.g. `invokeTool::blockedInsufficientFunds`). */
   invokeCode?: string;
-  billedUsd?: number;
+  billedCredits?: number;
   walletAfter?: number;
 };
 

@@ -102,7 +102,7 @@ function analyzeChanges(changedFiles) {
     reason: `Only UI/renderer files changed (${uiChanged.length} files)`,
     nativeFiles: [],
     // For pure UI, keep minDesktopVersion at the baseline so all existing users get it
-    minDesktopVersion: '1.0.0',
+    minDesktopVersion: currentDesktopVersion,
     requiresStoreSubmission: false,
   };
 }

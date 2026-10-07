@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { FiX } from 'react-icons/fi';
 import { Model } from '@/app/components/model-interface/shared/types';
-import { formatUSD, formatNGN, getModelDisplayName, getModelAverageRequestPrice } from '@/app/components/model-interface/shared/utils';
+import { formatNGN, getModelDisplayName } from '@/app/components/model-interface/shared/utils';
 import {
     formatPricingAmount,
     formatPricingTierLabel,
@@ -9,6 +9,7 @@ import {
     getScalarPricingEntries,
     getTierPricingEntries,
     pricingLabel,
+    resolveModelPricingTable,
 } from '../utils/modelPricingDisplay.utils';
 
 // Model Details Modal
@@ -27,7 +28,14 @@ const ModelSelectionDetailsModal = memo(function ModelDetailsModal({
 }: ModelSelectionDetailsModalProps) {
     if (!isOpen) return null;
 
-    const scalarPricingEntries = getScalarPricingEntries(model.pricing as Record<string, unknown> | undefined);
+    const pricingTable = resolveModelPricingTable(
+        model.pricing as Record<string, unknown> | undefined,
+        model.pricing_credits as Record<string, unknown> | undefined,
+    );
+    const pricingValuesAreCredits = Boolean(
+        model.pricing_credits && Object.keys(model.pricing_credits).length > 0,
+    );
+    const scalarPricingEntries = getScalarPricingEntries(pricingTable);
     const pricingOverrides = getPricingOverrides(model.pricing as Record<string, unknown> | undefined);
     const hasPricing = scalarPricingEntries.length > 0 || pricingOverrides.length > 0;
 
@@ -113,7 +121,7 @@ const ModelSelectionDetailsModal = memo(function ModelDetailsModal({
                                     {scalarPricingEntries.map(([key, value]) => (
                                         <div key={key} className="flex justify-between text-xs">
                                             <span className="font-medium" style={{ color: "var(--modal-muted-fg)" }}>{pricingLabel(key)}:</span>
-                                            <span className="font-mono" style={{ color: "var(--modal-fg)" }}>{formatPricingAmount(key, value)}</span>
+                                            <span className="font-mono" style={{ color: "var(--modal-fg)" }}>{formatPricingAmount(key, value, { valuesAreCredits: pricingValuesAreCredits })}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -130,7 +138,7 @@ const ModelSelectionDetailsModal = memo(function ModelDetailsModal({
                                             {getTierPricingEntries(tier).map(([key, value]) => (
                                                 <div key={key} className="flex justify-between text-xs">
                                                     <span className="font-medium" style={{ color: "var(--modal-muted-fg)" }}>{pricingLabel(key)}:</span>
-                                                    <span className="font-mono" style={{ color: "var(--modal-fg)" }}>{formatPricingAmount(key, value)}</span>
+                                                    <span className="font-mono" style={{ color: "var(--modal-fg)" }}>{formatPricingAmount(key, value, { valuesAreCredits: pricingValuesAreCredits })}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -149,9 +157,6 @@ const ModelSelectionDetailsModal = memo(function ModelDetailsModal({
                             <p className="font-medium mb-1 text-sm" style={{ color: "var(--chat-accent)" }}>Average Cost per Message</p>
                             <div className="text-xl font-semibold tabular-nums" style={{ color: "var(--modal-fg)" }}>
                                 {formatNGN(averageCost)}
-                            </div>
-                            <div className="text-sm" style={{ color: "var(--modal-muted-fg)" }}>
-                                {formatUSD(getModelAverageRequestPrice(model))}
                             </div>
                         </div>
                     )}

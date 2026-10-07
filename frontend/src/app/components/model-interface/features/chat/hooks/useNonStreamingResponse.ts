@@ -120,7 +120,7 @@ export function useNonStreamingResponse({
                 modelForRequest.name || modelForRequest.id,
                 requestSessionId ?? undefined,
                 result.usage,
-                result.cost,
+                result.cost_credits,
                 selectedPersonalityName,
                 selectedPersonalityIconUrl,
                 result.tool_executions,
@@ -208,7 +208,7 @@ export function useNonStreamingResponse({
                 });
             }
 
-            logMetrics(result.usage, result.cost);
+            logMetrics(result.usage, result.cost_credits);
         } finally {
             const currentController = abortControllersRef.current.get(abortCleanupKey);
             if (currentController === abortController) {

@@ -19,6 +19,7 @@ import {
 import { ModelWalletLockIndicator } from "./ModelWalletLockIndicator";
 import { ModelCreditBurnIndicator } from "./ModelCreditBurnIndicator";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
+import { MODAL_ELEVATED_Z_INDEX } from "@/lib/utils/modal-z-index";
 
 type RecentModelConfirmModalProps = {
   isOpen: boolean;
@@ -95,7 +96,7 @@ export function RecentModelConfirmModal({
     (
       <div
         className="app-modal-overlay backdrop-blur-[2px]"
-        style={{ zIndex: 130 }}
+        style={{ zIndex: MODAL_ELEVATED_Z_INDEX }}
         onClick={onClose}
       >
         <div

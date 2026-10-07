@@ -37,13 +37,12 @@ export function useChatState() {
 
     // Calculate costs for current chat
     const calculateChatCosts = (_models: unknown[], _selectedModel: unknown) => {
-        const currentChatCostUSD = chat.reduce((sum, msg) => {
-            return sum + (typeof msg.cost === 'number' ? msg.cost : 0);
-        }, 0);
-
-        const currentChatCostNaira = chat.reduce((sum, msg) => {
+        const creditsTotal = chat.reduce((sum, msg) => {
             return sum + (typeof msg.cost_credits === 'number' ? msg.cost_credits : 0);
         }, 0);
+
+        const currentChatCostUSD = creditsTotal;
+        const currentChatCostNaira = creditsTotal;
 
         return { currentChatCostUSD, currentChatCostNaira };
     };

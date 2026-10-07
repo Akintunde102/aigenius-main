@@ -3,9 +3,7 @@ import { createPortal } from 'react-dom';
 import { FiX, FiCheck, FiLayers, FiDollarSign, FiMaximize2, FiCalendar, FiAlertCircle } from 'react-icons/fi';
 import { Model } from '@/app/components/model-interface/shared/types';
 import {
-    getModelAverageRequestPrice,
     getModelAverageRequestCredits,
-    formatUSD,
     formatNGN,
     getModelDisplayName,
     getProvider,
@@ -19,6 +17,7 @@ import {
     getScalarPricingEntries,
     getTierPricingEntries,
     pricingLabel,
+    resolveModelPricingTable,
 } from '../utils/modelPricingDisplay.utils';
 import {
     computeModelRequiredBalance,
@@ -29,6 +28,7 @@ import {
 import { ModelCreditBurnIndicator } from './ModelCreditBurnIndicator';
 import { isConversationPickableModel, isNonTextModel } from '../utils/modelConversationEligibility.utils';
 import { useLanguage } from '@/lib/providers/LanguageProvider';
+import { MODAL_ELEVATED_Z_INDEX } from '@/lib/utils/modal-z-index';
 
 interface ModelDetailsModalProps {
     isOpen: boolean;
@@ -76,7 +76,6 @@ export function ModelDetailsModal({
     const provider = getProvider(model.id);
     const providerLabel = getProviderLabel(provider) || provider;
     const isFree = provider === 'openrouter' && model.id?.split('/')[1]?.toLowerCase() === 'free';
-    const avgCost = getModelAverageRequestPrice(model);
     const avgCredits = getModelAverageRequestCredits(model);
     const showAvgCost = Number.isFinite(avgCredits) && avgCredits > 0;
     const isMediaModel = isNonTextModel(model);
@@ -91,7 +90,14 @@ export function ModelDetailsModal({
     const inputMods = model.architecture?.input_modalities ?? [];
     const outputMods = model.architecture?.output_modalities ?? [];
     const hasModalities = inputMods.length > 0 || outputMods.length > 0;
-    const scalarPricingEntries = getScalarPricingEntries(model.pricing as Record<string, unknown> | undefined);
+    const pricingTable = resolveModelPricingTable(
+        model.pricing as Record<string, unknown> | undefined,
+        model.pricing_credits as Record<string, unknown> | undefined,
+    );
+    const pricingValuesAreCredits = Boolean(
+        model.pricing_credits && Object.keys(model.pricing_credits).length > 0,
+    );
+    const scalarPricingEntries = getScalarPricingEntries(pricingTable);
     const pricingOverrides = getPricingOverrides(model.pricing as Record<string, unknown> | undefined);
     const hasPricing = scalarPricingEntries.length > 0 || pricingOverrides.length > 0;
     const releaseDate = model?.created
@@ -111,8 +117,8 @@ export function ModelDetailsModal({
     return createPortal(
         (
             <div
-                className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 md:p-6 backdrop-blur-sm transition-opacity duration-200"
-                style={{ background: 'var(--modal-overlay)' }}
+                className="fixed inset-0 flex items-center justify-center p-3 sm:p-4 md:p-6 backdrop-blur-sm transition-opacity duration-200"
+                style={{ zIndex: MODAL_ELEVATED_Z_INDEX, background: 'var(--modal-overlay)' }}
                 onClick={onClose}
                 role="dialog"
                 aria-modal="true"
@@ -229,7 +235,7 @@ export function ModelDetailsModal({
                                                 ? (averageUnit
                                                     ? t('modelDetails.typicalUnit', 'Typical {unit}', { unit: averageUnit })
                                                     : t('modelDetails.estimatedCredits', 'Estimated credits'))
-                                                : `${formatUSD(avgCost)} USD`)
+                                                : t('modelDetails.estimatedCredits', 'Estimated credits'))
                                             : isFree
                                                 ? t('modelDetails.zeroCredits', '0 credits')
                                                 : t('modelDetails.pricingOnRequest', 'Pricing on request')}
@@ -418,7 +424,7 @@ export function ModelDetailsModal({
                                                 className="font-mono text-right tabular-nums font-medium"
                                                 style={{ color: 'var(--modal-muted-fg)' }}
                                             >
-                                                {formatPricingAmount(key, value)}
+                                                {formatPricingAmount(key, value, { valuesAreCredits: pricingValuesAreCredits })}
                                             </span>
                                         </div>
                                     ))}
@@ -454,7 +460,7 @@ export function ModelDetailsModal({
                                                         className="font-mono text-right tabular-nums font-medium"
                                                         style={{ color: 'var(--modal-muted-fg)' }}
                                                     >
-                                                        {formatPricingAmount(key, value)}
+                                                        {formatPricingAmount(key, value, { valuesAreCredits: pricingValuesAreCredits })}
                                                     </span>
                                                 </div>
                                             ))}

@@ -43,18 +43,19 @@ export function getModelAverageRequestPrice(
   avgTokens = 800,
 ): number {
   // Prefer backend-provided averageUserSpendPerRequest when available
-  const backendAvg = model?.averageUserSpendPerRequest?.totalAverageCost;
+  const backendAvgCredits = model?.averageUserSpendPerRequest?.totalAverageCostCredits;
   if (
-    typeof backendAvg === "number" &&
-    isFinite(backendAvg) &&
-    backendAvg > 0
+    typeof backendAvgCredits === "number" &&
+    isFinite(backendAvgCredits) &&
+    backendAvgCredits > 0
   ) {
-    return backendAvg;
+    return backendAvgCredits;
   }
 
-  // Check if there's a direct per-request price
-  if (model.pricing?.request) {
-    const requestPrice = parseFloat(model.pricing.request);
+  // Check if there's a direct per-request price (credits from API)
+  const requestCredits = model.pricing_credits?.request ?? model.pricing?.request;
+  if (requestCredits) {
+    const requestPrice = parseFloat(requestCredits);
     if (!isNaN(requestPrice) && requestPrice > 0) {
       return requestPrice;
     }

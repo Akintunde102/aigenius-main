@@ -73,8 +73,7 @@ function workflowIntentStreamChunks(agentRunId: string) {
             {
                 tool: 'workflow_intent_inner_llm',
                 display_name: 'Workflow agent (model turn)',
-                cost_usd: 0.001,
-                cost_naira: 1.5,
+                cost_credits: 1.5,
             },
         ],
         workflow_ids_touched: ['wf-e2e-1'],
@@ -124,7 +123,7 @@ function workflowIntentStreamChunks(agentRunId: string) {
             ],
         },
         { choices: [{ delta: { content: '\n\nI used the workflow agent.' } }] },
-        { usage: { prompt_tokens: 40, completion_tokens: 60, total_tokens: 100 }, cost: 0.002 },
+        { usage: { prompt_tokens: 40, completion_tokens: 60, total_tokens: 100 }, cost_credits: 2 },
         '[DONE]',
     ];
 }
@@ -145,7 +144,7 @@ test.describe('Workflow intent — transcript expand', () => {
             parentToolCallId: null,
             messages: COMPLEX_TRANSCRIPT_MESSAGES,
             metadata: { innerModelId: 'e2e/model' },
-            totalCostUsd: 0.042,
+            totalCostCredits: 42,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         });
@@ -259,7 +258,7 @@ test.describe('Workflow intent — transcript expand', () => {
             parentToolCallId: null,
             messages: COMPLEX_TRANSCRIPT_MESSAGES,
             metadata: {},
-            totalCostUsd: 0,
+            totalCostCredits: 0,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         });

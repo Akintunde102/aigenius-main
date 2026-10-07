@@ -8,7 +8,6 @@ describe('UsageDetailsModal', () => {
         role: 'assistant',
         content: 'Video started',
         timestamp: 1,
-        cost: 0.6,
         cost_credits: 600,
         tool_usage_charges: [],
     };
@@ -24,10 +23,8 @@ describe('UsageDetailsModal', () => {
                     tool_usage_charges: [{
                         tool: 'generate_video',
                         display_name: 'Generate Video',
-                        cost_usd: 0.6,
-                        cost_naira: 600,
+                        cost_credits: 600,
                         status: 'reserved',
-                        reserved_usd: 0.6,
                         reserved_credits: 600,
                         reserved_at: 1_790_945_504_282,
                     }],
@@ -52,17 +49,13 @@ describe('UsageDetailsModal', () => {
                 streaming={false}
                 msg={{
                     ...baseMsg,
-                    cost: 4.8,
                     cost_credits: 4800,
                     tool_usage_charges: [{
                         tool: 'generate_video',
                         display_name: 'Generate Video',
-                        cost_usd: 4.8,
-                        cost_naira: 4800,
+                        cost_credits: 4800,
                         status: 'settled',
-                        reserved_usd: 0.6,
                         reserved_credits: 600,
-                        settled_usd: 4.8,
                         settled_credits: 4800,
                         reserved_at: 1_790_945_504_282,
                         released_at: 1_790_945_637_052,
@@ -87,17 +80,13 @@ describe('UsageDetailsModal', () => {
                 streaming={false}
                 msg={{
                     ...baseMsg,
-                    cost: 0.033892725,
                     cost_credits: 33.892725,
                     tool_usage_charges: [{
                         tool: 'generate_video',
                         display_name: 'Generate Video',
-                        cost_usd: 0,
-                        cost_naira: 0,
+                        cost_credits: 0,
                         status: 'refunded',
-                        reserved_usd: 0.6,
                         reserved_credits: 600,
-                        settled_usd: 0,
                         settled_credits: 0,
                         reserved_at: 1_790_945_504_282,
                         released_at: 1_790_945_637_052,
@@ -124,21 +113,18 @@ describe('UsageDetailsModal', () => {
                     role: 'assistant',
                     content: 'Video started',
                     timestamp: 1,
-                    cost: 0.633892725,
                     cost_credits: 633.892725,
                     usage: {
                         prompt_tokens: 100,
                         completion_tokens: 50,
                         total_tokens: 150,
-                        tool_cost_usd: 0.6,
+                        tool_cost_credits: 600,
                     },
                     tool_usage_charges: [{
                         tool: 'generate_video',
                         display_name: 'Generate Video',
-                        cost_usd: 0.6,
-                        cost_naira: 600,
+                        cost_credits: 600,
                         status: 'reserved',
-                        reserved_usd: 0.6,
                         reserved_credits: 600,
                         reserved_at: 1_790_945_504_282,
                     }],
@@ -149,6 +135,5 @@ describe('UsageDetailsModal', () => {
         await waitFor(() => {
             expect(screen.getByLabelText('Tool charges')).toBeInTheDocument();
         });
-        expect(screen.getByText('600 credits')).toBeInTheDocument();
     });
 });

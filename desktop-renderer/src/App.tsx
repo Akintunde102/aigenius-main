@@ -13,9 +13,11 @@ import GlobalToaster from '@/app/components/GlobalToaster';
 import ScheduleNotificationListener from '@/app/components/ScheduleNotificationListener';
 import ViewportHeightSetter from '@/app/ViewportHeightSetter';
 import { FilePreviewModal } from '@/app/components/modals/FilePreviewModal';
+import { LanguageSelectionModal } from '@/app/components/modals/LanguageSelectionModal';
 import DesktopToolApprovalHost from '@/app/components/DesktopToolApprovalHost';
 import { ColorModeBootstrapScript } from '@/app/components/ColorModeBootstrapScript';
 import ReactQueryProvider from '@/lib/providers/ReactQueryProvider';
+import { LanguageProvider } from '@/lib/providers/LanguageProvider';
 import { ThemeProvider } from '@/lib/providers/ThemeProvider';
 import { ChatAuthGate } from './ChatAuthGate';
 import { useAnalyticsPageView } from '@/lib/analytics/useAnalyticsPageView';
@@ -34,15 +36,16 @@ function DesktopAnalyticsPageViews() {
 export default function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <ColorModeBootstrapScript />
-        <EarlyDesktopAuthCookieSync />
-        <ViewportHeightSetter />
-        <DesktopShellDocumentFlag />
-        <DesktopShellChrome>
-          <ErrorBoundary>
-            <ReactQueryProvider>
-              <Routes>
+      <LanguageProvider>
+        <BrowserRouter>
+          <ColorModeBootstrapScript />
+          <EarlyDesktopAuthCookieSync />
+          <ViewportHeightSetter />
+          <DesktopShellDocumentFlag />
+          <DesktopShellChrome>
+            <ErrorBoundary>
+              <ReactQueryProvider>
+                <Routes>
                 <Route path="/desktop-login" element={<DesktopLoginPage />} />
                 <Route path="/desktop-welcome" element={<DesktopWelcomePage />} />
                 <Route path="/desktop-search-index" element={<DesktopSearchIndexPage />} />
@@ -63,19 +66,21 @@ export default function App() {
                     </ChatAuthGate>
                   }
                 />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </ReactQueryProvider>
-            <ScheduleNotificationListener />
-            <GlobalToaster />
-            <FilePreviewModal />
-            <DesktopToolApprovalHost />
-          </ErrorBoundary>
-        </DesktopShellChrome>
-        <div id="modal-root" />
-        <DesktopAnalyticsPageViews />
-        <ClientAnalytics />
-      </BrowserRouter>
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </ReactQueryProvider>
+              <ScheduleNotificationListener />
+              <GlobalToaster />
+              <FilePreviewModal />
+              <LanguageSelectionModal />
+              <DesktopToolApprovalHost />
+            </ErrorBoundary>
+            <div id="modal-root" />
+          </DesktopShellChrome>
+          <DesktopAnalyticsPageViews />
+          <ClientAnalytics />
+        </BrowserRouter>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

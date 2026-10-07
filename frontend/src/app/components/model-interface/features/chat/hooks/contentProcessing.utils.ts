@@ -163,7 +163,7 @@ export function createChatMessage(
     modelName: string,
     sessionId?: string | null,
     usage?: any,
-    cost?: any,
+    costCredits?: number,
     personaName?: string,
     personaIconUrl?: string,
     tool_executions?: any[],
@@ -182,7 +182,7 @@ export function createChatMessage(
         modelName,
         sessionId: sessionId || undefined,
         ...(usage && { usage }),
-        ...(cost !== undefined && { cost }),
+        ...(costCredits !== undefined && { cost_credits: costCredits }),
         ...(personaName && { personaName }),
         ...(personaIconUrl && { personaIconUrl }),
         ...(tool_executions && tool_executions.length > 0 && { tool_executions }),
@@ -213,7 +213,7 @@ export function updateLastAssistantMessage(
 export function updateLastMessageWithMetrics(
     chat: ChatMessage[],
     usage?: any,
-    cost?: any,
+    costCredits?: number,
     tool_usage_charges?: ToolUsageCharge[],
 ): ChatMessage[] {
     const updated = [...chat];
@@ -221,7 +221,7 @@ export function updateLastMessageWithMetrics(
         const lastMessage = updated[updated.length - 1];
         const hasIncoming =
             usage !== undefined ||
-            cost !== undefined ||
+            costCredits !== undefined ||
             (tool_usage_charges !== undefined && tool_usage_charges.length > 0);
         if (!hasIncoming) {
             return updated;
@@ -229,13 +229,13 @@ export function updateLastMessageWithMetrics(
         // Single completion callback: attach metrics once when not already set.
         if (
             lastMessage.usage === undefined
-            && lastMessage.cost === undefined
+            && lastMessage.cost_credits === undefined
             && !(lastMessage.tool_usage_charges?.length)
         ) {
             updated[updated.length - 1] = {
                 ...lastMessage,
                 usage: usage || undefined,
-                ...(cost !== undefined ? { cost } : {}),
+                ...(costCredits !== undefined ? { cost_credits: costCredits } : {}),
                 ...(tool_usage_charges !== undefined && tool_usage_charges.length > 0 ? { tool_usage_charges } : {}),
             };
         }

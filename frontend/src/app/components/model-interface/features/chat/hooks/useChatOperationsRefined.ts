@@ -245,7 +245,7 @@ export function useChatOperationsRefined({
 
             if (
                 result.usage
-                || result.cost !== undefined
+                || result.cost_credits !== undefined
                 || (result.tool_usage_charges !== undefined && result.tool_usage_charges.length > 0)
             ) {
                 // Draft completions should always attach metrics to the real session id
@@ -254,7 +254,7 @@ export function useChatOperationsRefined({
                     ? result.conversationId
                     : chatMapKey;
                 setChatForSession(metricsKey, prev =>
-                    updateLastMessageWithMetrics(prev, result.usage, result.cost, result.tool_usage_charges),
+                    updateLastMessageWithMetrics(prev, result.usage, result.cost_credits, result.tool_usage_charges),
                 );
             }
         },

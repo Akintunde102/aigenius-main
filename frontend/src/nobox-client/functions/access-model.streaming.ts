@@ -58,8 +58,8 @@ export function updateStreamingResult(result: StreamingResult, chunk: any): void
   if (chunk.usage) {
     result.usage = chunk.usage;
   }
-  if (chunk.cost) {
-    result.cost = chunk.cost;
+  if (typeof chunk.cost_credits === 'number') {
+    result.cost_credits = chunk.cost_credits;
   }
   if (chunk.wallet !== undefined) {
     result.wallet = chunk.wallet;

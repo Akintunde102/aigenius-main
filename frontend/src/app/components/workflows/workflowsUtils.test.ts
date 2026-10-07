@@ -101,7 +101,7 @@ describe("workflowsUtils", () => {
         }),
         error: null,
         invokeCode: "invokeTool::blockedInsufficientFunds",
-        billedUsd: "0" as unknown as number,
+        billedCredits: "0" as unknown as number,
         walletAfter: "42.75" as unknown as number,
       }),
     ).toEqual({
@@ -113,15 +113,15 @@ describe("workflowsUtils", () => {
       }),
       error: "Insufficient wallet balance to run this tool.",
       invokeCode: "invokeTool::blockedInsufficientFunds",
-      billedUsd: 0,
+      billedCredits: 0,
       walletAfter: 42.75,
     });
   });
 
-  it("formats workflow billed usd and wallet balance for display", () => {
-    expect(formatWorkflowBilledUsd(0)).toBe("$0.00");
-    expect(formatWorkflowBilledUsd(0.0042)).toBe("$0.0042");
-    expect(formatWorkflowBilledUsd(1.5)).toBe("$1.50");
+  it("formats workflow billed credits and wallet balance for display", () => {
+    expect(formatWorkflowBilledUsd(0)).toBe("0 credits");
+    expect(formatWorkflowBilledUsd(4.2)).toBe("4.2 credits");
+    expect(formatWorkflowBilledUsd(1.5)).toBe("1.5 credits");
     expect(formatWorkflowBilledUsd(null)).toBeNull();
 
     expect(formatWorkflowWalletBalance(42.7)).toBe("42.70");
