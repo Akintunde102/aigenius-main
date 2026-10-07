@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { FOCUS_RING } from '@/app/components/public-page-shell.constants';
 import { cn } from '@/lib/utils';
+import { TITLE_SM } from '@/app/components/landing/typography';
 
 interface IntegrationCallbackStatusProps {
   /** True once the callback handshake finished (window is about to close / redirect). */
@@ -42,7 +43,7 @@ export function IntegrationCallbackStatus({
               ? 'bg-rose-500/10 text-rose-500'
               : done
                 ? 'bg-emerald-500/10 text-emerald-500'
-                : 'bg-black/[0.05] text-lp-muted dark:bg-white/[0.07]',
+                : 'bg-lp-surface text-lp-muted border border-lp-border',
           )}
         >
           {!done ? (
@@ -54,10 +55,10 @@ export function IntegrationCallbackStatus({
           )}
         </div>
 
-        <p role="status" className="text-lg font-medium">
+        <p role="status" className={cn(TITLE_SM, "text-lp-fg mt-4")}>
           {message}
         </p>
-        <p className="mt-2 text-sm text-lp-muted">
+        <p className="mt-3 text-sm text-lp-muted">
           {done
             ? "You can close this tab if it doesn't close automatically."
             : 'This window will close automatically.'}
@@ -68,7 +69,7 @@ export function IntegrationCallbackStatus({
             type="button"
             onClick={() => window.close()}
             className={cn(
-              'mt-8 inline-flex h-11 items-center justify-center rounded-full bg-stone-900 px-6 text-sm font-medium text-white transition-[transform,opacity] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97] dark:bg-white dark:text-stone-900',
+              'mt-8 inline-flex h-11 items-center justify-center rounded-full bg-lp-fg px-6 text-sm font-medium text-lp-bg transition-[transform,opacity] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97]',
               FOCUS_RING,
             )}
           >

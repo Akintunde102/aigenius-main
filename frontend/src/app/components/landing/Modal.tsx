@@ -13,11 +13,12 @@ import { XIcon } from "./icons";
 /** Exit is faster than enter (200ms in, 150ms out): the system responds quickly once you decide. */
 const EXIT_MS = 150;
 
-type ModalSize = "md" | "lg";
+type ModalSize = "md" | "lg" | "xl";
 
 const SIZE_CLASS: Record<ModalSize, string> = {
   md: "max-w-md",
   lg: "max-w-2xl",
+  xl: "max-w-xl",
 };
 
 interface ModalProps {

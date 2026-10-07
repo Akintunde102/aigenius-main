@@ -53,6 +53,7 @@ function ProjectSectionHeader({
     onNewChat?: () => void;
     folderMissing?: boolean;
 }) {
+    const { t } = useLanguage();
     const [isHovered, setIsHovered] = React.useState(false);
     const sectionRef = React.useRef<HTMLDivElement>(null);
 
@@ -140,9 +141,9 @@ function ProjectSectionHeader({
                                 color: "var(--sidebar-fg, #1c1c1a)",
                                 background: "color-mix(in srgb, var(--chat-accent, #0ea5e9) 18%, transparent)",
                             }}
-                            title="Project folder is missing on disk"
+                            title={t('common.projectFolderMissing', 'Project folder is missing on disk')}
                         >
-                            Folder missing
+                            {t('common.folderMissing', 'Folder missing')}
                         </span>
                     ) : null}
                 </button>

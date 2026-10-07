@@ -23,6 +23,8 @@ import { ImagePreviewActionsProvider } from '@/app/components/model-interface/fe
 import type { ImagePreviewOpenTarget } from '@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext';
 import type { SetChatUiError } from '@/app/components/model-interface/features/chat/hooks/chatUiError';
 
+import { useLanguage } from '@/lib/providers/LanguageProvider';
+
 interface ChatContainerProps {
     chat: ChatMessage[];
     chatHistory?: ChatSession[];
@@ -212,6 +214,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     conversationSummary,
     lastSummarizedAt,
 }, ref) => {
+    const { t } = useLanguage();
     const inputRef = useRef<any>(null);
     const orphanInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -478,7 +481,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         models={models}
                         selectedModel={selectedModel!}
                         onModelChange={(model) => onSelectModel?.(model)}
-                        placeholder="Type..."
+                        placeholder={t('chat.inputPlaceholder', 'Type...')}
                         responseInProgress={responseInProgress}
                         onStopGeneration={onStopGeneration}
                         uploading={uploading}
