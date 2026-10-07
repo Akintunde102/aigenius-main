@@ -5,17 +5,41 @@ export function isAnalyticsConsentFeatureEnabled(): boolean {
   return process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true';
 }
 
-/** True when PostHog can actually initialize (flag + project key). */
-export function isAnalyticsEnabled(): boolean {
+function isNextDevelopmentBuild(): boolean {
+  return process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+}
+
+/**
+ * Local Tilt / `next dev`: use a separate PostHog project via NEXT_PUBLIC_POSTHOG_KEY_DEV.
+ * Auto-consent applies only in this mode (see analytics-consent.ts).
+ */
+export function isAnalyticsLocalDevMode(): boolean {
   return (
     isAnalyticsConsentFeatureEnabled()
-    && Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim())
+    && isNextDevelopmentBuild()
+    && Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY_DEV?.trim())
   );
 }
 
+/** True when PostHog can actually initialize (flag + project key). */
+export function isAnalyticsEnabled(): boolean {
+  return isAnalyticsConsentFeatureEnabled() && Boolean(getPostHogKey());
+}
+
 export function getPostHogKey(): string | undefined {
+  if (isNextDevelopmentBuild()) {
+    const devKey = process.env.NEXT_PUBLIC_POSTHOG_KEY_DEV?.trim();
+    if (devKey) {
+      return devKey;
+    }
+  }
+
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim();
   return key || undefined;
+}
+
+export function getAnalyticsDeployment(): 'local' | 'production' {
+  return isAnalyticsLocalDevMode() ? 'local' : 'production';
 }
 
 export function getPostHogHost(): string {

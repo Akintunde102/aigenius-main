@@ -110,6 +110,16 @@ declare global {
       getWindowOpacity?: () => Promise<number>;
       toggleWindowOpacity?: () => Promise<number>;
       onWindowOpacityChange?: (handler: (opacity: number) => void) => () => void;
+      getDesktopShellInfo?: () => Promise<{ version: string; isWindowsStore: boolean }>;
+      openShellUpdatePage?: () => Promise<{ ok: true } | { ok: false; error?: string }>;
+      onShellUpdateRequired?: (
+        handler: (payload: {
+          requiredShellVersion: string;
+          installedShellVersion: string;
+          updateChannel: "microsoft-store" | "standalone";
+        }) => void,
+      ) => () => void;
+      checkUiOta?: () => Promise<unknown>;
       [key: string]: any;
     };
   }

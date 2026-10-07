@@ -1,4 +1,4 @@
-import { isAnalyticsConsentFeatureEnabled } from '@/lib/analytics/config';
+import { isAnalyticsConsentFeatureEnabled, isAnalyticsLocalDevMode } from '@/lib/analytics/config';
 
 export type AnalyticsConsentChoice = 'granted' | 'denied';
 
@@ -25,6 +25,10 @@ export function readAnalyticsConsentChoice(): AnalyticsConsentChoice | null {
 export function isAnalyticsConsentGranted(): boolean {
   if (!isAnalyticsConsentRequired()) {
     return false;
+  }
+
+  if (isAnalyticsLocalDevMode()) {
+    return true;
   }
 
   return readAnalyticsConsentChoice() === 'granted';

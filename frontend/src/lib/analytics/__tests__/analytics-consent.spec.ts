@@ -30,6 +30,7 @@ describe('analytics-consent', () => {
     });
     delete process.env.NEXT_PUBLIC_ENABLE_ANALYTICS;
     delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    delete process.env.NEXT_PUBLIC_POSTHOG_KEY_DEV;
   });
 
   afterAll(() => {
@@ -65,5 +66,16 @@ describe('analytics-consent', () => {
 
     expect(readAnalyticsConsentChoice()).toBe('denied');
     expect(isAnalyticsConsentGranted()).toBe(false);
+  });
+
+  it('auto-grants consent in local dev when NEXT_PUBLIC_POSTHOG_KEY_DEV is set', () => {
+    process.env = {
+      ...originalEnv,
+      NODE_ENV: 'development',
+      NEXT_PUBLIC_ENABLE_ANALYTICS: 'true',
+      NEXT_PUBLIC_POSTHOG_KEY_DEV: 'phc_dev',
+    };
+
+    expect(isAnalyticsConsentGranted()).toBe(true);
   });
 });

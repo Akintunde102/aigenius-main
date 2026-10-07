@@ -1,5 +1,6 @@
 import posthog from 'posthog-js';
 import {
+  getAnalyticsDeployment,
   getAnalyticsEnvironment,
   getPostHogHost,
   getPostHogKey,
@@ -50,6 +51,7 @@ export function getPostHogClient(): typeof posthog | null {
     posthog.register({
       platform: isAigeniusDesktopRuntime() ? 'desktop' : 'web',
       environment: getAnalyticsEnvironment(),
+      analytics_deployment: getAnalyticsDeployment(),
     });
 
     initialized = true;
