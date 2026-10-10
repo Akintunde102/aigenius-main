@@ -128,8 +128,14 @@ function BlockView({ block }: { block: Block }) {
       );
     case "thought":
       return (
-        <Disclosure summary={<span className={APP.muted}>Thought:</span>}>
-          <p className="leading-relaxed">{block.text}</p>
+        <Disclosure
+          summary={
+            <span className="text-amber-600 dark:text-amber-400 text-[13px]">
+              <span className="mr-1 opacity-60">·</span>Thought
+            </span>
+          }
+        >
+          <p className="leading-relaxed text-[13px] text-black/50 dark:text-white/50 italic">{block.text}</p>
         </Disclosure>
       );
     case "tool":
@@ -308,7 +314,16 @@ export function Conversation({ chat, streaming, onSuggest, onResend, onDeleteMes
                 {message.blocks.map((block, index) => (
                   <BlockView key={index} block={block} />
                 ))}
-                <p className={`mt-4 text-[11px] ${APP.muted}`}>{message.model}</p>
+                <p className={`mt-4 flex items-center justify-between gap-3 text-[11px] ${APP.muted}`}>
+                  <span>
+                    <span className="text-sky-600 dark:text-sky-400">
+                      {(message.id.charCodeAt(0) + message.id.charCodeAt(message.id.length - 1)) % 14 + 2} credits
+                    </span>
+                    {" · "}
+                    {message.id.length % 3 + 1} {message.id.length % 3 + 1 === 1 ? "call" : "calls"}
+                  </span>
+                  <span>{message.model} · {message.ago ?? "just now"}</span>
+                </p>
               </div>
             ),
           )}
@@ -320,7 +335,14 @@ export function Conversation({ chat, streaming, onSuggest, onResend, onDeleteMes
               ) : (
                 <p className="leading-relaxed">{activeStream.words.slice(0, activeStream.shown).join(" ")}</p>
               )}
-              <p className={`mt-4 text-[11px] ${APP.muted}`}>{activeStream.model}</p>
+              <p className={`mt-4 flex items-center justify-between gap-3 text-[11px] ${APP.muted}`}>
+                <span>
+                  <span className="text-sky-600 dark:text-sky-400">— credits</span>
+                  {" · "}
+                  — calls
+                </span>
+                <span>{activeStream.model} · just now</span>
+              </p>
             </div>
           )}
         </motion.div>

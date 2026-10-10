@@ -1,11 +1,8 @@
-import { Faq, HowItWorks, UseCases } from "./landing/Closing";
+import { Faq, UseCases } from "./landing/Closing";
 import { FeatureRows } from "./landing/FeatureRows";
-import { FinalCta } from "./landing/FinalCta";
 import { Hero } from "./landing/Hero";
 import { LandingShell } from "./landing/LandingShell";
-import { ModelTicker } from "./landing/ModelTicker";
 import { platformFromUserAgent } from "./landing/platforms";
-import { ScrollStatement } from "./landing/ScrollStatement";
 import { SiteFooter } from "./landing/SiteFooter";
 import { SiteHeader } from "./landing/SiteHeader";
 import { sans } from "./landing/typography";
@@ -19,6 +16,7 @@ interface HomePageProps {
  * Server component. All motion lives in client islands. LandingShell is the page's own scroll
  * container (fixed + overflow-y-auto) and tells every scroll-linked effect which element to watch,
  * so it works whatever the body overflow is. The `landing` class scopes the --lp-* palette.
+ * The provider ticker ("One wallet for every major model provider") has been removed.
  */
 export default function HomePage({ userAgent = "" }: HomePageProps) {
   const initialPlatform = platformFromUserAgent(userAgent);
@@ -36,13 +34,9 @@ export default function HomePage({ userAgent = "" }: HomePageProps) {
       <SiteHeader initialPlatform={initialPlatform} />
       <main id="landing-main">
         <Hero initialPlatform={initialPlatform} />
-        <ModelTicker />
-        <ScrollStatement />
         <FeatureRows />
         <UseCases />
-        <HowItWorks />
         <Faq />
-        <FinalCta initialPlatform={initialPlatform} />
       </main>
       <SiteFooter />
     </LandingShell>

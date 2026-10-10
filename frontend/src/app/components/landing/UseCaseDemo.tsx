@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Appear, AppWindow, MetaFooter, ToolLine, UserBubble } from "./app-preview/AppWindow";
 import type { Block, ModelName, Segment } from "./app-preview/data";
 import { PREVIEW } from "./app-preview/previewTheme";
@@ -103,8 +103,23 @@ function ReplyBlock({ block }: { block: Block }) {
   }
 }
 
+/**
+ * The app window sits on a stage that contrasts with whatever is behind it. In the modal the window
+ * (near-black) used to blend into the modal surface; the lighter stage and the ring make the edge visible.
+ */
+function Stage({ framed, children }: { framed: boolean; children: ReactNode }) {
+  if (!framed) return <>{children}</>;
+  return (
+    <div className="rounded-2xl bg-stone-200 p-3 dark:bg-stone-600/40 sm:p-6">
+      <div className="rounded-xl shadow-2xl ring-1 ring-black/10 dark:ring-white/20">{children}</div>
+    </div>
+  );
+}
+
 interface UseCaseDemoProps {
   readonly demo: UseCaseDemoData;
+  /** Draws a contrasting stage behind the app window. Turn off where the demo already sits on its own stage. */
+  readonly framed?: boolean;
 }
 
 /**
@@ -112,7 +127,7 @@ interface UseCaseDemoProps {
  * the composer, sent, answered block by block, and costed. Mount it with key={demo.id} so each
  * use case starts from the beginning.
  */
-export function UseCaseDemo({ demo }: UseCaseDemoProps) {
+export function UseCaseDemo({ demo, framed = true }: UseCaseDemoProps) {
   const reduceMotion = useReducedMotion();
   const [time, setTime] = useState(0);
   const [run, setRun] = useState(0);
@@ -142,6 +157,7 @@ export function UseCaseDemo({ demo }: UseCaseDemoProps) {
 
   return (
     <div>
+      <Stage framed={framed}>
       <AppWindow modelName={CHIP_NAME[demo.model]} draft={draft} typing={!sent && typedChars > 0}>
         {sent && (
           <Appear>
@@ -174,18 +190,19 @@ export function UseCaseDemo({ demo }: UseCaseDemoProps) {
           </Appear>
         )}
       </AppWindow>
+      </Stage>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
           onClick={() => setRun((value) => value + 1)}
-          className="rounded-full px-4 py-2 text-sm text-lp-muted transition-colors duration-150 hover:text-lp-fg"
+          className="inline-flex h-11 items-center justify-center rounded-full bg-stone-900/[0.07] px-6 text-[15px] font-medium text-stone-900 transition-[background-color,transform] duration-150 ease-out-strong hover:bg-stone-900/[0.12] active:scale-[0.97] dark:bg-white/[0.1] dark:text-stone-100 dark:hover:bg-white/[0.16]"
         >
           Replay
         </button>
         <Link
           href="/login"
-          className="inline-flex h-11 items-center justify-center rounded-full bg-lp-fg px-6 text-[15px] font-medium text-lp-bg transition-[transform,opacity] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97]"
+          className="inline-flex h-11 items-center justify-center rounded-full bg-stone-900 px-6 text-[15px] font-medium text-white transition-[transform,opacity] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97] dark:bg-white dark:text-stone-900"
         >
           Try this with your own files
         </Link>

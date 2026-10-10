@@ -11,8 +11,7 @@ import { USE_CASE_DEMOS } from "./use-case-demos";
  */
 export function UseCaseShowcase() {
   const [activeId, setActiveId] = useState(USE_CASE_DEMOS[0]?.id ?? "");
-  const demo =
-    USE_CASE_DEMOS.find((entry) => entry.id === activeId) ?? USE_CASE_DEMOS[0];
+  const demo = USE_CASE_DEMOS.find((entry) => entry.id === activeId) ?? USE_CASE_DEMOS[0];
   if (!demo) return null;
 
   return (
@@ -31,9 +30,7 @@ export function UseCaseShowcase() {
               aria-pressed={selected}
               onClick={() => setActiveId(entry.id)}
               className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm transition-colors duration-200 lg:whitespace-normal lg:rounded-xl lg:px-4 lg:py-3 lg:text-left lg:text-[17px] lg:leading-snug ${
-                selected
-                  ? "bg-lp-tint text-lp-fg"
-                  : "text-lp-muted hover:text-lp-fg"
+                selected ? "bg-lp-tint text-lp-fg" : "text-lp-muted hover:text-lp-fg"
               }`}
             >
               {entry.title}
@@ -44,7 +41,7 @@ export function UseCaseShowcase() {
 
       <div className="lg:col-span-8">
         <div className="rounded-3xl bg-gradient-to-br from-lp-tint via-lp-tint to-lp-surface p-3 sm:p-8 lg:p-10">
-          <UseCaseDemo key={demo.id} demo={demo} />
+          <UseCaseDemo key={demo.id} demo={demo} framed={false} />
         </div>
       </div>
     </div>

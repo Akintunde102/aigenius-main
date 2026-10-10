@@ -28,3 +28,8 @@ export const Newsreader = googleFont(
   'font-newsreader',
   '"Newsreader", Georgia, "Times New Roman", serif',
 );
+
+export const Instrument_Sans = googleFont(
+  'font-instrument-sans',
+  '"Instrument Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+);
