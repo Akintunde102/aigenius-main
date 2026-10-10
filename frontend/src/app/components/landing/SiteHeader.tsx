@@ -1,6 +1,11 @@
 "use client";
 
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValueEvent,
+  useScroll,
+} from "framer-motion";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { NAV_LINKS, PRESS } from "./constants";
@@ -26,7 +31,8 @@ const MENU_ID = "mobile-menu";
  * hero text. The open menu is a solid surface; the scrolled header is a blurred translucent bar.
  */
 const HEADER_MENU_OPEN = "bg-stone-50 text-lp-fg dark:bg-stone-950";
-const HEADER_GLASS = "bg-white/80 text-lp-fg backdrop-blur-md dark:bg-stone-950/75";
+const HEADER_GLASS =
+  "bg-white/80 text-lp-fg backdrop-blur-md dark:bg-stone-950/75";
 
 interface SiteHeaderProps {
   initialPlatform: Platform | null;
@@ -38,7 +44,9 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
   const { scrollY } = useScroll({ container: container ?? undefined });
   const [atTop, setAtTop] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
-  useMotionValueEvent(scrollY, "change", (value) => setAtTop(value < OVER_IMAGE_UNTIL_PX));
+  useMotionValueEvent(scrollY, "change", (value) =>
+    setAtTop(value < OVER_IMAGE_UNTIL_PX),
+  );
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -49,9 +57,9 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
     return () => document.removeEventListener("keydown", handleKey);
   }, [menuOpen]);
 
-  // White-on-photo only while at the top with the menu closed; otherwise the readable glass bar.
-  const onImage = atTop && !menuOpen;
-  const linkTone = onImage ? "text-white/75 hover:text-white" : "text-lp-muted hover:text-lp-fg";
+  // The hero has no photo any more, so the header is never white-on-image. It is transparent at the
+  // top of the page and a readable glass bar after scrolling, always in the theme colours.
+  const linkTone = "text-lp-muted hover:text-lp-fg";
 
   const getNavLinkLabel = (label: string, href: string) => {
     if (href === "#models") return t("landing.models", label);
@@ -61,28 +69,42 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
     return label;
   };
 
-  const surface = menuOpen ? HEADER_MENU_OPEN : onImage ? "bg-transparent text-white" : HEADER_GLASS;
+  const surface = menuOpen
+    ? HEADER_MENU_OPEN
+    : atTop
+      ? "bg-transparent text-lp-fg"
+      : HEADER_GLASS;
 
   return (
-    // -mb-16 pulls the hero up underneath the transparent header.
-    <header className={`sticky top-0 z-40 -mb-16 transition-colors duration-300 ${surface}`}>
-      <nav aria-label="Primary" className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
-        <Logo />
+    // -mb-14 pulls the hero up underneath the transparent header (it is 3.5rem tall).
+    <header
+      className={`sticky top-0 z-40 -mb-14 transition-colors duration-300 ${surface}`}
+    >
+      <nav
+        aria-label="Primary"
+        className="mx-auto flex h-14 max-w-6xl items-center px-5"
+      >
+        <div className="flex flex-1 items-center justify-start">
+          <Logo />
+        </div>
 
-        <ul className="hidden items-center gap-8 text-sm md:flex">
+        <ul className="hidden items-center gap-6 text-[13.5px] md:flex">
           {NAV_LINKS.map((link) => (
             <li key={link.href}>
-              <a href={link.href} className={`transition-colors duration-150 ${linkTone}`}>
+              <a
+                href={link.href}
+                className={`transition-colors duration-150 ${linkTone}`}
+              >
                 {getNavLinkLabel(link.label, link.href)}
               </a>
             </li>
           ))}
         </ul>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-1 items-center justify-end gap-0.5">
           <Link
             href="/login"
-            className={`inline-flex h-9 items-center rounded-full px-3.5 text-sm ${linkTone} ${PRESS}`}
+            className={`whitespace-nowrap inline-flex h-8 items-center rounded-full px-3 text-[13.5px] ${linkTone} ${PRESS}`}
           >
             {t("landing.signIn", "Sign in")}
           </Link>
@@ -90,28 +112,36 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
             type="button"
             aria-label={t("landing.selectLanguage", "Select Language")}
             title={t("landing.selectLanguage", "Select Language")}
-            onClick={() => openLanguageModal('landing')}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${
-              onImage
-                ? "text-white/80 hover:bg-white/15 hover:text-white"
-                : "text-lp-muted hover:bg-black/[0.06] hover:text-lp-fg dark:hover:bg-white/[0.1]"
-            } ${PRESS}`}
+            onClick={() => openLanguageModal("landing")}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-lp-muted hover:bg-black/[0.06] hover:text-lp-fg dark:hover:bg-white/[0.1] ${PRESS}`}
           >
-            <FiGlobe className="h-[18px] w-[18px]" />
+            <FiGlobe className="h-[17px] w-[17px]" />
           </button>
-          <ThemeToggle onImage={onImage} />
+          <ThemeToggle onImage={false} />
           <div className="ml-1 hidden sm:block">
-            <DownloadCta size="sm" initialPlatform={initialPlatform} onImage={onImage} />
+            <DownloadCta
+              size="sm"
+              initialPlatform={initialPlatform}
+              onImage={false}
+            />
           </div>
           <button
             type="button"
-            aria-label={menuOpen ? t("common.close", "Close menu") : t("common.search", "Open menu")}
+            aria-label={
+              menuOpen
+                ? t("common.close", "Close menu")
+                : t("common.search", "Open menu")
+            }
             aria-expanded={menuOpen}
             aria-controls={MENU_ID}
             onClick={() => setMenuOpen((open) => !open)}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-full md:hidden ${linkTone} ${PRESS}`}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-full md:hidden ${linkTone} ${PRESS}`}
           >
-            {menuOpen ? <XIcon className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+            {menuOpen ? (
+              <XIcon className="h-5 w-5" />
+            ) : (
+              <MenuIcon className="h-5 w-5" />
+            )}
           </button>
         </div>
       </nav>
@@ -124,7 +154,7 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2, ease: EASE }}
-            className="absolute inset-x-0 top-16 flex h-[calc(100dvh-4rem)] flex-col overflow-y-auto overscroll-contain bg-stone-50 px-5 pb-8 pt-4 text-lp-fg dark:bg-stone-950 md:hidden"
+            className="absolute inset-x-0 top-14 flex h-[calc(100dvh-3.5rem)] flex-col overflow-y-auto overscroll-contain bg-stone-50 px-5 pb-8 pt-4 text-lp-fg dark:bg-stone-950 md:hidden"
           >
             {/* Plain links in a nav, not a <ul>: a global list rule was indenting them. */}
             <nav aria-label="Mobile" className="flex flex-col">
@@ -142,7 +172,11 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
 
             <div className="mt-auto flex flex-col items-start gap-3 pt-10">
               <div className="[&>div]:items-start">
-                <DownloadCta size="sm" initialPlatform={initialPlatform} onImage={false} />
+                <DownloadCta
+                  size="sm"
+                  initialPlatform={initialPlatform}
+                  onImage={false}
+                />
               </div>
               <Link
                 href="/login"

@@ -6,10 +6,8 @@ import { UseCaseGrid } from "./UseCaseGrid";
 /** Each card opens a working preview of that task (see UseCaseGrid). */
 export function UseCases() {
   return (
-    <section className="mx-auto max-w-6xl px-5 py-20 lg:py-28">
-      <h2 className={`max-w-2xl ${H2}`}>
-        Hand it the work you would rather not do.
-      </h2>
+    <section className="mx-auto max-w-6xl px-5 py-16 lg:py-24">
+      <h2 className={`max-w-2xl ${H2}`}>Hand it the work you would rather not do.</h2>
       <UseCaseGrid />
     </section>
   );

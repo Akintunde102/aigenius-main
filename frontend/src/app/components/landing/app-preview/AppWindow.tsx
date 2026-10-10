@@ -1,6 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef } from "react";
 import type { ReactNode, Ref } from "react";
 import { CheckIcon } from "../icons";
 import {
@@ -36,6 +37,12 @@ interface AppWindowProps {
   readonly draft?: string;
   /** Shows a blinking caret after the draft. */
   readonly typing?: boolean;
+  /** Optional content at the right end of the title bar, for example a wallet balance. */
+  readonly headerRight?: ReactNode;
+  /** Pins the conversation to the bottom of the chat area, so older messages scroll off the top. */
+  readonly anchorBottom?: boolean;
+  /** A model menu (see ModelMenu) that opens above the model chip. */
+  readonly chipMenu?: ReactNode;
   readonly children: ReactNode;
 }
 
@@ -46,8 +53,28 @@ export function AppWindow({
   faded = false,
   draft = "",
   typing = false,
+  headerRight,
+  anchorBottom = false,
+  chipMenu,
   children,
 }: AppWindowProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isAutoScrolling = useRef(true);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
+    isAutoScrolling.current = isAtBottom;
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el && !anchorBottom && isAutoScrolling.current) {
+      el.scrollTop = el.scrollHeight;
+    }
+  });
+
   return (
     <div
       ref={windowRef}
@@ -67,10 +94,19 @@ export function AppWindow({
           AIGenius
           <ChevronDownIcon className={`h-3.5 w-3.5 ${PREVIEW.muted}`} />
         </span>
+        {headerRight ? <div className="ml-auto">{headerRight}</div> : null}
       </div>
 
       <div className="flex h-[34rem] flex-col">
-        <div className="flex-1 space-y-3.5 overflow-hidden px-7 pt-7 text-[15px]">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className={`flex-1 overflow-y-auto px-7 pt-7 text-[15px] ${
+            anchorBottom
+              ? "flex flex-col justify-end gap-3.5 pb-3 [mask-image:linear-gradient(to_bottom,transparent,black_2.5rem)]"
+              : "space-y-3.5 pb-4"
+          }`}
+        >
           {children}
         </div>
 
@@ -96,12 +132,15 @@ export function AppWindow({
               </span>
             </div>
             <div className="mt-1 flex items-center gap-2 px-1">
-              <span
-                className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs ${PREVIEW.line}`}
-              >
-                {modelName}
-                <ChevronDownIcon className="h-3 w-3" />
-              </span>
+              <div className="relative">
+                <span
+                  className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs ${PREVIEW.line}`}
+                >
+                  {modelName}
+                  <ChevronDownIcon className="h-3 w-3" />
+                </span>
+                <AnimatePresence>{chipMenu}</AnimatePresence>
+              </div>
               <span
                 className={`flex h-7 w-9 items-center justify-center rounded-full border ${PREVIEW.line} ${PREVIEW.muted}`}
               >
@@ -131,7 +170,7 @@ export function UserBubble({ children }: { children: ReactNode }) {
 }
 
 export function AssistantText({ children }: { children: ReactNode }) {
-  return <p className="leading-relaxed">{children}</p>;
+  return <p className="leading-relaxed text-[#1f1f1e]/90 dark:text-[#e6e6e8]/90">{children}</p>;
 }
 
 interface ToolLineProps {
@@ -210,15 +249,17 @@ interface MetaFooterProps {
   readonly model: string;
 }
 
-/** The credits line under a finished reply. */
+/** The credits line under a finished reply — mirrors the real app's two-column layout. */
 export function MetaFooter({ credits, calls, model }: MetaFooterProps) {
   return (
     <p
-      className={`flex items-center justify-between gap-3 pt-1 text-xs ${PREVIEW.muted}`}
+      className={`flex items-center justify-between gap-3 pt-1 text-[11px] ${PREVIEW.muted}`}
     >
       <span>
-        <span className={PREVIEW.accent}>{credits} credits</span> · {calls}{" "}
-        {calls === 1 ? "call" : "calls"}
+        <span className={PREVIEW.accent}>
+          {credits} {credits === 1 ? "credit" : "credits"}
+        </span>{" "}
+        · {calls} {calls === 1 ? "call" : "calls"}
       </span>
       <span>{model} · just now</span>
     </p>
@@ -228,4 +269,50 @@ export function MetaFooter({ credits, calls, model }: MetaFooterProps) {
 /** Green tick used by the "6 subagent" style rows. */
 export function DoneTick() {
   return <CheckIcon className="h-3.5 w-3.5 text-emerald-500" />;
+}
+
+interface ModelMenuProps {
+  /** The model currently selected, shown with a check. */
+  readonly current: string;
+  /** The other models in the quick picks. */
+  readonly options: readonly string[];
+  /** The row the demo is about to pick, shown highlighted. */
+  readonly highlighted: string | null;
+}
+
+/** The model picker as the real app draws it. Presentation only: it opens above the composer's model chip. */
+export function ModelMenu({ current, options, highlighted }: ModelMenuProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 6, scale: 0.97 }}
+      transition={{ duration: 0.15, ease: EASE }}
+      className={`absolute bottom-full left-0 z-20 mb-2 w-64 origin-bottom-left rounded-xl border p-1.5 shadow-xl ${PREVIEW.popover} ${PREVIEW.line}`}
+    >
+      <p
+        className={`px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-[0.1em] ${PREVIEW.muted}`}
+      >
+        Current model
+      </p>
+      <div className="flex items-center justify-between gap-3 px-3 py-1.5 text-[13px]">
+        <span className="truncate">{current}</span>
+        <CheckIcon className={`h-3.5 w-3.5 shrink-0 ${PREVIEW.accent}`} />
+      </div>
+      <div className={`my-1.5 border-t ${PREVIEW.line}`} />
+      <p
+        className={`px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-[0.1em] ${PREVIEW.muted}`}
+      >
+        Quick picks
+      </p>
+      {options.map((name) => (
+        <div
+          key={name}
+          className={`rounded-md px-3 py-1.5 text-[13px] transition-colors duration-150 ${highlighted === name ? PREVIEW.active : ""}`}
+        >
+          {name}
+        </div>
+      ))}
+    </motion.div>
+  );
 }

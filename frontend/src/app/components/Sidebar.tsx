@@ -32,7 +32,7 @@ const Sidebar = ({
 
     const handleLogout = () => {
         clearAuthSession();
-        router.push(LINKS.internalPages.login.github);
+        window.location.href = LINKS.internalPages.login.github;
     }
 
     const handleLinkClick = () => {

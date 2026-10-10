@@ -92,8 +92,8 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
 
   const handleLogout = useCallback(() => {
     clearAuthSession();
-    router.push(LINKS.internalPages.login.github);
-  }, [router]);
+    window.location.href = LINKS.internalPages.login.github;
+  }, []);
 
   useEffect(() => {
     router.prefetch("/workflows");
