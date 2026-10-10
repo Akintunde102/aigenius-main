@@ -222,6 +222,7 @@ const nextConfig = {
             vercelAnalyticsOrigin,
             posthogUsIngestOrigin,
             posthogUsAssetsOrigin,
+            'https://get.microsoft.com',
         ].join(' ');
 
         return [
