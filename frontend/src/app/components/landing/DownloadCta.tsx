@@ -16,7 +16,6 @@ import {
   type Platform,
   type PlatformEntry,
 } from "./platforms";
-import Script from "next/script";
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -88,7 +87,6 @@ export function DownloadCta({
 
   return (
     <div className="flex flex-col items-center gap-2.5">
-      <Script type="module" src="https://get.microsoft.com/badge/ms-store-badge.bundled.js" strategy="afterInteractive" />
       {detected ? (
         detected.comingSoon ? (
           <span
@@ -104,6 +102,7 @@ export function DownloadCta({
               launchmode="direct"
               cid="website_cta"
               theme="auto"
+              className="inline-block h-[48px] w-[150px] overflow-hidden rounded-lg"
             />
           </div>
         ) : (

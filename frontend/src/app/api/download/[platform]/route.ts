@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 const GITHUB_API_URL = 'https://api.github.com/repos/Akintunde102/aigenius-main/releases/latest';
 
 export async function GET(

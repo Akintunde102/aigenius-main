@@ -4,6 +4,7 @@ import ClientAnalytics from "./components/ClientAnalytics";
 import "./styles/x-forms.scss";
 import "./styles/animations.scss";
 import React from 'react';
+import Script from "next/script";
 import ReactQueryProvider from "@/lib/providers/ReactQueryProvider";
 import ViewportHeightSetter from './ViewportHeightSetter';
 import DesktopShellChrome from './components/DesktopShellChrome';
@@ -166,6 +167,7 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning={true} className={Euclid.className}>
+        <Script type="module" src="https://get.microsoft.com/badge/ms-store-badge.bundled.js" strategy="afterInteractive" />
         <DesktopShellDocumentFlag />
         <ThemeProvider>
           <LanguageProvider>
