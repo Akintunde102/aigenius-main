@@ -9,7 +9,7 @@ export interface PlatformEntry {
 
 export const PLATFORMS: readonly PlatformEntry[] = [
   { id: "macos", label: "macOS", href: "/api/download/macos", comingSoon: true },
-  { id: "windows", label: "Windows", href: "/api/download/windows" },
+  { id: "windows", label: "Windows", href: "https://apps.microsoft.com/detail/9NGQQ3GF2WHL" },
   { id: "linux", label: "Linux", href: "/api/download/linux" },
 ];
 

@@ -31,6 +31,12 @@ export function canUseHttpOnlyRefreshCookie(): boolean {
     );
 }
 
+function eraseAuthCookie(key: string): void {
+    if (typeof document !== 'undefined') {
+        document.cookie = `${encodeURIComponent(key)}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+    }
+}
+
 export function clearAuthSession() {
     if (typeof window !== 'undefined') {
         const refreshTokenPromise = canUseDesktopStoredRefreshToken()
@@ -62,6 +68,8 @@ export function clearAuthSession() {
     storage(storageConstants.NOBOX_CLIENT_TOKEN).removeItem();
     storage(storageConstants.NOBOX_TOKEN).removeItem();
     storage(storageConstants.LOGGED_USER_DETAILS).removeItem();
+    eraseAuthCookie(storageConstants.NOBOX_CLIENT_TOKEN);
+    eraseAuthCookie(storageConstants.NOBOX_TOKEN);
 }
 
 export function setAuthSessionTokens(args: { clientToken: string; authToken: string }) {

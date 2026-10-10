@@ -16,6 +16,24 @@ import {
   type Platform,
   type PlatformEntry,
 } from "./platforms";
+import Script from "next/script";
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace JSX {
+    interface IntrinsicElements {
+      "ms-store-badge": React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement> & {
+          productid?: string;
+          launchmode?: string;
+          cid?: string;
+          theme?: string;
+        },
+        HTMLElement
+      >;
+    }
+  }
+}
 
 const LINK_CLASS =
   "underline underline-offset-4 transition-colors duration-150 hover:text-lp-fg";
@@ -58,12 +76,19 @@ export function DownloadCta({
     setDetected(findPlatform(detectDesktopOS()) ?? null);
   }, []);
 
+  const handleDownloadClick = (platformId: Platform) => {
+    if (platformId !== "windows") {
+      setModalPlatform(platformId);
+    }
+  };
+
   const others = detected
     ? PLATFORMS.filter((platform) => platform.id !== detected.id)
     : [];
 
   return (
     <div className="flex flex-col items-center gap-2.5">
+      <Script type="module" src="https://get.microsoft.com/badge/ms-store-badge.bundled.js" strategy="afterInteractive" />
       {detected ? (
         detected.comingSoon ? (
           <span
@@ -72,11 +97,20 @@ export function DownloadCta({
             <DownloadIcon className="h-4 w-4" />
             {detected.label} (coming soon)
           </span>
+        ) : detected.id === "windows" ? (
+          <div className={`flex items-center justify-center ${BUTTON_SIZE[size].split(" ")[0]} hover:opacity-90 transition-opacity`}>
+            <ms-store-badge
+              productid="9NGQQ3GF2WHL"
+              launchmode="direct"
+              cid="website_cta"
+              theme="auto"
+            />
+          </div>
         ) : (
           <a
             href={detected.href}
             download
-            onClick={() => setModalPlatform(detected.id)}
+            onClick={() => handleDownloadClick(detected.id)}
             className={`inline-flex items-center gap-2 ${onImage ? BUTTON_ON_IMAGE : PRIMARY_PILL} ${BUTTON_SIZE[size]} ${PRESS}`}
           >
             <DownloadIcon className="h-4 w-4" />
@@ -100,8 +134,8 @@ export function DownloadCta({
                 ) : (
                   <a
                     href={platform.href}
-                    download
-                    onClick={() => setModalPlatform(platform.id)}
+                    download={platform.id !== "windows" ? "" : undefined}
+                    onClick={() => handleDownloadClick(platform.id)}
                     className={onImage ? LINK_CLASS_ON_BRAND : LINK_CLASS}
                   >
                     {platform.label}
@@ -124,8 +158,8 @@ export function DownloadCta({
               ) : (
                 <a
                   href={platform.href}
-                  download
-                  onClick={() => setModalPlatform(platform.id)}
+                  download={platform.id !== "windows" ? "" : undefined}
+                  onClick={() => handleDownloadClick(platform.id)}
                   className={LINK_CLASS}
                 >
                   {platform.label}

@@ -21,7 +21,7 @@ export type Block =
 
 export type Message =
   | { readonly id: string; readonly role: "user"; readonly text: string; readonly ago?: string }
-  | { readonly id: string; readonly role: "assistant"; readonly model: ModelName; readonly blocks: readonly Block[] };
+  | { readonly id: string; readonly role: "assistant"; readonly model: ModelName; readonly ago?: string; readonly blocks: readonly Block[] };
 
 export interface Chat {
   readonly id: string;

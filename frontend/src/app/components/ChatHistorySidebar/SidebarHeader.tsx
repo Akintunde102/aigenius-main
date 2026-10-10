@@ -101,8 +101,8 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
 
     const handleLogout = React.useCallback(() => {
       clearAuthSession();
-      router.push(LINKS.internalPages.login.github);
-    }, [router]);
+      window.location.href = LINKS.internalPages.login.github;
+    }, []);
 
     const handleCloseSearch = React.useCallback(() => {
       setDraftHistorySearch("");
