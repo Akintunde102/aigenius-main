@@ -73,6 +73,14 @@ export function DownloadCta({
 
   useEffect(() => {
     setDetected(findPlatform(detectDesktopOS()) ?? null);
+
+    if (typeof window !== "undefined" && !document.getElementById("ms-store-badge-script")) {
+      const script = document.createElement("script");
+      script.id = "ms-store-badge-script";
+      script.type = "module";
+      script.src = "https://get.microsoft.com/badge/ms-store-badge.bundled.js";
+      document.head.appendChild(script);
+    }
   }, []);
 
   const handleDownloadClick = (platformId: Platform) => {
