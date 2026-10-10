@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useLayoutEffect } from "react";
 import DesktopTitleBarActions from "./DesktopTitleBarActions";
 import DesktopOpacityFloatingControl from "./DesktopOpacityFloatingControl";
+import DesktopStoreUpdateBanner from "./DesktopStoreUpdateBanner";
 
 /** `-webkit-app-region` is not in the csstype CSSProperties; cast to allow it. */
 type DragStyle = CSSProperties & { WebkitAppRegion?: "drag" | "no-drag" };
@@ -63,6 +64,7 @@ export default function DesktopShellChrome({
       />
       <DesktopTitleBarActions />
       <DesktopOpacityFloatingControl />
+      <DesktopStoreUpdateBanner />
       <div
         className="aigenius-desktop-app-shell flex min-h-0 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain scroll-smooth"
         style={{

@@ -83,7 +83,7 @@ The main BrowserWindow only stays on the embedded Next app (`AIGENIUS_FRONTEND_P
 
 ## Desktop release versioning
 
-Shipped installers and auto-update metadata use a **two-part** version in `desktop/package.json` (`major.minor`, e.g. `0.4`). Bump that field before `package:win:*`, `package:mac:*`, or store submissions. Keep `desktop-renderer/package.json` on the same version when publishing UI OTA bundles.
+Shipped Windows installers use the **0.4** filename (`AIGenius-Setup-0.4.exe` via `build.win.artifactName`). `desktop/package.json` **`version`** must stay **semver** (`0.4.0`) for `electron-builder`; bump the marketing minor (`0.4` → `0.5`) in `artifactName` and the patch (`0.4.0` → `0.4.1`) together when cutting a release. Keep `desktop-renderer/package.json` on the same semver when publishing UI OTA bundles.
 
 ## Production packages (`.deb` + Flatpak)
 

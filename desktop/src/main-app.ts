@@ -77,7 +77,6 @@ import { installVcRuntimeElevated, isVcRuntimeInstalled } from './vcredist-guard
 import {
   registerAutoUpdaterIpcHandlers,
   setupAutoUpdater,
-  runSilentUiOtaCheck,
 } from './main-auto-updater';
 
 if (process.platform === 'win32' && !process.windowsStore) {
@@ -293,11 +292,6 @@ if (!gotLock) {
         void reportBackendStartupFailure(err);
       });
     }
-
-    // Silently check for UI OTA update in the background (staggered so it never slows down boot)
-    setTimeout(() => {
-      void runSilentUiOtaCheck();
-    }, 15_000);
 
     const registeredGlobalShot = globalShortcut.register(CHAT_SCREENSHOT_GLOBAL_ACCELERATOR, () => {
       void attachFullDesktopToChatShell(null);

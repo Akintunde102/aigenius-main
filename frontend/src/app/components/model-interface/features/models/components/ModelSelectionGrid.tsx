@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { Model } from "@/app/components/model-interface/shared/types";
+import { RenderErrorBoundary } from "@/app/components/RenderErrorBoundary";
 import { ModelSelectionCard } from "./ModelSelectionCard";
 import {
   ModelPickerSectionBlock,
@@ -9,8 +9,6 @@ import {
 import {
   MODEL_CARD_GAP_PX,
   buildModelSelectionVirtualRows,
-  estimateModelSelectionRowSize,
-  getModelSelectionRowKey,
   isModelSectionCollapsed,
 } from "./modelSelectionGrid.utils";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
@@ -89,7 +87,7 @@ interface ModelSelectionGridProps {
   /** True when an affordability toggle sits directly above the grid. */
   hasLeadingControl?: boolean;
   models?: Model[];
-  /** When set, renders titled sections (single virtualized list). */
+  /** When set, renders titled sections in one scrolling list. */
   sections?: ModelSelectionSection[];
   isMobile: boolean;
   emptyState?: React.ReactNode;
@@ -126,7 +124,6 @@ export const ModelSelectionGrid = React.memo(({
   previewedModelId,
 }: ModelSelectionGridProps) => {
   const { t } = useLanguage();
-  const [scrollPaneHeight, setScrollPaneHeight] = useState(0);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -153,43 +150,11 @@ export const ModelSelectionGrid = React.memo(({
     ? sections.reduce((sum, s) => sum + s.models.length, 0)
     : models.length;
 
-  const estimateSize = useCallback(
-    (index: number) => estimateModelSelectionRowSize(index, virtualRows, isMobile),
-    [virtualRows, isMobile],
-  );
-
-  const getItemKey = useCallback(
-    (index: number) => getModelSelectionRowKey(index, virtualRows),
-    [virtualRows],
-  );
-
+  // Reset scroll when the catalog view changes. The list is in normal flow, so
+  // a leftover scroll offset from the previous filter would hide the first rows.
   useLayoutEffect(() => {
-    const scrollEl = parentRef.current;
-    if (!scrollEl) return;
-
-    const syncHeight = () => {
-      setScrollPaneHeight(scrollEl.clientHeight);
-    };
-    syncHeight();
-    const frame = requestAnimationFrame(syncHeight);
-
-    const observer = new ResizeObserver(syncHeight);
-    observer.observe(scrollEl);
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-    };
+    parentRef?.current?.scrollTo?.({ top: 0 });
   }, [parentRef, listKey]);
-
-  const virtualizer = useVirtualizer({
-    count: virtualRows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize,
-    getItemKey,
-    overscan: 5,
-    gap: MODEL_CARD_GAP_PX,
-    enabled: scrollPaneHeight > 0,
-  });
 
   const slotPadding = isMobile ? "px-1" : "px-2";
 
@@ -206,77 +171,50 @@ export const ModelSelectionGrid = React.memo(({
   }
 
   return (
-    <div
-      style={{
-        height: `${virtualizer.getTotalSize()}px`,
-        width: "100%",
-        position: "relative",
-      }}
+    <RenderErrorBoundary
+      logLabel="[model-picker]"
+      resetKey={listKey}
+      message={t("modelPicker.listFailed", "Could not show the model list.")}
     >
-      {virtualizer.getVirtualItems().map((virtualRow) => {
-        const row = virtualRows[virtualRow.index];
-        if (!row) return null;
+      <div className="flex w-full flex-col" style={{ gap: MODEL_CARD_GAP_PX }}>
+        {virtualRows.map((row) => {
+          if (row.type === "header") {
+            return (
+              <div key={`header:${row.title}`} className={slotPadding}>
+                <ModelSectionHeader
+                  title={row.title}
+                  modelCount={row.modelCount}
+                  isCollapsed={row.isCollapsed}
+                  isFirstSection={row.isFirstSection}
+                  hasLeadingControl={row.hasLeadingControl}
+                  onToggle={() => toggleSectionCollapsed(row.title)}
+                />
+              </div>
+            );
+          }
 
-        if (row.type === "header") {
           return (
-            <div
-              key={String(virtualRow.key)}
-              data-index={virtualRow.index}
-              ref={virtualizer.measureElement}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                transform: `translateY(${virtualRow.start}px)`,
-              }}
-              className={slotPadding}
-            >
-              <ModelSectionHeader
-                title={row.title}
-                modelCount={row.modelCount}
-                isCollapsed={row.isCollapsed}
-                isFirstSection={row.isFirstSection}
-                hasLeadingControl={row.hasLeadingControl}
-                onToggle={() => toggleSectionCollapsed(row.title)}
+            <div key={`model:${row.model.id}`} className={slotPadding}>
+              <ModelSelectionCard
+                model={row.model}
+                isPinned={isModelPinned(row.model.id)}
+                onTogglePin={togglePinModel}
+                onSelect={onSelect}
+                averageCost={avgCostById.get(row.model.id) || 0}
+                isSelected={selectedModelId === row.model.id}
+                onShowDetails={handleShowModelDetails}
+                isMobile={isMobile}
+                isSortingByReleaseDate={isSortingByReleaseDate}
+                wallet={wallet}
+                selectedModelId={selectedModelId}
+                onAddCredits={onAddCredits}
+                isPreviewedRecent={previewedModelId != null && previewedModelId === row.model.id}
               />
             </div>
           );
-        }
-
-        return (
-          <div
-            key={String(virtualRow.key)}
-            data-index={virtualRow.index}
-            ref={virtualizer.measureElement}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              transform: `translateY(${virtualRow.start}px)`,
-            }}
-            className={slotPadding}
-          >
-            <ModelSelectionCard
-              model={row.model}
-              isPinned={isModelPinned(row.model.id)}
-              onTogglePin={togglePinModel}
-              onSelect={onSelect}
-              averageCost={avgCostById.get(row.model.id) || 0}
-              isSelected={selectedModelId === row.model.id}
-              onShowDetails={handleShowModelDetails}
-              isMobile={isMobile}
-              isSortingByReleaseDate={isSortingByReleaseDate}
-              wallet={wallet}
-              selectedModelId={selectedModelId}
-              onAddCredits={onAddCredits}
-              isPreviewedRecent={previewedModelId != null && previewedModelId === row.model.id}
-            />
-          </div>
-        );
-      })}
-    </div>
+        })}
+      </div>
+    </RenderErrorBoundary>
   );
 });
 

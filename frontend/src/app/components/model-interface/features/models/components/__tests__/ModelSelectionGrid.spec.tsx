@@ -5,23 +5,10 @@ import '@testing-library/jest-dom';
 import { ModelSelectionGrid } from '../ModelSelectionGrid';
 import { Model } from '@/app/components/model-interface/shared/types';
 
-jest.mock('@tanstack/react-virtual', () => ({
-  useVirtualizer: ({ count }: { count: number }) => ({
-    getTotalSize: () => count * 50,
-    getVirtualItems: () =>
-      Array.from({ length: count }, (_, index) => ({
-        index,
-        key: index,
-        start: index * 50,
-      })),
-    measureElement: () => {},
-  }),
-}));
-
 jest.mock('../ModelSelectionCard', () => ({
-  ModelSelectionCard: ({ model }: { model: Model }) => (
+  ModelSelectionCard: jest.fn(({ model }: { model: Model }) => (
     <div data-testid="model-card">{model.name}</div>
-  ),
+  )),
 }));
 
 const baseModel = (id: string, name: string): Model => ({
@@ -45,8 +32,14 @@ const defaultProps = {
 };
 
 describe('ModelSelectionGrid', () => {
+  const cardMock = jest.requireMock('../ModelSelectionCard') as {
+    ModelSelectionCard: jest.Mock;
+  };
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    cardMock.ModelSelectionCard.mockImplementation(({ model }: { model: Model }) => (
+      <div data-testid="model-card">{model.name}</div>
+    ));
   });
 
   it('collapses Quick picks when the section title is clicked', async () => {
@@ -116,5 +109,48 @@ describe('ModelSelectionGrid', () => {
 
     expect(screen.queryByTestId('model-card')).not.toBeInTheDocument();
     expect(screen.getByText('1 model')).toBeInTheDocument();
+  });
+
+  it('renders model rows when the scroll pane has not been measured', () => {
+    const scrollParent = document.createElement('div');
+    Object.defineProperty(scrollParent, 'clientHeight', { value: 0 });
+    const parentRef = { current: scrollParent };
+
+    render(
+      <ModelSelectionGrid
+        {...defaultProps}
+        parentRef={parentRef}
+        sections={[
+          {
+            title: '',
+            models: [baseModel('1', 'Hy3'), baseModel('2', 'Gemini 3.8 Flash')],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('Hy3')).toBeInTheDocument();
+    expect(screen.getByText('Gemini 3.8 Flash')).toBeInTheDocument();
+  });
+
+  it('contains a broken model card without leaving the list blank', () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    cardMock.ModelSelectionCard.mockImplementation(() => {
+      throw new Error('card failed');
+    });
+
+    render(
+      <div>
+        <p>Model picker chrome</p>
+        <ModelSelectionGrid
+          {...defaultProps}
+          models={[baseModel('1', 'Hy3')]}
+        />
+      </div>,
+    );
+
+    expect(screen.getByText('Model picker chrome')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/could not show the model list/i);
+    consoleError.mockRestore();
   });
 });

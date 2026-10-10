@@ -46,7 +46,6 @@
     "@editorjs/quote": "^2.6.0",
     "@editorjs/simple-image": "^1.6.0",
     "@fontsource/hanken-grotesk": "^5.3.0",
-    "@fontsource/instrument-sans": "^5.3.0",
     "@fontsource/newsreader": "^5.3.0",
     "@fontsource/source-serif-4": "^5.2.9",
     "@hookform/resolvers": "^3.6.0",

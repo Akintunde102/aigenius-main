@@ -66,21 +66,23 @@ export default function DesktopLoginPage() {
 
   if (restoringSession) {
     return (
-      <PublicPageShell hideHeader showFooter={false} contentClassName="justify-center">
+      <PublicPageShell hideHeader showFooter={false} contentClassName="items-center justify-center">
         <DesktopSessionRestoringView />
       </PublicPageShell>
     );
   }
 
   return (
-    <PublicPageShell hideHeader showFooter={false} contentClassName="justify-center">
+    <PublicPageShell hideHeader showFooter={false} contentClassName="items-center justify-center">
       <DesktopAuthFrame>
         <DesktopAuthHeading
           title="Welcome back"
           subtitle={storedFirstName ? `Sign in as ${storedFirstName}` : "Sign in to your desktop workspace"}
         />
 
-        <div className="relative mt-8 w-full max-w-xs">
+        <div
+          className={`relative mt-8 w-full ${authLoading ? "max-w-md" : "max-w-xs"}`}
+        >
           {/* Stays mounted but invisible while sign-in runs, exactly as before. */}
           <div
             className={`flex flex-col gap-3 ${authLoading ? "pointer-events-none absolute h-px w-px overflow-hidden opacity-0" : ""

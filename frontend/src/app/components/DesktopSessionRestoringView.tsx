@@ -2,6 +2,7 @@
 
 import { type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
+import { DISPLAY } from "@/app/components/landing/typography";
 
 /**
  * Shown while an existing desktop session is being restored (avoids flashing the sign-in form).
@@ -16,28 +17,22 @@ export function DesktopSessionRestoringView({
   action?: ReactNode;
 }) {
   return (
-    <div className="content-centered">
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "3.5rem",
-        height: "3.5rem",
-        borderRadius: "1rem",
-        border: "1px solid rgba(6, 182, 212, 0.2)",
-        background: "rgba(6, 182, 212, 0.1)",
-        color: "#06b6d4",
-        marginBottom: "1.5rem"
-      }}>
-        <Loader2 size={32} className="animate-spin" aria-hidden />
+    <div className="flex w-full flex-col items-center text-center">
+      <div
+        className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-black/[0.05] text-lp-muted dark:bg-white/[0.07]"
+        aria-hidden
+      >
+        <Loader2 size={32} className="animate-spin" />
       </div>
-      <h1 className="headline" style={{ fontSize: "1.5rem" }}>{message}</h1>
+      <h1
+        className={`${DISPLAY} text-2xl font-normal leading-[1.1] tracking-[-0.02em] sm:text-3xl`}
+      >
+        {message}
+      </h1>
       {detail ? (
-        <p className="subtext">{detail}</p>
+        <p className="mt-3 max-w-sm text-base leading-relaxed text-lp-muted">{detail}</p>
       ) : null}
-      {action ? (
-        <div style={{ marginTop: "1.5rem" }}>{action}</div>
-      ) : null}
+      {action ? <div className="mt-6">{action}</div> : null}
     </div>
   );
 }

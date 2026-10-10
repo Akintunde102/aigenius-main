@@ -234,6 +234,35 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
   // Auto-Updater hooks
   checkForUpdates: () => ipcRenderer.invoke('aigenius-check-for-updates'),
   checkUiOta: () => ipcRenderer.invoke('aigenius-check-ui-ota'),
+  getDesktopShellInfo: () =>
+    ipcRenderer.invoke('aigenius-get-desktop-shell-info') as Promise<{
+      version: string;
+      isWindowsStore: boolean;
+    }>,
+  openShellUpdatePage: () =>
+    ipcRenderer.invoke('aigenius-open-shell-update-page') as Promise<
+      { ok: true } | { ok: false; error?: string }
+    >,
+  onShellUpdateRequired: (
+    handler: (payload: {
+      requiredShellVersion: string;
+      installedShellVersion: string;
+      updateChannel: 'microsoft-store' | 'standalone';
+    }) => void,
+  ) => {
+    const listener = (
+      _event: unknown,
+      payload: {
+        requiredShellVersion: string;
+        installedShellVersion: string;
+        updateChannel: 'microsoft-store' | 'standalone';
+      },
+    ) => handler(payload);
+    ipcRenderer.on('aigenius-shell-update-required', listener);
+    return () => {
+      ipcRenderer.removeListener('aigenius-shell-update-required', listener);
+    };
+  },
   downloadUpdate: () => ipcRenderer.invoke('aigenius-download-update'),
   installUpdate: () => ipcRenderer.invoke('aigenius-install-update'),
   onUpdateAvailable: (handler: (info: any) => void) => {

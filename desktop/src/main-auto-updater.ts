@@ -1,22 +1,36 @@
 import { autoUpdater } from 'electron-updater';
-import { ipcMain, BrowserWindow, app } from 'electron';
+import { ipcMain, BrowserWindow, app, shell } from 'electron';
 import { shutdownDesktopApp } from './main-backend-lifecycle';
 import { checkForSilentUiUpdate, type OtaCheckResult } from './desktop-ui-ota';
+import {
+  resolveMicrosoftStorePdpUrl,
+  STANDALONE_SHELL_UPDATE_URL,
+} from './microsoft-store-update';
+import {
+  isWindowsStoreBuild,
+  notifyShellUpdateRequired,
+  shellUpdatePayloadFromOtaResult,
+} from './shell-update-notify';
 
 const UPDATE_IPC_CHANNELS = [
   'aigenius-check-for-updates',
   'aigenius-download-update',
   'aigenius-install-update',
   'aigenius-check-ui-ota',
+  'aigenius-get-desktop-shell-info',
+  'aigenius-open-shell-update-page',
 ] as const;
+
+const OTA_BOOT_DELAY_MS = 15_000;
+/** Background manifest poll while the app is running (manifest is small; tune up if CDN cost matters). */
+const OTA_RECHECK_INTERVAL_MS = 5 * 60 * 1000;
+const OTA_FOCUS_DEBOUNCE_MS = 60_000;
 
 let ipcHandlersRegistered = false;
 let updaterEventsAttached = false;
 let updaterShellWindow: BrowserWindow | undefined;
-
-function isWindowsStoreBuild(): boolean {
-  return Boolean(process.windowsStore);
-}
+let otaScheduleStarted = false;
+let lastOtaFocusCheckAt = 0;
 
 function isDevBinaryUpdateCheckSkipped(): boolean {
   return process.env.NODE_ENV === 'development';
@@ -79,13 +93,31 @@ export function registerAutoUpdaterIpcHandlers(): void {
   });
 
   ipcMain.handle('aigenius-check-ui-ota', async (): Promise<OtaCheckResult> => {
-    return runSilentUiOtaCheck();
+    return runSilentUiOtaCheckAndNotify();
+  });
+
+  ipcMain.handle('aigenius-get-desktop-shell-info', async () => ({
+    version: app.getVersion(),
+    isWindowsStore: isWindowsStoreBuild(),
+  }));
+
+  ipcMain.handle('aigenius-open-shell-update-page', async () => {
+    const url = isWindowsStoreBuild()
+      ? resolveMicrosoftStorePdpUrl()
+      : STANDALONE_SHELL_UPDATE_URL;
+    try {
+      await shell.openExternal(url);
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: String(err) };
+    }
   });
 }
 
 export function setupAutoUpdater(mainWindow: BrowserWindow): void {
   registerAutoUpdaterIpcHandlers();
   updaterShellWindow = mainWindow;
+  scheduleSilentUiOtaChecks(mainWindow);
 
   if (isWindowsStoreBuild() || updaterEventsAttached) {
     return;
@@ -132,4 +164,39 @@ export async function runSilentUiOtaCheck(): Promise<OtaCheckResult> {
     console.warn('[aigenius-desktop] Silent UI OTA check encountered error:', err);
     return { status: 'download-failed', error: String(err) };
   }
+}
+
+export async function runSilentUiOtaCheckAndNotify(
+  shellWindow?: BrowserWindow,
+): Promise<OtaCheckResult> {
+  const result = await runSilentUiOtaCheck();
+  const payload = shellUpdatePayloadFromOtaResult(result);
+  if (payload) {
+    notifyShellUpdateRequired(shellWindow ?? updaterShellWindow, payload);
+  }
+  return result;
+}
+
+function scheduleSilentUiOtaChecks(mainWindow: BrowserWindow): void {
+  if (otaScheduleStarted) {
+    return;
+  }
+  otaScheduleStarted = true;
+
+  setTimeout(() => {
+    void runSilentUiOtaCheckAndNotify(mainWindow);
+  }, OTA_BOOT_DELAY_MS);
+
+  setInterval(() => {
+    void runSilentUiOtaCheckAndNotify(mainWindow);
+  }, OTA_RECHECK_INTERVAL_MS);
+
+  mainWindow.on('focus', () => {
+    const now = Date.now();
+    if (now - lastOtaFocusCheckAt < OTA_FOCUS_DEBOUNCE_MS) {
+      return;
+    }
+    lastOtaFocusCheckAt = now;
+    void runSilentUiOtaCheckAndNotify(mainWindow);
+  });
 }
