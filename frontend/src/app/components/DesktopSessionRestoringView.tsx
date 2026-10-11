@@ -19,7 +19,7 @@ export function DesktopSessionRestoringView({
   return (
     <div className="flex w-full flex-col items-center text-center">
       <div
-        className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-black/[0.05] text-lp-muted dark:bg-white/[0.07]"
+        className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-black/[0.05] text-lp-muted dark:bg-white/[0.07]"
         aria-hidden
       >
         <Loader2 size={32} className="animate-spin" />

@@ -104,13 +104,29 @@ export function DownloadCta({
             {detected.label} (coming soon)
           </span>
         ) : detected.id === "windows" ? (
-          <div className={`flex items-center justify-center ${BUTTON_SIZE[size].split(" ")[0]} hover:opacity-90 transition-opacity`}>
+          <div className="relative inline-flex cursor-pointer overflow-hidden rounded-full">
+            <div
+              className={`inline-flex items-center gap-2 ${onImage ? BUTTON_ON_IMAGE : PRIMARY_PILL} ${BUTTON_SIZE[size]} ${PRESS}`}
+            >
+              <DownloadIcon className="h-4 w-4" />
+              Download for {detected.label}
+            </div>
+            {/* The MS Badge requires a trusted click, so we MUST click-jack. 
+                We scale it massively to ensure it covers the entire button regardless of its internal layout constraints. */}
             <ms-store-badge
               productid="9NGQQ3GF2WHL"
               launchmode="direct"
               cid="website_cta"
               theme="auto"
-              className="inline-block h-[48px] w-[150px] overflow-hidden rounded-lg"
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%) scale(10)",
+                opacity: 0.001,
+                cursor: "pointer",
+                zIndex: 10,
+              }}
             />
           </div>
         ) : (
