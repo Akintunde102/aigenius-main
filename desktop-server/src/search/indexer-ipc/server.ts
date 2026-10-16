@@ -8,6 +8,10 @@ export type IndexerIpcHandlers = {
   'switch-project': (req: Extract<IndexerIpcRequestBody, { op: 'switch-project' }>) => Promise<unknown>;
   'index-project': (req: Extract<IndexerIpcRequestBody, { op: 'index-project' }>) => Promise<unknown>;
   reindex: (req: Extract<IndexerIpcRequestBody, { op: 'reindex' }>) => Promise<unknown>;
+  'enqueue-pocket': (req: Extract<IndexerIpcRequestBody, { op: 'enqueue-pocket' }>) => Promise<unknown>;
+  'run-install-planner': (
+    req: Extract<IndexerIpcRequestBody, { op: 'run-install-planner' }>,
+  ) => Promise<unknown>;
   shutdown: () => Promise<unknown>;
 };
 
@@ -71,6 +75,10 @@ async function handleLine(line: string, handlers: IndexerIpcHandlers): Promise<I
         return { id: req.id, ok: true, result: await handlers['index-project'](req) };
       case 'reindex':
         return { id: req.id, ok: true, result: await handlers.reindex(req) };
+      case 'enqueue-pocket':
+        return { id: req.id, ok: true, result: await handlers['enqueue-pocket'](req) };
+      case 'run-install-planner':
+        return { id: req.id, ok: true, result: await handlers['run-install-planner'](req) };
       case 'shutdown':
         return { id: req.id, ok: true, result: await handlers.shutdown() };
       default: {

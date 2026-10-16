@@ -3,7 +3,7 @@ import type { Config } from '../types';
 export type AigeniusDesktopBridge = {
   isDesktop?: boolean;
   getChatRuntimeContext?: () => Promise<{
-    desktopHost: { platform: string; arch: string; release: string; userHomeDir: string };
+    desktopHost: { platform: string; arch: string; release: string; userHomeDir: string; activeShell?: string };
     retrievalMemoryCatalog: {
       generatedAtIso: string;
       entries: Array<{ slug: string; name: string; description: string; tags: string[] }>;

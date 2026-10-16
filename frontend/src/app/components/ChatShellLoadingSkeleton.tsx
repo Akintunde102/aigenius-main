@@ -37,11 +37,21 @@ export function ChatShellLoadingSkeleton({
     <div
       className="flex w-full flex-col md:flex-row md:min-h-0 md:flex-1"
       style={{
+        display: "flex",
+        flexDirection: "row",
+        width: "100%",
+        fontFamily:
+          'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         ...shell,
         minHeight: "calc(var(--vh, 1vh) * 100)",
         ...outerMinHeightStyle,
       }}
     >
+      <style>{`
+        @keyframes aig-skeleton-spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
       <aside
         className="hidden min-h-0 w-[320px] shrink-0 flex-col gap-3 border-r border-slate-200/70 bg-white/90 p-4 dark:border-zinc-700/80 dark:bg-zinc-900/90 md:flex"
         aria-hidden
@@ -59,19 +69,63 @@ export function ChatShellLoadingSkeleton({
       <div
         className="flex min-h-0 min-w-0 flex-1 flex-col"
         style={{
-          ...canvas,
+          display: "flex",
+          flex: 1,
+          flexDirection: "column",
           minHeight: 0,
+          ...canvas,
         }}
       >
-        <div className="flex min-h-0 flex-1 flex-col px-3 py-4 md:px-6">
-          <div className="mx-auto flex w-full max-w-[720px] flex-1 flex-col items-center justify-center gap-3">
+        <div
+          className="flex min-h-0 flex-1 flex-col px-3 py-4 md:px-6"
+          style={{
+            display: "flex",
+            flex: 1,
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "100%",
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            className="mx-auto flex w-full max-w-[720px] flex-1 flex-col items-center justify-center gap-3"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 12,
+              textAlign: "center",
+              margin: "auto",
+            }}
+          >
             <div
               className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-sky-500 dark:border-zinc-700 dark:border-t-sky-400"
               role="status"
               aria-label={statusMessage}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                border: "2px solid rgba(148, 163, 184, 0.25)",
+                borderTopColor: "#0284c7",
+                animation: "aig-skeleton-spin 0.85s linear infinite",
+                boxSizing: "border-box",
+              }}
             />
             {statusMessage ? (
-              <p className="text-sm font-medium text-slate-500 dark:text-zinc-400">
+              <p
+                className="text-sm font-medium text-slate-500 dark:text-zinc-400"
+                style={{
+                  margin: 0,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: "#94a3b8",
+                  fontFamily: "inherit",
+                  textAlign: "center",
+                }}
+              >
                 {statusMessage}
               </p>
             ) : null}

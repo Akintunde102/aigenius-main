@@ -79,18 +79,11 @@
     }
 }
 
-/* iOS specific keyboard handling */
+/* iOS specific keyboard handling: let flexbox allocate space naturally without inflating composer height */
 @media (max-width: 834px) {
-    .chatAreaContainer.keyboardOpenIos {
-        max-height: calc(100% - 160px) !important;
-        /* iOS needs more space for safe areas */
-    }
-
     .chatInputContainer.keyboardOpenIos {
-        min-height: 140px !important;
-        max-height: 160px !important;
-        /* Account for iOS safe area */
-        padding-bottom: max(env(safe-area-inset-bottom), 20px) !important;
+        /* When keyboard is open, the virtual keyboard covers the bottom safe area */
+        padding-bottom: 8px !important;
     }
 }
 

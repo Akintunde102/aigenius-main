@@ -80,4 +80,17 @@ describe('ChatHistoryListItem', () => {
         );
         expect(getByTitle(/Test Session — generating/i)).toBeTruthy();
     });
+
+    it('stops generation when the sidebar loader is clicked', () => {
+        const onStopGenerating = jest.fn();
+        const { getByLabelText } = render(
+            <ChatHistoryListItem
+                {...defaultProps}
+                isGenerating
+                onStopGenerating={onStopGenerating}
+            />,
+        );
+        getByLabelText('Stop generation').click();
+        expect(onStopGenerating).toHaveBeenCalledTimes(1);
+    });
 });

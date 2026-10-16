@@ -4,6 +4,7 @@ import { AUDIO_CONSTANTS } from './audio.constants';
 import type { MicVadLike, SpeechRecognitionLike, UseAudioEngineOptions } from './useAudioEngine.types';
 import { useAudioEngineCapture } from './useAudioEngine.capture';
 import { useAudioEnginePlayback } from './useAudioEngine.playback';
+import { clientVerboseDebug } from '@/lib/utils/client-verbose-debug';
 
 export type { UseAudioEngineOptions } from './useAudioEngine.types';
 
@@ -159,7 +160,7 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
                 stopAISpeech();
             }
 
-            console.log('[AudioEngine] Requesting microphone access...');
+            clientVerboseDebug('audio', 'Requesting microphone access...');
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     echoCancellation: true,
@@ -167,7 +168,7 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
                     autoGainControl: true,
                 }
             });
-            console.log('[AudioEngine] Microphone access granted');
+            clientVerboseDebug('audio', 'Microphone access granted');
             streamRef.current = stream;
 
             if (optionsRef.current.neuralVad !== false) {
@@ -217,7 +218,7 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
                         const newFloor = Math.max(AUDIO_CONSTANTS.SPEECH_DETECTION_VOLUME_THRESHOLD, maxNoise + 8);
                         setNoiseFloor(newFloor);
                         isCalibratingRef.current = false;
-                        console.log('[AudioEngine] Calibrated noise floor:', newFloor);
+                        clientVerboseDebug('audio', 'Calibrated noise floor:', newFloor);
                     }
                 }
 
@@ -228,7 +229,7 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
                 if (isVadActive) {
                     // 1. Soft-Ducking: volume crosses threshold while AI is speaking
                     if (statusRef.current === 'speaking' && avg > currentInterruptionThreshold && !isDuckedRef.current) {
-                        console.log('[AudioEngine] Volume spike detected. Ducking AI speech. (Volume:', avg, ')');
+                        clientVerboseDebug('audio', 'Volume spike detected. Ducking AI speech. (Volume:', avg, ')');
                         isDuckedRef.current = true;
 
                         const ctx = sharedContextRef.current;
@@ -247,7 +248,7 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
                         duckingTimerRef.current = setTimeout(() => {
                             // If VAD has NOT approved speech by now, restore volume (unduck)
                             if (!isSpeechDetectedRef.current && isDuckedRef.current) {
-                                console.log('[AudioEngine] Ducking timeout reached. No speech detected. Restoring volume.');
+                                clientVerboseDebug('audio', 'Ducking timeout reached. No speech detected. Restoring volume.');
                                 isDuckedRef.current = false;
                                 const context = sharedContextRef.current;
                                 if (gainNodeRef.current && context) {
@@ -262,7 +263,7 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
 
                     // 2. Neural VAD Confirmation: if user speech starts while we are speaking (or in the active ducking window), fully abort!
                     if (statusRef.current === 'speaking' && isSpeechDetectedRef.current) {
-                        console.log('[AudioEngine] Interruption confirmed by Neural VAD!');
+                        clientVerboseDebug('audio', 'Interruption confirmed by Neural VAD!');
 
                         if (duckingTimerRef.current) {
                             clearTimeout(duckingTimerRef.current);
@@ -282,7 +283,7 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
                 } else {
                     // Fallback: energy-only interruption when Neural VAD is not active
                     if (statusRef.current === 'speaking' && avg > currentInterruptionThreshold) {
-                        console.log('[AudioEngine] Interruption detected (energy fallback) volume:', avg);
+                        clientVerboseDebug('audio', 'Interruption detected (energy fallback) volume:', avg);
                         if (silenceTimerRef.current) {
                             clearTimeout(silenceTimerRef.current);
                             silenceTimerRef.current = null;
@@ -310,7 +311,7 @@ export function useAudioEngine(options: UseAudioEngineOptions) {
                         if (isSpeechDetectedRef.current) {
                             if (!silenceTimerRef.current) {
                                 silenceTimerRef.current = setTimeout(() => {
-                                    console.log('[AudioEngine] Silence threshold reached, submitting...');
+                                    clientVerboseDebug('audio', 'Silence threshold reached, submitting...');
                                     stopRecording();
                                 }, silenceThreshold);
                             }

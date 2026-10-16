@@ -48,7 +48,7 @@ export function ChatOperationsProvider({ children }: { children: ReactNode }) {
     refreshChatHistory
   } = useChatContext();
 
-  const { selectedModel } = useModelContext();
+  const { selectedModel, models } = useModelContext();
   const { selectedPersonalityName, selectedPersonalityIconUrl } = usePersonalityContext();
 
   const [error, setErrorState] = useState<ChatUiError | null>(null);
@@ -80,6 +80,7 @@ export function ChatOperationsProvider({ children }: { children: ReactNode }) {
     handleStop,
   } = useChatOperationsRefined({
     selectedModel,
+    models,
     chat,
     setChat,
     setChatForSession: setMessagesForSession,

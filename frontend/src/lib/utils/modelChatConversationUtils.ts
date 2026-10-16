@@ -22,6 +22,8 @@ import {
     getUserChatStats as dbGetUserChatStats,
     removeSavedChatItemById as dbRemoveSavedChatItemById,
     type UserChatStats,
+    type UserChatPreferences,
+    type ConversationLabel,
 } from '@/lib/calls/model-chat-conversation';
 import { ChatMessage, ChatSession } from '@/app/components/model-interface/shared/types';
 import {
@@ -297,6 +299,8 @@ export async function getAllChatResources(params?: {
     savedFullChats: ChatSession[];
     chatHistory: ChatSession[];
     pinnedChats: ChatSession[];
+    userChatPreferences?: UserChatPreferences;
+    conversationLabels?: ConversationLabel[];
     nextCursor?: string | null;
     hasNextPage?: boolean;
 }> {
@@ -352,6 +356,8 @@ export async function getAllChatResources(params?: {
             savedFullChats: resolvedResources.savedFullChats || [],
             chatHistory: resolvedHistory || [],
             pinnedChats: resolvedResources.pinnedChats || [],
+            userChatPreferences: resolvedResources.userChatPreferences,
+            conversationLabels: resolvedResources.conversationLabels,
             nextCursor: backendResources.nextCursor,
             hasNextPage: backendResources.hasNextPage,
         };
@@ -370,6 +376,8 @@ export async function getAllChatResources(params?: {
             savedFullChats: Array.isArray(localSavedFullChats) ? (localSavedFullChats.map(normalizeSessionMessages) as ChatSession[]) : [],
             chatHistory: Array.isArray(localChatHistory) ? (localChatHistory.map(normalizeSessionMessages) as ChatSession[]) : [],
             pinnedChats: Array.isArray(localPinnedChats) ? (localPinnedChats.map(normalizeSessionMessages) as ChatSession[]) : [],
+            userChatPreferences: { sidebarOrganization: 'flat', generalRules: null },
+            conversationLabels: [],
         };
     }
 }

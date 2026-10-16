@@ -1,4 +1,4 @@
-export const DEFAULT_MAX_LINE_CHARS = 2_000;
+export const DEFAULT_MAX_LINE_CHARS = 64_000;
 
 export type TruncatedLine = {
   text: string;

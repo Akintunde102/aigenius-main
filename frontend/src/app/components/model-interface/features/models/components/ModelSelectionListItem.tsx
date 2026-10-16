@@ -9,6 +9,7 @@ import {
     isModelPickLocked,
 } from '../utils/modelWalletAffordance.utils';
 import { ModelCreditBurnIndicator } from './ModelCreditBurnIndicator';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 // Model list row for search tab
 type ModelSelectionListItemProps = {
@@ -38,6 +39,7 @@ const ModelSelectionListItem = memo(function ModelListItem({
     isSortingByReleaseDate = false,
     wallet = null,
 }: ModelSelectionListItemProps) {
+    const { t } = useLanguage();
     const inputMods = useMemo(() => {
         const mods = (model.architecture?.input_modalities || []).filter((mod: string) => (mod || '').toLowerCase() !== 'text');
         const audio = mods.find((m: string) => /audio/i.test(m));
@@ -84,7 +86,7 @@ const ModelSelectionListItem = memo(function ModelListItem({
                         e.stopPropagation();
                         onTogglePin();
                     }}
-                    title={isPinned ? 'Unpin model' : 'Pin model'}
+                    title={isPinned ? t('modelPicker.unpinModel', 'Unpin model') : t('modelPicker.pinModel', 'Pin model')}
                 >
                     <FiBookmark size={isMobile ? 14 : 18} fill={isPinned ? '#facc15' : 'none'} />
                 </button>
@@ -126,7 +128,7 @@ const ModelSelectionListItem = memo(function ModelListItem({
                         e.stopPropagation();
                         onToggleExpand();
                     }}
-                    title="More info"
+                    title={t('modelPicker.moreInfo', 'More info')}
                 >
                     <FiInfo size={isMobile ? 14 : 18} />
                 </button>

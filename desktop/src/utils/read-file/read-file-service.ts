@@ -509,13 +509,15 @@ async function readBoundedFileByBytes(
   const lineCount = await countFileLines(resolvedPath);
   const fh = await fsPromises.open(resolvedPath, 'r');
   try {
+    const stat = await fh.stat();
+    const totalBytes = stat.size;
     const buf = Buffer.alloc(maxBytes);
     const { bytesRead } = await fh.read(buf, 0, maxBytes, offset);
     const text = buf.subarray(0, bytesRead).toString('utf8');
-    const truncated = bytesRead === maxBytes;
+    const truncated = offset + bytesRead < totalBytes;
     let content = text;
     if (truncated) {
-      content = `> ⚠ Truncated at byte limit (${maxBytes}). Use start_line/max_lines for precise windows.\n\n${text}`;
+      content = `> ⚠ Showing bytes ${offset}–${offset + bytesRead} of ${totalBytes}. Call again with offset=${offset + bytesRead} to continue reading ${displayPath}.\n\n${text}`;
     }
     return {
       path: displayPath,
@@ -523,12 +525,15 @@ async function readBoundedFileByBytes(
       status: truncated ? 'truncated' : 'ok',
       content,
       bytes_read: bytesRead,
+      offset,
+      limit: maxBytes,
+      total_bytes: totalBytes,
       resolvedVia: 'bytes',
       mode: 'bytes',
       totalLines: lineCount.lineCountOmitted ? undefined : lineCount.totalLines,
       line_count_omitted: lineCount.lineCountOmitted,
       truncationNotice: truncated
-        ? `Byte read truncated at ${maxBytes} bytes. Use start_line/max_lines instead.`
+        ? `Byte read truncated (${bytesRead} of ${totalBytes} bytes). Continue with offset=${offset + bytesRead}.`
         : undefined,
     };
   } finally {

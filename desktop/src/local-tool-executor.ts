@@ -60,6 +60,11 @@ import { readBoundedFile, listLocalDirectory } from './local-tool-executor-fs';
 import { checkLocalOllamaStatus, runLocalOllamaChat } from './local-tool-executor-ollama';
 import { sidecarAuthHeaders } from './local-tool-executor-helpers';
 import { executeSidecarTool } from './sidecar-tools';
+import { uploadLocalFileToUserLibrary } from './local-upload-file';
+import { handleDesktopHostMarkdown } from './local-host-markdown';
+import { handleDesktopPublishHtml } from './local-publish-html';
+import { handleToolboxTool, isToolboxTool } from './toolbox/executor';
+import type { ToolboxToolName } from './toolbox/types';
 
 export async function runLocalDesktopTool(
   sender: WebContents,
@@ -69,6 +74,14 @@ export async function runLocalDesktopTool(
 ): Promise<{ ok: true; result: string; rawData?: any } | { ok: false; error: string }> {
   const win = resolveBrowserWindowForIpcSender(sender);
   tool = normalizeDesktopToolId(tool);
+
+  if (isToolboxTool(tool)) {
+    const out = await handleToolboxTool(win, tool as ToolboxToolName, rawArgs);
+    if (!out.ok) {
+      return out;
+    }
+    return { ok: true, result: out.result };
+  }
 
   if (shouldRequireToolApproval(tool) && !toolHasDedicatedApprovalUi(tool)) {
     const approved = await confirmGenericToolExecution(win, tool);
@@ -414,6 +427,12 @@ export async function runLocalDesktopTool(
       } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : 'Retrieval memory unavailable' };
       }
+    case 'local_upload_file':
+      return uploadLocalFileToUserLibrary(rawArgs);
+    case 'publish_html':
+      return handleDesktopPublishHtml(rawArgs);
+    case 'host_markdown':
+      return handleDesktopHostMarkdown(rawArgs);
     case 'local_open_in_os':
       try {
         const p = typeof rawArgs.path === 'string' ? rawArgs.path : '';

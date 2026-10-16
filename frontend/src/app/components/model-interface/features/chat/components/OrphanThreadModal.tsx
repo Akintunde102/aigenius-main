@@ -1,5 +1,6 @@
 import React from 'react';
-import { ChevronDown, Trash2, Minus, X, Quote, MessageSquarePlus, CornerDownRight } from 'lucide-react';
+import { ChevronDown, Trash2, Minus, Quote, CornerDownRight, MessageSquarePlus } from 'lucide-react';
+import { AppModalCloseButton } from '@/app/components/modals/AppModal';
 import { ChatAreaVirtualizedList } from './ChatAreaVirtualizedList';
 import { ChatBoxInput } from '@/app/components/ChatBoxInput';
 import { OrphanTetherLayer } from './OrphanTetherLayer';
@@ -118,7 +119,7 @@ export const OrphanThreadModal: React.FC<OrphanThreadModalProps> = React.memo(({
             >
                 <div
                     ref={modalRef}
-                    className={`side-thread-modal-content pointer-events-auto fixed flex flex-col rounded-[22px] border border-slate-200/80 bg-white/95 text-[#0F172A] shadow-[0_24px_64px_rgba(15,23,42,0.16)] backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/95 dark:text-slate-100 w-[552px] max-w-[calc(100vw-24px)] ${
+                    className={`side-thread-modal-content app-modal-panel pointer-events-auto fixed flex flex-col w-[552px] max-w-[calc(100vw-24px)] shadow-2xl ${
                         activeMarker.messages.length > 0 ? 'h-[531px]' : 'h-[460px]'
                     }`}
                     style={{
@@ -138,17 +139,18 @@ export const OrphanThreadModal: React.FC<OrphanThreadModalProps> = React.memo(({
                         onPointerMove={handlePointerMove}
                         onPointerUp={handlePointerUp}
                         onPointerCancel={handlePointerUp}
-                        className={`relative flex flex-col border-b border-slate-100 bg-slate-50/80 px-4 pt-1.5 pb-2.5 dark:border-slate-800 dark:bg-slate-800/40 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} select-none active:cursor-grabbing rounded-t-[22px]`}
+                        className={`app-modal-panel-header relative flex flex-col !px-4 !py-2.5 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} select-none active:cursor-grabbing`}
+                        style={{ borderColor: 'var(--modal-border)' }}
                     >
                         {/* Drag indicator pill */}
-                        <div className="h-1 w-8 rounded-full bg-slate-300/80 dark:bg-slate-600/70 mx-auto mb-2" />
+                        <div
+                          className="mx-auto mb-2 h-1 w-8 rounded-full"
+                          style={{ background: 'var(--modal-border)' }}
+                        />
 
                         <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 min-w-0">
-                                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-100 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
-                                    <MessageSquarePlus className="h-3.5 w-3.5" />
-                                </div>
-                                <span className="text-xs font-semibold tracking-tight text-slate-800 dark:text-slate-200">
+                            <div className="flex min-w-0 items-center gap-2">
+                                <span className="app-modal-title !text-xs !font-semibold">
                                     {t('orphanThread.title', 'Side Thread')}
                                 </span>
 
@@ -193,15 +195,7 @@ export const OrphanThreadModal: React.FC<OrphanThreadModalProps> = React.memo(({
                                 >
                                     <Trash2 size={13} />
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={closeActiveMarker}
-                                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200/70 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                                    aria-label="Close side thread"
-                                    title="Close"
-                                >
-                                    <X size={15} />
-                                </button>
+                                <AppModalCloseButton onClose={closeActiveMarker} title="Close side thread" />
                             </div>
                         </div>
                     </div>

@@ -7,13 +7,20 @@ import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
 
 export function extractReasoningChunk(
     reasoning?: string,
-    reasoningDetails?: Array<{ text?: string }>,
+    reasoningDetails?: Array<{ text?: string; summary?: string }>,
 ): string {
     if (reasoning) {
         return reasoning;
     }
-    const text = reasoningDetails?.[0]?.text;
-    return typeof text === 'string' ? text : '';
+    if (Array.isArray(reasoningDetails)) {
+        for (const item of reasoningDetails) {
+            const chunk = item?.text ?? item?.summary;
+            if (typeof chunk === 'string' && chunk.length > 0) {
+                return chunk;
+            }
+        }
+    }
+    return '';
 }
 
 export function finalizeOpenThinkingEvent(events: MessageEvent[]): void {
@@ -59,9 +66,10 @@ export function enrichEventsWithLegacyThinking(
         return events;
     }
 
+    const firstDetail = msg.reasoning_details?.[0] as { text?: string; summary?: string } | undefined;
     const legacyText =
         textPartToPlainString(msg.reasoning)
-        || textPartToPlainString(msg.reasoning_details?.[0]?.text)
+        || textPartToPlainString(firstDetail?.text ?? firstDetail?.summary)
         || '';
 
     if (!legacyText.trim()) {

@@ -5,6 +5,7 @@ import {
 } from "../features";
 import type { ChatMessage, ChatSession, Model, PendingOrphanReply } from "../shared/types";
 import type { QueuedComposerMessage } from "../features/chat/hooks/messageSendQueue.types";
+import type { RewritePromptOptions } from "../features/chat/hooks/chatOperations.types";
 import type { SetChatUiError } from "../features/chat/hooks/chatUiError";
 import type { ChatContainerHandle } from "../features/chat/components/ChatContainer";
 import type { FailedUploadEntry } from "../features/file-upload/hooks/useFileUpload";
@@ -122,6 +123,8 @@ type Props = {
   onMiniModeToggle?: () => void;
   isMiniMode?: boolean;
   analyzer?: AnalyserNode | null;
+  onRewritePrompt?: (options?: RewritePromptOptions) => void;
+  rewritePromptInProgress?: boolean;
 };
 
 export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatColumn({
@@ -207,6 +210,8 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   onMiniModeToggle,
   isMiniMode,
   analyzer = null,
+  onRewritePrompt,
+  rewritePromptInProgress,
 }: Props) {
   const handleRemoveUploadedFile = useCallback(
     (idx: number) => {
@@ -343,6 +348,8 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           onMiniModeToggle={onMiniModeToggle}
           isMiniMode={isMiniMode}
           analyzer={analyzer}
+          onRewritePrompt={onRewritePrompt}
+          rewritePromptInProgress={rewritePromptInProgress}
         />
       )}
     </MessageHandlers>

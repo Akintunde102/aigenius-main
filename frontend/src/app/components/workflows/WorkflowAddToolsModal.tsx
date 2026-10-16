@@ -1,15 +1,13 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
-import { Search, Wrench, X } from "lucide-react";
+import { Wrench } from "lucide-react";
+import { AppModal, AppModalBody, AppModalHeader, AppModalSearchRow } from "@/app/components/modals/AppModal";
 import { categorizeTool, friendlyToolName, type WorkflowTool } from "./workflowsUtils";
 import { themeForWorkflowCategory } from "./workflow-studio.theme";
 import {
   WorkflowAccentBar,
   WorkflowAddToolsDialogSubtitle,
-  workflowModalOverlayClassTools,
-  workflowModalPanelClassWide,
 } from "./workflow-info";
 import { WorkflowToolIcon } from "./WorkflowToolIcon";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
@@ -32,13 +30,8 @@ export function WorkflowAddToolsModal({
   const { t } = useLanguage();
   const dialogTitle = title ?? t("workflows.addToolTitle", "Add a tool");
   const categoryAllLabel = t("workflows.categoryAll", "All");
-  const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>(categoryAllLabel);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!isOpen) {
@@ -68,59 +61,31 @@ export function WorkflowAddToolsModal({
 
   const handleClose = useCallback(() => onClose(), [onClose]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, handleClose]);
-
-  if (!mounted || !isOpen) return null;
-
-  const content = (
-    <div
-      className={workflowModalOverlayClassTools}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="workflow-add-tool-title"
-      aria-describedby="workflow-add-tool-desc"
-      onClick={handleClose}
+  return (
+    <AppModal
+      open={isOpen}
+      onClose={handleClose}
+      size="xl"
+      className="z-[100]"
+      ariaLabelledBy="workflow-add-tool-title"
+      panelClassName="flex max-h-[min(85vh,900px)] flex-col overflow-hidden p-0"
     >
-      <div className={workflowModalPanelClassWide} onClick={(e) => e.stopPropagation()}>
-        <WorkflowAccentBar />
-        <div className="flex-shrink-0 border-b border-slate-200/90 dark:border-slate-800/80">
-          <div className="flex items-start justify-between gap-3 px-4 py-3 sm:px-5">
-            <div className="min-w-0">
-              <h2 id="workflow-add-tool-title" className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-                {dialogTitle}
-              </h2>
-              <WorkflowAddToolsDialogSubtitle id="workflow-add-tool-desc" />
-            </div>
-            <button
-              type="button"
-              className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-              onClick={handleClose}
-              title={t("common.close", "Close")}
-            >
-              <X className="h-5 w-5" aria-hidden />
-              <span className="sr-only">{t("common.close", "Close")}</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="border-b border-slate-200/90 bg-slate-50/40 px-4 py-3 sm:px-5 dark:border-slate-800/80 dark:bg-[#141518]">
-          <div className="relative mb-3">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" aria-hidden />
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("workflows.searchToolsPlaceholder", "Search tools…")}
-              className="w-full rounded-full border border-slate-200/90 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm outline-none transition focus:border-sky-400/80 focus:ring-2 focus:ring-sky-500/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
-            />
-          </div>
+      <WorkflowAccentBar />
+      <AppModalHeader
+        titleId="workflow-add-tool-title"
+        title={dialogTitle}
+        subtitle={<WorkflowAddToolsDialogSubtitle id="workflow-add-tool-desc" />}
+        onClose={handleClose}
+      />
+      <div
+        className="shrink-0 border-b px-4 py-3 sm:px-5"
+        style={{ borderColor: "var(--modal-border)", background: "var(--modal-bg-muted)" }}
+      >
+        <AppModalSearchRow
+          value={search}
+          onChange={setSearch}
+          placeholder={t("workflows.searchToolsPlaceholder", "Search tools…")}
+        />
           <div className="flex flex-wrap gap-1.5" role="tablist" aria-label={t("workflows.filterCategoryAria", "Filter by category")}>
             {categories.map((c) => (
               <button
@@ -141,7 +106,7 @@ export function WorkflowAddToolsModal({
           </div>
         </div>
 
-        <div className="workflow-scroll min-h-0 flex-1 overflow-y-auto bg-slate-50/20 p-4 sm:p-5 dark:bg-[#141518]">
+      <AppModalBody className="workflow-scroll min-h-0 flex-1 overflow-y-auto !pt-4">
           <div className="grid gap-3 sm:grid-cols-2">
             {filtered.map((tool) => {
               const cat = categorizeTool(tool.function.name);
@@ -206,10 +171,7 @@ export function WorkflowAddToolsModal({
               </p>
             </div>
           )}
-        </div>
-      </div>
-    </div>
+      </AppModalBody>
+    </AppModal>
   );
-
-  return createPortal(content as any, document.body);
 }

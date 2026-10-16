@@ -46,7 +46,8 @@ jest.mock('./active-code-project', () => ({
 jest.mock('fs/promises', () => ({
   open: jest.fn(),
   readdir: jest.fn(),
-  stat: jest.fn().mockResolvedValue({ isFile: () => true, isDirectory: () => false }),
+  stat: jest.fn().mockResolvedValue({ isFile: () => true, isDirectory: () => false, size: 5 }),
+  readFile: jest.fn().mockResolvedValue(Buffer.from('hello')),
   realpath: jest.fn((p: string) => Promise.resolve(p)),
 }));
 
@@ -258,6 +259,7 @@ describe('local_rag_query formatting (TDD RED Phase)', () => {
         buf.write(mockContent, 0, 'utf8');
         return { bytesRead: mockContent.length };
       }),
+      stat: jest.fn().mockResolvedValue({ size: mockContent.length }),
       close: jest.fn().mockResolvedValue(undefined),
     };
     (fs.open as jest.Mock).mockResolvedValue(mockFd);
@@ -553,3 +555,321 @@ describe('local_ollama_chat desktop integration', () => {
     });
   });
 });
+
+describe('local_upload_file', () => {
+  const mockSender = {
+    isDestroyed: () => false,
+    send: jest.fn(),
+  } as any;
+
+  beforeEach(() => {
+    const { dialog } = jest.requireMock('electron') as {
+      dialog: { showMessageBox: jest.Mock };
+    };
+    dialog.showMessageBox.mockResolvedValue({ response: 1 });
+    (fs.stat as jest.Mock).mockResolvedValue({ isFile: () => true, isDirectory: () => false, size: 5 });
+    (fs.readFile as jest.Mock).mockResolvedValue(Buffer.from('hello'));
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      text: async () => JSON.stringify({ id: 'file-1', s3Link: 'https://res.cloudinary.com/demo/raw/upload/notes.txt' }),
+    });
+  });
+
+  it('posts the local file to the gateway stream route tagged uploadedBy=model', async () => {
+    const out = await runLocalDesktopTool(mockSender, 'local_upload_file', {
+      path: '/tmp/notes.txt',
+      __gatewayUpload: {
+        apiRoot: 'http://127.0.0.1:28000',
+        accessToken: 'user-token',
+        conversationId: '11111111-1111-4111-8111-111111111111',
+      },
+    });
+
+    expect(out.ok).toBe(true);
+    const fetchMock = global.fetch as jest.Mock;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/gateway/*/upload/stream?');
+    expect(url).toContain('uploadedBy=model');
+    expect(url).toContain('fileName=notes.txt');
+    expect(url).toContain('conversationId=11111111-1111-4111-8111-111111111111');
+    expect(init.method).toBe('POST');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer user-token');
+    expect((init.headers as Record<string, string>)['Content-Type']).toBe('text/plain');
+  });
+
+  it('rejects an unsupported extension before upload', async () => {
+    const out = await runLocalDesktopTool(mockSender, 'local_upload_file', {
+      path: '/tmp/notes.exe',
+      file_name: 'notes.exe',
+      __gatewayUpload: {
+        apiRoot: 'http://127.0.0.1:28000',
+        accessToken: 'user-token',
+      },
+    });
+
+    expect(out).toEqual({ ok: false, error: 'Unsupported file extension' });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('publish_html (desktop)', () => {
+  const mockSender = {
+    isDestroyed: () => false,
+    send: jest.fn(),
+  } as any;
+
+  beforeEach(() => {
+    (fs.stat as jest.Mock).mockResolvedValue({ isFile: () => true, isDirectory: () => false, size: 50 });
+    (fs.readFile as jest.Mock).mockResolvedValue('<!DOCTYPE html><html><body><h1>Quiz App</h1></body></html>');
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ success: true, id: 'page-123', url: 'https://quiz.ai-genius.org' }),
+    });
+  });
+
+  it('reads local HTML file and POSTs to /v1/*/pages directly', async () => {
+    const out = await runLocalDesktopTool(mockSender, 'publish_html', {
+      filePath: '/tmp/quiz.html',
+      slug: 'quiz-app',
+      title: 'Quiz App',
+      __gatewayUpload: {
+        apiRoot: 'http://127.0.0.1:28000',
+        accessToken: 'user-token',
+      },
+    });
+
+    expect(out.ok).toBe(true);
+    const fetchMock = global.fetch as jest.Mock;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('http://127.0.0.1:28000/v1/*/pages');
+    expect(init.method).toBe('POST');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer user-token');
+    const sentBody = JSON.parse(init.body as string);
+    expect(sentBody.html).toContain('<!DOCTYPE html>');
+    expect(sentBody.slug).toBe('quiz-app');
+    expect(sentBody.title).toBe('Quiz App');
+  });
+
+  it('rejects file without valid HTML signatures', async () => {
+    (fs.readFile as jest.Mock).mockResolvedValue('plain non-html text file');
+    const out = await runLocalDesktopTool(mockSender, 'publish_html', {
+      filePath: '/tmp/not-html.txt',
+      __gatewayUpload: {
+        apiRoot: 'http://127.0.0.1:28000',
+        accessToken: 'user-token',
+      },
+    });
+
+    expect(out).toEqual({
+      ok: false,
+      error: 'The specified file does not appear to contain valid HTML content.',
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects when filePath is missing', async () => {
+    const out = await runLocalDesktopTool(mockSender, 'publish_html', {
+      __gatewayUpload: {
+        apiRoot: 'http://127.0.0.1:28000',
+        accessToken: 'user-token',
+      },
+    });
+
+    expect(out).toEqual({
+      ok: false,
+      error: 'filePath is required for desktop publish_html',
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects an empty file', async () => {
+    (fs.stat as jest.Mock).mockResolvedValue({ isFile: () => true, isDirectory: () => false, size: 0 });
+    const out = await runLocalDesktopTool(mockSender, 'publish_html', {
+      filePath: '/tmp/empty.html',
+      __gatewayUpload: {
+        apiRoot: 'http://127.0.0.1:28000',
+        accessToken: 'user-token',
+      },
+    });
+
+    expect(out).toEqual({
+      ok: false,
+      error: 'File is empty',
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects a file exceeding the 2MB size cap', async () => {
+    (fs.stat as jest.Mock).mockResolvedValue({ isFile: () => true, isDirectory: () => false, size: 3 * 1024 * 1024 });
+    const out = await runLocalDesktopTool(mockSender, 'publish_html', {
+      filePath: '/tmp/giant.html',
+      __gatewayUpload: {
+        apiRoot: 'http://127.0.0.1:28000',
+        accessToken: 'user-token',
+      },
+    });
+
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toContain('larger than the 2097152 byte (2MB) limit');
+    }
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('sends PUT to /v1/*/pages/:id when page_id is provided for an update', async () => {
+    const out = await runLocalDesktopTool(mockSender, 'publish_html', {
+      filePath: '/tmp/update.html',
+      page_id: '11111111-2222-3333-4444-555555555555',
+      slug: 'my-quiz',
+      __gatewayUpload: {
+        apiRoot: 'http://127.0.0.1:28000',
+        accessToken: 'user-token',
+      },
+    });
+
+    expect(out.ok).toBe(true);
+    const fetchMock = global.fetch as jest.Mock;
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('http://127.0.0.1:28000/v1/*/pages/11111111-2222-3333-4444-555555555555');
+    expect(init.method).toBe('PUT');
+  });
+
+  it('returns server error message on non-200 responses', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => JSON.stringify({ message: 'Slug is already in use by another page' }),
+    });
+
+    const out = await runLocalDesktopTool(mockSender, 'publish_html', {
+      filePath: '/tmp/quiz.html',
+      slug: 'taken-slug',
+      __gatewayUpload: {
+        apiRoot: 'http://127.0.0.1:28000',
+        accessToken: 'user-token',
+      },
+    });
+
+    expect(out).toEqual({
+      ok: false,
+      error: 'Slug is already in use by another page',
+    });
+  });
+});
+
+describe('host_markdown (desktop)', () => {
+  const mockSender = {
+    isDestroyed: () => false,
+    send: jest.fn(),
+  } as any;
+
+  beforeEach(() => {
+    (fs.stat as jest.Mock).mockResolvedValue({ isFile: () => true, isDirectory: () => false, size: 120 });
+    (fs.readFile as jest.Mock).mockResolvedValue('# Guide\n\nHello from disk.');
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ success: true, slug: 'guide', path: '/h/guide' }),
+    });
+  });
+
+  it('reads local markdown and POSTs to /gateway/*/hosted-files', async () => {
+    const out = await runLocalDesktopTool(mockSender, 'host_markdown', {
+      action: 'publish',
+      filePath: '/tmp/guide.md',
+      slug: 'guide',
+      __gatewayUpload: {
+        apiRoot: 'http://127.0.0.1:28000',
+        accessToken: 'user-token',
+      },
+    });
+
+    expect(out.ok).toBe(true);
+    const fetchMock = global.fetch as jest.Mock;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('http://127.0.0.1:28000/gateway/*/hosted-files');
+    expect(init.method).toBe('POST');
+    const sentBody = JSON.parse(init.body as string);
+    expect(sentBody.markdown).toContain('# Guide');
+    expect(sentBody.publish).toBe(true);
+    expect(sentBody.slug).toBe('guide');
+  });
+
+  it('rejects non-markdown file extensions', async () => {
+    const out = await runLocalDesktopTool(mockSender, 'host_markdown', {
+      action: 'publish',
+      filePath: '/tmp/notes.txt',
+      __gatewayUpload: {
+        apiRoot: 'http://127.0.0.1:28000',
+        accessToken: 'user-token',
+      },
+    });
+
+    expect(out).toEqual({
+      ok: false,
+      error: 'filePath must point to a .md or .markdown file',
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects HTML content masquerading as markdown', async () => {
+    (fs.readFile as jest.Mock).mockResolvedValue('<!DOCTYPE html><html><body></body></html>');
+    const out = await runLocalDesktopTool(mockSender, 'host_markdown', {
+      action: 'publish',
+      filePath: '/tmp/page.md',
+      __gatewayUpload: {
+        apiRoot: 'http://127.0.0.1:28000',
+        accessToken: 'user-token',
+      },
+    });
+
+    expect(out).toEqual({
+      ok: false,
+      error: 'HTML documents cannot be hosted as Markdown pages',
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('local_read_file circuit breaker', () => {
+  const mockSender = {
+    isDestroyed: () => false,
+    send: jest.fn(),
+  } as any;
+
+  it('triggers circuit breaker after 8 repeated reads of the same file', async () => {
+    const { resetFileReadHistoryForTests } = await import('./local-tool-executor-fs');
+    resetFileReadHistoryForTests();
+
+    for (let i = 1; i <= 7; i++) {
+      await runLocalDesktopTool(mockSender, 'local_read_file', { path: '/tmp/loop-file.txt' });
+    }
+
+    const eighth = await runLocalDesktopTool(mockSender, 'local_read_file', { path: '/tmp/loop-file.txt' });
+    expect(eighth.ok).toBe(false);
+    if (!eighth.ok) {
+      expect(eighth.error).toContain('You have read "/tmp/loop-file.txt" 8 times in small chunks');
+      expect(eighth.error).toContain('host_markdown');
+    }
+
+    resetFileReadHistoryForTests();
+  });
+
+  it('does not trigger circuit breaker when reading different files', async () => {
+    const { resetFileReadHistoryForTests } = await import('./local-tool-executor-fs');
+    resetFileReadHistoryForTests();
+
+    for (let i = 1; i <= 10; i++) {
+      const res = await runLocalDesktopTool(mockSender, 'local_read_file', { path: `/tmp/file-${i}.txt` });
+      expect(res.ok).toBe(true);
+    }
+
+    resetFileReadHistoryForTests();
+  });
+});
+

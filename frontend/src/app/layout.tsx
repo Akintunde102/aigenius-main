@@ -8,6 +8,7 @@ import ReactQueryProvider from "@/lib/providers/ReactQueryProvider";
 import ViewportHeightSetter from './ViewportHeightSetter';
 import DesktopShellChrome from './components/DesktopShellChrome';
 import DesktopToolApprovalHost from './components/DesktopToolApprovalHost';
+import ToolboxApprovalHost from './components/ToolboxApprovalHost';
 import DesktopShellDocumentFlag from './components/DesktopShellDocumentFlag';
 import EarlyDesktopAuthCookieSync from './components/EarlyDesktopAuthCookieSync';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -21,6 +22,8 @@ import { ThemeProvider } from "@/lib/providers/ThemeProvider";
 import { LanguageProvider } from "@/lib/providers/LanguageProvider";
 import { LanguageSelectionModal } from "@/app/components/modals/LanguageSelectionModal";
 import { VideoJobProgressModal } from "@/app/components/modals/VideoJobProgressModal";
+import { SpeechJobProgressModal } from "@/app/components/modals/SpeechJobProgressModal";
+import { PlaybackDock } from "@/app/components/playback/PlaybackDock";
 const Euclid = localFont({
   src: [
     {
@@ -181,7 +184,10 @@ export default function RootLayout({
                 <GlobalToaster />
                 <FilePreviewModal />
                 <VideoJobProgressModal />
+                <SpeechJobProgressModal />
+                <PlaybackDock />
                 <DesktopToolApprovalHost />
+                <ToolboxApprovalHost />
                 <LanguageSelectionModal />
               </ErrorBoundary>
               <div id="modal-root" />

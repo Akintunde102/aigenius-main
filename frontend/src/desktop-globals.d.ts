@@ -33,7 +33,7 @@ declare global {
       clearDesktopAuthSecrets?: () => Promise<{ ok: boolean }>;
       getUpstreamApiUrl?: () => Promise<string>;
       getChatRuntimeContext?: () => Promise<{
-        desktopHost: { platform: string; arch: string; release: string; userHomeDir: string };
+        desktopHost: { platform: string; arch: string; release: string; userHomeDir: string; activeShell?: string };
         retrievalMemoryCatalog: {
           generatedAtIso: string;
           entries: Array<{ slug: string; name: string; description: string; tags: string[] }>;
@@ -84,6 +84,7 @@ declare global {
         | { ok: true; path: string; created: boolean }
         | { ok: false; error: string }
       >;
+      getProjectFolderPickerDefaults?: () => Promise<{ defaultBrowsePath: string }>;
       pickProjectDirectory?: () => Promise<{ path: string } | null>;
       createNamedProjectDirectory?: (payload: { folderName: string; silent?: boolean }) => Promise<
         | { ok: true; path: string; created?: boolean }

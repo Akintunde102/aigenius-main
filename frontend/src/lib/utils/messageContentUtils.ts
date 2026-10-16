@@ -26,10 +26,19 @@ export function isRuntimeContextUserMessage(message: { role?: string; content?: 
     return messageTextContent(message.content).startsWith('<runtime_context');
 }
 
+/** Legacy async video pipeline user rows (no longer injected; hide if still in old sessions). */
+export const VIDEO_AUTOMATED_EVENT_PREFIX = '[SYSTEM AUTOMATED EVENT]:';
+
+export function isVideoAutomatedEventUserMessage(message: { role?: string; content?: unknown }): boolean {
+    if (message.role !== 'user') return false;
+    return messageTextContent(message.content).startsWith(VIDEO_AUTOMATED_EVENT_PREFIX);
+}
+
 /** Messages that should appear in the chat transcript UI. */
 export function isVisibleChatMessage(message: { role?: string; content?: unknown }): boolean {
     if (message.role === 'system') return false;
     if (isRuntimeContextUserMessage(message)) return false;
+    if (isVideoAutomatedEventUserMessage(message)) return false;
     return true;
 }
 

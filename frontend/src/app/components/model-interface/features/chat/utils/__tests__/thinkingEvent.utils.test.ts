@@ -11,6 +11,7 @@ import type { MessageEvent } from '@/app/components/model-interface/shared/types
 describe('thinkingEvent.utils', () => {
     it('extracts reasoning from reasoning_details when reasoning string is absent', () => {
         expect(extractReasoningChunk(undefined, [{ text: 'step one' }])).toBe('step one');
+        expect(extractReasoningChunk(undefined, [{ summary: 'summary step' }])).toBe('summary step');
     });
 
     it('appends to an open thinking event and finalizes before text', () => {

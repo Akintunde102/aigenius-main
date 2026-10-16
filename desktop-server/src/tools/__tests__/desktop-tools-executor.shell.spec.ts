@@ -33,4 +33,20 @@ describe('executeDesktopTool local_shell', () => {
       }
     }
   });
+
+  it('executes PowerShell syntax and cmdlets on Windows', async () => {
+    if (process.platform !== 'win32') {
+      return;
+    }
+    const out = await executeDesktopTool('local_shell', {
+      command: "Write-Output 'Hello from Sidecar PowerShell'; Get-Item . | ForEach-Object { $_.Exists }",
+      cwd: os.tmpdir(),
+      timeout_ms: 25_000,
+    });
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.result).toContain('Hello from Sidecar PowerShell');
+      expect(out.result).toContain('True');
+    }
+  }, 30_000);
 });

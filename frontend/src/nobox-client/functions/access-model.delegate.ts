@@ -25,6 +25,7 @@ import {
   shouldRequireToolApproval,
 } from '@/lib/tool-permissions';
 import { runCreateCodeProjectFromToolArgs } from '@/lib/code-projects/create-code-project-workflow';
+import { argumentsForLocalDesktopTool } from './local-upload-gateway-auth';
 
 /** Prevent duplicate POSTs for the same delegate_id (retries, overlapping SSE handlers). */
 const desktopToolDelegatePosted = new Set<string>();
@@ -276,10 +277,16 @@ export async function fulfillDesktopToolDelegate(
         }
         : undefined;
 
+    const prepared = await argumentsForLocalDesktopTool(ev.tool, ev.arguments);
+    if (prepared.error) {
+      await postDesktopToolDelegateResult(config, ev.delegate_id, { error: prepared.error }, signal);
+      return;
+    }
+
     const out = await desktop.runLocalDesktopTool(
       {
         tool: ev.tool,
-        arguments: ev.arguments ?? {},
+        arguments: prepared.arguments,
       },
       streamOpts,
     );

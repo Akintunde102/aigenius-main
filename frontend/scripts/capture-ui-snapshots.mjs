@@ -8,7 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUT = path.resolve(__dirname, '../../../docs/ui-redesign/snapshots');
+const OUT = path.resolve(__dirname, '../test-results/ui-snapshots');
 const BASE = process.env.WEB_URL || 'http://localhost:23001';
 
 const PAGES = [

@@ -76,6 +76,11 @@ const shellChrome = mainShellRendererChrome(process.platform);
 const DESKTOP_QUEUE_CHAT_SCREENSHOT_CHAN = 'aigenius-desktop-queue-chat-screenshot';
 const DESKTOP_OAUTH_SIGNIN_COMPLETE_CHAN = 'desktop-oauth-signin-complete';
 const DESKTOP_TOOL_APPROVAL_REQUEST_CHAN = 'aigenius-tool-approval-request';
+/** Keep in sync with `electron/toolbox-approval-channels.ts` (preload cannot require sibling modules). */
+const TOOLBOX_APPROVAL_REQUEST_CHANNEL = 'aigenius-toolbox-approval-request';
+function toolboxApprovalResponseChannel(requestId: string): string {
+  return `aigenius-toolbox-approval-response:${requestId}`;
+}
 
 if (process.env?.NODE_ENV !== 'production') {
   console.debug('[AIGenius Bridge] Exposing bridge to main world at:', new Date().toISOString());
@@ -88,7 +93,7 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
   miniServerPort: ipcRenderer.sendSync('get-mini-server-port'),
   shellChrome,
   getChatRuntimeContext: (): Promise<{
-    desktopHost: { platform: string; arch: string; release: string; userHomeDir: string };
+    desktopHost: { platform: string; arch: string; release: string; userHomeDir: string; activeShell?: string };
     retrievalMemoryCatalog: {
       generatedAtIso: string;
       entries: Array<{ slug: string; name: string; description: string; tags: string[] }>;
@@ -115,7 +120,7 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
       };
     };
   }> => ipcRenderer.invoke('get-chat-runtime-context') as Promise<{
-    desktopHost: { platform: string; arch: string; release: string; userHomeDir: string };
+    desktopHost: { platform: string; arch: string; release: string; userHomeDir: string; activeShell?: string };
     retrievalMemoryCatalog: {
       generatedAtIso: string;
       entries: Array<{ slug: string; name: string; description: string; tags: string[] }>;
@@ -155,6 +160,13 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
         indexReady: boolean;
         scanInProgress: boolean;
         lastRunMs: number;
+      };
+      deviceFastIndex?: {
+        enabled: boolean;
+        mode: 'disabled' | 'warming' | 'ready';
+        roots: string[];
+        indexedFiles: number;
+        fastPocketQueueDepth: number;
       };
       catalogs: Array<{
         projectId: string;
@@ -198,6 +210,8 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
     ipcRenderer.invoke('chat-completion-notify', payload) as Promise<{ notified: boolean }>,
   openNewWindow: (relativePath?: string): Promise<void> =>
     ipcRenderer.invoke('shell-new-window', relativePath) as Promise<void>,
+  getProjectFolderPickerDefaults: (): Promise<{ defaultBrowsePath: string }> =>
+    ipcRenderer.invoke('get-project-folder-picker-defaults') as Promise<{ defaultBrowsePath: string }>,
   pickProjectDirectory: (): Promise<{ path: string } | null> =>
     ipcRenderer.invoke('pick-project-directory') as Promise<{ path: string } | null>,
   createNamedProjectDirectory: (payload: { folderName: string; silent?: boolean }): Promise<
@@ -593,6 +607,39 @@ contextBridge.exposeInMainWorld('aigeniusDesktop', {
       ipcRenderer.removeListener('window-opacity-change', fn);
     };
   },
+  onToolboxApprovalRequest: (
+    handler: (request: {
+      requestId: string;
+      kind: 'toolbox';
+      payload: Record<string, unknown>;
+    }) => void,
+  ) => {
+    const fn = (_event: unknown, raw: unknown): void => {
+      if (!raw || typeof raw !== 'object') {
+        return;
+      }
+      const requestId = (raw as { requestId?: unknown }).requestId;
+      const kind = (raw as { kind?: unknown }).kind;
+      const payload = (raw as { payload?: unknown }).payload;
+      if (typeof requestId !== 'string' || !requestId || kind !== 'toolbox') {
+        return;
+      }
+      if (!payload || typeof payload !== 'object') {
+        return;
+      }
+      handler({ requestId, kind: 'toolbox', payload: payload as Record<string, unknown> });
+    };
+    ipcRenderer.on(TOOLBOX_APPROVAL_REQUEST_CHANNEL, fn);
+    return () => {
+      ipcRenderer.removeListener(TOOLBOX_APPROVAL_REQUEST_CHANNEL, fn);
+    };
+  },
+  respondToolboxApproval: (requestId: string, approved: boolean): void => {
+    ipcRenderer.send(toolboxApprovalResponseChannel(requestId), approved);
+  },
+  listToolboxTools: (includeArchived?: boolean) =>
+    ipcRenderer.invoke('toolbox-list', { includeArchived }) as Promise<unknown>,
+  getToolboxRootPath: () => ipcRenderer.invoke('toolbox-get-root-path') as Promise<unknown>,
 });
 
 // Audio Recorder API

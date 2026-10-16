@@ -106,6 +106,8 @@ export interface ChatBoxInputProps {
     queuedMessages?: QueuedComposerMessage[];
     onQueueMessage?: (message: string) => void;
     onRemoveQueuedMessage?: (messageId: string) => void;
+    onRewritePrompt?: () => void;
+    rewritePromptInProgress?: boolean;
 }
 
 export interface UploadProgressBarProps {
@@ -152,6 +154,9 @@ export interface ActionButtonsProps {
     isSTTActive?: boolean;
     /** Dictation pipeline only — not conversational status. */
     isDictationTranscribing?: boolean;
+    onRewritePrompt?: () => void;
+    rewritePromptDisabled?: boolean;
+    rewritePromptInProgress?: boolean;
 }
 
 export interface ModelSelectorProps {
@@ -174,6 +179,7 @@ export interface SubmitButtonProps {
     disabled: boolean;
     uploading: boolean;
     onSubmit: (e: React.FormEvent) => void;
+    hasUploadedFiles?: boolean;
 }
 
 export interface ChatControlsProps {
@@ -216,4 +222,7 @@ export interface ChatControlsProps {
     onConfirmSTT?: () => void;
     isSTTActive?: boolean;
     isDictationTranscribing?: boolean;
+    onRewritePrompt?: () => void;
+    rewritePromptDisabled?: boolean;
+    rewritePromptInProgress?: boolean;
 }

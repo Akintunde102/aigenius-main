@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from "react";
-import { FiBookmark, FiLogOut, FiLink, FiGift, FiFolder, FiZap, FiBell, FiMoon, FiSun, FiPlus, FiMonitor, FiShield, FiChevronRight, FiCheck, FiSettings, FiFilm, FiGlobe } from 'react-icons/fi';
+import { FiBookmark, FiLogOut, FiLink, FiGift, FiFolder, FiZap, FiBell, FiMoon, FiSun, FiPlus, FiMonitor, FiShield, FiChevronRight, FiCheck, FiSettings, FiFilm, FiGlobe, FiUser, FiTag } from 'react-icons/fi';
+import { formatMeSidebarMenuLabel } from './me-account-display.utils';
 import { createPortal } from 'react-dom';
 import { useTheme } from "@/lib/providers/ThemeProvider";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
@@ -101,6 +102,7 @@ interface SidebarFooterProps {
     onShowSavedChats?: () => void;
     onOpenMyFiles?: () => void;
     onOpenWorkflows?: () => void;
+    onOpenFastButtons?: () => void;
     onOpenNotifications?: () => void;
     onIntegrations?: () => void;
     onGiveCredits?: () => void;
@@ -109,9 +111,12 @@ interface SidebarFooterProps {
     openMenuSignal?: number;
     onOpenToolPermissions?: () => void;
     onOpenNonTextModels?: () => void;
+    onOpenMe?: () => void;
+    onOpenConversationLabels?: () => void;
+    userEmail?: string;
 }
 
-const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, onShowSavedChats, onOpenMyFiles, onOpenWorkflows, onOpenNotifications, onIntegrations, onGiveCredits, onLogout, openMenuSignal, onOpenToolPermissions, onOpenNonTextModels }) => {
+const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, onShowSavedChats, onOpenMyFiles, onOpenWorkflows, onOpenFastButtons, onOpenNotifications, onIntegrations, onGiveCredits, onLogout, openMenuSignal, onOpenToolPermissions, onOpenNonTextModels, onOpenMe, onOpenConversationLabels, userEmail }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [showThemeSubmenu, setShowThemeSubmenu] = useState(false);
@@ -153,6 +158,8 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                 maximumFractionDigits: 2,
             })
             : null;
+
+    const meMenuLabel = formatMeSidebarMenuLabel(userEmail, t('sidebar.meMenuSuffix', 'Me'));
 
     return (
         <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', zIndex: 10 }}>
@@ -255,6 +262,24 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                     </div>
                                 )}
 
+                                {onOpenMe && (
+                                    <button
+                                        type="button"
+                                        className={MENU_ROW_BASE}
+                                        title={meMenuLabel}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onOpenMe();
+                                            setIsMenuOpen(false);
+                                        }}
+                                    >
+                                        <span className={MENU_ICON_SLOT} aria-hidden>
+                                            <FiUser size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
+                                        </span>
+                                        <span className="min-w-0 truncate">{meMenuLabel}</span>
+                                    </button>
+                                )}
+
                                 {onShowSavedChats && (
                                     <button
                                         type="button"
@@ -289,6 +314,23 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                     </button>
                                 )}
 
+                                {onOpenConversationLabels && (
+                                    <button
+                                        type="button"
+                                        className={MENU_ROW_BASE}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onOpenConversationLabels();
+                                            setIsMenuOpen(false);
+                                        }}
+                                    >
+                                        <span className={MENU_ICON_SLOT} aria-hidden>
+                                            <FiTag size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
+                                        </span>
+                                        <span>{t('sidebar.conversationLabels', 'Conversation labels')}</span>
+                                    </button>
+                                )}
+
                                 {onOpenNonTextModels && (
                                     <button
                                         type="button"
@@ -303,6 +345,23 @@ const SidebarFooter = React.memo<SidebarFooterProps>(({ wallet, onAddCredits, on
                                             <FiFilm size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
                                         </span>
                                         <span>{t('sidebar.mediaModels', 'Media models')}</span>
+                                    </button>
+                                )}
+
+                                {onOpenFastButtons && (
+                                    <button
+                                        type="button"
+                                        className={MENU_ROW_BASE}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onOpenFastButtons();
+                                            setIsMenuOpen(false);
+                                        }}
+                                    >
+                                        <span className={MENU_ICON_SLOT} aria-hidden>
+                                            <FiZap size={MENU_ICON_SIZE} strokeWidth={MENU_ICON_STROKE} />
+                                        </span>
+                                        <span>{t('sidebar.fastButtons', 'Fast buttons')}</span>
                                     </button>
                                 )}
 

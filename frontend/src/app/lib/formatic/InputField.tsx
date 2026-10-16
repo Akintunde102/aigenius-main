@@ -56,7 +56,7 @@ const CodeMirrorComponent = dynamic<CodeMirrorFieldProps>(() =>
 );
 
 const Editor = dynamic(
-  () => import("@/app/components/editor/Editor").then((mod) => ensureLazyDefault(mod.default, "editor")),
+  () => import("@/app/components/editor/Editor").then((mod) => ensureLazyDefault(mod.default, "editor")).catch(() => ensureLazyDefault(null, 'editor')),
   {
   ssr: false,
   loading: () => (

@@ -6,9 +6,10 @@ export const SubmitButton: React.FC<SubmitButtonProps> = ({
     inputValue,
     disabled,
     uploading,
-    onSubmit
+    onSubmit,
+    hasUploadedFiles = false
 }) => {
-    const isEnabled = inputValue.trim() && !disabled && !uploading;
+    const isEnabled = (inputValue.trim().length > 0 || hasUploadedFiles) && !disabled && !uploading;
 
     return (
         <button

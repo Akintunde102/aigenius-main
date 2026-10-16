@@ -13,6 +13,8 @@ type Params = {
   setChatForSession: (sessionId: string, updater: ChatUpdater, options?: { passive?: boolean }) => void;
   setChatHistory: React.Dispatch<React.SetStateAction<ChatSession[]>>;
   isSyncBlocked: boolean;
+  /** Set while a subagent is writing this conversation on the server. */
+  refetchIntervalMs?: number | false;
 };
 
 /**
@@ -25,9 +27,11 @@ export function useActiveConversationSync({
   setChatForSession,
   setChatHistory,
   isSyncBlocked,
+  refetchIntervalMs = false,
 }: Params) {
   const { data: remoteConversation } = useConversationQuery(conversationId, {
     enabled: !!conversationId,
+    refetchInterval: refetchIntervalMs,
   });
 
   useEffect(() => {

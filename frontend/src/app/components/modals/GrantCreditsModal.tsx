@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { FiGift, FiX, FiClock, FiChevronRight } from "react-icons/fi";
+import { FiClock, FiChevronRight, FiGift } from "react-icons/fi";
+import { AppModal, AppModalBody, AppModalHeader, AppModalTabs } from "@/app/components/modals/AppModal";
 import { serverCall } from "@/servercall/init";
 import { serverCalls } from "@/servercall/store";
 import { getAdminCreditsHistory, CreditGrantRecord, searchAdminUsers, AdminUserSearchResult } from "@/lib/calls/admin";
@@ -104,17 +104,6 @@ const GrantCreditsModal: React.FC<GrantCreditsModalProps> = ({ onClose, onWallet
         if (tab === "history") loadHistory();
     }, [tab]);
 
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key !== "Escape") return;
-            e.preventDefault();
-            e.stopPropagation();
-            onClose();
-        };
-        window.addEventListener("keydown", handleKeyDown, true);
-        return () => window.removeEventListener("keydown", handleKeyDown, true);
-    }, [onClose]);
-
     const canSubmit =
         selectedUser !== null &&
         amount.trim() !== "" &&
@@ -158,54 +147,15 @@ const GrantCreditsModal: React.FC<GrantCreditsModalProps> = ({ onClose, onWallet
     };
 
     const overlay = (
-        <div
-            role="presentation"
-            className="app-modal-overlay animate-fadeIn"
-            onClick={onClose}
-        >
-            <div
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="grant-credits-modal-title"
-                className="app-modal-panel max-w-md animate-slideUp"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="app-modal-panel-header">
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-3">
-                            <div
-                                className="app-surface-card flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-                                style={{ color: "var(--modal-fg)" }}
-                                aria-hidden
-                            >
-                                <FiGift size={20} strokeWidth={1.75} />
-                            </div>
-                            <div className="min-w-0">
-                                <h2
-                                    id="grant-credits-modal-title"
-                                    className="text-base font-semibold leading-snug"
-                                >
-                                    {t("modals.grantCreditsTitle", "Grant credits")}
-                                </h2>
-                                <p className="mt-0.5 text-xs" style={{ color: "var(--modal-muted-fg)" }}>
-                                    {t("modals.grantCreditsSubtitle", "Add credits to a user's wallet (admin)")}
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            aria-label={t("common.close", "Close")}
-                            className="shrink-0 rounded-lg p-2 transition-colors hover:[background-color:var(--sidebar-row-hover)] focus:outline-none"
-                            style={{ color: "var(--modal-muted-fg)" }}
-                            onClick={onClose}
-                        >
-                            <FiX size={18} />
-                        </button>
-                    </div>
-                </div>
-
-                <div className="app-modal-panel-body flex min-h-0 flex-1 flex-col">
-                    <div className="-mx-5 mb-4 flex shrink-0 border-b px-5" style={{ borderColor: "var(--modal-border)" }}>
+        <AppModal open onClose={onClose} size="sm" ariaLabelledBy="grant-credits-modal-title">
+            <AppModalHeader
+                titleId="grant-credits-modal-title"
+                title={t("modals.grantCreditsTitle", "Grant credits")}
+                subtitle={t("modals.grantCreditsSubtitle", "Add credits to a user's wallet (admin)")}
+                onClose={onClose}
+            />
+            <AppModalBody className="flex min-h-0 flex-1 flex-col !pt-2">
+                    <AppModalTabs>
                         <button
                             type="button"
                             className={`app-modal-tab ${tab === "give" ? "app-modal-tab--active" : ""}`}
@@ -221,7 +171,7 @@ const GrantCreditsModal: React.FC<GrantCreditsModalProps> = ({ onClose, onWallet
                             <FiClock size={13} />
                             History
                         </button>
-                    </div>
+                    </AppModalTabs>
 
                     <div className="min-h-0 flex-1 overflow-y-auto">
                         {/* ── Give tab ──────────────────────────────────────────────── */}
@@ -403,8 +353,7 @@ const GrantCreditsModal: React.FC<GrantCreditsModalProps> = ({ onClose, onWallet
                             </div>
                         )}
                     </div>
-                </div>
-            </div>
+            </AppModalBody>
 
             <style jsx>{`
                 .animate-fadeIn { animation: fadeIn 0.4s; }
@@ -414,17 +363,10 @@ const GrantCreditsModal: React.FC<GrantCreditsModalProps> = ({ onClose, onWallet
                 @keyframes slideUp { from { transform: translateY(20px) scale(0.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
                 @keyframes dropdownSlide { from { transform: translateY(-8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
             `}</style>
-        </div>
+        </AppModal>
     );
 
-    if (typeof document === "undefined") {
-        return null;
-    }
-
-    const portalTarget =
-        document.getElementById("modal-root") ?? document.body;
-
-    return createPortal(overlay as any, portalTarget);
+    return overlay;
 };
 
 export default GrantCreditsModal;

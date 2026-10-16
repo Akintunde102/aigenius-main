@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FiX, FiPlus, FiSearch, FiEdit2, FiTrash2, FiChevronRight } from 'react-icons/fi';
+import { FiX, FiPlus, FiEdit2, FiTrash2, FiChevronRight } from 'react-icons/fi';
+import { AppModal, AppModalHeader, AppModalSearchRow } from '@/app/components/modals/AppModal';
 import { upsertPersonality, deletePersonality, Personality } from '@/lib/calls/model-chat-conversation';
 import { uploadFile } from '@/lib/calls/upload-file';
 import type { CloudFile } from '@/app/components/file/file.interface';
@@ -163,7 +164,7 @@ function PersonalityCard({
 // ─── Field label ─────────────────────────────────────────────────────────────
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
     return (
-        <label className="block text-xs font-medium mb-1" style={{ color: 'var(--modal-muted-fg)' }}>
+        <label className="app-modal-field-label !mb-1">
             {children}
             {required && <span className="ml-0.5 text-red-500">*</span>}
         </label>
@@ -226,104 +227,91 @@ function Editor({
         } catch { setUploading(false); }
     };
 
-    const inputClass = 'app-modal-input w-full rounded-lg px-2.5 py-1.5 text-xs focus:outline-none';
+    const inputClass = 'app-modal-input text-xs';
 
     return (
-        <div className="flex flex-col overflow-y-auto" style={{ maxHeight: '85vh', padding: '18px 20px', gap: '14px' }}>
-            {/* Editor header */}
-            <div className="flex items-start justify-between shrink-0">
+        <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
+            <AppModalHeader
+                title={isEditing ? t('modals.editPersonality', 'Edit Personality') : t('modals.newPersonality', 'New Personality')}
+                subtitle={isEditing ? t('modals.personalityUpdateSubtitle', "Update this personality's details.") : t('modals.personalityNewSubtitle', 'Define a new AI personality for your chats.')}
+                onClose={onCancel}
+            />
+
+            <div className="flex-1 overflow-y-auto space-y-3 px-5 py-3">
+                {/* Icon + Name */}
+                <div className="grid gap-3" style={{ gridTemplateColumns: '56px 1fr' }}>
+                    <div className="flex flex-col items-center gap-1">
+                        <PersonalityIcon icon={icon || null} size={44} />
+                        <label className="text-[10px] font-medium cursor-pointer" style={{ color: 'var(--chat-accent)' }}>
+                            Upload
+                            <input type="file" accept="image/*" className="hidden"
+                                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleIconFile(f); }} />
+                        </label>
+                        {uploading && <div className="text-[10px]" style={{ color: 'var(--modal-muted-fg)' }}>{uploadPercent}%</div>}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <div>
+                            <FieldLabel required>Name</FieldLabel>
+                            <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Marketing Expert" />
+                        </div>
+                        <div>
+                            <FieldLabel>Icon (emoji or URL)</FieldLabel>
+                            <input className={inputClass} value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="🎯 or https://..." />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Description */}
                 <div>
-                    <h3 className="text-sm font-semibold" style={{ color: 'var(--modal-fg)' }}>
-                        {isEditing ? t('modals.editPersonality', 'Edit Personality') : t('modals.newPersonality', 'New Personality')}
-                    </h3>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--modal-muted-fg)' }}>
-                        {isEditing ? t('modals.personalityUpdateSubtitle', "Update this personality's details.") : t('modals.personalityNewSubtitle', 'Define a new AI personality for your chats.')}
-                    </p>
+                    <FieldLabel>Description</FieldLabel>
+                    <input className={inputClass} value={description} onChange={(e) => setDescription(e.target.value)}
+                        placeholder="A short summary of what this personality does" />
                 </div>
+
+                {/* Default Model picker */}
+                <div>
+                    <FieldLabel>Default Model</FieldLabel>
+                    <button
+                        type="button"
+                        className="w-full rounded-lg border text-xs flex items-center justify-between gap-2 px-2.5 py-1.5 transition-colors text-left hover:border-[color-mix(in_srgb,var(--modal-border)_50%,var(--modal-fg))]"
+                        style={{ background: 'var(--modal-bg)', borderColor: 'var(--modal-border)', color: 'var(--modal-fg)' }}
+                        onClick={() => window.dispatchEvent(new CustomEvent('request-model-pick', { detail: {} }))}
+                    >
+                        <span className="truncate font-medium" style={{ color: modelName ? 'var(--modal-fg)' : 'var(--modal-muted-fg)' }}>
+                            {modelName || modelId || 'Select a model…'}
+                        </span>
+                        <FiChevronRight size={13} className="shrink-0" style={{ color: 'var(--modal-muted-fg)' }} />
+                    </button>
+                </div>
+
+                {/* System prompt */}
+                <div>
+                    <FieldLabel required>System Prompt</FieldLabel>
+                    <textarea
+                        className={`${inputClass} resize-none leading-relaxed`}
+                        style={{ minHeight: '80px' }}
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder="Describe how this personality should behave, its tone, expertise, and boundaries…"
+                    />
+                </div>
+            </div>
+
+            <div
+                className="flex shrink-0 items-center justify-end gap-2 border-t px-5 py-3"
+                style={{ borderColor: 'var(--modal-border)', background: 'var(--modal-bg)' }}
+            >
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
-                    style={{ color: 'var(--modal-muted-fg)' }}
-                    aria-label={t('common.cancel', 'Cancel')}
-                >
-                    <FiX size={15} strokeWidth={2} />
-                </button>
-            </div>
-
-            {/* Icon + Name */}
-            <div className="grid gap-3" style={{ gridTemplateColumns: '60px 1fr' }}>
-                <div className="flex flex-col items-center gap-1.5">
-                    <PersonalityIcon icon={icon || null} size={48} />
-                    <label className="text-[10px] font-medium cursor-pointer" style={{ color: 'var(--modal-muted-fg)' }}>
-                        Upload
-                        <input type="file" accept="image/*" className="hidden"
-                            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleIconFile(f); }} />
-                    </label>
-                    {uploading && <div className="text-[10px]" style={{ color: 'var(--modal-muted-fg)' }}>{uploadPercent}%</div>}
-                </div>
-                <div className="flex flex-col gap-2">
-                    <div>
-                        <FieldLabel required>Name</FieldLabel>
-                        <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Marketing Expert" />
-                    </div>
-                    <div>
-                        <FieldLabel>Icon (emoji or URL)</FieldLabel>
-                        <input className={inputClass} value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="🎯 or https://..." />
-                    </div>
-                </div>
-            </div>
-
-            {/* Description */}
-            <div>
-                <FieldLabel>Description</FieldLabel>
-                <input className={inputClass} value={description} onChange={(e) => setDescription(e.target.value)}
-                    placeholder="A short summary of what this personality does" />
-            </div>
-
-            {/* Default Model picker */}
-            <div>
-                <FieldLabel>Default Model</FieldLabel>
-                <button
-                    type="button"
-                    className="w-full rounded-lg border text-xs flex items-center justify-between gap-2 px-2.5 py-1.5 transition-colors text-left hover:border-[color-mix(in_srgb,var(--modal-border)_50%,var(--modal-fg))]"
-                    style={{ background: 'var(--modal-bg)', borderColor: 'var(--modal-border)', color: 'var(--modal-fg)' }}
-                    onClick={() => window.dispatchEvent(new CustomEvent('request-model-pick', { detail: {} }))}
-                >
-                    <span className="truncate font-medium" style={{ color: modelName ? 'var(--modal-fg)' : 'var(--modal-muted-fg)' }}>
-                        {modelName || modelId || 'Select a model…'}
-                    </span>
-                    <FiChevronRight size={13} className="shrink-0" style={{ color: 'var(--modal-muted-fg)' }} />
-                </button>
-            </div>
-
-            {/* System prompt */}
-            <div>
-                <FieldLabel required>System Prompt</FieldLabel>
-                <textarea
-                    className={`${inputClass} resize-none leading-relaxed`}
-                    style={{ minHeight: '90px' }}
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Describe how this personality should behave, its tone, expertise, and boundaries…"
-                />
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex items-center justify-between shrink-0 pt-1">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    className="text-xs font-medium px-3.5 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                    style={{ color: 'var(--modal-muted-fg)' }}
+                    className="app-modal-btn-secondary !text-xs !py-1.5"
                 >
                     {t('common.cancel', 'Cancel')}
                 </button>
                 <button
                     type="button"
                     disabled={!canSave}
-                    className="text-xs font-semibold px-4 py-1.5 rounded-lg transition-opacity disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-88"
-                    style={{ background: 'var(--chat-accent)', color: 'var(--chat-canvas-bg)' }}
+                    className="app-modal-btn-primary !text-xs !py-1.5"
                     onClick={() => onSave({ id: initial.id, name: name.trim(), description: description.trim(), prompt: prompt.trim(), icon: icon.trim(), modelId })}
                 >
                     {isEditing ? 'Save changes' : 'Create personality'}
@@ -385,60 +373,58 @@ export function PersonalityModal({
         return () => window.removeEventListener('keydown', handler);
     }, [isOpen, showEditor, closeEditor, onClose]);
 
-    if (!isOpen) return null;
-
-    const overlayStyle: React.CSSProperties = { background: 'var(--modal-overlay)' };
-    const panelBase: React.CSSProperties = {
-        background: 'var(--modal-bg)',
-        borderColor: 'var(--modal-border)',
-        color: 'var(--modal-fg)',
-        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px var(--modal-border)',
-    };
-
     // ── Editor view ──────────────────────────────────────────────────────────
     if (showEditor) {
         return (
-            <div className="fixed inset-0 z-[110] flex items-center justify-center backdrop-blur-sm" style={overlayStyle}>
-                <div className="relative w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl" style={panelBase}>
-                    {errorMessage && (
-                        <div className="px-4 py-2 text-xs border-b" style={{
-                            color: '#ef4444',
-                            borderColor: 'color-mix(in srgb, #ef4444 20%, var(--modal-border))',
-                            background: 'color-mix(in srgb, #ef4444 7%, var(--modal-bg))',
-                        }}>
-                            {errorMessage}
-                        </div>
-                    )}
-                    <Editor
-                        initial={editing || {}}
-                        onCancel={closeEditor}
-                        onSave={async (payload) => {
-                            try {
-                                const saved = await upsertPersonality(payload);
-                                setPersonalities((prev) => {
-                                    const exists = prev.find((x) => x.id === saved.id);
-                                    return exists ? prev.map((x) => (x.id === saved.id ? saved : x)) : [saved, ...prev];
-                                });
-                                closeEditor();
-                            } catch {
-                                setErrorMessage('Failed to save personality. Please try again.');
-                            }
-                        }}
-                        currentModelId={currentModelId}
-                        currentModelName={currentModelName}
-                    />
-                </div>
-            </div>
+            <AppModal
+                open={isOpen}
+                onClose={closeEditor}
+                size="md"
+                className="z-[110]"
+                closeOnEscape={false}
+            >
+                {errorMessage && (
+                    <div className="px-4 py-2 text-xs border-b" style={{
+                        color: '#ef4444',
+                        borderColor: 'color-mix(in srgb, #ef4444 20%, var(--modal-border))',
+                        background: 'color-mix(in srgb, #ef4444 7%, var(--modal-bg))',
+                    }}>
+                        {errorMessage}
+                    </div>
+                )}
+                <Editor
+                    initial={editing || {}}
+                    onCancel={closeEditor}
+                    onSave={async (payload) => {
+                        try {
+                            const saved = await upsertPersonality(payload);
+                            setPersonalities((prev) => {
+                                const exists = prev.find((x) => x.id === saved.id);
+                                return exists ? prev.map((x) => (x.id === saved.id ? saved : x)) : [saved, ...prev];
+                            });
+                            closeEditor();
+                        } catch {
+                            setErrorMessage('Failed to save personality. Please try again.');
+                        }
+                    }}
+                    currentModelId={currentModelId}
+                    currentModelName={currentModelName}
+                />
+            </AppModal>
         );
     }
 
     // ── Browse view ──────────────────────────────────────────────────────────
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center backdrop-blur-sm" style={overlayStyle}>
-            <div
-                className="flex w-full w-[94vw] max-w-6xl overflow-hidden rounded-2xl border shadow-2xl"
-                style={{ height: '90vh', maxHeight: '900px', ...panelBase }}
-            >
+        <AppModal
+            open={isOpen}
+            onClose={onClose}
+            size="xl"
+            className="z-[110]"
+            closeOnEscape={false}
+            panelClassName="flex h-[90vh] max-h-[900px] w-[94vw] max-w-6xl flex-col overflow-hidden p-0"
+        >
+            <div className="flex min-h-0 flex-1 overflow-hidden">
                 {/* Sidebar */}
                 <aside
                     className="w-52 border-r shrink-0 flex flex-col overflow-y-auto"
@@ -483,75 +469,37 @@ export function PersonalityModal({
                 </aside>
 
                 {/* Main content */}
-                <main className="flex-1 flex flex-col min-w-0 overflow-hidden" style={{ background: 'var(--modal-bg)' }}>
-                    {/* Header */}
-                    <div className="flex-shrink-0 border-b px-4 py-3" style={{ borderColor: 'var(--modal-border)' }}>
-                        <div className="flex justify-between items-start gap-3">
-                            <div className="min-w-0 flex-1">
-                                <h2 className="text-lg font-bold tracking-tight mt-0.5" style={{ color: 'var(--modal-fg)' }}>
-                                    {activeTab === 'mine'
-                                        ? t('modals.personalitiesMine', 'My Personalities')
-                                        : t('modals.personalitiesAll', 'All Personalities')}
-                                </h2>
-                                <p className="text-xs mt-0.5" style={{ color: 'var(--modal-muted-fg)' }}>
-                                    {activeTab === 'mine'
-                                        ? t('modals.personalitiesMineHint', "Personalities you've created and can edit.")
-                                        : t('modals.personalitiesAllHint', 'Browse and activate any AI personality for your chat.')}
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={() => openEditor()}
-                                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-88"
-                                    style={{ background: 'var(--chat-accent)', color: 'var(--chat-canvas-bg)' }}
-                                >
-                                    <FiPlus size={14} strokeWidth={2.5} />
-                                    New
-                                </button>
-                                <button
-                                    type="button"
-                                    className="h-7 w-7 rounded-lg flex items-center justify-center transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-                                    style={{ color: 'var(--modal-muted-fg)' }}
-                                    onClick={onClose}
-                                    aria-label="Close"
-                                >
-                                    <FiX size={16} strokeWidth={2} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                <main className="flex min-w-0 flex-1 flex-col overflow-hidden" style={{ background: 'var(--modal-bg)' }}>
+                    <AppModalHeader
+                        title={
+                            activeTab === 'mine'
+                                ? t('modals.personalitiesMine', 'My Personalities')
+                                : t('modals.personalitiesAll', 'All Personalities')
+                        }
+                        subtitle={
+                            activeTab === 'mine'
+                                ? t('modals.personalitiesMineHint', "Personalities you've created and can edit.")
+                                : t('modals.personalitiesAllHint', 'Browse and activate any AI personality for your chat.')
+                        }
+                        onClose={onClose}
+                        trailing={
+                            <button
+                                type="button"
+                                onClick={() => openEditor()}
+                                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-opacity hover:opacity-88"
+                                style={{ background: 'var(--chat-accent)', color: 'var(--chat-canvas-bg)' }}
+                            >
+                                <FiPlus size={14} strokeWidth={2.5} />
+                                New
+                            </button>
+                        }
+                    />
 
-                    {/* Search */}
-                    <div
-                        className="sticky top-0 z-10 border-b px-4 py-2"
-                        style={{ borderColor: 'var(--modal-border)', background: 'var(--modal-bg-muted)' }}
-                    >
-                        <div className="relative flex items-center max-w-sm">
-                            <FiSearch
-                                size={13}
-                                className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                                style={{ color: 'var(--modal-muted-fg)' }}
-                            />
-                            <input
-                                type="text"
-                                placeholder="Search personalities…"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="app-modal-input rounded-lg pl-7 pr-6 text-xs h-7 w-full"
-                            />
-                            {search && (
-                                <button
-                                    onClick={() => setSearch('')}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/10"
-                                    style={{ color: 'var(--modal-muted-fg)' }}
-                                    title="Clear"
-                                >
-                                    <FiX size={12} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
+                    <AppModalSearchRow
+                        value={search}
+                        onChange={setSearch}
+                        placeholder="Search personalities…"
+                    />
 
                     {/* Error banner */}
                     {errorMessage && (
@@ -615,6 +563,6 @@ export function PersonalityModal({
                     </div>
                 </main>
             </div>
-        </div>
+        </AppModal>
     );
 }

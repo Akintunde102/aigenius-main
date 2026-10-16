@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { FiShield, FiX } from 'react-icons/fi';
+import React, { useState } from 'react';
 import { useToolPermissions } from '@/lib/hooks/useToolPermissions';
 import { type DesktopToolPermissionEntry } from '@/lib/hooks/useDesktopToolPermissions';
 import { useLanguage } from '@/lib/providers/LanguageProvider';
+import {
+  AppModal,
+  AppModalBody,
+  AppModalHeader,
+} from '@/app/components/modals/AppModal';
 
 interface ToolPermissionsModalProps {
   onClose: () => void;
@@ -32,9 +35,9 @@ function PermissionToggle({
       onClick={() => onChange(!checked)}
       className={[
         'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--chat-accent)_40%,transparent)]',
         disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
-        checked ? 'bg-sky-600' : 'bg-slate-300 dark:bg-slate-600',
+        checked ? 'bg-[var(--chat-accent)]' : 'bg-[color-mix(in_srgb,var(--modal-fg)_18%,transparent)]',
       ].join(' ')}
     >
       <span
@@ -57,19 +60,22 @@ function ToolPermissionRow({
   onToggle: (requiresApproval: boolean) => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0 dark:border-slate-700">
+    <div
+      className="flex items-start justify-between gap-3 border-b px-3 py-2.5 last:border-b-0"
+      style={{ borderColor: 'var(--modal-border)' }}
+    >
       <div className="min-w-0">
-        <p className="text-sm font-medium text-gray-800 dark:text-slate-100">{tool.label}</p>
-        <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">{tool.description}</p>
+        <p className="text-sm font-medium" style={{ color: 'var(--modal-fg)' }}>{tool.label}</p>
+        <p className="mt-0.5 text-xs" style={{ color: 'var(--modal-muted-fg)' }}>{tool.description}</p>
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-1">
+      <div className="flex shrink-0 flex-col items-end gap-0.5">
         <PermissionToggle
           checked={tool.requiresApproval}
           disabled={disabled}
           onChange={onToggle}
           label={`Ask before ${tool.label}`}
         />
-        <span className="text-[10px] text-gray-400 dark:text-slate-500">
+        <span className="text-[10px]" style={{ color: 'var(--modal-muted-fg)' }}>
           {tool.requiresApproval ? 'Ask first' : 'Auto-run'}
         </span>
       </div>
@@ -83,63 +89,67 @@ export const ToolPermissionsModal: React.FC<ToolPermissionsModalProps> = ({ onCl
     useToolPermissions();
   const [showAutoApproveWarning, setShowAutoApproveWarning] = useState(false);
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      e.stopPropagation();
-      onClose();
-    };
-    window.addEventListener('keydown', onKeyDown, true);
-    return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [onClose]);
-
-  const overlay = (
-    <div
-      role="presentation"
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/45 backdrop-blur-[2px]"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tool-permissions-title"
-        className="mx-4 flex max-h-[min(640px,90vh)] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-slate-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-slate-700">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-sky-500/10 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400"
-              aria-hidden
-            >
-              <FiShield className="h-4 w-4" />
-            </div>
-            <h2 id="tool-permissions-title" className="text-base font-semibold leading-none text-gray-900 dark:text-slate-50">
-              {t('modals.toolPermissionsTitle', 'Tool permissions')}
-            </h2>
-          </div>
+  const warningDialog = showAutoApproveWarning ? (
+    <AppModal open onClose={() => setShowAutoApproveWarning(false)} size="sm" ariaLabelledBy="auto-approve-warn-title">
+      <AppModalBody className="!py-4">
+        <h3 id="auto-approve-warn-title" className="app-modal-title text-base">
+          {t('sidebar.autoApproveWarningTitle', 'Auto-approve all tools?')}
+        </h3>
+        <p className="app-modal-subtitle mt-2 !text-sm">
+          {t(
+            'sidebar.autoApproveWarningText',
+            'Tools can run without asking — including shell commands, file changes, emails, and other data-altering actions. Only enable this if you trust the current session.',
+          )}
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            onClick={onClose}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-slate-800"
-            aria-label={t('common.close', 'Close')}
+            className="rounded-lg border px-3 py-1.5 text-sm"
+            style={{ borderColor: 'var(--modal-border)', color: 'var(--modal-fg)' }}
+            onClick={() => setShowAutoApproveWarning(false)}
           >
-            <FiX className="h-4 w-4" />
+            {t('common.cancel', 'Cancel')}
+          </button>
+          <button
+            type="button"
+            className="app-modal-btn-primary px-3 py-1.5 text-sm"
+            onClick={() => {
+              setAutoApproveAll(true);
+              setShowAutoApproveWarning(false);
+            }}
+          >
+            {t('modals.turnOn', 'Turn on')}
           </button>
         </div>
+      </AppModalBody>
+    </AppModal>
+  ) : null;
 
-        <div className="overflow-y-auto px-5 py-4">
-          <p className="text-sm text-gray-600 dark:text-slate-300">
-            {t('modals.toolPermissionsIntro', 'Choose which tools should ask for your approval before running. Workflows are not included.')}
-          </p>
-
-          <div className="mt-4 flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
-            <div>
-              <p className="text-sm font-medium text-gray-800 dark:text-slate-100">
+  return (
+    <>
+      <AppModal open onClose={onClose} size="md" ariaLabelledBy="tool-permissions-title">
+        <AppModalHeader
+          titleId="tool-permissions-title"
+          title={t('modals.toolPermissionsTitle', 'Tool permissions')}
+          subtitle={t(
+            'modals.toolPermissionsIntro',
+            'Choose which tools should ask for your approval before running. Workflows are not included.',
+          )}
+          onClose={onClose}
+        />
+        <AppModalBody className="!pt-2 space-y-3">
+          <div
+            className="flex items-center justify-between rounded-lg border px-3 py-2.5"
+            style={{
+              borderColor: 'var(--modal-border)',
+              background: 'var(--modal-bg-muted)',
+            }}
+          >
+            <div className="min-w-0 pr-2">
+              <p className="text-sm font-medium" style={{ color: 'var(--modal-fg)' }}>
                 {t('modals.autoApproveAllTools', 'Auto-approve all tools')}
               </p>
-              <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
+              <p className="mt-0.5 text-xs" style={{ color: 'var(--modal-muted-fg)' }}>
                 {t('modals.autoApproveSkipHint', 'Skip every approval prompt until you turn this off.')}
               </p>
             </div>
@@ -158,23 +168,31 @@ export const ToolPermissionsModal: React.FC<ToolPermissionsModalProps> = ({ onCl
           </div>
 
           {state?.autoApproveAll && (
-            <p className="mt-3 text-xs text-amber-700 dark:text-amber-400">
-              {t('modals.autoApproveOnNotice', 'All tools will run without asking. Per-tool settings apply again when auto-approve is off.')}
+            <p className="text-xs" style={{ color: 'var(--modal-muted-fg)' }}>
+              {t(
+                'modals.autoApproveOnNotice',
+                'All tools will run without asking. Per-tool settings apply again when auto-approve is off.',
+              )}
             </p>
           )}
 
           {loading && (
-            <p className="mt-4 text-sm text-gray-500 dark:text-slate-400">{t('modals.loadingPermissions', 'Loading permissions…')}</p>
+            <p className="text-sm" style={{ color: 'var(--modal-muted-fg)' }}>
+              {t('modals.loadingPermissions', 'Loading permissions…')}
+            </p>
           )}
 
           {error && (
-            <p className="mt-4 text-sm text-red-600" role="alert">
+            <p className="text-sm text-red-500" role="alert">
               {error}
             </p>
           )}
 
           {state && (
-            <div className="mt-4 overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700">
+            <div
+              className="overflow-hidden rounded-lg border"
+              style={{ borderColor: 'var(--modal-border)' }}
+            >
               {state.tools.map((tool) => (
                 <ToolPermissionRow
                   key={tool.id}
@@ -187,58 +205,9 @@ export const ToolPermissionsModal: React.FC<ToolPermissionsModalProps> = ({ onCl
               ))}
             </div>
           )}
-        </div>
-      </div>
-    </div>
-  );
-
-  const warningOverlay = showAutoApproveWarning ? (
-    <div
-      role="presentation"
-      className="fixed inset-0 z-[10002] flex items-center justify-center bg-slate-900/50"
-      onClick={() => setShowAutoApproveWarning(false)}
-    >
-      <div
-        role="alertdialog"
-        className="mx-4 w-full max-w-md rounded-xl bg-white p-5 shadow-2xl dark:bg-slate-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-50">{t('sidebar.autoApproveWarningTitle', 'Auto-approve all tools?')}</h3>
-        <p className="mt-2 text-sm text-gray-600 dark:text-slate-300">
-          {t('sidebar.autoApproveWarningText', 'Tools can run without asking — including shell commands, file changes, emails, and other data-altering actions. Only enable this if you trust the current session.')}
-        </p>
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm"
-            onClick={() => setShowAutoApproveWarning(false)}
-          >
-            {t('common.cancel', 'Cancel')}
-          </button>
-          <button
-            type="button"
-            className="rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white"
-            onClick={() => {
-              setAutoApproveAll(true);
-              setShowAutoApproveWarning(false);
-            }}
-          >
-            {t('modals.turnOn', 'Turn on')}
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : null;
-
-  if (typeof document === 'undefined') {
-    return null;
-  }
-
-  const portalTarget = document.getElementById('modal-root') ?? document.body;
-  return (
-    <>
-      {createPortal(overlay, portalTarget)}
-      {warningOverlay ? createPortal(warningOverlay, portalTarget) : null}
+        </AppModalBody>
+      </AppModal>
+      {warningDialog}
     </>
   );
 };

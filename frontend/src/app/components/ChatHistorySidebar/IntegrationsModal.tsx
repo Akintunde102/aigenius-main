@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import {
   getGmailConnectUrl,
   getGmailStatus,
@@ -12,7 +11,8 @@ import {
 } from '@/lib/calls/integrations';
 import { isIntegrationCallbackOriginTrusted } from '@/lib/oauth-callback-origin';
 import { FEATURE_FLAGS } from '@/lib/config/features';
-import { FiMail, FiX, FiInfo, FiChevronUp } from 'react-icons/fi';
+import { FiMail, FiInfo, FiChevronUp } from 'react-icons/fi';
+import { AppModal, AppModalBody, AppModalHeader } from '@/app/components/modals/AppModal';
 import { SiLinkedin } from 'react-icons/si';
 import { useLanguage } from '@/lib/providers/LanguageProvider';
 
@@ -63,17 +63,6 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
   useEffect(() => {
     loadStatus(true);
   }, []);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      e.stopPropagation();
-      onClose();
-    };
-    window.addEventListener('keydown', onKeyDown, true);
-    return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [onClose]);
 
   // Prefetch OAuth URLs when modal opens so Connect can open popup synchronously
   useEffect(() => {
@@ -360,60 +349,22 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
   };
 
   const overlay = (
-    <div
-      role="presentation"
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/45 backdrop-blur-[2px]"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="integrations-modal-title"
-        className="max-h-[min(90vh,640px)] max-w-md w-full mx-4 flex flex-col overflow-hidden rounded-xl border shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "var(--modal-bg)",
-          borderColor: "var(--modal-border)",
-          color: "var(--modal-fg)",
-        }}
-      >
-        <div className="shrink-0 border-b px-5 py-4" style={{ background: "var(--modal-bg-muted)", borderColor: "var(--modal-border)" }}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border shadow-sm"
-                aria-hidden
-                style={{ background: "var(--modal-bg)", borderColor: "var(--modal-border)", color: "var(--modal-fg)" }}
-              >
-                <FiMail size={20} />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h2 id="integrations-modal-title" className="text-base font-semibold leading-none">
-                    {t('sidebar.integrations', 'Integrations')}
-                  </h2>
-                  {loading && (
-                    <span className="text-[10px] animate-pulse font-medium text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                      {t('modals.syncing', 'Syncing...')}
-                    </span>
-                  )}
-                </div>
-                <p className="mt-1 text-xs" style={{ color: "var(--modal-muted-fg)" }}>{t('modals.integrationsSubtitle', 'Connect external accounts for tools')}</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              aria-label={t('common.close', 'Close')}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md p-1 transition-colors hover:bg-red-500/10 focus:outline-none"
-              style={{ color: "var(--modal-muted-fg)" }}
-              onClick={onClose}
-            >
-              <FiX className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <p className="text-sm mb-4" style={{ color: "var(--modal-muted-fg)" }}>
+    <AppModal open onClose={onClose} size="sm" ariaLabelledBy="integrations-modal-title">
+        <AppModalHeader
+          titleId="integrations-modal-title"
+          title={t('sidebar.integrations', 'Integrations')}
+          subtitle={t('modals.integrationsSubtitle', 'Connect external accounts for tools')}
+          onClose={onClose}
+          trailing={
+            loading ? (
+              <span className="text-[10px] animate-pulse font-medium text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                {t('modals.syncing', 'Syncing...')}
+              </span>
+            ) : null
+          }
+        />
+        <AppModalBody className="!pt-2">
+        <p className="text-xs mb-3 leading-relaxed" style={{ color: "var(--modal-muted-fg)" }}>
           {t('modals.integrationsIntro', 'Connect your accounts so AI models with tool support can use them (e.g. Gmail or your LinkedIn profile).')}
         </p>
         {initialLoading ? (
@@ -592,19 +543,11 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ onClose })
             )}
           </div>
         )}
-        </div>
-      </div>
-    </div>
+        </AppModalBody>
+    </AppModal>
   );
 
-  if (typeof document === 'undefined') {
-    return null;
-  }
-
-  const portalTarget =
-    document.getElementById('modal-root') ?? document.body;
-
-  return createPortal(overlay as any, portalTarget);
+  return overlay;
 };
 
 export default IntegrationsModal;

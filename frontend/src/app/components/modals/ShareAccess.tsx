@@ -9,14 +9,15 @@ import { Folder, UserAccess, UserDetailsInLocalStorage } from "@/lib/types";
 
 import type { AvatarProps, ButtonProps } from "antd";
 import { ensureLazyDefault } from "@/lib/utils/lazy-component";
+import { RenderErrorBoundary } from "@/app/components/RenderErrorBoundary";
 
 // Code split Antd components to reduce bundle size
-const Avatar = dynamic<AvatarProps>(() => import("antd").then(mod => ensureLazyDefault<AvatarProps>((mod as any).Avatar || (mod.default as any)?.Avatar, "avatar")), {
+const Avatar = dynamic<AvatarProps>(() => import("antd").then(mod => ensureLazyDefault<AvatarProps>((mod as any).Avatar || (mod.default as any)?.Avatar, "avatar")).catch(() => ensureLazyDefault<AvatarProps>(null, "avatar")), {
     ssr: false,
     loading: () => <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
 });
 
-const Button = dynamic<ButtonProps>(() => import("antd").then(mod => ensureLazyDefault<ButtonProps>((mod as any).Button || (mod.default as any)?.Button, "button")), {
+const Button = dynamic<ButtonProps>(() => import("antd").then(mod => ensureLazyDefault<ButtonProps>((mod as any).Button || (mod.default as any)?.Button, "button")).catch(() => ensureLazyDefault<ButtonProps>(null, "button")), {
     ssr: false,
     loading: () => <div className="px-4 py-2 bg-gray-200 rounded animate-pulse"></div>
 });
@@ -175,23 +176,25 @@ const ShareAccess = ({ closeModal, afterSharingAccess, folderId, fetchUsersWithA
     };
 
     return (
-        <div className="w-full py-[30px] px-[5px]">
-            {
-                loggedUserIsAllowedToAddAccess ? (
-                    <ShareAccessSearchBar onUserSelected={handleUserSelected} />
-                ) : (
-                    <></>
-                )
-            }
+        <RenderErrorBoundary logLabel="[share-access-modal]">
+            <div className="w-full py-[30px] px-[5px]">
+                {
+                    loggedUserIsAllowedToAddAccess ? (
+                        <ShareAccessSearchBar onUserSelected={handleUserSelected} />
+                    ) : (
+                        <></>
+                    )
+                }
 
-            {usersWithAccess.length > 0 ? (
-                <ShareAccessUsersList usersWithAccess={usersWithAccess} onRemoveUserClick={handleRemoveUserClick} />
-            ) : (
-                <div className="text-center text-[#292D32] text-[14px] font-bold py-4">
-                    No users have been added to this folder yet.
-                </div>
-            )}
-        </div>
+                {usersWithAccess.length > 0 ? (
+                    <ShareAccessUsersList usersWithAccess={usersWithAccess} onRemoveUserClick={handleRemoveUserClick} />
+                ) : (
+                    <div className="text-center text-[#292D32] text-[14px] font-bold py-4">
+                        No users have been added to this folder yet.
+                    </div>
+                )}
+            </div>
+        </RenderErrorBoundary>
     );
 };
 

@@ -55,6 +55,35 @@ export function ModelSwitcher() {
   const pillId = useId();
   const active = MODELS.find((m) => m.id === activeId) ?? MODELS[0];
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const currentIndex = MODELS.findIndex((m) => m.id === activeId);
+    if (currentIndex === -1) return;
+
+    let targetIndex = currentIndex;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      targetIndex = (currentIndex + 1) % MODELS.length;
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      targetIndex = (currentIndex - 1 + MODELS.length) % MODELS.length;
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      targetIndex = 0;
+    } else if (e.key === "End") {
+      e.preventDefault();
+      targetIndex = MODELS.length - 1;
+    } else {
+      return;
+    }
+
+    const nextModel = MODELS[targetIndex];
+    if (nextModel) {
+      setActiveId(nextModel.id);
+      const button = e.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="tab"]')[targetIndex];
+      button?.focus();
+    }
+  };
+
   return (
     /* Outer card — matches AppPreview rounded window look */
     <div className={`overflow-hidden rounded-2xl shadow-lp-pop ${APP.frame}`}>
@@ -85,6 +114,7 @@ export function ModelSwitcher() {
         <div
           role="tablist"
           aria-label="Choose a model"
+          onKeyDown={handleKeyDown}
           className={`mt-4 inline-flex flex-wrap gap-1 rounded-xl border p-1 ${APP.line}`}
         >
           {MODELS.map((model) => {
@@ -94,6 +124,7 @@ export function ModelSwitcher() {
                 key={model.id}
                 type="button"
                 role="tab"
+                tabIndex={selected ? 0 : -1}
                 aria-selected={selected}
                 onClick={() => setActiveId(model.id)}
                 className={`relative rounded-lg px-3 py-1 text-[13px] font-medium transition-colors duration-150 ${

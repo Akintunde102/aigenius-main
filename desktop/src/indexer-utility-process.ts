@@ -1,4 +1,4 @@
-import { utilityProcess, type UtilityProcess } from 'electron';
+import { app, utilityProcess, type UtilityProcess } from 'electron';
 
 import fs from 'fs';
 
@@ -94,6 +94,18 @@ function forkIndexer(opts: {
     AIGENIUS_SECRET_TOKEN: opts.secretToken,
 
     AIGENIUS_HOMEDIR_INDEX: process.env.AIGENIUS_HOMEDIR_INDEX ?? '1',
+    AIGENIUS_DEVICE_FAST_INDEX: process.env.AIGENIUS_DEVICE_FAST_INDEX ?? '1',
+    AIGENIUS_APP_VERSION: app.getVersion(),
+    ...(process.env.OPENROUTER_API_KEY
+      ? { OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY }
+      : {}),
+    ...(process.env.PROVIDER_OPENROUTER_API_KEY
+      ? { PROVIDER_OPENROUTER_API_KEY: process.env.PROVIDER_OPENROUTER_API_KEY }
+      : {}),
+    ...(process.env.OPENROUTER_API_URL ? { OPENROUTER_API_URL: process.env.OPENROUTER_API_URL } : {}),
+    ...(process.env.AIGENIUS_DEVICE_POCKET_MODEL
+      ? { AIGENIUS_DEVICE_POCKET_MODEL: process.env.AIGENIUS_DEVICE_POCKET_MODEL }
+      : {}),
 
     ...(process.env.AIGENIUS_SEARCH_WORKERS
 

@@ -67,7 +67,7 @@ export async function pairServer(name: string): Promise<{
   serverId: string;
   pairingToken: string;
   name: string;
-  installCommand: string;
+  installCommand?: string;
 }> {
   const res = await authorizedFetch(SERVERS_ENDPOINT + "/pair", {
     method: "POST",

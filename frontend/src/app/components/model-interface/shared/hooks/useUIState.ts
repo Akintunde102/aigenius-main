@@ -16,7 +16,6 @@ import {
   markQuickPicksDefaultsMerged,
 } from "@/app/components/model-interface/shared/constants/quickPickModels";
 
-export { SHOW_LEGACY_FILTERS } from "../constants";
 import type {
   ModelOrderBy,
   ModelOrderDir,
@@ -118,7 +117,6 @@ export function useUIState(models: Model[]) {
     );
   }, []);
 
-  // New filter/sort state (used when !SHOW_LEGACY_FILTERS)
   const [orderBy, setOrderBy] = useState<ModelOrderBy>("default");
   const [orderDir, setOrderDir] = useState<ModelOrderDir>("asc");
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);

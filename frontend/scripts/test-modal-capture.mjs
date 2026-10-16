@@ -48,23 +48,23 @@ async function main() {
   await modalHeading.waitFor({ state: 'visible', timeout: 10000 });
   console.log('Modal heading visible:', await modalHeading.innerText());
 
-  const outDir = path.resolve(__dirname, '../../../docs/ui-redesign/snapshots');
+  const outDir = path.resolve(__dirname, '../test-results/ui-snapshots');
   await page.screenshot({ path: path.join(outDir, 'model-modal-after-v1.png') });
-  console.log('Captured after snapshot to docs/ui-redesign/snapshots/model-modal-after-v1.png');
+  console.log('Captured after snapshot to test-results/ui-snapshots/model-modal-after-v1.png');
 
   // Switch to All Models
   const allModelsTab = page.locator('aside button').filter({ hasText: 'All Models' });
   await allModelsTab.click();
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(outDir, 'model-modal-after-all-v1.png') });
-  console.log('Captured after All Models snapshot to docs/ui-redesign/snapshots/model-modal-after-all-v1.png');
+  console.log('Captured after All Models snapshot to test-results/ui-snapshots/model-modal-after-all-v1.png');
 
   // Test typing in search
   const searchInput = page.locator('aside input[placeholder="Search models..."]');
   await searchInput.fill('claude');
   await page.waitForTimeout(800);
   await page.screenshot({ path: path.join(outDir, 'model-modal-after-search-v1.png') });
-  console.log('Captured search snapshot to docs/ui-redesign/snapshots/model-modal-after-search-v1.png');
+  console.log('Captured search snapshot to test-results/ui-snapshots/model-modal-after-search-v1.png');
 
   // Clear search and test a capability filter (Files & Images)
   await searchInput.fill('');
@@ -72,13 +72,13 @@ async function main() {
   await filesImagesRow.click();
   await page.waitForTimeout(800);
   await page.screenshot({ path: path.join(outDir, 'model-modal-after-filter-v1.png') });
-  console.log('Captured filter snapshot to docs/ui-redesign/snapshots/model-modal-after-filter-v1.png');
+  console.log('Captured filter snapshot to test-results/ui-snapshots/model-modal-after-filter-v1.png');
 
   // Test empty state when search finds nothing
   await searchInput.fill('xyznotfound123');
   await page.waitForTimeout(800);
   await page.screenshot({ path: path.join(outDir, 'model-modal-empty-state.png') });
-  console.log('Captured empty state snapshot to docs/ui-redesign/snapshots/model-modal-empty-state.png');
+  console.log('Captured empty state snapshot to test-results/ui-snapshots/model-modal-empty-state.png');
 
   // Mobile test
   const mobileContext = await browser.newContext({
@@ -98,7 +98,7 @@ async function main() {
     await mobilePage.waitForTimeout(1000);
   }
   await mobilePage.screenshot({ path: path.join(outDir, 'model-modal-mobile.png') });
-  console.log('Captured mobile snapshot to docs/ui-redesign/snapshots/model-modal-mobile.png');
+  console.log('Captured mobile snapshot to test-results/ui-snapshots/model-modal-mobile.png');
   await mobileContext.close();
 
   await browser.close();

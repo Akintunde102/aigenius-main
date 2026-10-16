@@ -1,4 +1,4 @@
-﻿import type { ChatSession } from "@/app/components/model-interface/shared/types";
+import type { ChatSession } from "@/app/components/model-interface/shared/types";
 import type { CodeProject } from "@/lib/calls/code-projects";
 import { resolveSessionLastMessageTimestamp } from "@/app/components/model-interface/conversation/sessionRecency";
 
@@ -48,6 +48,15 @@ export function groupSidebarSessions(
   return { starred, recent, earlier };
 }
 
+import type { ConversationLabel } from "@/lib/calls/model-chat-conversation";
+
+export type LabelFolderBucket = {
+  labelId: string;
+  name: string;
+  color: string;
+  sessions: ChatSession[];
+};
+
 export type ProjectSidebarBucket = {
   projectId: string | null;
   label: string;
@@ -55,7 +64,11 @@ export type ProjectSidebarBucket = {
   rootPath?: string | null;
   /** Flat list sorted by recency (no nested section headers). */
   sessions: ChatSession[];
-  /** Includes the open-now chat when it belongs to this project. */
+  /** Populated when sidebarOrganization === 'labels' */
+  folders?: LabelFolderBucket[];
+  /** Populated when sidebarOrganization === 'labels': sessions with 0 labels */
+  others?: ChatSession[];
+  /** Includes the open-now chat when it belongs to this project. Distinct count of unique sessions. */
   conversationCount: number;
   /** True when the pinned open-now chat is assigned to this project. */
   hasActiveSession: boolean;
@@ -66,6 +79,10 @@ export type GroupSidebarSessionsByProjectOptions = {
   activeSessionId?: string | null;
   /** Fallback project for the active session when codeProjectId is not persisted yet. */
   activeProjectId?: string | null;
+  /** Sidebar presentation mode */
+  sidebarOrganization?: 'flat' | 'labels';
+  /** Global user conversation labels catalog */
+  conversationLabels?: ConversationLabel[];
 };
 
 function resolveSessionProjectId(
@@ -82,6 +99,61 @@ function resolveSessionProjectId(
     return opts.activeProjectId;
   }
   return null;
+}
+
+/**
+ * Partition sessions in a project bucket into colored label folders and unlabeled ("Others").
+ * Empty folders are excluded.
+ */
+export function groupProjectBucketByLabels(
+  sessions: ChatSession[],
+  catalog: ConversationLabel[] = [],
+): { folders: LabelFolderBucket[]; others: ChatSession[] } {
+  const folderBuckets = new Map<string, ChatSession[]>();
+  for (const label of catalog) {
+    folderBuckets.set(label.id, []);
+  }
+
+  const others: ChatSession[] = [];
+
+  for (const session of sessions) {
+    const ids = session.labelIds ?? [];
+    if (!ids.length) {
+      others.push(session);
+      continue;
+    }
+
+    let assignedToAny = false;
+    for (const labelId of ids) {
+      const bucket = folderBuckets.get(labelId);
+      if (bucket) {
+        bucket.push(session);
+        assignedToAny = true;
+      }
+    }
+
+    if (!assignedToAny) {
+      others.push(session);
+    }
+  }
+
+  const folders: LabelFolderBucket[] = [];
+  for (const label of catalog) {
+    const folderSessions = folderBuckets.get(label.id);
+    if (folderSessions && folderSessions.length > 0) {
+      folders.push({
+        labelId: label.id,
+        name: label.name,
+        color: label.color,
+        sessions: sortSidebarSessions(folderSessions),
+      });
+    }
+  }
+
+  return {
+    folders,
+    others: sortSidebarSessions(others),
+  };
 }
 
 /** Most recently messaged first (last sent or received message). */
@@ -122,22 +194,25 @@ export function groupSidebarSessionsByProject(
       activeSessionId && list.some((s) => s.id === activeSessionId),
     );
 
-    // All buckets keep the active session inline (highlighted in-place).
-    // "Open Now" section is currently disabled — if re-enabled, uncomment the
-    // General-bucket stripping below:
-    // const isProjectBucket = projectId !== null;
-    // const sessionsForList = (!isProjectBucket && activeSessionId)
-    //   ? list.filter((s) => s.id !== activeSessionId)
-    //   : list;
     const sessionsForList = list;
-
-    return {
+    const bucket: ProjectSidebarBucket = {
       projectId,
       label,
       sessions: sortSidebarSessions(sessionsForList),
       conversationCount: list.length,
       hasActiveSession,
     };
+
+    if (opts.sidebarOrganization === "labels") {
+      const { folders, others } = groupProjectBucketByLabels(
+        sessionsForList,
+        opts.conversationLabels ?? [],
+      );
+      bucket.folders = folders;
+      bucket.others = others;
+    }
+
+    return bucket;
   };
 
   const buckets: ProjectSidebarBucket[] = [];

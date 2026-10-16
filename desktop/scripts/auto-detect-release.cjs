@@ -13,29 +13,45 @@ const NATIVE_PATTERNS = [
   /^desktop\/src\/(?!desktop-ui-ota)/,
   /^client\/desktop-server\//,
   /^desktop-server\//,
-  /^client\/desktop\/package\.json/,
-  /^desktop\/package\.json/,
+  /^client\/crates\//,
+  /^crates\//,
+  /^client\/native-yolo\//,
+  /^native-yolo\//,
   /\.node$/,
   /\.rs$/,
   /\.c$/,
   /\.cpp$/,
-  /\.py$/,
 ];
 
 // 2. Resolve diff base (e.g., against previous tag, origin/main, or HEAD~1)
 function getChangedFiles(baseRef) {
   let target = baseRef;
+  if (!target && process.env.GITHUB_EVENT_BEFORE && !/^0+$/.test(process.env.GITHUB_EVENT_BEFORE)) {
+    target = process.env.GITHUB_EVENT_BEFORE;
+  }
+  if (!target && process.env.GITHUB_BASE_REF) {
+    target = `origin/${process.env.GITHUB_BASE_REF}`;
+  }
   if (!target) {
-    // Check if there is a previous git tag
+    // Check if there is a previous git tag that is recent (<= 25 commits away)
     const tagRes = spawnSync('git', ['describe', '--tags', '--abbrev=0'], {
       cwd: repoRoot,
       encoding: 'utf-8',
     });
     if (tagRes.status === 0 && tagRes.stdout.trim()) {
-      target = tagRes.stdout.trim();
-    } else {
-      target = 'HEAD~1';
+      const candidate = tagRes.stdout.trim();
+      const countRes = spawnSync('git', ['rev-list', '--count', `${candidate}..HEAD`], {
+        cwd: repoRoot,
+        encoding: 'utf-8',
+      });
+      const count = parseInt(countRes.stdout?.trim() || '999', 10);
+      if (count <= 25) {
+        target = candidate;
+      }
     }
+  }
+  if (!target) {
+    target = 'HEAD~1';
   }
 
   console.info(`[auto-detect-release] Comparing changes against: ${target}`);
@@ -70,12 +86,39 @@ function getLastNativeVersion() {
   return desktopPkg.version || '1.0.0';
 }
 
-function analyzeChanges(changedFiles) {
+function isDesktopPackageNativeChange(target) {
+  try {
+    const diff = spawnSync('git', ['diff', '-U0', target || 'HEAD~1', 'HEAD', '--', 'desktop/package.json', 'client/desktop/package.json'], {
+      cwd: repoRoot,
+      encoding: 'utf-8',
+    });
+    if (diff.status === 0 && diff.stdout) {
+      const lines = diff.stdout.split('\n').filter((l) => l.startsWith('+') || l.startsWith('-'));
+      return lines.some((l) => /"(version|dependencies|main)"\s*:/.test(l));
+    }
+  } catch {
+    /* fallback to conservative check */
+  }
+  return true;
+}
+
+function analyzeChanges(changedFiles, target) {
   const nativeChanged = [];
   const uiChanged = [];
 
   for (const file of changedFiles) {
     const normalized = file.replace(/\\/g, '/');
+    const isDesktopPkg = /^(client\/)?desktop\/package\.json$/.test(normalized);
+
+    if (isDesktopPkg) {
+      if (isDesktopPackageNativeChange(target)) {
+        nativeChanged.push(normalized);
+      } else {
+        uiChanged.push(normalized);
+      }
+      continue;
+    }
+
     const isNative = NATIVE_PATTERNS.some((pattern) => pattern.test(normalized));
 
     if (isNative) {
@@ -108,9 +151,12 @@ function analyzeChanges(changedFiles) {
 }
 
 const args = process.argv.slice(2);
-const baseRef = args[0];
+let baseRef = args[0];
+if (baseRef && (baseRef.startsWith('--') || /^0+$/.test(baseRef))) {
+  baseRef = undefined;
+}
 const changed = getChangedFiles(baseRef);
-const decision = analyzeChanges(changed);
+const decision = analyzeChanges(changed, baseRef);
 
 console.info('\n═════════════════════════════════════════════════════');
 console.info(`  RELEASE DECISION: ${decision.releaseType}`);

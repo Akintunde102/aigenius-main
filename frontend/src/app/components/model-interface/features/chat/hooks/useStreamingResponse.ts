@@ -33,6 +33,7 @@ import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interf
 import { getDraftConversationEpoch, setActiveRouteConversationTarget } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { resolveRequestConversationId } from './requestConversationId.utils';
 import { notifyDesktopChatCompletionIfBackground } from '@/lib/utils/desktop-chat-completion-notify';
+import { applyPromptButtonsToAssistantMessage } from '@/app/components/model-interface/features/messages/utils/applyPromptButtonsToAssistantMessage';
 import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
 import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
 
@@ -114,8 +115,13 @@ export function useStreamingResponse({
         uiChatBase?: ChatMessage[],
         messageId?: string,
         timestamp?: number,
-        /** False when the stream no longer owns its chatMap slot (e.g. draft reset). */
+        /** False when the stream no longer owns its chatMap slot (e.g. draft reset), or when caller manages flushing. */
         slotWriteAllowed = true,
+        initialExtra?: {
+            events?: MessageEvent[];
+            reasoning?: string;
+            reasoning_details?: ReasoningDetailChunk[];
+        },
     ): ChatMessage => {
         const streamingMsg = createChatMessage(
             'assistant',
@@ -134,8 +140,18 @@ export function useStreamingResponse({
             timestamp
         );
 
+        if (initialExtra?.events) {
+            streamingMsg.events = [...initialExtra.events];
+        }
+        if (initialExtra?.reasoning !== undefined) {
+            streamingMsg.reasoning = initialExtra.reasoning;
+        }
+        if (initialExtra?.reasoning_details !== undefined) {
+            streamingMsg.reasoning_details = initialExtra.reasoning_details;
+        }
+
         // Write to the stream's own session slot — unless the slot was handed to a
-        // newer draft since dispatch.
+        // newer draft since dispatch, or caller handles UI flushing.
         if (slotWriteAllowed) {
             if (uiChatBase) {
                 setChatForSession(chatMapKey, [...uiChatBase, streamingMsg]);
@@ -483,12 +499,16 @@ export function useStreamingResponse({
                     }
                     if (reasoningDetails?.length) {
                         const prevText = accumulatedReasoningDetails?.[0]?.text ?? '';
-                        const newText = reasoningDetails[0]?.text ?? '';
-                        accumulatedReasoningDetails = [{ ...reasoningDetails[0], text: prevText + newText }];
+                        const firstDetail = reasoningDetails[0] as ReasoningDetailChunk & { summary?: string };
+                        const newText = firstDetail?.text ?? firstDetail?.summary ?? '';
+                        accumulatedReasoningDetails = [{ ...firstDetail, text: prevText + newText }];
                     }
 
                     if (isFirstChunk) {
                         isFirstChunk = false;
+                        if (streamStillOwnsDraftSlot()) {
+                            setLoadingForSession(chatMapKey, false);
+                        }
                         const initialMsg = createInitialStreamingMessage(
                             accumulatedContent,
                             chatMapKey,
@@ -496,37 +516,45 @@ export function useStreamingResponse({
                             uiChatBase,
                             assistantMessageId,
                             assistantTimestamp,
-                            streamStillOwnsDraftSlot(),
+                            false, // Avoid double state set; flushUiUpdate(true) below commits sessionMessages once with full events & reasoning
+                            {
+                                events,
+                                reasoning: accumulatedReasoning || undefined,
+                                reasoning_details: accumulatedReasoningDetails?.length ? accumulatedReasoningDetails : undefined,
+                            },
                         );
-                        // Attach events on creation (createInitialStreamingMessage already called
-                        // setChatForSession, so we patch and re-set in one shot).
-                        initialMsg.events = [...events];
                         sessionMessages = [...sessionMessages, initialMsg];
                         flushUiUpdate(true);
                     } else {
                         sessionMessages = updateLastAssistantMessage(sessionMessages, accumulatedContent);
-                        // Patch events alongside the content update.
-                        patchEventsOnLastMessage();
-                    }
-
-                    if (reasoning || reasoningDetails?.length) {
-                        const updated = [...sessionMessages];
-                        const lastIdx = updated.length - 1;
-                        if (lastIdx >= 0 && updated[lastIdx].role === 'assistant') {
-                            updated[lastIdx] = {
-                                ...updated[lastIdx],
-                                reasoning: accumulatedReasoning,
-                                reasoning_details: accumulatedReasoningDetails,
-                            };
+                        if (reasoning || reasoningDetails?.length) {
+                            const updated = [...sessionMessages];
+                            const lastIdx = updated.length - 1;
+                            if (lastIdx >= 0 && updated[lastIdx].role === 'assistant') {
+                                updated[lastIdx] = {
+                                    ...updated[lastIdx],
+                                    reasoning: accumulatedReasoning,
+                                    reasoning_details: accumulatedReasoningDetails,
+                                };
+                            }
+                            sessionMessages = updated;
                         }
-                        sessionMessages = updated;
-                        flushUiUpdate();
+                        // Patch events alongside the content/reasoning update.
+                        patchEventsOnLastMessage();
                     }
                 },
             });
 
             finalizeAllThinkingEvents(events);
             patchEventsOnLastMessage();
+
+            const lastIdx = sessionMessages.length - 1;
+            if (lastIdx >= 0 && sessionMessages[lastIdx].role === 'assistant') {
+                sessionMessages = [
+                    ...sessionMessages.slice(0, lastIdx),
+                    applyPromptButtonsToAssistantMessage(sessionMessages[lastIdx]),
+                ];
+            }
 
             // Force a final flush so nothing is missed.
             flushUiUpdate(true);

@@ -14,12 +14,21 @@ export interface ImagePreviewLightboxProps {
   imageUrl?: string | AttachmentPreviewTarget | null;
   onClose: () => void;
   onSavedToUploads?: (savedFile: CloudFile) => void;
+  /** Optional chat composer shown in a collapsible dock at the bottom of fullscreen preview. */
+  composer?: React.ReactNode;
 }
 
-export function ImagePreviewLightbox({ imageUrl, onClose, onSavedToUploads }: ImagePreviewLightboxProps) {
+export function ImagePreviewLightbox({ imageUrl, onClose, onSavedToUploads, composer }: ImagePreviewLightboxProps) {
   if (!imageUrl) return null;
   if (isImagePreviewTarget(imageUrl)) {
-    return <ImageAnnotatorLightbox attachment={imageUrl} onClose={onClose} onSavedToUploads={onSavedToUploads} />;
+    return (
+      <ImageAnnotatorLightbox
+        attachment={imageUrl}
+        onClose={onClose}
+        onSavedToUploads={onSavedToUploads}
+        composer={composer}
+      />
+    );
   }
-  return <AttachmentPreviewModal attachment={imageUrl} onClose={onClose} />;
+  return <AttachmentPreviewModal attachment={imageUrl} onClose={onClose} composer={composer} />;
 }

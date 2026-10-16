@@ -4,7 +4,6 @@ export { ModelDetailsModal } from './ModelDetailsModal';
 export { ModelListSidebarOptimized } from './ModelListSidebarOptimized';
 export { ModelListItem } from './ModelListItem';
 export { ModelSearchBar } from './ModelSearchBar';
-export { ModelFilters } from './ModelFilters';
 export { ModelSelectionCard } from './ModelSelectionCard';
 export { ModelSelectionFiltersNew } from './ModelSelectionFiltersNew';
 export { FavoritesEmptyState } from './FavoritesEmptyState';

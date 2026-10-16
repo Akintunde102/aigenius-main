@@ -35,6 +35,9 @@ export type ReadFileItemResult = {
   mode?: 'lines' | 'bytes' | 'index';
   line_count_omitted?: boolean;
   bytes_read?: number;
+  offset?: number;
+  limit?: number;
+  total_bytes?: number;
   skipReason?: ReadFileSkipReason;
   /** Absolute resolved path (for preview registration; not shown to model). */
   resolvedPath?: string;

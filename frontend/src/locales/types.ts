@@ -62,6 +62,7 @@ export interface TranslationDictionary {
     autoApproveWarningTitle: string;
     autoApproveWarningText: string;
     turnOnAutoApprove: string;
+    meMenuSuffix: string;
   };
   composer: {
     placeholder: string;
@@ -85,6 +86,7 @@ export interface TranslationDictionary {
   };
   chat: {
     emptyState: string;
+    promptButtonsAria: string;
     calculating: string;
     calls: string;
     delete: string;
@@ -234,6 +236,10 @@ export interface TranslationDictionary {
     burnWarning: string;
     noModelsShort: string;
     noModelsShortHint: string;
+    listFailed: string;
+    moreInfo: string;
+    pinModel: string;
+    unpinModel: string;
   };
   modelDetails: {
     closeDetails: string;
@@ -391,6 +397,14 @@ export interface TranslationDictionary {
     integrationsToolsOnlyHint: string;
     integrationsGmailToolsHint: string;
     integrationsLinkedInToolsHint: string;
+    meTitle: string;
+    meSubtitle: string;
+    meMemberSince: string;
+    meCredits: string;
+    meVerified: string;
+    meNotVerified: string;
+    meUserId: string;
+    meLoadError: string;
   };
   wallet: {
     addCredits: string;
@@ -629,6 +643,29 @@ export interface TranslationDictionary {
     emailSubjectGeneral: string;
     emailSubjectBug: string;
   };
+  desktopAuth: {
+    welcome: string;
+    welcomeSubtitle: string;
+    signInDesktopSubtitle: string;
+    signInAs: string;
+    completeInBrowser: string;
+    returnHereNotice: string;
+    signingYouIn: string;
+    settingUpWorkspace: string;
+    cancelAndStartOver: string;
+    fullDesktopSignIn: string;
+    webSignIn: string;
+  };
+  desktopSearchIndex: {
+    title: string;
+    subtitle: string;
+    backToChat: string;
+    noMatchingRecords: string;
+    actions: string;
+    dateModified: string;
+    detail: string;
+    preview: string;
+  };
 }
 
 export type RecursivePartial<T> = {
@@ -661,4 +698,6 @@ export type TranslationKeyPath =
   | `toolUi.${keyof TranslationDictionary['toolUi']}`
   | `userFiles.${keyof TranslationDictionary['userFiles']}`
   | `videoJob.${keyof TranslationDictionary['videoJob']}`
-  | `desktopProductMenu.${keyof TranslationDictionary['desktopProductMenu']}`;
+  | `desktopProductMenu.${keyof TranslationDictionary['desktopProductMenu']}`
+  | `desktopAuth.${keyof TranslationDictionary['desktopAuth']}`
+  | `desktopSearchIndex.${keyof TranslationDictionary['desktopSearchIndex']}`;

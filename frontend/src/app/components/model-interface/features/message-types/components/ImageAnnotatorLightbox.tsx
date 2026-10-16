@@ -42,11 +42,13 @@ import { copyTextToClipboard, resolveAbsoluteUrl } from './imageCopy.utils';
 import { ImagePreviewContextMenu } from './ImagePreviewContextMenu';
 import { uploadFile } from '@/lib/calls/upload-file';
 import type { CloudFile } from '@/app/components/file/file.interface';
+import { ImagePreviewComposerDock } from './ImagePreviewComposerDock';
 
 export interface ImageAnnotatorLightboxProps {
     attachment: AttachmentPreviewTarget | string;
     onClose: () => void;
     onSavedToUploads?: (savedFile: CloudFile) => void;
+    composer?: React.ReactNode;
 }
 
 const MIN_ZOOM = 0.25;
@@ -84,7 +86,7 @@ function ToolbarButton({
     );
 }
 
-export function ImageAnnotatorLightbox({ attachment, onClose, onSavedToUploads }: ImageAnnotatorLightboxProps) {
+export function ImageAnnotatorLightbox({ attachment, onClose, onSavedToUploads, composer }: ImageAnnotatorLightboxProps) {
     const target = useMemo(() => resolveImagePreviewTarget(attachment), [attachment]);
     const [mounted, setMounted] = useState(false);
     const [zoom, setZoom] = useState(1);
@@ -834,6 +836,8 @@ export function ImageAnnotatorLightbox({ attachment, onClose, onSavedToUploads }
                         savedToUpload={savedToUpload}
                     />
                 )}
+
+                {composer ? <ImagePreviewComposerDock>{composer}</ImagePreviewComposerDock> : null}
             </div>
         ) as React.ReactNode,
         portalTarget,

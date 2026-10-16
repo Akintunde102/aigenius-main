@@ -71,7 +71,34 @@ import { buildAssistantRenderSegments } from '../../chat/components/assistant-tu
 import type { ChatMessageDisplayBlock } from './chatMessageDisplay.utils';
 import { EditableUserBubble } from './EditableUserBubble';
 import type { MessageEditDraft } from '../utils/messageEdit.utils';
+import type { RewritePromptOptions } from '../../chat/hooks/chatOperations.types';
 import { enrichEventsWithLegacyThinking } from '../../chat/utils/thinkingEvent.utils';
+import { MessagePromptButtons } from './MessagePromptButtons';
+import {
+    applyPromptButtonsToAssistantMessage,
+    displayContentWithoutPromptButtons,
+    resolvePromptButtonsForAssistantMessage,
+} from '../utils/applyPromptButtonsToAssistantMessage';
+import {
+    EMPTY_ORPHAN_MARKERS,
+    orphanMarkersDependencyKey,
+} from '../../chat/hooks/orphanMarkers.constants';
+
+type ResolvedOrphanMarkerPosition = {
+    marker: StickyThreadMarker;
+    left: number;
+    top: number;
+    rects: Array<{ left: number; top: number; width: number; height: number }>;
+};
+
+function resolvedOrphanMarkerPositionsSignature(positions: ResolvedOrphanMarkerPosition[]): string {
+    return positions.map((entry) => {
+        const rectSig = entry.rects
+            .map((rect) => `${rect.left},${rect.top},${rect.width},${rect.height}`)
+            .join(';');
+        return `${entry.marker.markerId}:${entry.left},${entry.top}:${rectSig}`;
+    }).join('|');
+}
 
 interface ChatMessageProps {
     msg: ChatMessageType;
@@ -93,7 +120,7 @@ interface ChatMessageProps {
     conversationId?: string | null;
     supportsFileUpload?: boolean;
     onStartOrphanReply?: (trigger: OrphanReplyTrigger) => void;
-    orphanMarkers?: StickyThreadMarker[];
+    orphanMarkers?: readonly StickyThreadMarker[];
     orphanMarkersHidden?: boolean;
     onOpenOrphanMarker?: (marker: StickyThreadMarker) => void;
     onToggleOrphanMarkers?: (messageId: string) => void;
@@ -108,6 +135,9 @@ interface ChatMessageProps {
     assistantAvatarUrl?: string;
     disableOrphanThreads?: boolean;
     isLastVisibleMessage?: boolean;
+    onPromptButtonSelect?: (label: string) => void;
+    onRewritePrompt?: (options?: RewritePromptOptions) => void;
+    rewritePromptInProgress?: boolean;
 }
 
 // Main ChatMessage Component
@@ -131,7 +161,7 @@ export function ChatMessage({
     conversationId = null,
     supportsFileUpload = true,
     onStartOrphanReply,
-    orphanMarkers = [],
+    orphanMarkers = EMPTY_ORPHAN_MARKERS,
     orphanMarkersHidden = false,
     onOpenOrphanMarker,
     onToggleOrphanMarkers,
@@ -146,15 +176,13 @@ export function ChatMessage({
     assistantAvatarUrl,
     disableOrphanThreads = false,
     isLastVisibleMessage = false,
+    onPromptButtonSelect,
+    onRewritePrompt,
+    rewritePromptInProgress = false,
 }: ChatMessageProps) {
     const [showUsageDetails, setShowUsageDetails] = useState(false);
     const [messageActionsMenuOpen, setMessageActionsMenuOpen] = useState(false);
-    const [resolvedMarkerPositions, setResolvedMarkerPositions] = useState<Array<{
-        marker: StickyThreadMarker;
-        left: number;
-        top: number;
-        rects: Array<{ left: number; top: number; width: number; height: number }>;
-    }>>([]);
+    const [resolvedMarkerPositions, setResolvedMarkerPositions] = useState<ResolvedOrphanMarkerPosition[]>([]);
     const [selectionTrigger, setSelectionTrigger] = useState<{
         left: number;
         top: number;
@@ -172,6 +200,10 @@ export function ChatMessage({
     const markerRangesRef = useRef<Map<string, Range>>(new Map());
     const hoveredMarkerKeyRef = useRef('');
     const orphanLinkOwnerKey = msg.messageId || msg.id || `ts_${msg.timestamp}`;
+    const orphanMarkersKey = useMemo(
+        () => orphanMarkersDependencyKey(orphanMarkers),
+        [orphanMarkers],
+    );
 
     const isLongUserText = useMemo(() => {
         if (msg.role !== 'user' || typeof msg.content !== 'string') return false;
@@ -186,6 +218,24 @@ export function ChatMessage({
 
     // Custom hooks - must be called before any early returns
     const messageContent = useMessageContent(msg.content);
+
+    const msgForDisplay = useMemo(
+        () => (msg.role === 'assistant' ? applyPromptButtonsToAssistantMessage(msg) : msg),
+        [msg],
+    );
+
+    const promptButtonLabels = useMemo(
+        () => (msgForDisplay.role === 'assistant' ? resolvePromptButtonsForAssistantMessage(msgForDisplay) : []),
+        [msgForDisplay],
+    );
+
+    const assistantTextForDisplay = useMemo(() => {
+        if (msgForDisplay.role !== 'assistant' || typeof msgForDisplay.content !== 'string') {
+            return msgForDisplay.content;
+        }
+        const stripped = displayContentWithoutPromptButtons(msgForDisplay);
+        return typeof stripped === 'string' ? stripped : msgForDisplay.content;
+    }, [msgForDisplay]);
 
     const attachmentCacheSeed = useMemo(() => {
         const contentKey = typeof msg.content === 'string'
@@ -223,15 +273,15 @@ export function ChatMessage({
 
     /** Events in `msg.events` array order (not sorted by `order` field). */
     const displayEvents = useMemo(() => {
-        if (!msg.events?.length) {
-            return enrichEventsWithLegacyThinking([], msg);
+        if (!msgForDisplay.events?.length) {
+            return enrichEventsWithLegacyThinking([], msgForDisplay);
         }
-        const filtered = msg.events.filter(
+        const filtered = msgForDisplay.events.filter(
             (e): e is MessageEvent =>
                 e != null && typeof e === 'object' && 'type' in e,
         );
-        return enrichEventsWithLegacyThinking(filtered, msg);
-    }, [msg]);
+        return enrichEventsWithLegacyThinking(filtered, msgForDisplay);
+    }, [msgForDisplay]);
 
     const displayBlocks = useMemo(
         () => buildChatMessageDisplayBlocks(displayEvents, { streaming }),
@@ -296,6 +346,16 @@ export function ChatMessage({
     }, [msg, onReplay, idx]);
 
     const isEditing = msg.role === 'user' && editingIdx === idx;
+
+    const handleRewriteEditPrompt = useCallback(() => {
+        if (!onRewritePrompt || !editDraft || !onUpdateEditDraft) return;
+        onRewritePrompt({
+            sourceText: editDraft.text,
+            onRewritten: (rewritten) => {
+                onUpdateEditDraft({ ...editDraft, text: rewritten });
+            },
+        });
+    }, [editDraft, onRewritePrompt, onUpdateEditDraft]);
 
     const handleUserBubbleClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
         if (msg.role !== 'user' || loading || streaming || isEditing) return;
@@ -459,7 +519,7 @@ export function ChatMessage({
         const container = messageContainerRef.current;
         const syncMarkerPositions = () => {
             const ranges = new Map<string, Range>();
-            setResolvedMarkerPositions(orphanMarkers.map((marker) => {
+            const nextPositions = orphanMarkers.map((marker) => {
                 const position = resolveStickyMarkerPosition(container, marker.anchor);
                 const rects = resolveStickyMarkerHighlightRects(container, marker.anchor);
                 const range = resolveStickyMarkerRange(container, marker.anchor);
@@ -470,7 +530,13 @@ export function ChatMessage({
                     top: position.top,
                     rects,
                 };
-            }));
+            });
+            setResolvedMarkerPositions((prev) => {
+                if (resolvedOrphanMarkerPositionsSignature(prev) === resolvedOrphanMarkerPositionsSignature(nextPositions)) {
+                    return prev;
+                }
+                return nextPositions;
+            });
             markerRangesRef.current = ranges;
             setOrphanLinkRanges(ORPHAN_LINK_HIGHLIGHT, orphanLinkOwnerKey, Array.from(ranges.values()));
         };
@@ -489,7 +555,7 @@ export function ChatMessage({
             window.removeEventListener('resize', syncMarkerPositions);
             clearLinkRanges();
         };
-    }, [orphanMarkers, orphanMarkersHidden, disableOrphanThreads, orphanLinkOwnerKey]);
+    }, [orphanMarkers, orphanMarkersKey, orphanMarkersHidden, disableOrphanThreads, orphanLinkOwnerKey]);
 
     const getMarkersAtPointer = useCallback((event: ReactMouseEvent<HTMLDivElement>): StickyThreadMarker[] => {
         const container = messageContainerRef.current;
@@ -701,6 +767,8 @@ export function ChatMessage({
                                     selectedModel={selectedModel}
                                     models={models}
                                     supportsFileUpload={supportsFileUpload}
+                                    onRewritePrompt={onRewritePrompt ? handleRewriteEditPrompt : undefined}
+                                    rewritePromptInProgress={rewritePromptInProgress}
                                 />
                             ) : (
                                 <>
@@ -739,9 +807,9 @@ export function ChatMessage({
                                             role={msg.role}
                                         />
                                     ) : typeof msg.content === 'string' ? (
-                                        msg.content.trim() ? (
+                                        (typeof assistantTextForDisplay === 'string' ? assistantTextForDisplay : msg.content).trim() ? (
                                             <TextMessage
-                                                content={msg.content}
+                                                content={typeof assistantTextForDisplay === 'string' ? assistantTextForDisplay : msg.content}
                                                 streaming={streaming}
                                                 role={msg.role}
                                             />
@@ -797,6 +865,17 @@ export function ChatMessage({
                                     )}
                                 </>
                             )}
+
+                            {msg.role === 'assistant'
+                                && !streaming
+                                && promptButtonLabels.length > 0
+                                && onPromptButtonSelect ? (
+                                <MessagePromptButtons
+                                    labels={promptButtonLabels}
+                                    disabled={loading}
+                                    onSelect={onPromptButtonSelect}
+                                />
+                            ) : null}
                         </div>
 
                         {msg.role === "user" ? (

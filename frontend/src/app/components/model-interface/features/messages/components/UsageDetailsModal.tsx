@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { FiInfo, FiX } from 'react-icons/fi';
+import React from 'react';
+import { AppModal, AppModalBody, AppModalHeader } from '@/app/components/modals/AppModal';
 import { ChatMessage as ChatMessageType, ToolUsageCharge } from '@/app/components/model-interface/shared/types';
 import { getModelRoundCount } from './usageMetrics.utils';
 import { formatTime } from '@/lib/utils/modelInterfaceUtils';
@@ -28,7 +27,6 @@ function resolveMessageCredits(msg: ChatMessageType): number | undefined {
     return undefined;
 }
 
-/** Width: 87% of `max-w-md` (~13% narrower than Integrations). Max-height/scroll match that modal. Portals to `document.body` so fixed positioning is not trapped by message `backdrop-blur` ancestors. */
 interface UsageDetailsModalProps {
     showUsageDetails: boolean;
     setShowUsageDetails: (show: boolean) => void;
@@ -47,14 +45,16 @@ function MetricStat({
 }) {
     return (
         <div
-            className={`min-w-0 rounded-lg px-3 py-2.5 ${
-                emphasize
-                    ? 'bg-white/70 dark:bg-zinc-800/70'
-                    : 'bg-white/40 dark:bg-zinc-800/40'
-            }`}
+            className="min-w-0 rounded-lg p-2.5 border"
+            style={{
+                background: emphasize ? 'color-mix(in srgb, var(--chat-accent) 8%, var(--surface-muted))' : 'var(--surface-muted)',
+                borderColor: emphasize ? 'color-mix(in srgb, var(--chat-accent) 25%, var(--modal-border))' : 'var(--modal-border)',
+            }}
         >
-            <div className="text-[11px] font-medium text-slate-500 dark:text-zinc-400">{label}</div>
-            <div className="mt-0.5 text-sm font-semibold tabular-nums tracking-tight text-slate-900 dark:text-zinc-100">
+            <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--modal-muted-fg)' }}>
+                {label}
+            </div>
+            <div className="mt-0.5 text-xs font-semibold tabular-nums tracking-tight" style={{ color: 'var(--modal-fg)' }}>
                 {value}
             </div>
         </div>
@@ -63,8 +63,11 @@ function MetricStat({
 
 function CreditsAmount({ credits }: { credits: number }) {
     return (
-        <div className="overflow-hidden rounded-xl bg-slate-50/80 px-3 py-2 dark:bg-zinc-900/50">
-            <span className="text-xs font-semibold tabular-nums text-slate-900 dark:text-zinc-100">
+        <div
+            className="rounded-lg border px-3 py-2"
+            style={{ background: 'var(--surface-muted)', borderColor: 'var(--modal-border)' }}
+        >
+            <span className="text-xs font-semibold tabular-nums" style={{ color: 'var(--modal-fg)' }}>
                 {formatCredits(credits, { compact: true })}
             </span>
         </div>
@@ -73,7 +76,7 @@ function CreditsAmount({ credits }: { credits: number }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
     return (
-        <p className="mb-1.5 text-[11px] font-medium text-slate-500 dark:text-zinc-400">{children}</p>
+        <p className="app-modal-field-label !mb-1.5">{children}</p>
     );
 }
 
@@ -97,16 +100,16 @@ function ToolChargeLedgerLine({
     credits?: number;
 }) {
     return (
-        <div className="mt-1.5 border-t border-slate-200/70 pt-1.5 dark:border-zinc-700/50">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 text-[10px] text-slate-600 dark:text-zinc-400">
-                <span className="font-medium text-slate-700 dark:text-zinc-300">{label}</span>
+        <div className="mt-1.5 border-t pt-1.5" style={{ borderColor: 'var(--modal-border)' }}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2 text-[10px]">
+                <span className="font-medium" style={{ color: 'var(--modal-fg)' }}>{label}</span>
                 {typeof at === 'number' && Number.isFinite(at) && (
-                    <span className="tabular-nums text-slate-400 dark:text-zinc-500" title={formatTime(at)}>
+                    <span className="tabular-nums" style={{ color: 'var(--modal-muted-fg)' }} title={formatTime(at)}>
                         {formatTime(at)}
                     </span>
                 )}
             </div>
-            <div className="mt-0.5 text-[10px] tabular-nums text-slate-500 dark:text-zinc-500">
+            <div className="mt-0.5 text-[10px] tabular-nums" style={{ color: 'var(--modal-muted-fg)' }}>
                 {typeof credits === 'number' && Number.isFinite(credits)
                     ? formatCredits(credits, { compact: true })
                     : '—'}
@@ -123,20 +126,23 @@ function ToolChargeRow({ row }: { row: ToolUsageCharge }) {
     const chargeCredits = row.cost_credits;
 
     return (
-        <li className="rounded-lg bg-white/50 px-3 py-2 dark:bg-zinc-800/40">
-            <div className="text-[11px] font-medium text-slate-800 dark:text-zinc-200">
+        <li
+            className="rounded-lg border px-3 py-2"
+            style={{ background: 'var(--surface-muted)', borderColor: 'var(--modal-border)' }}
+        >
+            <div className="text-[11px] font-medium" style={{ color: 'var(--modal-fg)' }}>
                 {row.display_name || row.tool}
                 {statusText ? (
-                    <span className="ml-1 font-normal text-slate-500 dark:text-zinc-400">
+                    <span className="ml-1 font-normal opacity-75">
                         ({statusText})
                     </span>
                 ) : null}
             </div>
-            <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-2 text-[10px] text-slate-600 dark:text-zinc-400">
-                <span className="font-mono text-slate-500 dark:text-zinc-500">
+            <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-2 text-[10px]">
+                <span className="font-mono" style={{ color: 'var(--modal-muted-fg)' }}>
                     {row.tool}
                 </span>
-                <span className="tabular-nums">
+                <span className="tabular-nums font-medium" style={{ color: 'var(--modal-fg)' }}>
                     {formatCredits(chargeCredits, { compact: true })}
                 </span>
             </div>
@@ -167,20 +173,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
     streaming
 }) => {
     const { t } = useLanguage();
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    useEffect(() => {
-        if (!showUsageDetails) return;
-        const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setShowUsageDetails(false);
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [showUsageDetails, setShowUsageDetails]);
+    const close = () => setShowUsageDetails(false);
 
     const toolCreditsTotal = resolveToolCreditsTotal(msg);
     const modelRoundCount = getModelRoundCount(msg.usage);
@@ -190,58 +183,39 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
             ? Math.max(0, totalCredits - toolCreditsTotal)
             : totalCredits;
 
-    if (!showUsageDetails || !mounted) return null;
-
-    const modal = (
-        <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px] dark:bg-black/60"
-            onClick={() => setShowUsageDetails(false)}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="usage-details-title"
+    return (
+        <AppModal
+            open={showUsageDetails}
+            onClose={close}
+            size="sm"
+            className="z-[9999]"
+            ariaLabelledBy="usage-details-title"
+            panelClassName="flex max-h-[min(90vh,640px)] max-w-sm flex-col overflow-hidden"
         >
-            <div
-                className="flex max-h-[min(90vh,640px)] w-full max-w-[24.36rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-slate-900/15 dark:bg-zinc-800 dark:shadow-black/40"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="flex shrink-0 items-start justify-between gap-3 px-4 pb-1 pt-4">
-                    <div>
-                        <h3
-                            id="usage-details-title"
-                            className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-zinc-100"
-                        >
-                            {t('usageDetails.title', 'Token usage')}
-                        </h3>
-                        <p className="mt-0.5 text-[11px] text-slate-500 dark:text-zinc-400">{t('usageDetails.thisMessage', 'This message')}</p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => setShowUsageDetails(false)}
-                        className="-mr-1 -mt-1 rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/60 dark:text-zinc-500 dark:hover:bg-zinc-700/50 dark:hover:text-zinc-300"
-                        aria-label={t('usageDetails.closeAria', 'Close token details')}
-                        title={t('common.close', 'Close')}
-                    >
-                        <FiX size={16} strokeWidth={2} />
-                    </button>
-                </div>
-
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-[12px] leading-snug">
+            <AppModalHeader
+                titleId="usage-details-title"
+                title={t('usageDetails.title', 'Token usage')}
+                subtitle={t('usageDetails.thisMessage', 'This message')}
+                onClose={close}
+            />
+            <AppModalBody className="min-h-0 flex-1 overflow-y-auto text-[12px] leading-snug !py-3">
                     {streaming ? (
                         <div className="flex items-center justify-center gap-2 py-6">
                             <div
-                                className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600 dark:border-zinc-700 dark:border-t-zinc-400"
+                                className="h-4 w-4 animate-spin rounded-full border-2"
+                                style={{ borderColor: 'var(--modal-border)', borderTopColor: 'var(--chat-accent)' }}
                                 aria-hidden
                             />
-                            <span className="text-[11px] text-slate-600 dark:text-zinc-400">
+                            <span className="text-xs" style={{ color: 'var(--modal-muted-fg)' }}>
                                 {t('usageDetails.calculating', 'Calculating cost and usage…')}
                             </span>
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {msg.tool_usage_charges && msg.tool_usage_charges.length > 0 ? (
                                 <section aria-label="Tool charges">
                                     <SectionLabel>{t('usageDetails.toolsCharged', 'Tools charged')}</SectionLabel>
-                                    <ul className="max-h-[12rem] space-y-1 overflow-y-auto rounded-xl bg-slate-50/80 p-1 dark:bg-zinc-900/50">
+                                    <ul className="max-h-[12rem] space-y-1 overflow-y-auto rounded-lg border p-1" style={{ borderColor: 'var(--modal-border)', background: 'var(--modal-bg-muted)' }}>
                                         {msg.tool_usage_charges.map((row, i) => (
                                             <ToolChargeRow key={`${row.tool}-${row.job_id ?? i}`} row={row} />
                                         ))}
@@ -272,69 +246,53 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
 
                             {msg.usage && (
                                 <details
-                                    className="group rounded-xl border border-dashed border-slate-200/70 bg-slate-50/40 dark:border-zinc-700/60 dark:bg-zinc-900/30"
+                                    className="group rounded-lg border"
+                                    style={{ borderColor: 'var(--modal-border)', background: 'var(--modal-bg-muted)' }}
                                 >
                                     <summary
-                                        className="cursor-pointer list-none rounded-xl px-3 py-2 text-[10px] font-medium text-slate-400 transition hover:bg-slate-100/60 hover:text-slate-600 [&::-webkit-details-marker]:hidden dark:text-zinc-500 dark:hover:bg-zinc-800/40 dark:hover:text-zinc-400"
+                                        className="cursor-pointer list-none rounded-lg px-3 py-1.5 text-[11px] font-medium transition hover:opacity-80 [&::-webkit-details-marker]:hidden"
+                                        style={{ color: 'var(--modal-muted-fg)' }}
                                     >
                                         Token breakdown
-                                        <span className="ml-1.5 font-normal text-slate-400/90 dark:text-zinc-600">
-                                            optional
+                                        <span className="ml-1.5 opacity-60">
+                                            (details)
                                         </span>
                                     </summary>
-                                    <div className="space-y-2 border-t border-slate-200/60 px-1 pb-2 pt-2 dark:border-zinc-700/50">
+                                    <div className="space-y-1.5 border-t px-2 pb-2 pt-2" style={{ borderColor: 'var(--modal-border)' }}>
                                         {modelRoundCount !== undefined && (
-                                            <div className="rounded-lg bg-white/40 px-3 py-2 dark:bg-zinc-800/40">
-                                                <div className="text-[10px] text-slate-500 dark:text-zinc-500">
+                                            <div
+                                                className="rounded-md p-2"
+                                                style={{ background: 'var(--surface-muted)' }}
+                                            >
+                                                <div className="text-[10px]" style={{ color: 'var(--modal-muted-fg)' }}>
                                                     Agent run
                                                 </div>
-                                                <div className="mt-0.5 text-xs font-medium tabular-nums text-slate-700 dark:text-zinc-300">
+                                                <div className="mt-0.5 text-xs font-medium tabular-nums" style={{ color: 'var(--modal-fg)' }}>
                                                     {modelRoundCount.toLocaleString()} model calls
                                                 </div>
                                             </div>
                                         )}
-                                        <div className="space-y-1 rounded-lg bg-white/40 p-1 dark:bg-zinc-800/40">
-                                            <div className="grid min-w-0 grid-cols-2 gap-1">
-                                                <MetricStat
-                                                    label="Prompt"
-                                                    value={msg.usage.prompt_tokens.toLocaleString()}
-                                                />
-                                                <MetricStat
-                                                    label="Completion"
-                                                    value={msg.usage.completion_tokens.toLocaleString()}
-                                                />
-                                            </div>
+                                        <div className="grid grid-cols-2 gap-1.5">
                                             <MetricStat
-                                                label={
-                                                    modelRoundCount && modelRoundCount > 1
-                                                        ? 'Total tokens (session)'
-                                                        : 'Total tokens'
-                                                }
-                                                value={msg.usage.total_tokens.toLocaleString()}
-                                                emphasize
+                                                label="Prompt"
+                                                value={msg.usage.prompt_tokens?.toLocaleString() ?? '—'}
+                                            />
+                                            <MetricStat
+                                                label="Completion"
+                                                value={msg.usage.completion_tokens?.toLocaleString() ?? '—'}
                                             />
                                         </div>
+                                        <MetricStat
+                                            label="Total tokens"
+                                            value={msg.usage.total_tokens?.toLocaleString() ?? '—'}
+                                            emphasize
+                                        />
                                     </div>
                                 </details>
                             )}
-
-                            {!totalCredits && !msg.usage && (
-                                <div className="flex items-start gap-2 rounded-xl bg-slate-50/80 px-3 py-3 text-[11px] text-slate-600 dark:bg-zinc-900/50 dark:text-zinc-400">
-                                    <FiInfo className="mt-0.5 shrink-0 opacity-70" size={14} aria-hidden />
-                                    <span>
-                                        {t(
-                                            'usageDetails.noUsageYet',
-                                            'Usage and cost appear here after the assistant finishes responding.',
-                                        )}
-                                    </span>
-                                </div>
-                            )}
                         </div>
                     )}
-                </div>
-            </div>
-        </div>
+            </AppModalBody>
+        </AppModal>
     );
-
-    return createPortal(modal, document.body);
 };

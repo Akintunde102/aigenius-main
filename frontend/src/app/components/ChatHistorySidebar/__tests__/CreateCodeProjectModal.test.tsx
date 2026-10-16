@@ -40,6 +40,9 @@ describe('CreateCodeProjectModal named folder button', () => {
     document.body.appendChild(root);
     window.aigeniusDesktop = {
       isDesktop: true,
+      getProjectFolderPickerDefaults: jest.fn().mockResolvedValue({
+        defaultBrowsePath: 'C:\\Users\\me\\Documents',
+      }),
       pickProjectDirectory: jest.fn().mockResolvedValue({ path: '/existing/project' }),
       createNamedProjectDirectory: jest.fn().mockResolvedValue({
         ok: true,
@@ -58,34 +61,44 @@ describe('CreateCodeProjectModal named folder button', () => {
     return waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
   }
 
-  it('places the Folder section before Name in DOM order, with New and Browse buttons surrounding Folder input', async () => {
+  it('places the Folder section before Name with New and Browse only (no path text field)', async () => {
     renderModal();
     await getDialog();
 
-    const folderInput = screen.getByLabelText(/^folder$/i);
     const nameInput = screen.getByLabelText(/^name$/i);
     const newButton = screen.getByRole('button', { name: /create a folder named after this project/i });
     const browseButton = screen.getByRole('button', { name: /^browse$/i });
 
-    // Folder comes before Name
-    expect(folderInput.compareDocumentPosition(nameInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // New button before folder input, Browse button after folder input
-    expect(newButton.compareDocumentPosition(folderInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(folderInput.compareDocumentPosition(browseButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByLabelText(/^folder$/i)).not.toBeInTheDocument();
+    expect(newButton.compareDocumentPosition(nameInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(browseButton.compareDocumentPosition(nameInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(
-      screen.getByText(/use new to create a folder or browse an existing one/i),
+      screen.getByText(/paths cannot be typed/i),
     ).toBeInTheDocument();
   });
 
-  it('displays full path of the folder under the folder input in small print', async () => {
+  it('shows the folder picker default root from the desktop bridge', async () => {
+    renderModal();
+    await getDialog();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('folder-picker-root')).toHaveTextContent(
+        'C:\\Users\\me\\Documents',
+      );
+    });
+  });
+
+  it('displays full path of the folder under the picker actions in small print', async () => {
     renderModal();
     await getDialog();
 
     expect(screen.getByTestId('folder-full-path')).toHaveTextContent('No folder selected');
 
-    fireEvent.change(screen.getByLabelText(/^folder$/i), { target: { value: 'C:\\Users\\DELL5530\\Desktop\\account' } });
+    fireEvent.click(screen.getByRole('button', { name: /^browse$/i }));
 
-    expect(screen.getByTestId('folder-full-path')).toHaveTextContent('Full path: C:\\Users\\DELL5530\\Desktop\\account');
+    await waitFor(() => {
+      expect(screen.getByTestId('folder-full-path')).toHaveTextContent('Full path: /existing/project');
+    });
   });
 
   it('automatically generates project name when folder path is picked via Browse', async () => {
@@ -99,7 +112,7 @@ describe('CreateCodeProjectModal named folder button', () => {
     fireEvent.click(screen.getByRole('button', { name: /^browse$/i }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/^folder$/i)).toHaveValue('/home/user/desktop/account');
+      expect(screen.getByTestId('folder-full-path')).toHaveTextContent('/home/user/desktop/account');
     });
     expect(screen.getByLabelText(/^name$/i)).toHaveValue('account');
   });
@@ -115,7 +128,7 @@ describe('CreateCodeProjectModal named folder button', () => {
     fireEvent.click(screen.getByRole('button', { name: /^browse$/i }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/^folder$/i)).toHaveValue('C:\\Users\\DELL5530\\Desktop\\account');
+      expect(screen.getByTestId('folder-full-path')).toHaveTextContent('C:\\Users\\DELL5530\\Desktop\\account');
     });
     expect(screen.getByLabelText(/^name$/i)).toHaveValue('Desktop/account');
   });
@@ -133,7 +146,7 @@ describe('CreateCodeProjectModal named folder button', () => {
       });
     });
     await waitFor(() => {
-      expect(screen.getByLabelText(/^folder$/i)).toHaveValue('/tmp/swift-atlas-42');
+      expect(screen.getByTestId('folder-full-path')).toHaveTextContent('/tmp/swift-atlas-42');
     });
     expect(onCreate).not.toHaveBeenCalled();
   });
@@ -157,16 +170,24 @@ describe('CreateCodeProjectModal named folder button', () => {
       ok: true,
       canceled: true,
     });
+    (window.aigeniusDesktop!.pickProjectDirectory as jest.Mock).mockResolvedValue({
+      path: '/keep/this',
+    });
+
     renderModal();
     await getDialog();
 
-    fireEvent.change(screen.getByLabelText(/^folder$/i), { target: { value: '/keep/this' } });
+    fireEvent.click(screen.getByRole('button', { name: /^browse$/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId('folder-full-path')).toHaveTextContent('/keep/this');
+    });
+
     fireEvent.click(screen.getByRole('button', { name: /create a folder named after this project/i }));
 
     await waitFor(() => {
       expect(window.aigeniusDesktop?.createNamedProjectDirectory).toHaveBeenCalled();
     });
-    expect(screen.getByLabelText(/^folder$/i)).toHaveValue('/keep/this');
+    expect(screen.getByTestId('folder-full-path')).toHaveTextContent('/keep/this');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -188,7 +209,7 @@ describe('CreateCodeProjectModal named folder button', () => {
     await waitFor(() => {
       expect(window.aigeniusDesktop?.pickProjectDirectory).toHaveBeenCalled();
     });
-    expect(screen.getByLabelText(/^folder$/i)).toHaveValue('/existing/project');
+    expect(screen.getByTestId('folder-full-path')).toHaveTextContent('/existing/project');
   });
 
   it('hides New and Browse on web and still creates a project from a pasted path', async () => {
@@ -221,4 +242,3 @@ describe('CreateCodeProjectModal named folder button', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Name and folder path are required');
   });
 });
-

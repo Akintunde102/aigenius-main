@@ -22,6 +22,7 @@ jest.mock('@/app/components/ChatBoxInput', () => {
             return (
                 <div data-testid="chat-box-input">
                     <button onClick={() => props.onSendMessage('test message', null)}>Send</button>
+                    <button data-testid="mock-focus-btn" onClick={() => props.onFocus?.()}>Focus</button>
                 </div>
             );
         })
@@ -192,5 +193,34 @@ describe('ChatContainer', () => {
         
         // Verify hook was called with correct mobile state
         expect(useMobileKeyboard).toHaveBeenCalledWith(expect.objectContaining({ isMobile: true }));
+    });
+
+    it('does not scroll container out of place when input is focused on mobile', () => {
+        (useBrowserDetection as jest.Mock).mockReturnValue({ isMobile: true, browserInfo: { isIOS: true } });
+        (useMobileKeyboard as jest.Mock).mockReturnValue({ keyboardHeight: 0, isKeyboardOpen: false });
+
+        const scrollIntoViewMock = jest.fn();
+        Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+        render(<ChatContainer {...mockProps} mobileSidebarOpen={false} />);
+
+        // Trigger focus
+        fireEvent.click(screen.getByTestId('mock-focus-btn'));
+
+        // Verify scrollIntoView was NOT called on mobile focus (which previously caused jumping)
+        expect(scrollIntoViewMock).not.toHaveBeenCalled();
+    });
+
+    it('aligns properly in desktop centered mode', () => {
+        (useBrowserDetection as jest.Mock).mockReturnValue({ isMobile: false, browserInfo: {} });
+        (useMobileKeyboard as jest.Mock).mockReturnValue({ keyboardHeight: 0, isKeyboardOpen: false });
+
+        const { container } = render(
+            <ChatContainer {...mockProps} desktopConversationCentered={true} />
+        );
+
+        const mainArea = container.querySelector('.chat-main-area');
+        expect(mainArea?.className).toContain('max-w-4xl');
+        expect(mainArea?.className).toContain('mx-auto');
     });
 });

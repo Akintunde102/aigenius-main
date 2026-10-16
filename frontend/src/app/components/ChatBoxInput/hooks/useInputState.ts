@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { isDraftSessionKey } from '@/app/components/model-interface/conversation/clientDraftSession';
 
 interface UseInputStateProps {
     externalInputValue?: string;
@@ -50,15 +51,37 @@ export const useInputState = ({
         lastSentValueRef.current = value;
     }, []);
 
-    // Session switch: save in-progress text to the old conversation, then load the new one.
+    const sessionSwitchedRef = useRef(false);
+
+    // Session switch or draft materialization: save in-progress text or carry it forward.
     useEffect(() => {
         if (composerSessionKey === prevSessionKeyRef.current) {
             return;
         }
 
+        sessionSwitchedRef.current = true;
         cancelDebounce();
         const oldKey = prevSessionKeyRef.current;
-        flushPendingToKey(oldKey, internalInputValueRef.current);
+        const currentTypedText = internalInputValueRef.current;
+        const isMaterializingDraft = isDraftSessionKey(oldKey) && !isDraftSessionKey(composerSessionKey);
+
+        if (isMaterializingDraft) {
+            prevSessionKeyRef.current = composerSessionKey;
+            // Retain any in-progress typing from the draft for the newly materialized conversation.
+            const textToPreserve = currentTypedText || (externalInputValue ?? '');
+            if (textToPreserve) {
+                commitDraftForKeyRef.current?.(composerSessionKey, textToPreserve);
+                commitDraftForKeyRef.current?.(oldKey, '');
+                setInternalInputValue(textToPreserve);
+                lastSentValueRef.current = textToPreserve;
+            } else {
+                setInternalInputValue('');
+                lastSentValueRef.current = '';
+            }
+            return;
+        }
+
+        flushPendingToKey(oldKey, currentTypedText);
 
         prevSessionKeyRef.current = composerSessionKey;
 
@@ -69,6 +92,10 @@ export const useInputState = ({
 
     // Same-session external updates (STT, insert saved chat, etc.)
     useEffect(() => {
+        if (sessionSwitchedRef.current) {
+            sessionSwitchedRef.current = false;
+            return;
+        }
         if (composerSessionKey !== prevSessionKeyRef.current) {
             return;
         }

@@ -1,3 +1,5 @@
+import { reloadPage } from "@/lib/utils/navigate";
+
 const CHUNK_RELOAD_KEY = "aigenius.chunk-reload";
 
 export function isChunkLoadError(err: unknown): boolean {
@@ -13,6 +15,36 @@ export function isChunkLoadError(err: unknown): boolean {
       ? (err as { message: string }).message
       : String(err);
   return name === "ChunkLoadError" || /Loading chunk .* failed/i.test(message);
+}
+
+/**
+ * Render a self-contained, critical loading overlay during the reload transition so the
+ * user never experiences an unstyled or flickering screen while the browser updates bundles.
+ */
+function showUpdatingOverlay(): void {
+  try {
+    if (typeof document === "undefined") return;
+    if (document.getElementById("aig-update-overlay")) return;
+    const overlay = document.createElement("div");
+    overlay.id = "aig-update-overlay";
+    overlay.setAttribute(
+      "style",
+      "position:fixed;inset:0;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0b0b0e;color:#e8eaef;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:24px;text-align:center;box-sizing:border-box;",
+    );
+    overlay.innerHTML = `
+      <style>@keyframes aig-reload-spin{to{transform:rotate(360deg)}}</style>
+      <div style="width:36px;height:36px;border:3px solid rgba(14,165,233,0.25);border-top-color:#0284c7;border-radius:50%;animation:aig-reload-spin 0.85s linear infinite;margin-bottom:16px;box-sizing:border-box;"></div>
+      <div style="font-size:16px;font-weight:600;margin-bottom:6px;color:#f8fafc;">Updating workspace…</div>
+      <div style="font-size:13px;color:#94a3b8;max-width:320px;line-height:1.5;">Refreshing to the latest version.</div>
+    `;
+    if (document.body) {
+      document.body.appendChild(overlay);
+    } else if (document.documentElement) {
+      document.documentElement.appendChild(overlay);
+    }
+  } catch {
+    /* ignore fallback errors */
+  }
 }
 
 /**
@@ -35,7 +67,8 @@ export function tryAutoReloadOnChunkLoadError(err: unknown): boolean {
     return false;
   }
   sessionStorage.setItem(CHUNK_RELOAD_KEY, "1");
-  window.location.reload();
+  showUpdatingOverlay();
+  reloadPage();
   return true;
 }
 

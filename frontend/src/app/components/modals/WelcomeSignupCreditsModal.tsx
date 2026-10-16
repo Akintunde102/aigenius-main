@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import ReactDOM from "react-dom";
-import { FiGift, FiX } from "react-icons/fi";
+import { FiGift } from "react-icons/fi";
 import { SIGNUP_BONUS_CREDITS } from "@/lib/credits";
+import { AppModal, AppModalBody, AppModalHeader } from "@/app/components/modals/AppModal";
 
 interface WelcomeSignupCreditsModalProps {
   credits?: number;
@@ -14,65 +14,50 @@ export function WelcomeSignupCreditsModal({
   credits = SIGNUP_BONUS_CREDITS,
   onClose,
 }: WelcomeSignupCreditsModalProps) {
-  return ReactDOM.createPortal(
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="signup-welcome-title"
+  return (
+    <AppModal
+      open
+      onClose={onClose}
+      size="sm"
+      ariaLabelledBy="signup-welcome-title"
     >
-      <div
-        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/60"
-      >
+      <AppModalHeader
+        titleId="signup-welcome-title"
+        title="Welcome to AIGenius"
+        onClose={onClose}
+      />
+      <AppModalBody className="space-y-5 text-center">
         <div
-          aria-hidden
-          className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent"
-        />
+          className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl"
+          style={{
+            background: "color-mix(in srgb, var(--chat-accent) 12%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--chat-accent) 25%, var(--modal-border))",
+            color: "var(--chat-accent)",
+          }}
+        >
+          <FiGift className="h-7 w-7" aria-hidden />
+        </div>
+
+        <p className="text-sm leading-relaxed" style={{ color: "var(--modal-muted-fg)" }}>
+          You&apos;re in. We added{" "}
+          <span className="font-semibold" style={{ color: "var(--modal-fg)" }}>
+            {credits} free credits
+          </span>{" "}
+          to your wallet so you can try GPT, Claude, Gemini, and more — no subscription required.
+        </p>
+
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg p-1.5 text-zinc-400 transition hover:bg-white/5 hover:text-white"
-          aria-label="Close welcome message"
+          className="app-modal-btn-primary w-full rounded-xl py-3 text-sm font-semibold"
         >
-          <FiX className="h-5 w-5" />
+          Start chatting
         </button>
 
-        <div className="space-y-5 p-8 pt-10 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-500/10 ring-1 ring-cyan-400/30">
-            <FiGift className="h-7 w-7 text-cyan-300" aria-hidden />
-          </div>
-
-          <div className="space-y-2">
-            <h2
-              id="signup-welcome-title"
-              className="text-2xl font-semibold tracking-tight text-white"
-            >
-              Welcome to AIGenius
-            </h2>
-            <p className="text-sm leading-relaxed text-zinc-400">
-              You&apos;re in. We added{" "}
-              <span className="font-semibold text-cyan-200">
-                {credits} free credits
-              </span>{" "}
-              to your wallet so you can try GPT, Claude, Gemini, and more — no
-              subscription required.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full rounded-xl bg-cyan-500 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
-          >
-            Start chatting
-          </button>
-
-          <p className="text-xs text-zinc-500">
-            Top up anytime when you need more credits.
-          </p>
-        </div>
-      </div>
-    </div>,
-    document.body,
+        <p className="text-xs" style={{ color: "var(--modal-muted-fg)" }}>
+          Top up anytime when you need more credits.
+        </p>
+      </AppModalBody>
+    </AppModal>
   );
 }

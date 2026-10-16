@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FiX, FiGlobe, FiLock, FiCopy, FiCheck, FiExternalLink } from 'react-icons/fi';
+import { FiGlobe, FiLock, FiCopy, FiCheck, FiExternalLink } from 'react-icons/fi';
+import {
+    AppModal,
+    AppModalBody,
+    AppModalHeader,
+    AppModalFooter,
+} from '@/app/components/modals/AppModal';
 import { ChatSession } from '@/app/components/model-interface/shared/types';
 import {
     copyPublishedConversationUrl,
@@ -112,75 +118,64 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
         }
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div
-                className="rounded-lg shadow-xl max-w-md w-full max-h-[95vh] overflow-y-auto border flex flex-col"
-                style={{
-                    background: "var(--modal-bg)",
-                    borderColor: "var(--modal-border)",
-                    color: "var(--modal-fg)",
-                }}
-            >
-                <div className="flex shrink-0 items-center justify-between p-4 border-b" style={{ borderColor: "var(--modal-border)" }}>
-                    <div className="flex items-center gap-2">
-                        <FiGlobe className="text-blue-500 shrink-0" size={20} />
-                        <h2 className="text-lg font-semibold leading-none">
-                            {isRepublishing ? 'Republish Conversation' : 'Publish Conversation'}
-                        </h2>
-                    </div>
-                    <button
-                        onClick={handleClose}
-                        disabled={isPublishing}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-[var(--sidebar-row-hover)] hover:text-red-500 disabled:opacity-50 transition-colors"
-                        style={{ color: "var(--modal-muted-fg)" }}
-                        aria-label="Close"
+        <AppModal
+            open={isOpen}
+            onClose={handleClose}
+            size="sm"
+            closeOnOverlayClick={!isPublishing}
+            closeOnEscape={!isPublishing}
+            panelClassName="flex max-h-[92vh] flex-col overflow-hidden"
+        >
+            <AppModalHeader
+                title={isRepublishing ? 'Republish Conversation' : 'Publish Conversation'}
+                subtitle="Create a shareable public link for this chat"
+                onClose={handleClose}
+            />
+            <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <AppModalBody className="space-y-3 overflow-y-auto !py-3">
+                    <div
+                        className="flex items-start gap-2.5 rounded-lg border p-2.5 text-xs"
+                        style={{
+                            background: 'color-mix(in srgb, var(--chat-accent) 8%, var(--modal-bg))',
+                            borderColor: 'color-mix(in srgb, var(--chat-accent) 25%, var(--modal-border))',
+                        }}
                     >
-                        <FiX size={18} />
-                    </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="p-4">
-                    <div className="mb-4">
-                        <div className="flex items-center gap-2 mb-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                            <FiGlobe className="text-blue-500 shrink-0" size={16} />
-                            <div className="text-sm">
-                                <strong>Publishing this conversation will make it publicly accessible.</strong>
-                                <p className="opacity-80 mt-1">
-                                    Anyone with the link will be able to view the entire conversation.
-                                </p>
-                            </div>
+                        <FiGlobe className="shrink-0 mt-0.5 text-[var(--chat-accent)]" size={14} />
+                        <div className="flex-1 min-w-0" style={{ color: 'var(--modal-fg)' }}>
+                            <p className="font-semibold">Public link notice</p>
+                            <p className="mt-0.5 opacity-80 leading-relaxed text-[11px]" style={{ color: 'var(--modal-muted-fg)' }}>
+                                Anyone with this link can view the conversation history and shared responses.
+                            </p>
                         </div>
                     </div>
 
-                    <div className="mb-4">
-                        <label htmlFor="title" className="block text-sm font-medium mb-2" style={{ color: "var(--modal-muted-fg)" }}>
+                    <div>
+                        <label htmlFor="pub-title" className="app-modal-field-label">
                             Title *
                         </label>
                         <input
                             type="text"
-                            id="title"
+                            id="pub-title"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="app-modal-input w-full px-3 py-2 rounded-md focus:outline-none"
+                            className="app-modal-input"
                             placeholder="Enter a title for your conversation..."
                             required
                             disabled={isPublishing}
                         />
                     </div>
 
-                    <div className="mb-6">
-                        <label htmlFor="description" className="block text-sm font-medium mb-2" style={{ color: "var(--modal-muted-fg)" }}>
+                    <div>
+                        <label htmlFor="pub-description" className="app-modal-field-label">
                             Description (optional)
                         </label>
                         <textarea
-                            id="description"
+                            id="pub-description"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            rows={3}
-                            className="app-modal-input w-full px-3 py-2 rounded-md focus:outline-none resize-none"
+                            rows={2}
+                            className="app-modal-input resize-none"
                             placeholder="Add a brief description of what this conversation is about..."
                             disabled={isPublishing}
                         />
@@ -188,81 +183,95 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
 
                     {/* URL Display Section */}
                     {(isPublished || (isRepublishing && existingUrl)) && (
-                        <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                            <div className="flex items-center gap-2 mb-2">
-                                <FiGlobe className="text-green-500" size={14} />
-                                <span className="text-sm font-medium">
-                                    {isRepublishing ? 'Previously Published URL' : 'Published URL'}
-                                </span>
+                        <div
+                            className="rounded-lg border p-2.5 space-y-2 text-xs"
+                            style={{
+                                background: 'color-mix(in srgb, #10b981 8%, var(--modal-bg))',
+                                borderColor: 'color-mix(in srgb, #10b981 25%, var(--modal-border))',
+                            }}
+                        >
+                            <div className="flex items-center gap-1.5 font-semibold" style={{ color: '#10b981' }}>
+                                <FiGlobe size={13} />
+                                <span>{isRepublishing ? 'Previously Published Link' : 'Published Link'}</span>
                             </div>
-                            <div className="flex items-center gap-2 p-2 rounded border" style={{ background: "var(--modal-bg-muted)", borderColor: "var(--modal-border)" }}>
+                            <div
+                                className="flex items-center gap-1.5 rounded-md border p-1.5"
+                                style={{
+                                    background: 'var(--modal-bg)',
+                                    borderColor: 'var(--modal-border)',
+                                }}
+                            >
                                 <input
                                     type="text"
                                     value={displayedUrl}
                                     readOnly
                                     title={displayedUrl}
-                                    className="flex-1 min-w-0 text-sm bg-transparent border-none outline-none"
-                                    style={{ color: "var(--modal-fg)" }}
+                                    className="flex-1 min-w-0 text-xs bg-transparent border-none outline-none font-mono"
+                                    style={{ color: 'var(--modal-fg)' }}
                                 />
                                 <button
                                     type="button"
                                     onClick={copyUrl}
-                                    className="flex items-center gap-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                                    className="app-modal-btn-secondary !px-2 !py-1 !text-[11px]"
                                 >
-                                    {urlCopied ? <FiCheck size={12} /> : <FiCopy size={12} />}
-                                    {urlCopied ? 'Copied!' : 'Copy'}
+                                    {urlCopied ? <FiCheck size={11} className="text-green-500" /> : <FiCopy size={11} />}
+                                    {urlCopied ? 'Copied' : 'Copy'}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={openUrl}
-                                    className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                    className="app-modal-btn-primary !px-2 !py-1 !text-[11px]"
                                 >
-                                    <FiExternalLink size={12} />
+                                    <FiExternalLink size={11} />
                                     View
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    <div className="mb-4 p-3 rounded-lg" style={{ background: "var(--modal-bg-muted)", color: "var(--modal-muted-fg)" }}>
-                        <div className="flex items-center gap-2 text-sm">
-                            <FiLock size={14} />
-                            <span>
-                                Conversation contains {session.messages.length} message{session.messages.length !== 1 ? 's' : ''}
-                            </span>
-                        </div>
+                    <div
+                        className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs"
+                        style={{
+                            background: 'var(--surface-muted)',
+                            borderColor: 'var(--modal-border)',
+                            color: 'var(--modal-muted-fg)',
+                        }}
+                    >
+                        <FiLock size={13} className="shrink-0" />
+                        <span>
+                            Contains {session.messages.length} message{session.messages.length !== 1 ? 's' : ''}
+                        </span>
                     </div>
+                </AppModalBody>
 
-                    <div className="flex gap-3">
-                        <button
-                            type="button"
-                            onClick={handleClose}
-                            disabled={isPublishing}
-                            className="flex-1 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            style={{ background: "var(--modal-bg)", borderColor: "var(--modal-border)", color: "var(--modal-muted-fg)" }}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={!title.trim() || isPublishing}
-                            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                        >
-                            {isPublishing ? (
-                                <>
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    {isRepublishing ? 'Republishing...' : 'Publishing...'}
-                                </>
-                            ) : (
-                                <>
-                                    <FiGlobe size={16} />
-                                    {isRepublishing ? 'Republish' : 'Publish'}
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                <AppModalFooter>
+                    <button
+                        type="button"
+                        onClick={handleClose}
+                        disabled={isPublishing}
+                        className="app-modal-btn-secondary text-xs"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={!title.trim() || isPublishing}
+                        className="app-modal-btn-primary text-xs"
+                    >
+                        {isPublishing ? (
+                            <>
+                                <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <span>{isRepublishing ? 'Republishing…' : 'Publishing…'}</span>
+                            </>
+                        ) : (
+                            <>
+                                <FiGlobe size={13} />
+                                <span>{isRepublishing ? 'Republish' : 'Publish'}</span>
+                            </>
+                        )}
+                    </button>
+                </AppModalFooter>
+            </form>
+        </AppModal>
     );
 };

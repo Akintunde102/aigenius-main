@@ -3,6 +3,9 @@ import {
   closeSearchModule,
   enqueueProjectIndex,
   enqueueReindexPaths,
+  enqueueFastIndexPocket,
+  enqueuePocketIndexHints,
+  getDeviceFastIndexPocketStatus,
   getSearchQueue,
   getSearchWatchPaths,
   switchSearchProject,
@@ -12,6 +15,8 @@ import {
   updateSearchStatusCache,
 } from '../search/status-snapshot.js';
 import { readIndexerStatusFile } from '../search/indexer-status-file.js';
+import { readDeviceFastIndexReadiness } from '../search/indexer/device-fast-index-readiness.js';
+import { checkSemanticIndexAccess } from '../search/local-semantic-index-guard.js';
 import { callIndexerIpc, isExternalIndexerEnabled } from '../search/indexer-ipc/client.js';
 import { warmSearchCache } from '../search/warm-search-cache.js';
 import { readAigeniusIgnoreFile, writeAigeniusIgnoreFile } from '../search/aigeniusignore-io.js';
@@ -149,8 +154,14 @@ export function createSearchRoutes(): Hono {
         page_size,
         pageSize,
       } = body;
+      const userData = process.env.AIGENIUS_USER_DATA_PATH ?? '';
+      const pathPrefixStr = typeof pathPrefix === 'string' ? pathPrefix : undefined;
+      const access = checkSemanticIndexAccess(userData, { pathPrefix: pathPrefixStr }, 'rag');
+      if (!access.allowed) {
+        return clientError(c, access.error, access.httpStatus);
+      }
       const { db } = resolveReadDb({
-        pathPrefix: typeof pathPrefix === 'string' ? pathPrefix : undefined,
+        pathPrefix: pathPrefixStr,
       });
       const modelsDir = process.env.AIGENIUS_MODELS_DIR ?? '';
       const resolvedPage = typeof page === 'number' ? page : 0;
@@ -285,6 +296,15 @@ export function createSearchRoutes(): Hono {
       if (!input) return clientError(c, 'input is required', 400);
       const pathPrefix = typeof body.pathPrefix === 'string' ? body.pathPrefix : '';
       const activeFile = typeof body.activeFile === 'string' ? body.activeFile : undefined;
+      const userData = process.env.AIGENIUS_USER_DATA_PATH ?? '';
+      const access = checkSemanticIndexAccess(
+        userData,
+        { pathPrefix, filePath: activeFile || input, rootPath: pathPrefix || input },
+        'rag',
+      );
+      if (!access.allowed) {
+        return clientError(c, access.error, access.httpStatus);
+      }
       const { db } = resolveReadDb({
         pathPrefix,
         filePath: activeFile || input,
@@ -464,6 +484,10 @@ export function createSearchRoutes(): Hono {
           queue_text_depth: 0,
           queue_structure_depth: 0,
         };
+        const deviceFastIndex = readDeviceFastIndexReadiness(
+          userData,
+          fileStatus.queue_by_tier,
+        );
         return c.json({
           indexed: fileStatus.indexed,
           watching: fileStatus.watching,
@@ -473,6 +497,7 @@ export function createSearchRoutes(): Hono {
           db_path: fileStatus.db_path,
           project_root: fileStatus.project_root,
           active_project_id: fileStatus.active_project_id ?? null,
+          device_fast_index: deviceFastIndex,
           projects: fileStatus.projects ?? registered.map((p) => ({
             project_id: p.projectId,
             project_root: p.rootPath,
@@ -507,11 +532,13 @@ export function createSearchRoutes(): Hono {
         }
       }
 
+      const deviceFastIndex = readDeviceFastIndexReadiness(userData);
       return c.json({
         ...getSearchStatusSnapshot(),
         watching: true,
         core_ready: true,
         enrichment_ready: true,
+        device_fast_index: deviceFastIndex,
         projects: registered,
         health: {
           indexer_ipc_reachable: isExternalIndexerEnabled() ? indexerIpcOk : true,
@@ -633,21 +660,91 @@ export function createSearchRoutes(): Hono {
 
   r.post('/reindex', (c) =>
     handleRoute(c, '[search] POST /search/reindex', async () => {
-      const { paths, force } = await c.req.json();
+      const body = await c.req.json().catch(() => ({}));
+      const paths = body.paths;
+      const force = Boolean(body.force);
+      const priority = body.priority === 'fast_pocket' ? 'fast_pocket' : undefined;
       if (isExternalIndexerEnabled()) {
         const p = Array.isArray(paths) ? paths : undefined;
         void callIndexerIpc<{ queued: number }>({
           op: 'reindex',
           paths: p,
-          force: Boolean(force),
+          force,
+          priority,
         }, 8_000).catch((err) => {
           console.warn('[search] background reindex failed:', err);
         });
         return c.json({ queued: 0, indexing: 'queued' });
       }
       const p = Array.isArray(paths) ? paths : getSearchWatchPaths();
-      const queued = enqueueReindexPaths(p, Boolean(force));
+      const queued = enqueueReindexPaths(p, force, { priority });
       return c.json({ queued });
+    }),
+  );
+
+  r.get('/device-fast-index', (c) =>
+    handleRoute(c, '[search] GET /search/device-fast-index', async () => {
+      const userData = process.env.AIGENIUS_USER_DATA_PATH ?? '';
+      const status = getDeviceFastIndexPocketStatus(userData);
+      return c.json({
+        directories: status.directories,
+        baseline: status.state?.baseline_directories ?? [],
+        model_suggested: status.state?.model_suggested_directories ?? [],
+        planner_model: status.state?.planner_model ?? null,
+        last_planner_run_ms: status.state?.last_planner_run_ms ?? null,
+        last_planner_error: status.state?.last_planner_error ?? null,
+        install_planner_completed: status.state?.install_planner_completed === true,
+        install_planner_app_version: status.state?.install_planner_app_version ?? null,
+      });
+    }),
+  );
+
+  r.post('/device-fast-index/run-install-planner', (c) =>
+    handleRoute(c, '[search] POST /search/device-fast-index/run-install-planner', async () => {
+      const body = await c.req.json().catch(() => ({}));
+      const appVersion = typeof body.appVersion === 'string' ? body.appVersion.trim() : undefined;
+      if (isExternalIndexerEnabled()) {
+        const result = await callIndexerIpc<{
+          ran: boolean;
+          completed: boolean;
+          error: string | null;
+        }>({ op: 'run-install-planner', appVersion }, 120_000);
+        return c.json(result);
+      }
+      const { runInstallDevicePocketPlannerForApp } = await import('../search/index.js');
+      const result = await runInstallDevicePocketPlannerForApp(appVersion);
+      return c.json(result);
+    }),
+  );
+
+  r.post('/enqueue-pocket', (c) =>
+    handleRoute(c, '[search] POST /search/enqueue-pocket', async () => {
+      const body = await c.req.json().catch(() => ({}));
+      const paths = body.paths;
+      const rootPath = typeof body.rootPath === 'string' ? body.rootPath.trim() : '';
+      const force = Boolean(body.force);
+      if (isExternalIndexerEnabled()) {
+        void callIndexerIpc<{ queued: number }>({
+          op: 'enqueue-pocket',
+          rootPath: rootPath || undefined,
+          paths: Array.isArray(paths) ? paths : undefined,
+          force,
+        }, 8_000).catch((err) => {
+          console.warn('[search] background enqueue-pocket failed:', err);
+        });
+        return c.json({ queued: 0, indexing: 'queued' });
+      }
+      if (Array.isArray(paths) && paths.length > 0) {
+        const queued = enqueuePocketIndexHints(paths, force);
+        return c.json({ queued, mode: 'hints' });
+      }
+      if (!rootPath) {
+        return clientError(c, 'rootPath or paths is required', 400);
+      }
+      const userData = process.env.AIGENIUS_USER_DATA_PATH ?? '';
+      const dbPath = resolveProjectDbPath({ userData, rootPath });
+      const queued = enqueueFastIndexPocket(rootPath, dbPath, undefined, force);
+      return c.json({ queued, rootPath, dbPath });
     }),
   );
 

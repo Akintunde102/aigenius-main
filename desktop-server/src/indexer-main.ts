@@ -3,8 +3,11 @@ import {
   bootstrapRegisteredProjects,
   closeSearchModule,
   enqueueProjectIndex,
+  enqueueFastIndexPocket,
+  enqueuePocketIndexHints,
   enqueueReindexPaths,
   getSearchWatchPaths,
+  runInstallDevicePocketPlannerForApp,
   switchSearchProject,
 } from './search/index.js';
 import { startIndexerIpcServer } from './search/indexer-ipc/server.js';
@@ -98,8 +101,31 @@ async function bootIndexer(): Promise<void> {
       const paths = Array.isArray(req.paths) && req.paths.length > 0
         ? req.paths
         : getSearchWatchPaths();
-      const queued = enqueueReindexPaths(paths, Boolean(req.force));
+      const queued = enqueueReindexPaths(paths, Boolean(req.force), {
+        priority: req.priority === 'fast_pocket' ? 'fast_pocket' : undefined,
+      });
       return { queued };
+    },
+    'run-install-planner': async (req) => {
+      const appVersion = typeof req.appVersion === 'string' ? req.appVersion.trim() : undefined;
+      const result = await runInstallDevicePocketPlannerForApp(appVersion);
+      return result;
+    },
+    'enqueue-pocket': async (req) => {
+      const userDataPath = process.env.AIGENIUS_USER_DATA_PATH ?? '';
+      const paths = Array.isArray(req.paths) ? req.paths.filter((p) => typeof p === 'string') : [];
+      const force = Boolean(req.force);
+      if (paths.length > 0) {
+        const queued = enqueuePocketIndexHints(paths, force);
+        return { queued, mode: 'hints' };
+      }
+      const rootPath = typeof req.rootPath === 'string' ? req.rootPath.trim() : '';
+      if (!rootPath) {
+        return { queued: 0, error: 'rootPath or paths required' };
+      }
+      const resolvedDb = resolveProjectDb(userDataPath, undefined, rootPath);
+      const queued = enqueueFastIndexPocket(rootPath, resolvedDb, undefined, force);
+      return { queued, rootPath, dbPath: resolvedDb };
     },
     shutdown: async () => {
       await closeSearchModule();

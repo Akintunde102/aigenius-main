@@ -9,6 +9,7 @@ import { ChatMessage } from './ChatMessage';
 import { TimeDivider } from '../../chat/components/TimeDivider';
 import { formatCost } from '@/lib/utils/modelInterfaceUtils';
 import type { MessageEditDraft } from '../utils/messageEdit.utils';
+import type { RewritePromptOptions } from '../../chat/hooks/chatOperations.types';
 import { RenderErrorBoundary } from '@/app/components/RenderErrorBoundary';
 
 export interface ChatMessageWrapperProps {
@@ -34,7 +35,7 @@ export interface ChatMessageWrapperProps {
     conversationId?: string | null;
     supportsFileUpload?: boolean;
     onStartOrphanReply?: (trigger: OrphanReplyTrigger) => void;
-    orphanMarkers?: StickyThreadMarker[];
+    orphanMarkers?: readonly StickyThreadMarker[];
     orphanMarkersHidden?: boolean;
     onOpenOrphanMarker?: (marker: StickyThreadMarker) => void;
     onToggleOrphanMarkers?: (messageId: string) => void;
@@ -46,6 +47,9 @@ export interface ChatMessageWrapperProps {
     selectedPersonalityName?: string;
     selectedPersonalityIconUrl?: string;
     disableOrphanThreads?: boolean;
+    onPromptButtonSelect?: (label: string) => void;
+    onRewritePrompt?: (options?: RewritePromptOptions) => void;
+    rewritePromptInProgress?: boolean;
 }
 
 function ChatMessageWrapperInner({
@@ -83,6 +87,9 @@ function ChatMessageWrapperInner({
     selectedPersonalityName,
     selectedPersonalityIconUrl,
     disableOrphanThreads = false,
+    onPromptButtonSelect,
+    onRewritePrompt,
+    rewritePromptInProgress,
 }: ChatMessageWrapperProps) {
     const shouldShowTimeDivider =
         displayIdx > 0 &&
@@ -145,6 +152,9 @@ function ChatMessageWrapperInner({
                 assistantAvatarUrl={msg.role === 'assistant' ? selectedPersonalityIconUrl : undefined}
                 disableOrphanThreads={disableOrphanThreads}
                 isLastVisibleMessage={isLastVisibleMessage}
+                onPromptButtonSelect={onPromptButtonSelect}
+                onRewritePrompt={onRewritePrompt}
+                rewritePromptInProgress={rewritePromptInProgress}
             />
         </div>
         </RenderErrorBoundary>
@@ -175,6 +185,9 @@ function wrapperPropsEqual(
         && prev.selectedPersonalityName === next.selectedPersonalityName
         && prev.selectedPersonalityIconUrl === next.selectedPersonalityIconUrl
         && prev.disableOrphanThreads === next.disableOrphanThreads
+        && prev.onPromptButtonSelect === next.onPromptButtonSelect
+        && prev.onRewritePrompt === next.onRewritePrompt
+        && prev.rewritePromptInProgress === next.rewritePromptInProgress
     );
 }
 

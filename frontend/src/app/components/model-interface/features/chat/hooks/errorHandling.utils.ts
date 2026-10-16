@@ -160,12 +160,31 @@ export function handleSendError(
     setError: SetChatUiError,
     options?: HandleSendErrorOptions,
 ): void {
-    // Clean up incomplete assistant messages during streaming
+    // Clean up incomplete assistant messages during streaming unless tools were executed
     if (streaming) {
         setChat(prev => {
-            if (prev.length > 0 && prev[prev.length - 1].role === 'assistant' &&
-                prev[prev.length - 1].content === '') {
-                return prev.slice(0, -1);
+            if (prev.length > 0 && prev[prev.length - 1].role === 'assistant') {
+                const lastMsg = prev[prev.length - 1];
+                const isEmptyContent = typeof lastMsg.content === 'string'
+                    ? lastMsg.content.trim() === ''
+                    : Array.isArray(lastMsg.content) && lastMsg.content.length === 0;
+
+                if (isEmptyContent) {
+                    const hasExecutedTools =
+                        Boolean(lastMsg.tool_executions && lastMsg.tool_executions.length > 0) ||
+                        Boolean(lastMsg.streaming_tools && lastMsg.streaming_tools.length > 0) ||
+                        Boolean(Array.isArray((lastMsg as any).tool_calls) && (lastMsg as any).tool_calls.length > 0);
+
+                    if (hasExecutedTools) {
+                        // Preserve the message with executed tool cards; clear active streaming loaders
+                        return prev.map((msg, idx) =>
+                            idx === prev.length - 1
+                                ? { ...msg, streaming_tools: undefined }
+                                : msg,
+                        );
+                    }
+                    return prev.slice(0, -1);
+                }
             }
             return prev;
         });

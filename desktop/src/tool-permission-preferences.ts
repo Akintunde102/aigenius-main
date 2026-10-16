@@ -52,6 +52,12 @@ export const TOOL_PERMISSION_CATALOG: ToolPermissionCatalogEntry[] = [
     aliases: ['read_file', 'read_local_file'],
   },
   {
+    id: 'local_upload_file',
+    label: 'Upload local file',
+    description: 'Upload a file from this computer to your cloud library',
+    defaultRequiresApproval: true,
+  },
+  {
     id: 'local_read_image',
     label: 'Read local images',
     description: 'OCR and object detection on images on your machine',

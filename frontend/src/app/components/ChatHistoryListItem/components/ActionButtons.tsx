@@ -1,6 +1,5 @@
 import React from 'react';
 import { FiStar, FiLoader } from 'react-icons/fi';
-import type { TranscriptFormat } from '@/lib/utils/conversationTranscriptExport';
 import { ActionDropdown } from './ActionDropdown';
 
 interface ActionButtonsProps {
@@ -12,8 +11,8 @@ interface ActionButtonsProps {
     onStarClick: (e: React.MouseEvent) => void;
     onDeleteClick: (e: React.MouseEvent) => void;
     onPublishClick?: (e: React.MouseEvent) => void;
-    onDownloadTranscript?: (format: TranscriptFormat) => void | Promise<void>;
-    isDownloadingTranscript?: boolean;
+    onOpenTranscript?: (e: React.MouseEvent) => void;
+    onAssignLabelsClick?: (e: React.MouseEvent) => void;
 }
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
@@ -25,12 +24,11 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     onStarClick,
     onDeleteClick,
     onPublishClick,
-    onDownloadTranscript,
-    isDownloadingTranscript = false,
+    onOpenTranscript,
+    onAssignLabelsClick,
 }) => {
     return (
         <div className="flex shrink-0 items-center gap-0.5">
-            {/* Star button - only visible on hover */}
             <button
                 className={`p-0.5 text-amber-500/90 opacity-0 transition hover:text-amber-600 group-hover:opacity-100 ${isStarring ? "opacity-100" : ""
                     }`}
@@ -45,7 +43,6 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 )}
             </button>
 
-            {/* Dropdown with all actions (star, publish, delete) */}
             <ActionDropdown
                 isStarred={isStarred}
                 isStarring={isStarring}
@@ -55,8 +52,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 onStarClick={onStarClick}
                 onDeleteClick={onDeleteClick}
                 onPublishClick={onPublishClick}
-                onDownloadTranscript={onDownloadTranscript}
-                isDownloadingTranscript={isDownloadingTranscript}
+                onOpenTranscript={onOpenTranscript}
+                onAssignLabelsClick={onAssignLabelsClick}
             />
         </div>
     );

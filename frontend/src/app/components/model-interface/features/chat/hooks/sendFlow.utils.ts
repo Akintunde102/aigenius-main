@@ -11,6 +11,29 @@ export function computeRequiredBalance(selectedModel: Model | null): number {
     return computeModelRequiredBalance(selectedModel);
 }
 
+/**
+ * Model used for wallet checks, message metadata, and the completion request.
+ * Resends/replays honor the message's catalog id when it is still available.
+ */
+export function resolveModelForChatSend(args: {
+    selectedModel: Model | null;
+    models: Model[];
+    modelOverride?: Model;
+    preCreatedMessage?: ChatMessage;
+}): Model | null {
+    if (args.modelOverride) {
+        return args.modelOverride;
+    }
+    const messageModelId = args.preCreatedMessage?.modelId;
+    if (messageModelId) {
+        const fromCatalog = args.models.find((model) => model.id === messageModelId);
+        if (fromCatalog) {
+            return fromCatalog;
+        }
+    }
+    return args.selectedModel;
+}
+
 export function buildUserMessageState(args: {
     preCreatedMessage?: ChatMessage;
     inputToSend: string;

@@ -261,7 +261,8 @@ const nextConfig = {
                             "font-src 'self' data:",
                             "worker-src 'self' blob:",
                             "frame-src 'self' blob: data: https://checkout.paystack.com https://checkout-v2.payaza.africa https://www.youtube.com https://www.youtube-nocookie.com",
-                            "media-src 'self' blob:",
+                            // Assistant markdown embeds Cloudinary / CDN MP4s (img-src already allows https:).
+                            "media-src 'self' blob: https:",
                             process.env.NODE_ENV === 'development'
                                 ? // Include Next dev HMR websockets on loopback; Electron loads http://localhost:<port>.
                                 devConnectSrc

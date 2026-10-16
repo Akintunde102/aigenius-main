@@ -19,6 +19,7 @@ interface UseModelInterfaceChatBoxSendParams {
     enableStreaming?: boolean,
     preCreatedMessage?: ChatMessage,
     chatSnapshot?: ChatMessage[],
+    options?: { modelOverride?: Model | null },
   ) => Promise<boolean>;
   setChat: Dispatch<SetStateAction<ChatMessage[]>>;
   setUploadedFiles: Dispatch<SetStateAction<UploadedFileEntry[]>>;
@@ -42,8 +43,9 @@ export function useModelInterfaceChatBoxSend({
   setShowWalletModal,
 }: UseModelInterfaceChatBoxSendParams) {
   return useCallback(
-    async (message: string, _model: Model | null): Promise<boolean | void> => {
-      if (!selectedModel) return false;
+    async (message: string, modelFromComposer: Model | null): Promise<boolean | void> => {
+      const activeModel = modelFromComposer ?? selectedModel;
+      if (!activeModel) return false;
       if (!message.trim() && uploadedFiles.length === 0) return false;
       if (!project) {
         setError(CHAT_UI_ERRORS.noProject);
@@ -52,7 +54,7 @@ export function useModelInterfaceChatBoxSend({
 
       if (isInsufficientCredits) {
         const roundedRequired = Math.ceil(requiredWalletBalance);
-        const modelLabel = selectedModel.name || selectedModel.id;
+        const modelLabel = activeModel.name || activeModel.id;
         const currentBalance = normalizeWalletForGating(wallet) ?? 0;
         const currentBalanceDisplay = currentBalance.toFixed(2).replace(/\.00$/, '');
         setError(
@@ -94,8 +96,8 @@ export function useModelInterfaceChatBoxSend({
         const userMsg = createChatMessage(
           'user',
           contentParts,
-          selectedModel.id,
-          selectedModel.name || selectedModel.id,
+          activeModel.id,
+          activeModel.name || activeModel.id,
           viewSessionId ?? currentSessionId,
         );
 
@@ -103,7 +105,9 @@ export function useModelInterfaceChatBoxSend({
         setChat((prev) => [...prev, userMsg]);
         setUploadedFiles([]);
 
-        const sent = await handleSend('', undefined, userMsg);
+        const sent = await handleSend('', undefined, userMsg, undefined, {
+          modelOverride: activeModel,
+        });
         if (sent === false) {
           setChat((prev) => prev.filter((m) => m !== userMsg));
           setUploadedFiles(filesBeingSent);
@@ -111,7 +115,9 @@ export function useModelInterfaceChatBoxSend({
         return sent;
       }
 
-      return await handleSend(message);
+      return await handleSend(message, undefined, undefined, undefined, {
+        modelOverride: modelFromComposer ?? selectedModel,
+      });
     },
     [
       selectedModel,

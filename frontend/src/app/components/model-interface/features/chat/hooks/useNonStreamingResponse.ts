@@ -4,17 +4,11 @@ import { OpenRouterMessage } from '@/nobox-client/functions/access-model';
 import { ChatCompletionRequestOverrides, UseNonStreamingResponseProps, AccessModelFn } from './chatOperations.types';
 import { DRAFT_SESSION_KEY } from './chatOperations.constants';
 import { getClientDraftSessionId } from '@/app/components/model-interface/conversation/clientDraftSession';
-import { migrateAbortControllerKey } from './abortControllerMap.utils';
 import { createChatMessage, processBackendContent, generateMessageId } from './contentProcessing.utils';
-import { addOrMergeSessionToLocalHistory } from '@/lib/utils/modelChatConversationUtils';
 import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interface/conversation/streamTranscriptGuard';
-import { getDraftConversationEpoch, setActiveRouteConversationTarget } from '@/app/components/model-interface/conversation/conversationViewSession';
+import { getDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
 import { resolveRequestConversationId } from './requestConversationId.utils';
-import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
-import { notifyDesktopChatCompletionIfBackground } from '@/lib/utils/desktop-chat-completion-notify';
-import { notifyBackgroundConversationReady } from '@/lib/utils/background-conversation-notify';
-import { contentToDisplayText } from './contentProcessing.utils';
-import { getChatProjectScopeId } from '@/lib/code-projects/chat-project-scope';
+import { finalizeNonStreamingTurn } from './chatTurnFinalizer.utils';
 
 /**
  * Full-response (non-streaming) assistant path: single payload handling and session updates.
@@ -140,75 +134,26 @@ export function useNonStreamingResponse({
                     timestamp: m.timestamp ?? Date.now(),
                 })), assistantMsg];
 
-            if (requestSessionId === null && result.conversationId) {
-                migrateAbortControllerKey(
-                    abortControllersRef.current,
-                    abortMapKeyAtStart,
-                    result.conversationId,
-                );
-                abortCleanupKey = result.conversationId;
-                setActiveRouteConversationTarget(result.conversationId);
-                const scopeId = getChatProjectScopeId();
-                // Always persist draft completions under the real id so they are visible
-                // in history even when the user has already moved to another chat.
-                setChatForSession(result.conversationId, fullMessages);
-                updateSessionMessages?.(result.conversationId, fullMessages, {
-                    modelId: modelForRequest.id,
-                    title: deriveChatSessionTitle(fullMessages[0]?.content),
-                    codeProjectId: scopeId,
-                });
-                void addOrMergeSessionToLocalHistory({
-                    id: result.conversationId,
-                    codeProjectId: scopeId,
-                    session: { messages: fullMessages },
-                });
-
-                // If the user is still on this draft view, perform UI migration/switch.
-                if (ownsView) {
-                    onDraftCompleted?.(result.conversationId, assistantMsg, clientDraftKeyAtDispatch);
-                }
-            } else if (requestSessionId !== null || sameDraftGeneration) {
-                // Existing session (or background new chat — write to draft slot and
-                // leave it). A draft response from an older generation must not write
-                // into the freshly opened draft, so that case is skipped entirely.
-                if (uiChatBase) {
-                    setChatForSession(chatMapKey, [...uiChatBase, assistantMsg]);
-                } else {
-                    setChatForSession(chatMapKey, prev => [...prev, assistantMsg]);
-                }
-
-                if (requestSessionId && ownsView && result.conversationId && setCurrentSessionId) {
-                    setCurrentSessionId(result.conversationId);
-                }
-
-                if (requestSessionId && updateSessionMessages) {
-                    updateSessionMessages(requestSessionId, fullMessages, {
-                        modelId: modelForRequest.id,
-                        title: deriveChatSessionTitle(fullMessages[0]?.content),
-                    });
-                }
-
-                if (requestSessionId) {
-                    void addOrMergeSessionToLocalHistory({
-                        id: requestSessionId,
-                        codeProjectId: getChatProjectScopeId(),
-                        session: { messages: undefined },
-                    });
-                }
-            }
-
-            void notifyDesktopChatCompletionIfBackground({
-                body: contentToDisplayText(processedContent),
-                modelName: modelForRequest.name || modelForRequest.id,
+            abortCleanupKey = finalizeNonStreamingTurn({
+                result,
+                assistantMsg,
+                processedContent,
+                fullMessages,
+                modelForRequest,
+                requestSessionId,
+                ownsView,
+                sameDraftGeneration,
+                chatMapKey,
+                uiChatBase,
+                clientDraftKeyAtDispatch,
+                abortMapKeyAtStart,
+                abortControllers: abortControllersRef.current,
+                setChatForSession,
+                updateSessionMessages,
+                setCurrentSessionId,
+                onDraftCompleted,
+                logMetrics,
             });
-
-            if (!ownsView) {
-                void notifyBackgroundConversationReady({
-                    title: deriveChatSessionTitle(fullMessages[0]?.content) || 'Chat',
-                });
-            }
-
-            logMetrics(result.usage, result.cost_credits);
         } finally {
             const currentController = abortControllersRef.current.get(abortCleanupKey);
             if (currentController === abortController) {

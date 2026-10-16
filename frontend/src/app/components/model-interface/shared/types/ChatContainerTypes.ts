@@ -60,37 +60,3 @@ export interface ChatContainerProps {
     refs: ChatRefs;
 }
 
-// Legacy props interface for backward compatibility during transition
-export interface LegacyChatContainerProps {
-    chat: ChatMessage[];
-    selectedModel: Model | null;
-    models: Model[];
-    showCosts: boolean;
-    showNaira: boolean;
-    showTyping: boolean;
-    loading: boolean;
-    imagePreview: any | string | null;
-    setImagePreview: (preview: any) => void;
-    chatEndRef: React.RefObject<HTMLDivElement>;
-    chatAreaRef: React.RefObject<HTMLDivElement>;
-    showScrollToBottom: boolean;
-    onDeleteMessage: (idx: number) => void;
-    onSaveMessage: (msg: ChatMessage) => void;
-    onReplayMessage: (content: string, idx: number) => void;
-    onSendMessage: (message: string, model: any) => void;
-    onFileUpload: (file: File) => void;
-    uploading: boolean;
-    uploadProgress: number | null;
-    supportsImageUpload: boolean;
-    input: string;
-    setInput: (input: string) => void;
-    onModelNameClick: () => void;
-    onCancelUpload?: (file?: File) => void;
-    setIsTyping?: (typing: boolean) => void;
-    streaming?: boolean;
-    streamingEnabled?: boolean;
-    onStreamingToggle?: (enabled: boolean) => void;
-    mobileSidebarOpen?: boolean;
-    onShowSavedChats?: () => void;
-    sidebarStyle?: boolean;
-}

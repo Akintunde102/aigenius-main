@@ -104,6 +104,14 @@ export type ServerCallsKeyType =
     | "getGatewayModelChatsListPersonalities"
     | "deleteGatewayModelChatsDeletePersonality"
     | "postGatewayModelChatsSetConversationPersonality"
+    | "getGatewayModelChatsUserPreferences"
+    | "patchGatewayModelChatsUserPreferences"
+    | "getGatewayModelChatsConversationLabels"
+    | "postGatewayModelChatsConversationLabels"
+    | "patchGatewayModelChatsConversationLabel"
+    | "deleteGatewayModelChatsConversationLabel"
+    | "getGatewayModelChatsConversationLabelsById"
+    | "putGatewayModelChatsConversationLabels"
     | "postGatewayProjectsRemoveUser"
     | "getGatewayProjectsUsers"
     | "postGatewayProject"
@@ -603,6 +611,46 @@ export const serverCalls: ServerCallsType<ServerCallsKeyType> = {
         path: (args: { id: string }) => `/gateway/*/model-chats/conversation/${args.id}/personality`,
         name: "postGatewayModelChatsSetConversationPersonality",
         verb: ServerCallVerbs.Post,
+    },
+    getGatewayModelChatsUserPreferences: {
+        path: "/gateway/*/model-chats/user-preferences",
+        name: "getGatewayModelChatsUserPreferences",
+        verb: ServerCallVerbs.Get,
+    },
+    patchGatewayModelChatsUserPreferences: {
+        path: "/gateway/*/model-chats/user-preferences",
+        name: "patchGatewayModelChatsUserPreferences",
+        verb: ServerCallVerbs.Patch,
+    },
+    getGatewayModelChatsConversationLabels: {
+        path: "/gateway/*/model-chats/conversation-labels",
+        name: "getGatewayModelChatsConversationLabels",
+        verb: ServerCallVerbs.Get,
+    },
+    postGatewayModelChatsConversationLabels: {
+        path: "/gateway/*/model-chats/conversation-labels",
+        name: "postGatewayModelChatsConversationLabels",
+        verb: ServerCallVerbs.Post,
+    },
+    patchGatewayModelChatsConversationLabel: {
+        path: (args: { id: string }) => `/gateway/*/model-chats/conversation-labels/${args.id}`,
+        name: "patchGatewayModelChatsConversationLabel",
+        verb: ServerCallVerbs.Patch,
+    },
+    deleteGatewayModelChatsConversationLabel: {
+        path: (args: { id: string }) => `/gateway/*/model-chats/conversation-labels/${args.id}`,
+        name: "deleteGatewayModelChatsConversationLabel",
+        verb: ServerCallVerbs.Delete,
+    },
+    getGatewayModelChatsConversationLabelsById: {
+        path: (args: { id: string }) => `/gateway/*/model-chats/conversation/${args.id}/labels`,
+        name: "getGatewayModelChatsConversationLabelsById",
+        verb: ServerCallVerbs.Get,
+    },
+    putGatewayModelChatsConversationLabels: {
+        path: (args: { id: string }) => `/gateway/*/model-chats/conversation/${args.id}/labels`,
+        name: "putGatewayModelChatsConversationLabels",
+        verb: ServerCallVerbs.Put,
     },
     postGatewayModelChatsPinChatSession: {
         path: "/gateway/*/model-chats/pin-chat-session",

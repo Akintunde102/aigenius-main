@@ -11,9 +11,70 @@ import { resolveDirectoryPath } from './utils/read-file/path-resolver';
 
 type ListingEntry = { path: string; name: string; isDir: boolean; size?: number; mtime?: number };
 
+const READ_LOOP_MAX_COUNT = 8;
+const READ_LOOP_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+
+type ReadHistoryEntry = { count: number; firstAt: number };
+const fileReadHistory = new Map<string, ReadHistoryEntry>();
+
+export function resetFileReadHistoryForTests(): void {
+  fileReadHistory.clear();
+}
+
+function checkAndRecordFileRead(filePath: string): string | null {
+  const now = Date.now();
+  if (fileReadHistory.size > 200) {
+    for (const [key, val] of fileReadHistory.entries()) {
+      if (now - val.firstAt > READ_LOOP_WINDOW_MS) {
+        fileReadHistory.delete(key);
+      }
+    }
+  }
+
+  const normalized = filePath.trim().toLowerCase();
+  const entry = fileReadHistory.get(normalized);
+  if (!entry || now - entry.firstAt > READ_LOOP_WINDOW_MS) {
+    fileReadHistory.set(normalized, { count: 1, firstAt: now });
+    return null;
+  }
+  entry.count += 1;
+  if (entry.count >= READ_LOOP_MAX_COUNT) {
+    return (
+      `You have read "${filePath}" ${entry.count} times in small chunks. ` +
+      `Stop reading in pieces. If you are attempting to publish this file, use \`publish_html\` with \`filePath\` for HTML or \`host_markdown\` with \`filePath\` for .md files (e.g. \`filePath: "${filePath}"\`), ` +
+      `or use a shell command to process it.`
+    );
+  }
+  return null;
+}
+
+function extractReadPaths(args: Record<string, unknown>): string[] {
+  const paths: string[] = [];
+  if (typeof args.path === 'string' && args.path.trim()) {
+    paths.push(args.path.trim());
+  }
+  if (Array.isArray(args.reads)) {
+    for (const item of args.reads) {
+      if (item && typeof item === 'object' && typeof (item as { path?: unknown }).path === 'string') {
+        const p = (item as { path: string }).path.trim();
+        if (p) paths.push(p);
+      }
+    }
+  }
+  return paths;
+}
+
 export async function readBoundedFile(
   args: Record<string, unknown>,
 ): Promise<{ ok: true; result: string; rawData?: any } | { ok: false; error: string }> {
+  const targetPaths = extractReadPaths(args);
+  for (const p of targetPaths) {
+    const loopError = checkAndRecordFileRead(p);
+    if (loopError) {
+      return { ok: false, error: loopError };
+    }
+  }
+
   try {
     const batch = await executeReadFile(args);
     registerReadFileBatchForPreview(batch.results);

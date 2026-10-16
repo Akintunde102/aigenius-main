@@ -1,4 +1,5 @@
-import { ChatSession, Model, ChatMessage } from '@/app/components/model-interface/shared/types';
+import { ChatSession, Model } from '@/app/components/model-interface/shared/types';
+import type { ConversationLabel } from '@/lib/calls/model-chat-conversation';
 
 export interface ChatHistoryActions {
     removeChatHistorySession: (id: string) => Promise<boolean>;
@@ -16,17 +17,23 @@ export interface ChatHistoryListItemProps {
     hasDraft?: boolean;
     /** True when this conversation has an in-flight send/stream in the background. */
     isGenerating?: boolean;
+    /** Stops the in-flight request for this row (sidebar loader control). */
+    onStopGenerating?: () => void;
     models: Model[];
     onSelect: (session: ChatSession) => void;
     onStarRequest: (session: ChatSession) => void;
     onDeleteRequest: (session: ChatSession) => void;
     onPublishRequest?: (session: ChatSession) => void;
+    onTranscriptRequest?: (session: ChatSession) => void;
+    onAssignLabelsRequest?: (session: ChatSession) => void;
     isStarred: boolean;
     isPublished?: boolean;
     isMobile?: boolean;
     isDeleting?: boolean;
     isStarring?: boolean;
     isPublishing?: boolean;
-    /** Optional in-memory transcript lookup when sidebar metadata has stripped message bodies. */
-    getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
+    /** Global conversation labels for rendering badges/dots */
+    conversationLabels?: ConversationLabel[];
+    /** Whether sidebar is in 'flat' or 'labels' mode */
+    sidebarOrganization?: 'flat' | 'labels';
 }

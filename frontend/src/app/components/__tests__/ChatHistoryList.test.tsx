@@ -1,5 +1,10 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+jest.mock('@/lib/hooks/useChatResourcesQuery', () => ({
+    useChatResourcesQuery: () => ({ data: undefined, isLoading: false }),
+}));
 
 jest.mock('@/app/components/model-interface/features/chat/components', () => ({
     ChatLoadingIndicator: () => null,
@@ -16,6 +21,13 @@ jest.mock('@/app/components/ChatHistoryListItem', () => ({
 }));
 
 import ChatHistoryList from '../ChatHistoryList';
+
+function renderList(ui: React.ReactElement) {
+    const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+    });
+    return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 
 describe('ChatHistoryList', () => {
     it('calls handleSessionSwitch synchronously and defers model restoration in transition', async () => {
@@ -45,7 +57,7 @@ describe('ChatHistoryList', () => {
                 cb();
             });
 
-        const { findByRole } = render(
+        const { findByRole } = renderList(
             <ChatHistoryList
                 chatHistory={[session]}
                 currentSessionId="session-local-1"
@@ -84,7 +96,7 @@ describe('ChatHistoryList', () => {
     };
 
     it('collapses project sections by default and hides their chats', async () => {
-        const { findByText, queryByRole } = render(
+        const { findByText, queryByRole } = renderList(
             <ChatHistoryList
                 chatHistory={[
                     {
@@ -120,7 +132,7 @@ describe('ChatHistoryList', () => {
             messages: [{ role: 'user' as const, content: 'hi', timestamp: ts }],
         });
 
-        const { findByRole, findByText, queryByRole } = render(
+        const { findByRole, findByText, queryByRole } = renderList(
             <ChatHistoryList
                 chatHistory={[
                     makeChat('chat-6', 6),
@@ -158,7 +170,7 @@ describe('ChatHistoryList', () => {
             messages: [{ role: 'user' as const, content: 'hi', timestamp: ts }],
         });
 
-        const { findByRole, findByText, queryByRole } = render(
+        const { findByRole, findByText, queryByRole } = renderList(
             <ChatHistoryList
                 chatHistory={[
                     makeChat('chat-6', 6),
@@ -199,7 +211,7 @@ describe('ChatHistoryList', () => {
             messages: [{ role: 'user' as const, content: 'hi', timestamp: ts }],
         });
 
-        const { findByRole, findByText, queryByRole } = render(
+        const { findByRole, findByText, queryByRole } = renderList(
             <ChatHistoryList
                 chatHistory={[
                     makeChat('chat-6', 6),
@@ -232,7 +244,7 @@ describe('ChatHistoryList', () => {
     });
 
     it('expands the General section when it contains the active conversation', async () => {
-        const { findByRole, queryByRole } = render(
+        const { findByRole, queryByRole } = renderList(
             <ChatHistoryList
                 chatHistory={[
                     {
@@ -265,7 +277,7 @@ describe('ChatHistoryList', () => {
             messages: [{ role: 'user' as const, content: 'hi', timestamp: ts }],
         });
 
-        const { findByRole, findByText, queryByRole } = render(
+        const { findByRole, findByText, queryByRole } = renderList(
             <ChatHistoryList
                 chatHistory={[
                     makeChat('chat-6', 6),
@@ -293,7 +305,7 @@ describe('ChatHistoryList', () => {
     });
 
     it('expands a collapsed project section on single click', async () => {
-        const { findByRole, queryByRole } = render(
+        const { findByRole, queryByRole } = renderList(
             <ChatHistoryList
                 chatHistory={[
                     {

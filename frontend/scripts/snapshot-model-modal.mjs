@@ -45,9 +45,9 @@ async function main() {
   await modalHeader.waitFor({ state: 'visible', timeout: 10000 });
   console.log('Model selection modal opened!');
 
-  const outDir = path.resolve(__dirname, '../../../docs/ui-redesign/snapshots');
+  const outDir = path.resolve(__dirname, '../test-results/ui-snapshots');
   await page.screenshot({ path: path.join(outDir, 'model-modal-before.png') });
-  console.log('Saved snapshot to docs/ui-redesign/snapshots/model-modal-before.png');
+  console.log('Saved snapshot to test-results/ui-snapshots/model-modal-before.png');
 
   await browser.close();
 }

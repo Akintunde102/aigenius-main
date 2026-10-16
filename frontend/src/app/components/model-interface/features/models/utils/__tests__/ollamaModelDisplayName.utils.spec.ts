@@ -40,6 +40,18 @@ describe('withLocalRuntimeDisplayName', () => {
         });
     });
 
+    it('prefixes Ollama Cloud wire names from local status', () => {
+        expect(withLocalRuntimeDisplayName({
+            id: 'ollama:kimi-k2.6:cloud',
+            name: 'kimi-k2.6:cloud',
+            provider: 'ollama',
+        })).toEqual({
+            id: 'ollama:kimi-k2.6:cloud',
+            name: 'Ollama Cloud: kimi-k2.6:cloud',
+            provider: 'ollama',
+        });
+    });
+
     it('leaves cloud catalog names that already include the prefix', () => {
         const model = {
             id: 'ollama:glm-5.1:cloud',

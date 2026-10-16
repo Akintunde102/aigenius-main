@@ -20,6 +20,7 @@ import {
 import { executeSidecarTool, sidecarToolsEnabled } from './sidecar-tools';
 import { blockInteractiveShellCommand } from './shell-interactive-block';
 import { hiddenSpawnOptions } from './utils/hidden-child-process';
+import { buildShellInvocation } from './utils/resolve-windows-executable';
 import { killChildProcessTree } from './utils/shell-process-tree';
 import {
   effectiveBlockWaitMs,
@@ -27,6 +28,7 @@ import {
   SHELL_KILL_GRACE_MS,
   sidecarShellFetchTimeoutMs,
 } from './utils/shell-run-policy.utils';
+import { processRegistry } from './process-registry';
 
 const MAX_CMD_LEN = 64_000;
 const MAX_SHELL_OUT = 512 * 1024;
@@ -115,6 +117,103 @@ export async function runShell(
   args: Record<string, unknown>,
   streamId?: string,
 ): Promise<{ ok: true; result: string; rawData?: any } | { ok: false; error: string }> {
+  const action = typeof args.action === 'string' ? args.action.trim().toLowerCase() : 'run';
+
+  if (action === 'list') {
+    const list = processRegistry.list();
+    if (list.length === 0) {
+      return { ok: true, result: '### Background Processes\n\nNo background processes are currently tracked.' };
+    }
+    const table = list
+      .map(
+        (p) =>
+          `- **PID ${p.pid}** (${p.status}) — \`${p.command}\` in \`${p.cwd}\` (uptime: ${p.uptime_seconds}s${p.exit_code != null ? `, exit: ${p.exit_code}` : ''})`,
+      )
+      .join('\n');
+    return { ok: true, result: `### Background Processes (${list.length})\n\n${table}`, rawData: list };
+  }
+
+function parseProcessPid(raw: unknown): number | null {
+  if (typeof raw === 'number' && Number.isInteger(raw) && raw > 0) {
+    return raw;
+  }
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    const direct = parseInt(trimmed, 10);
+    if (!Number.isNaN(direct) && direct > 0) {
+      return direct;
+    }
+    const digits = trimmed.replace(/\D/g, '');
+    if (digits) {
+      const parsed = parseInt(digits, 10);
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+  }
+  return null;
+}
+
+  if (action === 'status') {
+    const pid = parseProcessPid(args.pid ?? args.taskId);
+    if (!pid) {
+      return { ok: false, error: 'pid or taskId is required for status action' };
+    }
+    const proc = processRegistry.get(pid);
+    if (!proc) {
+      return { ok: false, error: `Process with PID ${pid} not found in registry.` };
+    }
+    const uptime = Math.round(((proc.endedAt ?? Date.now()) - proc.startedAt) / 1000);
+    const md =
+      `### Process Status (PID ${pid})\n\n` +
+      `- **Status**: ${proc.status}\n` +
+      `- **Command**: \`${proc.command}\`\n` +
+      `- **CWD**: \`${proc.cwd}\`\n` +
+      `- **Uptime**: ${uptime}s\n` +
+      `- **Exit code**: ${proc.exitCode ?? 'running'}\n`;
+    return { ok: true, result: md, rawData: proc };
+  }
+
+  if (action === 'logs') {
+    const pid = parseProcessPid(args.pid ?? args.taskId);
+    if (!pid) {
+      return { ok: false, error: 'pid or taskId is required for logs action' };
+    }
+    const lines =
+      typeof args.tail_lines === 'number'
+        ? args.tail_lines
+        : typeof args.lines === 'number'
+          ? args.lines
+          : 50;
+    const logs = processRegistry.getLogs(pid, lines);
+    if (!logs.ok) {
+      return logs;
+    }
+    let md = `### Process Logs (PID ${pid} — ${logs.status})\n\n`;
+    if (logs.stdout.trim()) {
+      md += `**Stdout**\n\n\`\`\`\n${logs.stdout.trim()}\n\`\`\`\n\n`;
+    }
+    if (logs.stderr.trim()) {
+      md += `**Stderr**\n\n\`\`\`\n${logs.stderr.trim()}\n\`\`\`\n\n`;
+    }
+    if (!logs.stdout.trim() && !logs.stderr.trim()) {
+      md += '*No output recorded yet for this process.*\n';
+    }
+    return { ok: true, result: md.trimEnd() + '\n', rawData: logs };
+  }
+
+  if (action === 'kill') {
+    const pid = parseProcessPid(args.pid ?? args.taskId);
+    if (!pid) {
+      return { ok: false, error: 'pid or taskId is required for kill action' };
+    }
+    const res = processRegistry.kill(pid);
+    if (!res.ok) {
+      return res;
+    }
+    return { ok: true, result: `### Process Terminated\n\n${res.message}`, rawData: res };
+  }
+
   const commandInput = typeof args.command === 'string' ? args.command : '';
   if (!commandInput.trim()) {
     return { ok: false, error: 'Missing command' };
@@ -165,8 +264,7 @@ export async function runShell(
     }
   }
 
-  const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
-  const shellArgs = process.platform === 'win32' ? ['/c', command] : ['-c', command];
+  const { shell, args: shellArgs, windowsVerbatimArguments } = buildShellInvocation(command);
   const channel = streamId && streamId.length > 0 ? shellChunkChannel(streamId) : undefined;
 
   const sendChunk = (stream: 'stdout' | 'stderr', text: string): void => {
@@ -189,7 +287,7 @@ export async function runShell(
       hiddenSpawnOptions({
         cwd: cwdResolved,
         env: process.env as NodeJS.ProcessEnv,
-        windowsVerbatimArguments: process.platform === 'win32',
+        windowsVerbatimArguments,
         // Ignore stdin so CLIs cannot hang waiting for input that never arrives.
         stdio: ['ignore', 'pipe', 'pipe'],
       }),
@@ -283,6 +381,11 @@ export async function runShell(
         }
         backgrounded = true;
         flushTails();
+        try {
+          processRegistry.register(child, command, cwdResolved, accOut, accErr);
+        } catch {
+          /* ignore */
+        }
         try {
           child.unref();
         } catch {

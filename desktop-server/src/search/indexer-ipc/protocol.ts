@@ -4,7 +4,9 @@ export type IndexerIpcRequestBody =
   | { op: 'ping' }
   | { op: 'switch-project'; projectId?: string; rootPath: string; dbPath?: string }
   | { op: 'index-project'; rootPath: string; force?: boolean }
-  | { op: 'reindex'; paths?: string[]; force?: boolean }
+  | { op: 'reindex'; paths?: string[]; force?: boolean; priority?: 'fast_pocket' }
+  | { op: 'enqueue-pocket'; rootPath?: string; paths?: string[]; force?: boolean }
+  | { op: 'run-install-planner'; appVersion?: string }
   | { op: 'shutdown' };
 
 export type IndexerIpcRequest = IndexerIpcRequestBody & { id: string };

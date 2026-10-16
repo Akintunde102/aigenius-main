@@ -6,7 +6,11 @@ import {
     createDebouncedDraftPersist,
 } from '@/lib/utils/composerDraftStorage';
 
-import { UseChatOperationsRefinedProps, UseChatOperationsReturn } from './chatOperations.types';
+import {
+    RewritePromptOptions,
+    UseChatOperationsRefinedProps,
+    UseChatOperationsReturn,
+} from './chatOperations.types';
 import { CHAT_CONFIG, DRAFT_SESSION_KEY } from './chatOperations.constants';
 import { optimizeMessagesForAPI } from './messageOptimization.utils';
 import { updateLastMessageWithMetrics } from './contentProcessing.utils';
@@ -20,6 +24,7 @@ import {
     computeRequiredBalance,
     orderMessagesForApi,
     resolveInputToSend,
+    resolveModelForChatSend,
 } from './sendFlow.utils';
 import { shouldApplyStreamToOpenTranscript } from '@/app/components/model-interface/conversation/streamTranscriptGuard';
 import {
@@ -46,6 +51,10 @@ import type { HandleSendQueueOptions } from './messageSendQueue.types';
 import { notifyBackgroundConversationReady } from '@/lib/utils/background-conversation-notify';
 import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
 import { abortSubagentConversation } from '@/lib/calls/model-chat-conversation';
+import {
+    buildComposerPromptRewriteMessages,
+    rewrittenTextFromModelContent,
+} from './composerPromptRewrite.utils';
 
 /**
  * Send/stop orchestration: wallet validation, composer drafts, message shaping for the API,
@@ -54,6 +63,7 @@ import { abortSubagentConversation } from '@/lib/calls/model-chat-conversation';
  */
 export function useChatOperationsRefined({
     selectedModel,
+    models,
     chat,
     setChat,
     setChatForSession,
@@ -92,6 +102,9 @@ export function useChatOperationsRefined({
     // Used by completion callbacks to capture the final draft messages before migration.
     const currentChatRef = useRef(chat);
     currentChatRef.current = chat;
+
+    const chatHistoryRef = useRef(chatHistory);
+    chatHistoryRef.current = chatHistory;
 
     // Monotonic per-session send counter. A newer send to the same chatMap slot
     // (e.g. after New Chat reuses __draft__) must not have its loading/streaming
@@ -148,6 +161,7 @@ export function useChatOperationsRefined({
     const [wallet, setWallet] = useState<number | null>(null);
     const [assistantResponse, setAssistantResponse] = useState('');
     const [optimizationMessage, setOptimizationMessage] = useState<string>('');
+    const [isRewritingPrompt, setIsRewritingPrompt] = useState(false);
     const project = CHAT_CONFIG.DEFAULT_PROJECT;
 
     const {
@@ -300,7 +314,12 @@ export function useChatOperationsRefined({
         sendOptions?: HandleSendQueueOptions,
     ): Promise<boolean> => {
         currentMaterializedIdRef.current = null;
-        const modelForSend = sendOptions?.modelOverride ?? selectedModel;
+        const modelForSend = resolveModelForChatSend({
+            selectedModel,
+            models,
+            modelOverride: sendOptions?.modelOverride,
+            preCreatedMessage,
+        });
         const shouldStream = enableStreaming !== undefined ? enableStreaming : streamingEnabled;
         const inputToSend = resolveInputToSend(content, input);
         if (!modelForSend) {
@@ -348,14 +367,26 @@ export function useChatOperationsRefined({
         const sendGeneration = (sessionSendGenerationRef.current.get(sendingSessionId) ?? 0) + 1;
         sessionSendGenerationRef.current.set(sendingSessionId, sendGeneration);
 
+        const syncedPreCreatedMessage = preCreatedMessage
+            ? {
+                ...preCreatedMessage,
+                modelId: modelForSend.id,
+                modelName: modelForSend.name || modelForSend.id,
+            }
+            : undefined;
+
         const { userMsg, updatedChat } = (
-            chatSnapshot && preCreatedMessage
+            chatSnapshot && syncedPreCreatedMessage
                 ? {
-                    userMsg: preCreatedMessage,
-                    updatedChat: chatForBuild,
+                    userMsg: syncedPreCreatedMessage,
+                    updatedChat: chatSnapshot.map((message) =>
+                        message.messageId === syncedPreCreatedMessage.messageId
+                            ? syncedPreCreatedMessage
+                            : message,
+                    ),
                 }
                 : buildUserMessageState({
-                    preCreatedMessage,
+                    preCreatedMessage: syncedPreCreatedMessage,
                     inputToSend,
                     selectedModel: modelForSend,
                     currentSessionId: sendingViewId,
@@ -411,10 +442,10 @@ export function useChatOperationsRefined({
             const requestOverrides = {
                 conversationId: sendingViewId,
                 sendGeneration,
+                modelOverride: modelForSend,
                 ...(clientDraftMapKey ? { clientDraftMapKey } : {}),
                 ...(draftEpochAtSend !== undefined ? { draftEpoch: draftEpochAtSend } : {}),
                 ...(pendingOrphanReply ? { orphanReply: pendingOrphanReply } : {}),
-                ...(sendOptions?.modelOverride ? { modelOverride: sendOptions.modelOverride } : {}),
             };
 
             if (optimizationMsg) {
@@ -505,12 +536,97 @@ export function useChatOperationsRefined({
                 );
         }
     }, [
-        selectedModel, input, project, wallet, currentSessionId, routeConversationId, viewSessionId,
+        selectedModel, models, input, project, wallet, currentSessionId, routeConversationId, viewSessionId,
         streamingEnabled, setChatForSession,
         setLoadingForSession, setStreamingForSession, setError,
         setAssistantResponse, chatEndRef,
         handleStreamingResponse, handleNonStreamingResponse, pendingOrphanReply, clearPendingOrphanReply, onInsufficientFunds,
         setWallet, validateBalance, getChatForSession,
+    ]);
+
+    const finalizeStoppedConversation = useCallback((
+        sessionId: string,
+        chatMapKey: string,
+        opts?: { clearAssistant?: boolean },
+    ) => {
+        const abortIds = new Set<string>();
+        if (sessionId && !isClientDraftSessionId(sessionId) && sessionId !== DRAFT_SESSION_KEY) {
+            abortIds.add(sessionId);
+        }
+        if (
+            chatMapKey
+            && chatMapKey !== sessionId
+            && !isClientDraftSessionId(chatMapKey)
+            && chatMapKey !== DRAFT_SESSION_KEY
+        ) {
+            abortIds.add(chatMapKey);
+        }
+        if (currentMaterializedIdRef.current === sessionId) {
+            abortIds.add(currentMaterializedIdRef.current);
+        }
+
+        const childAbortIds = new Set<string>();
+        if (chatHistoryRef.current && abortIds.size > 0) {
+            for (const session of chatHistoryRef.current) {
+                const parentId = session.parentConversationId || session.metadata?.parentConversationId;
+                if (parentId && abortIds.has(parentId) && session.id) {
+                    childAbortIds.add(session.id);
+                }
+            }
+        }
+        const allAbortIds = new Set<string>();
+        abortIds.forEach((id) => allAbortIds.add(id));
+        childAbortIds.forEach((id) => allAbortIds.add(id));
+
+        if (setChatHistory && allAbortIds.size > 0) {
+            setChatHistory((prev) =>
+                prev.map((session) =>
+                    session.id && allAbortIds.has(session.id) && session.metadata?.subagentRunStatus === 'running'
+                        ? {
+                            ...session,
+                            metadata: { ...session.metadata, subagentRunStatus: 'completed' },
+                        }
+                        : session,
+                ),
+            );
+        }
+        allAbortIds.forEach((conversationId) => {
+            void abortSubagentConversation(conversationId).catch(() => undefined);
+        });
+        if (opts?.clearAssistant) {
+            setAssistantResponse('');
+        }
+    }, [setChatHistory]);
+
+    const handleStopSession = useCallback((sessionId: string) => {
+        if (!sessionId) return;
+
+        const chatMapKey = resolveActiveChatMapKey(sessionId);
+        abortStreamingRequest(chatMapKey);
+        abortNonStreamingRequest(chatMapKey);
+        setLoadingForSession(chatMapKey, false);
+        setStreamingForSession(chatMapKey, false);
+
+        if (currentMaterializedIdRef.current === sessionId) {
+            abortStreamingRequest(DRAFT_SESSION_KEY);
+            abortNonStreamingRequest(DRAFT_SESSION_KEY);
+            setLoadingForSession(DRAFT_SESSION_KEY, false);
+            setStreamingForSession(DRAFT_SESSION_KEY, false);
+        }
+
+        const viewId = resolveViewSessionId(routeConversationId, currentSessionId ?? null);
+        const viewKey = viewId ? resolveActiveChatMapKey(viewId) : null;
+        const clearAssistant = viewId === sessionId || viewKey === chatMapKey;
+
+        finalizeStoppedConversation(sessionId, chatMapKey, { clearAssistant });
+    }, [
+        abortStreamingRequest,
+        abortNonStreamingRequest,
+        currentSessionId,
+        routeConversationId,
+        finalizeStoppedConversation,
+        setLoadingForSession,
+        setStreamingForSession,
     ]);
 
     const handleStop = useCallback(() => {
@@ -532,30 +648,111 @@ export function useChatOperationsRefined({
             setLoadingForSession(currentMaterializedIdRef.current, false);
             setStreamingForSession(currentMaterializedIdRef.current, false);
         }
-        const abortIds = new Set<string>();
-        if (sid && !isClientDraftSessionId(sid) && sid !== DRAFT_SESSION_KEY) {
-            abortIds.add(sid);
+        const stoppedSessionId =
+            sid && !isClientDraftSessionId(sid) && sid !== DRAFT_SESSION_KEY
+                ? sid
+                : currentMaterializedIdRef.current ?? '';
+        if (stoppedSessionId) {
+            finalizeStoppedConversation(stoppedSessionId, sid ?? stoppedSessionId, { clearAssistant: true });
+        } else {
+            setAssistantResponse('');
         }
-        if (isViewingDraftOrMaterialized && currentMaterializedIdRef.current) {
-            abortIds.add(currentMaterializedIdRef.current);
+    }, [
+        abortStreamingRequest,
+        abortNonStreamingRequest,
+        currentSessionId,
+        routeConversationId,
+        finalizeStoppedConversation,
+        setLoadingForSession,
+        setStreamingForSession,
+    ]);
+
+    const handleRewritePrompt = useCallback(async (options?: RewritePromptOptions): Promise<boolean> => {
+        const draft = (options?.sourceText ?? input).trim();
+        if (!draft || !selectedModel || isRewritingPrompt) {
+            return false;
         }
-        if (setChatHistory && abortIds.size > 0) {
-            setChatHistory((prev) =>
-                prev.map((session) =>
-                    session.id && abortIds.has(session.id) && session.metadata?.subagentRunStatus === 'running'
-                        ? {
-                            ...session,
-                            metadata: { ...session.metadata, subagentRunStatus: 'completed' },
-                        }
-                        : session,
-                ),
-            );
+
+        const projectValidation = validateProject(project);
+        if (!projectValidation.isValid) {
+            setError(projectValidation.error!);
+            return false;
         }
-        abortIds.forEach((conversationId) => {
-            void abortSubagentConversation(conversationId).catch(() => undefined);
-        });
-        setAssistantResponse('');
-    }, [abortStreamingRequest, abortNonStreamingRequest, currentSessionId, routeConversationId, setChatHistory, setLoadingForSession, setStreamingForSession]);
+
+        const requiredBalance = computeRequiredBalance(selectedModel);
+        if (!validateBalance(wallet, requiredBalance, selectedModel?.name || selectedModel?.id)) {
+            trackChatSendBlockedInsufficientBalance({
+                model: selectedModel,
+                requiredBalance,
+                walletBalance: wallet,
+            });
+            return false;
+        }
+
+        setError('');
+        setIsRewritingPrompt(true);
+
+        const chatForBuild = getChatForSession(activeKey) ?? chat;
+        const conversationId =
+            viewSessionId && !isClientDraftSessionId(viewSessionId) ? viewSessionId : undefined;
+
+        try {
+            const { accessModel } = await getNoboxFunctions({ project });
+            const messages = buildComposerPromptRewriteMessages(chatForBuild, draft);
+            const result = await accessModel({
+                body: {
+                    messages,
+                    composerPromptRewrite: true,
+                    ...(conversationId ? { conversationId } : {}),
+                },
+                options: { model: selectedModel.id },
+            });
+
+            if (!result) {
+                return false;
+            }
+
+            updateWalletFromResponse(result.wallet, wallet);
+            logMetrics(result.usage, result.cost_credits, selectedModel);
+
+            const rewritten = rewrittenTextFromModelContent(result.content);
+            if (rewritten) {
+                if (options?.onRewritten) {
+                    options.onRewritten(rewritten);
+                } else {
+                    setInput(rewritten);
+                    commitComposerDraftForKey(activeKey, rewritten);
+                }
+            }
+            return Boolean(rewritten);
+        } catch (err) {
+            handleSendError(err, chatForBuild, false, setChat, setError, {
+                setWallet,
+                onInsufficientFunds,
+            });
+            return false;
+        } finally {
+            setIsRewritingPrompt(false);
+        }
+    }, [
+        input,
+        selectedModel,
+        isRewritingPrompt,
+        project,
+        wallet,
+        validateBalance,
+        setError,
+        getChatForSession,
+        activeKey,
+        chat,
+        viewSessionId,
+        setInput,
+        commitComposerDraftForKey,
+        updateWalletFromResponse,
+        setWallet,
+        onInsufficientFunds,
+        setChat,
+    ]);
 
     return {
         input,
@@ -568,6 +765,7 @@ export function useChatOperationsRefined({
         optimizationMessage,
         handleSend,
         handleStop,
+        handleStopSession,
         refreshWalletBalance: useCallback(async () => {
             try {
                 const userDetails = await getUserDetails();
@@ -582,5 +780,7 @@ export function useChatOperationsRefined({
         canRetryLastSend: false,
         retryLastFailedSend: useCallback(async () => {}, []),
         hasDraftSession,
+        isRewritingPrompt,
+        handleRewritePrompt,
     };
 }

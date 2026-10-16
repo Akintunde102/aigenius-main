@@ -9,6 +9,7 @@ import { isWorkflowShellPath, openWorkflow } from '@/lib/utils/open-workflow';
 import { normalizeChatConversationOpenPath } from '@/lib/utils/safe-internal-next-path';
 import { openFilePreview } from '@/app/components/modals/FilePreviewManager';
 import { openVideoTrackingModal } from '@/app/components/modals/VideoTrackingManager';
+import { openSpeechTrackingModal } from '@/app/components/modals/SpeechTrackingManager';
 import {
     isMarkdownBlockCode,
     PreWithCopy,
@@ -116,6 +117,26 @@ export function MarkdownAnchor({
                     props.className,
                     'inline-flex items-center gap-1.5 px-3 py-1 my-1 rounded-lg text-xs font-semibold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/80 transition shadow-sm'
                 )}
+            >
+                {props.children}
+            </a>
+        );
+    }
+
+    if (href && (href.startsWith('/track/speech/') || href.includes('/track/speech/'))) {
+        const linkText = reactNodeToPlainText(props.children);
+        const slug = href.split('/track/speech/')[1]?.split(/[?#]/)[0] || '';
+        return (
+            <a
+                {...props}
+                href={href}
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openSpeechTrackingModal({ identifier: slug, title: linkText || undefined });
+                }}
+                className={clsx(props.className, 'inline-flex items-center gap-1.5 px-3 py-1 my-1 rounded-lg text-xs font-semibold border transition shadow-sm')}
+                style={{ color: 'var(--chat-accent)', borderColor: 'var(--modal-border)', background: 'var(--surface-muted)' }}
             >
                 {props.children}
             </a>

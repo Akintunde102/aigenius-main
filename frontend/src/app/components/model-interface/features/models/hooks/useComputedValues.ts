@@ -1,7 +1,6 @@
 import { useMemo, useDeferredValue } from 'react';
 import { Model, ChatMessage } from '@/app/components/model-interface/shared/types';
-import { filterModels, sortModelsByCost, filterModelsNew, sortModelsNew } from '@/app/components/model-interface/shared/utils';
-import { SHOW_LEGACY_FILTERS } from '@/app/components/model-interface/shared/constants';
+import { filterModelsNew, sortModelsNew } from '@/app/components/model-interface/shared/utils';
 import type { ModelOrderBy, ModelOrderDir } from '@/app/components/model-interface/shared/utils';
 
 interface UseComputedValuesProps {
@@ -9,13 +8,8 @@ interface UseComputedValuesProps {
     chat: ChatMessage[];
     selectedModel: Model | null;
     search: string;
-    selectedModalities: string[];
-    selectedOutputModalities: string[];
     showWebSearch: boolean;
-    showToolsOnly: boolean;
-    orderByCost: 'none' | 'asc' | 'desc';
     imageFilterOnly?: boolean;
-    // New filter/sort (used when !SHOW_LEGACY_FILTERS)
     orderBy?: ModelOrderBy;
     orderDir?: ModelOrderDir;
     selectedProviders?: string[];
@@ -26,17 +20,12 @@ export function useComputedValues({
     chat,
     selectedModel,
     search,
-    selectedModalities,
-    selectedOutputModalities,
     showWebSearch,
-    showToolsOnly,
-    orderByCost,
     imageFilterOnly = false,
     orderBy = 'default',
     orderDir = 'asc',
     selectedProviders = []
 }: UseComputedValuesProps) {
-    // Use deferred value for search to keep the UI responsive while filtering
     const deferredSearch = useDeferredValue(search);
 
     const filteredModels = useMemo(() =>
@@ -46,27 +35,15 @@ export function useComputedValues({
         ), [models, deferredSearch]
     );
 
-    const modalFilteredModels = useMemo(() => {
-        if (SHOW_LEGACY_FILTERS) {
-            return filterModels(
-                models,
-                deferredSearch,
-                selectedModalities,
-                selectedOutputModalities,
-                showWebSearch,
-                showToolsOnly,
-                imageFilterOnly
-            );
-        }
-        return filterModelsNew(models, deferredSearch, selectedProviders, imageFilterOnly, showWebSearch);
-    }, [models, deferredSearch, selectedModalities, selectedOutputModalities, showWebSearch, showToolsOnly, selectedProviders, imageFilterOnly]);
+    const modalFilteredModels = useMemo(
+        () => filterModelsNew(models, deferredSearch, selectedProviders, imageFilterOnly, showWebSearch),
+        [models, deferredSearch, selectedProviders, imageFilterOnly, showWebSearch],
+    );
 
-    const modalSortedModels = useMemo(() => {
-        if (SHOW_LEGACY_FILTERS) {
-            return sortModelsByCost(modalFilteredModels, orderByCost);
-        }
-        return sortModelsNew(modalFilteredModels, orderBy, orderDir);
-    }, [modalFilteredModels, orderByCost, orderBy, orderDir]);
+    const modalSortedModels = useMemo(
+        () => sortModelsNew(modalFilteredModels, orderBy, orderDir),
+        [modalFilteredModels, orderBy, orderDir],
+    );
 
     const sumChatCostCredits = useMemo(
         () => chat.reduce(

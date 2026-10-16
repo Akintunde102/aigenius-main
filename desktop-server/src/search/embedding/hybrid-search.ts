@@ -22,12 +22,22 @@ type HybridHit = {
   score: number;
 };
 
+const MAX_VECTOR_CANDIDATES = 200;
+
 function vectorSearchAllChunks(
   db: Database.Database,
   queryVec: Float32Array,
   pathPrefix: string,
   extensions?: string[],
+  limit = MAX_VECTOR_CANDIDATES,
 ): HybridHit[] {
+  let queryNormSq = 0;
+  for (let i = 0; i < queryVec.length; i++) {
+    queryNormSq += queryVec[i]! * queryVec[i]!;
+  }
+  const queryMag = Math.sqrt(queryNormSq);
+  if (queryMag === 0) return [];
+
   const norm = pathPrefix ? path.normalize(pathPrefix) : '';
   const prefixFilter = norm ? 'AND fc.path LIKE ? || \'%\'' : '';
   const normalizedExtensions = Array.isArray(extensions)
@@ -41,7 +51,8 @@ function vectorSearchAllChunks(
   const exemptionClause = exemptionFilter ? `AND (${exemptionFilter})` : '';
 
   const stmt = db.prepare(`
-    SELECT fc.id AS chunk_id, fc.path, fc.content, fc.line_start, fc.line_end, fc.symbol_name,
+    SELECT fc.id AS chunk_id, fc.path, SUBSTR(fc.content, 1, 150) AS snippet,
+           fc.line_start, fc.line_end, fc.symbol_name,
            fi.name, fi.mtime, ce.vector
     FROM file_chunks fc
     JOIN chunk_embeddings ce ON ce.chunk_id = fc.id
@@ -59,7 +70,7 @@ function vectorSearchAllChunks(
   const rows = stmt.all(...params) as Array<{
     chunk_id: number;
     path: string;
-    content: string;
+    snippet: string;
     line_start: number;
     line_end: number;
     symbol_name: string | null;
@@ -68,22 +79,67 @@ function vectorSearchAllChunks(
     vector: Buffer;
   }>;
 
-  return rows.map((r) => {
-    const vec = blobToVector(r.vector);
-    const sim = cosineSimilarity(queryVec, vec);
-    return {
-      id: `chunk:${r.chunk_id}`,
-      path: r.path,
-      name: r.name,
-      mtime: r.mtime,
-      snippet: r.content.slice(0, 150),
-      line_start: r.line_start,
-      line_end: r.line_end,
-      symbol_name: r.symbol_name,
-      chunk_id: r.chunk_id,
-      score: sim,
-    };
-  });
+  const topCandidates: HybridHit[] = [];
+  let minTopScore = -Infinity;
+
+  for (let rIdx = 0; rIdx < rows.length; rIdx++) {
+    const r = rows[rIdx]!;
+    const buf = r.vector;
+    const len = Math.min(queryVec.length, buf.byteLength / 4);
+    let dot = 0;
+    let normSq = 0;
+    for (let i = 0; i < len; i++) {
+      const val = buf.readFloatLE(i * 4);
+      dot += queryVec[i]! * val;
+      normSq += val * val;
+    }
+    const denom = queryMag * Math.sqrt(normSq);
+    const sim = denom > 0 ? dot / denom : 0;
+
+    if (topCandidates.length < limit) {
+      topCandidates.push({
+        id: `chunk:${r.chunk_id}`,
+        path: r.path,
+        name: r.name,
+        mtime: r.mtime,
+        snippet: r.snippet,
+        line_start: r.line_start,
+        line_end: r.line_end,
+        symbol_name: r.symbol_name,
+        chunk_id: r.chunk_id,
+        score: sim,
+      });
+      if (topCandidates.length === limit) {
+        topCandidates.sort((a, b) => b.score - a.score);
+        minTopScore = topCandidates[topCandidates.length - 1]!.score;
+      }
+    } else if (sim > minTopScore) {
+      topCandidates[topCandidates.length - 1] = {
+        id: `chunk:${r.chunk_id}`,
+        path: r.path,
+        name: r.name,
+        mtime: r.mtime,
+        snippet: r.snippet,
+        line_start: r.line_start,
+        line_end: r.line_end,
+        symbol_name: r.symbol_name,
+        chunk_id: r.chunk_id,
+        score: sim,
+      };
+      for (let j = topCandidates.length - 1; j > 0 && topCandidates[j]!.score > topCandidates[j - 1]!.score; j--) {
+        const tmp = topCandidates[j]!;
+        topCandidates[j] = topCandidates[j - 1]!;
+        topCandidates[j - 1] = tmp;
+      }
+      minTopScore = topCandidates[topCandidates.length - 1]!.score;
+    }
+  }
+
+  if (topCandidates.length < limit) {
+    topCandidates.sort((a, b) => b.score - a.score);
+  }
+
+  return topCandidates;
 }
 
 export type HybridSearchOptions = {

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { FiHardDrive, FiUploadCloud, FiX } from "react-icons/fi";
+import React from "react";
+import { FiHardDrive, FiUploadCloud } from "react-icons/fi";
+import { AppModal, AppModalHeader, AppModalBody } from "@/app/components/modals/AppModal";
 
 export interface AttachmentSourcePickerModalProps {
   onClose: () => void;
@@ -15,111 +15,80 @@ export function AttachmentSourcePickerModal({
   onPickLocal,
   onPickLibrary,
 }: AttachmentSourcePickerModalProps) {
-  const [mounted, setMounted] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  return (
+    <AppModal
+      open
+      onClose={onClose}
+      size="sm"
+      ariaLabelledBy="attachment-source-title"
+      className="z-[110]"
+    >
+      <AppModalHeader
+        titleId="attachment-source-title"
+        title="Add attachment"
+        subtitle="Choose a source for your file"
+        onClose={onClose}
+      />
 
-  useEffect(() => {
-    setMounted(true);
-    if (typeof window === "undefined") return;
-    const check = () => setIsMobile(window.innerWidth < 640);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      onClose();
-    };
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [onClose]);
-
-  if (!mounted || typeof document === "undefined") {
-    return null;
-  }
-
-  const portalTarget = document.getElementById("modal-root") ?? document.body;
-
-  return createPortal(
-    (
-      <div
-        role="presentation"
-        className="fixed inset-0 z-[110] flex items-center justify-center bg-black/25 p-4 backdrop-blur-[2px]"
-        onClick={onClose}
-      >
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="attachment-source-title"
-          className={`w-full max-w-md overflow-hidden rounded-xl border shadow-2xl ${
-            isMobile ? "mx-2" : ""
-          }`}
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            background: "var(--modal-bg)",
-            borderColor: "var(--modal-border)",
-            color: "var(--modal-fg)",
-          }}
-        >
-          <div
-            className="flex items-center justify-between border-b px-4 py-3"
-            style={{ borderColor: "var(--modal-border)" }}
+      <AppModalBody className="!py-2.5">
+        <div className="grid gap-2">
+          <button
+            type="button"
+            onClick={onPickLocal}
+            className="group flex items-center gap-3 rounded-xl border p-2.5 text-left transition-colors hover:bg-[var(--surface-muted)]"
+            style={{
+              borderColor: "var(--modal-border)",
+              background: "color-mix(in srgb, var(--modal-fg) 2%, var(--modal-bg))",
+            }}
           >
-            <h2 id="attachment-source-title" className="text-base font-semibold">
-              Add attachment
-            </h2>
-            <button
-              type="button"
-              aria-label="Close"
-              className="rounded p-1 transition hover:text-red-500"
-              style={{ color: "var(--modal-muted-fg)" }}
-              onClick={onClose}
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors"
+              style={{
+                background: "color-mix(in srgb, var(--chat-accent) 12%, transparent)",
+                color: "var(--chat-accent)",
+              }}
             >
-              <FiX size={20} />
-            </button>
-          </div>
+              <FiHardDrive size={15} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-semibold" style={{ color: "var(--modal-fg)" }}>
+                From this device
+              </span>
+              <span className="block text-[11px] truncate" style={{ color: "var(--modal-muted-fg)" }}>
+                Browse files on your computer or phone
+              </span>
+            </span>
+          </button>
 
-          <div className="grid gap-3 p-4">
-            <button
-              type="button"
-              onClick={onPickLocal}
-              className="flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition hover:bg-black/5 dark:hover:bg-white/5"
-              style={{ borderColor: "var(--modal-border)" }}
+          <button
+            type="button"
+            onClick={onPickLibrary}
+            className="group flex items-center gap-3 rounded-xl border p-2.5 text-left transition-colors hover:bg-[var(--surface-muted)]"
+            style={{
+              borderColor: "var(--modal-border)",
+              background: "color-mix(in srgb, var(--modal-fg) 2%, var(--modal-bg))",
+            }}
+          >
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors"
+              style={{
+                background: "color-mix(in srgb, #10b981 12%, transparent)",
+                color: "#10b981",
+              }}
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300">
-                <FiHardDrive size={18} />
+              <FiUploadCloud size={15} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-semibold" style={{ color: "var(--modal-fg)" }}>
+                From My files
               </span>
-              <span>
-                <span className="block text-sm font-semibold">From this device</span>
-                <span className="block text-xs" style={{ color: "var(--modal-muted-fg)" }}>
-                  Browse files on your computer or phone
-                </span>
+              <span className="block text-[11px] truncate" style={{ color: "var(--modal-muted-fg)" }}>
+                Reuse files you have already uploaded
               </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onPickLibrary}
-              className="flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition hover:bg-black/5 dark:hover:bg-white/5"
-              style={{ borderColor: "var(--modal-border)" }}
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                <FiUploadCloud size={18} />
-              </span>
-              <span>
-                <span className="block text-sm font-semibold">From My files</span>
-                <span className="block text-xs" style={{ color: "var(--modal-muted-fg)" }}>
-                  Reuse files you have already uploaded
-                </span>
-              </span>
-            </button>
-          </div>
+            </span>
+          </button>
         </div>
-      </div>
-    ) as any,
-    portalTarget,
+      </AppModalBody>
+    </AppModal>
   );
 }

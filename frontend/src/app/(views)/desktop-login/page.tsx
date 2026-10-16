@@ -14,8 +14,10 @@ import { getStoredUserDetailsSnapshot } from "@/lib/calls/get-logged-user-detail
 import { readDesktopAuthFlowPhase } from "@/lib/utils/desktop-auth-flow-storage";
 import { useDesktopAuthFlow } from "@/lib/hooks/use-desktop-auth-flow";
 import { useDesktopSessionRestore } from "@/lib/hooks/use-desktop-session-restore";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 export default function DesktopLoginPage() {
+  const { t } = useLanguage();
   const { restoring: restoringSession } = useDesktopSessionRestore();
   const [storedFirstName, setStoredFirstName] = useState<string | null>(null);
   const {
@@ -76,8 +78,8 @@ export default function DesktopLoginPage() {
     <PublicPageShell hideHeader showFooter={false} contentClassName="items-center justify-center">
       <DesktopAuthFrame>
         <DesktopAuthHeading
-          title="Welcome back"
-          subtitle={storedFirstName ? `Sign in as ${storedFirstName}` : "Sign in to your desktop workspace"}
+          title={t("auth.welcomeBack")}
+          subtitle={storedFirstName ? t("desktopAuth.signInAs", `Sign in as ${storedFirstName}`, { name: storedFirstName }) : t("desktopAuth.signInDesktopSubtitle")}
         />
 
         <div
@@ -95,18 +97,18 @@ export default function DesktopLoginPage() {
               disabled={authLoading}
               className={DESKTOP_PRIMARY_BUTTON}
             >
-              Sign in with Google
+              {t("auth.signInWithGoogle")}
             </button>
             <DevLoginButton />
           </div>
 
           {authLoading ? (
             <DesktopSessionRestoringView
-              message={authFlow === "completing" ? "Signing you in…" : "Complete sign-in in your browser"}
+              message={authFlow === "completing" ? t("desktopAuth.signingYouIn") : t("desktopAuth.completeInBrowser")}
               detail={
                 authFlow === "completing"
-                  ? "Setting up your workspace…"
-                  : "Return here when you are done and we will finish automatically."
+                  ? t("desktopAuth.settingUpWorkspace")
+                  : t("desktopAuth.returnHereNotice")
               }
               action={
                 authFlow === "awaiting-browser" ? (
@@ -115,7 +117,7 @@ export default function DesktopLoginPage() {
                     onClick={cancelBrowserSignIn}
                     className="text-sm font-medium text-lp-muted underline underline-offset-4 transition-colors duration-150 hover:text-lp-fg"
                   >
-                    Cancel and start over
+                    {t("desktopAuth.cancelAndStartOver")}
                   </button>
                 ) : undefined
               }

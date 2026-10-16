@@ -23,6 +23,8 @@ export const TOOL_ACTIVITY_NOUNS: Record<string, ToolActivityNoun> = {
   keep_update_note: { singular: 'note update', plural: 'note updates' },
   keep_delete_note: { singular: 'note delete', plural: 'note deletes' },
   convert_to_pdf_and_upload: { singular: 'PDF conversion', plural: 'PDF conversions' },
+  upload_user_file: { singular: 'upload', plural: 'uploads' },
+  local_upload_file: { singular: 'local upload', plural: 'local uploads' },
   web_fetch: { singular: 'web fetch', plural: 'web fetches' },
   serper_google_search: { singular: 'web search', plural: 'web searches' },
   get_wallet_balance: { singular: 'balance check', plural: 'balance checks' },

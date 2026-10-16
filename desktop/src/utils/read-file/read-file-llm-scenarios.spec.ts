@@ -175,7 +175,7 @@ describe('read-file LLM agent scenarios', () => {
    * DeepAgents #2453: pagination must not skip source lines after long-line display truncation.
    */
   it('pagination does not skip lines when one line is very long', async () => {
-    const longLine = 'X'.repeat(5_000);
+    const longLine = 'X'.repeat(70_000);
     workspaceRoot = await createTestWorkspace({
       'wrap.ts': ['line1', longLine, 'line3', 'line4', 'line5'].join('\n'),
     });
@@ -264,5 +264,36 @@ describe('read-file LLM agent scenarios', () => {
     });
     expect(batch.results[0].mode).toBe('bytes');
     expect(batch.results[0].content).toContain('hello byte mode');
+  });
+
+  it('byte mode returns exact requested bytes without interior omission and provides total_bytes and offset', async () => {
+    workspaceRoot = await createTestWorkspace({ 'data.bin': '0123456789abcdefghij' });
+    const page1 = await executeReadFile({
+      path: 'data.bin',
+      offset: 0,
+      max_bytes: 10,
+      model_context_length: 200_000,
+    });
+    const r1 = page1.results[0];
+    expect(r1.mode).toBe('bytes');
+    expect(r1.status).toBe('truncated');
+    expect(r1.bytes_read).toBe(10);
+    expect(r1.total_bytes).toBe(20);
+    expect(r1.offset).toBe(0);
+    expect(r1.content).toContain('Showing bytes 0–10 of 20. Call again with offset=10');
+    expect(r1.content).toContain('0123456789');
+
+    // Read second page
+    const page2 = await executeReadFile({
+      path: 'data.bin',
+      offset: 10,
+      max_bytes: 10,
+      model_context_length: 200_000,
+    });
+    const r2 = page2.results[0];
+    expect(r2.status).toBe('ok');
+    expect(r2.bytes_read).toBe(10);
+    expect(r2.total_bytes).toBe(20);
+    expect(r2.content).toBe('abcdefghij');
   });
 });

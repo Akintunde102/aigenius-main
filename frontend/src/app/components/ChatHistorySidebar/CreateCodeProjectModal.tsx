@@ -1,9 +1,13 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { FiFolderPlus, FiX } from "react-icons/fi";
 import { FolderPlus, Shuffle } from "lucide-react";
+import {
+  AppModal,
+  AppModalHeader,
+  AppModalBody,
+  AppModalFooter,
+} from "@/app/components/modals/AppModal";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
 import { generateRandomProjectName } from "@/lib/code-projects/random-project-name";
 import {
@@ -21,7 +25,7 @@ type CreateCodeProjectModalProps = {
 
 function FieldDescription({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 text-xs leading-relaxed" style={{ color: "var(--modal-muted-fg)" }}>
+    <p className="mb-1 text-[11px] leading-snug" style={{ color: "var(--modal-muted-fg)" }}>
       {children}
     </p>
   );
@@ -38,26 +42,10 @@ export function CreateCodeProjectModal({
   const [rules, setRules] = useState("");
   const [saving, setSaving] = useState(false);
   const [creatingFolder, setCreatingFolder] = useState(false);
+  const [pickerDefaultPath, setPickerDefaultPath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || saving || creatingFolder) return;
-      e.preventDefault();
-      e.stopPropagation();
-      onClose();
-    };
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [open, onClose, saving, creatingFolder]);
-
-  const handleRootPathChange = useCallback(
+  const applySelectedFolderPath = useCallback(
     (newPath: string) => {
       setRootPath(newPath);
       const derived = deriveProjectNameFromPath(newPath, existingProjects);
@@ -68,17 +56,29 @@ export function CreateCodeProjectModal({
     [existingProjects],
   );
 
+  useEffect(() => {
+    if (!open || !isAigeniusDesktopRuntime()) {
+      return;
+    }
+    const bridge = window.aigeniusDesktop;
+    if (!bridge || typeof bridge.getProjectFolderPickerDefaults !== "function") {
+      return;
+    }
+    void bridge.getProjectFolderPickerDefaults().then((defaults) => {
+      const path = defaults?.defaultBrowsePath?.trim();
+      if (path) {
+        setPickerDefaultPath(path);
+      }
+    });
+  }, [open]);
+
   const handlePickFolder = useCallback(async () => {
     const bridge = window.aigeniusDesktop;
     if (bridge && typeof bridge.pickProjectDirectory === "function") {
       try {
         const picked = await bridge.pickProjectDirectory();
         if (picked?.path) {
-          setRootPath(picked.path);
-          const derived = deriveProjectNameFromPath(picked.path, existingProjects);
-          if (derived) {
-            setName(derived);
-          }
+          applySelectedFolderPath(picked.path);
         }
       } catch {
         setError("Could not open folder picker");
@@ -86,7 +86,7 @@ export function CreateCodeProjectModal({
       return;
     }
     setError("Folder picker is available in the desktop app only");
-  }, [existingProjects]);
+  }, [applySelectedFolderPath]);
 
   const handleRandomName = useCallback(() => {
     setName(generateRandomProjectName());
@@ -110,11 +110,7 @@ export function CreateCodeProjectModal({
       const result = await bridge.createNamedProjectDirectory({ folderName: resolved.name });
       const applied = applyCreateNamedFolderResult(result);
       if (applied.status === "filled") {
-        setRootPath(applied.path);
-        const derived = deriveProjectNameFromPath(applied.path, existingProjects);
-        if (derived) {
-          setName(derived);
-        }
+        applySelectedFolderPath(applied.path);
         return;
       }
       if (applied.status === "error") {
@@ -125,7 +121,7 @@ export function CreateCodeProjectModal({
     } finally {
       setCreatingFolder(false);
     }
-  }, [name, existingProjects]);
+  }, [name, applySelectedFolderPath]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,81 +148,43 @@ export function CreateCodeProjectModal({
     }
   }, [name, rootPath, rules, onCreate, onClose]);
 
-  if (!open || !mounted || typeof document === "undefined") {
-    return null;
-  }
-
   const desktop = isAigeniusDesktopRuntime();
 
-  const overlay = (
-    <div
-      role="presentation"
-      className="app-modal-overlay backdrop-blur-[2px]"
-      onClick={saving || creatingFolder ? undefined : onClose}
+  return (
+    <AppModal
+      open={open}
+      onClose={onClose}
+      size="sm"
+      ariaLabelledBy="create-code-project-title"
+      closeOnEscape={!saving && !creatingFolder}
+      closeOnOverlayClick={!saving && !creatingFolder}
+      className="z-[110]"
     >
-      <form
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="create-code-project-title"
-        className="app-modal-panel max-w-md shadow-xl"
-        onSubmit={handleSubmit}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="app-modal-panel-header flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="mb-1 flex items-center gap-2">
-              <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                style={{
-                  background: "color-mix(in srgb, var(--chat-accent) 12%, transparent)",
-                  color: "var(--chat-accent)",
-                }}
-                aria-hidden
-              >
-                <FiFolderPlus className="h-4 w-4" />
-              </div>
-              <h2 id="create-code-project-title" className="text-base font-semibold leading-none">
-                New project
-              </h2>
-            </div>
-            <p className="text-xs" style={{ color: "var(--modal-muted-fg)" }}>
-              Scope chats to a folder with optional rules for the model.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving || creatingFolder}
-            className="shrink-0 rounded-lg p-2 transition-colors hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40 disabled:opacity-50"
-            style={{ color: "var(--modal-muted-fg)" }}
-            aria-label="Close"
-          >
-            <FiX className="h-4 w-4" />
-          </button>
-        </div>
+      <AppModalHeader
+        titleId="create-code-project-title"
+        title="New project"
+        subtitle="Scope chats to a folder with optional rules for the model."
+        onClose={onClose}
+      />
 
-        <div className="app-modal-panel-body space-y-4">
+      <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <AppModalBody className="space-y-3 overflow-y-auto !py-3">
           <div>
             <label htmlFor="code-project-path" className="app-modal-field-label">
               Folder
             </label>
             <FieldDescription>
               {desktop
-                ? "Use New to create a folder or Browse an existing one. Project name will be generated automatically."
+                ? "Use New to create a folder or Browse to pick an existing one. Paths cannot be typed — the system folder picker keeps paths valid."
                 : "Root directory for search indexing and desktop file access."}
             </FieldDescription>
-            <div className="flex gap-2">
-              {desktop ? (
+            {desktop ? (
+              <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => void handleCreateNamedFolder()}
                   disabled={saving || creatingFolder}
-                  className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 text-sm font-medium transition-colors hover:bg-[color-mix(in_srgb,var(--surface-muted)_80%,transparent)] disabled:opacity-50"
-                  style={{
-                    borderColor: "var(--modal-border)",
-                    color: "var(--modal-fg)",
-                    background: "var(--surface-muted)",
-                  }}
+                  className="app-modal-btn-secondary flex-1 !text-xs !py-1.5"
                   aria-label="Create a folder named after this project"
                   title="Create a folder named after this project"
                   aria-busy={creatingFolder}
@@ -234,38 +192,44 @@ export function CreateCodeProjectModal({
                   <FolderPlus className="h-3.5 w-3.5" aria-hidden />
                   {creatingFolder ? "Creating…" : "New"}
                 </button>
-              ) : null}
-              <input
-                id="code-project-path"
-                className="app-modal-input min-w-0 flex-1 font-mono text-xs"
-                value={rootPath}
-                onChange={(e) => handleRootPathChange(e.target.value)}
-                placeholder={desktop ? "Pick or paste path" : "Absolute path to project root"}
-                autoFocus
-              />
-              {desktop ? (
                 <button
                   type="button"
                   onClick={() => void handlePickFolder()}
                   disabled={saving || creatingFolder}
-                  className="shrink-0 rounded-lg border px-3 text-sm font-medium transition-colors hover:bg-[color-mix(in_srgb,var(--surface-muted)_80%,transparent)] disabled:opacity-50"
-                  style={{
-                    borderColor: "var(--modal-border)",
-                    color: "var(--modal-fg)",
-                    background: "var(--surface-muted)",
-                  }}
+                  className="app-modal-btn-secondary flex-1 !text-xs !py-1.5"
                 >
                   Browse
                 </button>
-              ) : null}
-            </div>
-            <div className="mt-1.5 min-h-[1.25rem]">
+              </div>
+            ) : (
+              <input
+                id="code-project-path"
+                className="app-modal-input min-w-0 font-mono text-xs"
+                value={rootPath}
+                onChange={(e) => applySelectedFolderPath(e.target.value)}
+                placeholder="Absolute path to project root"
+                autoFocus
+              />
+            )}
+            {desktop && pickerDefaultPath ? (
+              <p
+                className="mt-1.5 text-[11px] font-mono break-all"
+                style={{ color: "var(--modal-muted-fg)" }}
+                data-testid="folder-picker-root"
+              >
+                Folder picker starts in:{" "}
+                <span className="font-semibold" style={{ color: "var(--modal-fg)" }}>
+                  {pickerDefaultPath}
+                </span>
+              </p>
+            ) : null}
+            <div className="mt-1">
               {rootPath ? (
-                <p className="text-xs font-mono break-all" style={{ color: "var(--modal-muted-fg)" }} data-testid="folder-full-path">
-                  Full path: <span className="font-semibold text-[color-mix(in_srgb,var(--modal-fg)_85%,transparent)]">{rootPath}</span>
+                <p className="text-[11px] font-mono break-all" style={{ color: "var(--modal-muted-fg)" }} data-testid="folder-full-path">
+                  Full path: <span className="font-semibold" style={{ color: "var(--modal-fg)" }}>{rootPath}</span>
                 </p>
               ) : (
-                <p className="text-xs font-mono opacity-60" style={{ color: "var(--modal-muted-fg)" }} data-testid="folder-full-path">
+                <p className="text-[11px] font-mono opacity-60" style={{ color: "var(--modal-muted-fg)" }} data-testid="folder-full-path">
                   No folder selected
                 </p>
               )}
@@ -277,7 +241,7 @@ export function CreateCodeProjectModal({
               Name
             </label>
             <FieldDescription>
-              A short label shown in the sidebar. Automatically generated from selected folder.
+              A short label shown in the sidebar. Automatically generated from folder.
             </FieldDescription>
             <div className="flex gap-2">
               <input
@@ -290,32 +254,26 @@ export function CreateCodeProjectModal({
               <button
                 type="button"
                 onClick={handleRandomName}
-                className="flex shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors hover:bg-[color-mix(in_srgb,var(--surface-muted)_80%,transparent)]"
-                style={{
-                  borderColor: "var(--modal-border)",
-                  color: "var(--modal-fg)",
-                  background: "var(--surface-muted)",
-                }}
+                className="app-modal-btn-secondary shrink-0 !text-xs !py-1.5"
                 aria-label="Generate random name"
               >
-                <Shuffle className="h-3.5 w-3.5" aria-hidden />
+                <Shuffle className="h-3 w-3" aria-hidden />
                 Random
               </button>
             </div>
           </div>
-
 
           <div>
             <label htmlFor="code-project-rules" className="app-modal-field-label">
               Rules <span className="normal-case font-normal tracking-normal opacity-70">(optional)</span>
             </label>
             <FieldDescription>
-              Stack, conventions, or architecture notes injected into every chat in this project.
+              Stack, conventions, or architecture notes injected into every chat.
             </FieldDescription>
             <textarea
               id="code-project-rules"
               className="app-modal-input resize-y"
-              rows={3}
+              rows={2}
               value={rules}
               onChange={(e) => setRules(e.target.value)}
               placeholder="e.g. NestJS API, Next.js frontend, Tilt dev…"
@@ -323,37 +281,30 @@ export function CreateCodeProjectModal({
           </div>
 
           {error ? (
-            <p className="text-sm text-red-500" role="alert">
+            <p className="text-xs text-red-500 font-medium" role="alert">
               {error}
             </p>
           ) : null}
-        </div>
+        </AppModalBody>
 
-        <div
-          className="flex shrink-0 items-center justify-end gap-2 border-t px-5 py-3"
-          style={{ borderColor: "var(--modal-border)" }}
-        >
+        <AppModalFooter>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-3 py-1.5 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
-            style={{ color: "var(--modal-muted-fg)" }}
+            className="app-modal-btn-secondary text-xs"
             disabled={saving || creatingFolder}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="app-modal-btn-primary px-4 py-1.5 text-sm"
+            className="app-modal-btn-primary text-xs"
             disabled={saving || creatingFolder}
           >
             {saving ? "Creating…" : "Create"}
           </button>
-        </div>
+        </AppModalFooter>
       </form>
-    </div>
+    </AppModal>
   );
-
-  const portalTarget = document.getElementById("modal-root") ?? document.body;
-  return createPortal(overlay, portalTarget);
 }

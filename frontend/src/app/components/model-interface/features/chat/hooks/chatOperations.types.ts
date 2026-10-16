@@ -13,6 +13,12 @@ export type ChatUpdater = ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[
 export type SetChatForSession = (sessionId: string, updater: ChatUpdater) => void;
 export type SetBooleanForSession = (sessionId: string, value: boolean) => void;
 
+/** Optional overrides when rewriting prompt text outside the main composer (e.g. inline message edit). */
+export type RewritePromptOptions = {
+    sourceText?: string;
+    onRewritten?: (text: string) => void;
+};
+
 /** Chunk payload from streaming chat completions (wire format from accessModelStream). */
 export type StreamContentChunk =
     | string
@@ -74,6 +80,7 @@ export interface StreamResult {
 // Props for the main chat operations hook
 export interface UseChatOperationsRefinedProps {
     selectedModel: Model | null;
+    models: Model[];
     chat: ChatMessage[];
     setChat: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
     setChatForSession: SetChatForSession;
@@ -136,10 +143,14 @@ export interface UseChatOperationsReturn {
         sendOptions?: HandleSendQueueOptions,
     ) => Promise<boolean>;
     handleStop: () => void;
+    /** Abort an in-flight send/stream for a specific conversation (e.g. sidebar stop control). */
+    handleStopSession: (sessionId: string) => void;
     refreshWalletBalance: () => Promise<number | null>;
     canRetryLastSend: boolean;
     retryLastFailedSend: () => Promise<void>;
     hasDraftSession: (sessionId: string) => boolean;
+    isRewritingPrompt: boolean;
+    handleRewritePrompt: (options?: RewritePromptOptions) => Promise<boolean>;
 }
 
 // Props for streaming response handler

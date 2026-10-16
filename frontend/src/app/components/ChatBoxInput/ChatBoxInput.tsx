@@ -91,6 +91,8 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     queuedMessages = [],
     onQueueMessage,
     onRemoveQueuedMessage,
+    onRewritePrompt,
+    rewritePromptInProgress = false,
 }, ref) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -154,11 +156,25 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
         }
     }, [uploading, resetFileInfo]);
 
+    useEffect(() => {
+        const onInsert = (e: Event) => {
+            const detail = (e as CustomEvent<{ text?: string }>).detail;
+            if (typeof detail?.text === 'string' && detail.text.trim()) {
+                handleInputChange(detail.text);
+                textareaRef.current?.focus();
+            }
+        };
+        window.addEventListener('aigenius:insert-prompt', onInsert);
+        return () => window.removeEventListener('aigenius:insert-prompt', onInsert);
+    }, [handleInputChange]);
+
     const activePendingFiles = pendingFiles;
 
     const isAnyFileUploading = uploading || activePendingFiles.length > 0;
     const hasFilesButModelUnsupported = uploadedFiles.length > 0 && !supportsFileUpload;
     const sendBlocked = responseInProgress || hasFilesButModelUnsupported || isAnyFileUploading;
+    const rewritePromptDisabled =
+        !inputValue.trim() || responseInProgress || rewritePromptInProgress || attachmentsDisabled;
     const canQueueMessage = false;
 
     const onQueueMessageRef = useRef(onQueueMessage);
@@ -178,6 +194,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     }, [canQueueMessage, flushInputToParent, handleInputChange, inputValue]);
 
     const onSendMessageRef = useRef(onSendMessage);
+    const isSubmittingRef = useRef(false);
     useEffect(() => {
         onSendMessageRef.current = onSendMessage;
     }, [onSendMessage]);
@@ -185,13 +202,19 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     const handleSubmit = useCallback(
         async (e: React.FormEvent | React.MouseEvent) => {
             e.preventDefault();
+            if (isSubmittingRef.current) return;
             if ((inputValue.trim() || uploadedFiles.length > 0) && !sendBlocked) {
-                flushInputToParent();
-                const sent = await Promise.resolve(
-                    onSendMessageRef.current(inputValue.trim(), selectedModel),
-                );
-                if (sent !== false) {
-                    clearInput();
+                isSubmittingRef.current = true;
+                try {
+                    flushInputToParent();
+                    const sent = await Promise.resolve(
+                        onSendMessageRef.current(inputValue.trim(), selectedModel),
+                    );
+                    if (sent !== false) {
+                        clearInput();
+                    }
+                } finally {
+                    isSubmittingRef.current = false;
                 }
             } else if (inputValue.trim() && canQueueMessage) {
                 queueCurrentInput();
@@ -616,6 +639,9 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                         onConfirmSTT={onConfirmSTT}
                         isSTTActive={isSTTActive}
                         isDictationTranscribing={isDictationTranscribing}
+                        onRewritePrompt={onRewritePrompt}
+                        rewritePromptDisabled={rewritePromptDisabled}
+                        rewritePromptInProgress={rewritePromptInProgress}
                     />
                 </div>
             </div>

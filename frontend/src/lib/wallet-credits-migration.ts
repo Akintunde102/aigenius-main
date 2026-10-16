@@ -60,7 +60,10 @@ export function isLegacyWalletMigrationRecord(
 }
 
 export function formatMigrationBalance(value: number): string {
-  return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
 }
 
 export function isWalletMigrationNoticeExpired(

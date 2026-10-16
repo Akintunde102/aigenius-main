@@ -36,6 +36,7 @@ import {
   saveChatItem,
   removeSavedChatItemById,
 } from "@/lib/utils/modelChatConversationUtils";
+import { shouldAcceptRemoteConversationSync } from "@/lib/utils/conversationScrollMemory";
 import { getUserDetails } from "@/lib/calls/get-logged-user-details";
 import { FEATURE_FLAGS } from "@/lib/config/features";
 import {
@@ -181,11 +182,31 @@ export function useModelInterface(options?: {
   const streaming = streamingMap[activeKey] || false;
 
   useConversationEvents(setChatHistory, (session) => {
-    if (!session.id || isPassiveSyncBlocked(session.id) || !session.messages?.length) {
+    const sessionId = session.id;
+    if (!sessionId || isPassiveSyncBlocked(sessionId) || !session.messages?.length) {
       return;
     }
-    setChatForSession(session.id, session.messages, { passive: true });
+    const incomingMessages = session.messages as ChatMessage[];
+    setChatForSession(
+      sessionId,
+      (prev) => {
+        if (isPassiveSyncBlocked(sessionId)) {
+          return prev;
+        }
+        if (prev.length && !shouldAcceptRemoteConversationSync(prev, incomingMessages)) {
+          return prev;
+        }
+        return incomingMessages.length ? incomingMessages : prev;
+      },
+      { passive: true },
+    );
   });
+
+  const viewedSubagentRunning = chatHistory.some(
+    (session) =>
+      session.id === viewSessionId
+      && session.metadata?.subagentRunStatus === 'running',
+  );
 
   useActiveConversationSync({
     conversationId: viewSessionId,
@@ -193,6 +214,7 @@ export function useModelInterface(options?: {
     setChatForSession,
     setChatHistory,
     isSyncBlocked: viewSessionId ? isPassiveSyncBlocked(viewSessionId) : true,
+    refetchIntervalMs: viewedSubagentRunning ? 1000 : false,
   });
 
   const persistSessionMessages = usePersistSessionMessages({
@@ -301,11 +323,15 @@ export function useModelInterface(options?: {
         optimizationMessage,
         handleSend,
         handleStop,
+        handleStopSession,
         canRetryLastSend,
         retryLastFailedSend,
         hasDraftSession,
+        isRewritingPrompt,
+        handleRewritePrompt,
     } = useChatOperationsRefined({
     selectedModel,
+    models,
     chat,
     setChat,
     setChatForSession,
@@ -569,11 +595,7 @@ export function useModelInterface(options?: {
     chat,
     selectedModel,
     search,
-    selectedModalities,
-    selectedOutputModalities,
     showWebSearch,
-    showToolsOnly,
-    orderByCost,
     imageFilterOnly,
     orderBy,
     orderDir,
@@ -751,12 +773,15 @@ export function useModelInterface(options?: {
     actions: {
       handleSend: handleSendWithKeyboard,
       handleStop,
+      handleStopSession,
       handleInputKeyDown: handleInputKeyDownWithSend,
       handleSave: handleSaveWithUpdate,
       handleInsertSaved,
       handleRemoveSaved: handleRemoveSavedWithUpdate,
       canRetryLastSend,
       retryLastFailedSend,
+      isRewritingPrompt,
+      handleRewritePrompt,
     },
   };
 }

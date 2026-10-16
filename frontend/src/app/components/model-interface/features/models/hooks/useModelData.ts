@@ -90,6 +90,16 @@ function mergeUniqueModels(models: any[], additions: Model[]): any[] {
     ];
 }
 
+/** Curated Ollama Cloud entries win over raw `local_ollama_status` names/metadata. */
+function applyOllamaCloudCatalogOverrides(models: Model[]): Model[] {
+    const byId = new Map(models.map((model) => [model.id, model]));
+    for (const cloudModel of OLLAMA_CLOUD_MODELS) {
+        const existing = byId.get(cloudModel.id);
+        byId.set(cloudModel.id, existing ? { ...existing, ...cloudModel } : cloudModel);
+    }
+    return Array.from(byId.values());
+}
+
 async function fetchCloudModelsList(): Promise<any[]> {
     const data = await authorizedRequest<unknown>({
         call: 'getGatewayModelChatsModels',
@@ -211,6 +221,8 @@ export function useModelData() {
 
                 if (!isAigeniusDesktopRuntime()) {
                     list = list.filter((m: any) => m.provider !== 'ollama' && !(m.id && m.id.startsWith('ollama:')));
+                } else {
+                    list = applyOllamaCloudCatalogOverrides(list as Model[]);
                 }
 
                 const nonTextList = filterNonTextModels(list as Model[]);

@@ -122,14 +122,16 @@ describe("AuthPage", () => {
       (variant) => {
         render(<AuthPage variant={variant} />);
 
-        expect(screen.getByText("Secure authentication")).toBeInTheDocument();
         expect(
-          screen.getByText("GPT, Claude, Gemini & more"),
+          screen.getByText(/Google's secure authentication system/),
         ).toBeInTheDocument();
         expect(
-          screen.getByText("Pay only for what you use"),
-        ).toBeInTheDocument();
-        expect(screen.getByText("Web & desktop app")).toBeInTheDocument();
+          screen.getAllByText("GPT, Claude, Gemini & more").length,
+        ).toBeGreaterThan(0);
+        expect(
+          screen.getAllByText("Pay only for what you use").length,
+        ).toBeGreaterThan(0);
+        expect(screen.getAllByText("Web & desktop app").length).toBeGreaterThan(0);
       },
     );
   });

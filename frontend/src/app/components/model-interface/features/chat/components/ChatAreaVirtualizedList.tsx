@@ -11,6 +11,8 @@ import { ChatMessageWrapper } from "../../messages/components/ChatMessageWrapper
 import copy from "copy-to-clipboard";
 import { isVisibleChatMessage } from "@/lib/utils/messageContentUtils";
 import type { MessageEditDraft } from "../../messages/utils/messageEdit.utils";
+import type { RewritePromptOptions } from "../hooks/chatOperations.types";
+import { EMPTY_ORPHAN_MARKERS } from "../hooks/orphanMarkers.constants";
 
 export interface ChatAreaVirtualizedListProps {
   chat: ChatMessageType[];
@@ -43,6 +45,9 @@ export interface ChatAreaVirtualizedListProps {
   selectedPersonalityName?: string;
   selectedPersonalityIconUrl?: string;
   disableOrphanThreads?: boolean;
+  onPromptButtonSelect?: (label: string) => void;
+  onRewritePrompt?: (options?: RewritePromptOptions) => void;
+  rewritePromptInProgress?: boolean;
 }
 
 /**
@@ -89,6 +94,9 @@ export const ChatAreaVirtualizedList = React.memo(function ChatAreaVirtualizedLi
   selectedPersonalityName,
   selectedPersonalityIconUrl,
   disableOrphanThreads = false,
+  onPromptButtonSelect,
+  onRewritePrompt,
+  rewritePromptInProgress,
 }: ChatAreaVirtualizedListProps) {
   const handleCopy = useCallback((content: string) => {
     copy(content);
@@ -163,7 +171,10 @@ export const ChatAreaVirtualizedList = React.memo(function ChatAreaVirtualizedLi
               conversationId={conversationId}
               supportsFileUpload={supportsFileUpload}
               onStartOrphanReply={onStartOrphanReply}
-              orphanMarkers={orphanMarkersByMessageId?.[msg.messageId ?? msg.id ?? `ts_${msg.timestamp}`] ?? []}
+              orphanMarkers={
+                orphanMarkersByMessageId?.[msg.messageId ?? msg.id ?? `ts_${msg.timestamp}`]
+                ?? EMPTY_ORPHAN_MARKERS
+              }
               orphanMarkersHidden={Boolean(hiddenMarkerMessageIds?.[msg.messageId ?? msg.id ?? `ts_${msg.timestamp}`])}
               onOpenOrphanMarker={onOpenOrphanMarker}
               onToggleOrphanMarkers={onToggleOrphanMarkers}
@@ -175,6 +186,9 @@ export const ChatAreaVirtualizedList = React.memo(function ChatAreaVirtualizedLi
               selectedPersonalityName={selectedPersonalityName}
               selectedPersonalityIconUrl={selectedPersonalityIconUrl}
               disableOrphanThreads={disableOrphanThreads}
+              onPromptButtonSelect={onPromptButtonSelect}
+              onRewritePrompt={onRewritePrompt}
+              rewritePromptInProgress={rewritePromptInProgress}
             />
           </div>
         );

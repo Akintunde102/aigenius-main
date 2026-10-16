@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { AppModal, AppModalCloseButton } from "@/app/components/modals/AppModal";
 import { JsonOrPlainTextBlock } from "@/app/components/JsonSyntaxBlock";
 import { BrandLogo } from "@/app/components/BrandLogo";
 import { Button } from "@/app/components/ui/button";
@@ -25,8 +24,6 @@ import { findResultLinkFromArgs, WorkflowSchemaEditor } from "./WorkflowSchemaFo
 import {
   useWorkflowInfoCopy,
   WorkflowAboutToolPanel,
-  workflowModalOverlayClassConfig,
-  workflowModalPanelClassConfig,
 } from "./workflow-info";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
 
@@ -134,12 +131,7 @@ export function WorkflowStepConfigModal({
 }: WorkflowStepConfigModalProps) {
   const workflowCopy = useWorkflowInfoCopy();
   const { t } = useLanguage();
-  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<ConfigModalTab>("configure");
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (isOpen) setActiveTab("configure");
@@ -181,54 +173,39 @@ export function WorkflowStepConfigModal({
 
   const handleClose = useCallback(() => onClose(), [onClose]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, handleClose]);
+  if (!isOpen || !step) return null;
 
-  if (!mounted || !isOpen || !step) return null;
-
-  const content = (
-    <div
-      className={workflowModalOverlayClassConfig}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="workflow-step-config-title"
-      aria-describedby="workflow-step-config-desc"
-      onClick={handleClose}
+  return (
+    <AppModal
+      open={isOpen}
+      onClose={handleClose}
+      size="lg"
+      className="z-[300]"
+      ariaLabelledBy="workflow-step-config-title"
+      panelClassName="flex max-h-[min(90vh,920px)] flex-col overflow-hidden p-0"
     >
-      <div className={workflowModalPanelClassConfig} onClick={(e) => e.stopPropagation()}>
-        <h2 id="workflow-step-config-title" className="sr-only">
-          {t("workflows.configureStepSrTitle", "Configure step")}
-        </h2>
-        <p id="workflow-step-config-desc" className="sr-only">
-          {t(
-            "workflows.configureStepSrDesc",
-            "Edit tool fields for this step. Use the Response tab for return shape, example JSON, and response schema. Changes apply as you type.",
-          )}
-        </p>
-        <div className="flex shrink-0 items-center gap-3 border-b border-stone-200/80 bg-gradient-to-r from-white via-stone-50/90 to-white px-3 py-3 sm:px-4 dark:border-slate-800/80 dark:from-[#18191c] dark:via-[#16171a] dark:to-[#18191c]">
-          <BrandLogo size="compact" asStatic className="min-w-0 shrink [&_span]:sr-only" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold tracking-tight text-stone-800 dark:text-slate-100">
-              {stepTool ? friendlyToolName(stepTool.function.name) : friendlyToolName(step.toolName)}
-            </p>
-            <p className="truncate text-[11px] text-stone-500 dark:text-slate-400">{step.toolName}</p>
-          </div>
-          <button
-            type="button"
-            className="shrink-0 rounded-lg p-1.5 text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-            onClick={handleClose}
-            title={t("common.close", "Close")}
-          >
-            <X className="h-5 w-5" aria-hidden />
-            <span className="sr-only">{t("common.close", "Close")}</span>
-          </button>
+      <h2 id="workflow-step-config-title" className="sr-only">
+        {t("workflows.configureStepSrTitle", "Configure step")}
+      </h2>
+      <p id="workflow-step-config-desc" className="sr-only">
+        {t(
+          "workflows.configureStepSrDesc",
+          "Edit tool fields for this step. Use the Response tab for return shape, example JSON, and response schema. Changes apply as you type.",
+        )}
+      </p>
+      <div
+        className="app-modal-panel-header flex shrink-0 items-center gap-3 !py-3"
+        style={{ borderColor: "var(--modal-border)" }}
+      >
+        <BrandLogo size="compact" asStatic className="min-w-0 shrink [&_span]:sr-only" />
+        <div className="min-w-0 flex-1">
+          <p className="app-modal-title truncate !text-sm !font-semibold">
+            {stepTool ? friendlyToolName(stepTool.function.name) : friendlyToolName(step.toolName)}
+          </p>
+          <p className="app-modal-subtitle truncate">{step.toolName}</p>
         </div>
+        <AppModalCloseButton onClose={handleClose} title={t("common.close", "Close")} />
+      </div>
 
         <div
           className="flex shrink-0 gap-1 border-b border-stone-200/80 bg-stone-50/40 px-2 py-1.5 sm:px-3 dark:border-slate-800/80 dark:bg-[#141518]"
@@ -283,7 +260,7 @@ export function WorkflowStepConfigModal({
           role="tabpanel"
           id="workflow-step-config-tabpanel"
           aria-labelledby={workflowStepConfigActiveTabId(activeTab)}
-          className="workflow-scroll-light min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-stone-50/90 via-white to-stone-50/50 px-3.5 py-4 sm:px-4 dark:from-[#18191c] dark:via-[#16171a] dark:to-[#141518]"
+          className="app-modal-panel-body workflow-scroll-light min-h-0 flex-1 overflow-y-auto"
         >
           {activeTab === "lastRun" ? (
             <WorkflowStepConfigLastRunPanel execution={execution} />
@@ -408,7 +385,10 @@ export function WorkflowStepConfigModal({
           )}
         </div>
 
-        <div className="border-t border-stone-200/80 bg-stone-100/40 px-3.5 py-3 sm:px-4 dark:border-slate-800/80 dark:bg-[#141518]">
+      <div
+        className="border-t px-3.5 py-3 sm:px-4"
+        style={{ borderColor: "var(--modal-border)", background: "var(--modal-bg-muted)" }}
+      >
           <Button
             type="button"
             variant="outline"
@@ -417,10 +397,7 @@ export function WorkflowStepConfigModal({
           >
             Done
           </Button>
-        </div>
       </div>
-    </div>
+    </AppModal>
   );
-
-  return createPortal(content as any, document.body);
 }

@@ -10,6 +10,13 @@ export {
   listProjectSlots,
   switchSearchProject,
   enqueueProjectIndex,
+  enqueueFastIndexPocket,
+  enqueuePocketIndexHints,
   enqueueReindexPaths,
   bootstrapRegisteredProjects,
 } from './search-index.core.js';
+export {
+  getDeviceFastIndexPocketStatus,
+  shouldRunInstallPocketPlanner,
+} from './indexer/device-fast-index-pocket.js';
+export { runInstallDevicePocketPlannerForApp } from './search-index.core.js';

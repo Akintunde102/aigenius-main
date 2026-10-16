@@ -57,6 +57,28 @@ describe("ChatAreaVirtualizedList", () => {
     expect(messages[0]).toHaveTextContent("Hello 1");
   });
 
+  it("filters out legacy video automated event user messages", () => {
+    const chat: ChatMessage[] = [
+      {
+        role: "user",
+        content:
+          '[SYSTEM AUTOMATED EVENT]: Video job gen-vid-1 completed. URL: https://cdn.example.com/v.mp4. Deliver this link to the user in a friendly message.',
+        timestamp: 0,
+      },
+      {
+        role: "assistant",
+        content: "Your video is ready!\n\n![Generated video](https://cdn.example.com/v.mp4)",
+        timestamp: 1,
+      },
+    ];
+
+    render(<ChatAreaVirtualizedList {...mockProps} chat={chat} />);
+
+    const messages = screen.getAllByTestId("chat-message-wrapper");
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toHaveTextContent("Your video is ready!");
+  });
+
   it("filters out server-injected runtime_context user messages", () => {
     const chat: ChatMessage[] = [
       {

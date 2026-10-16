@@ -36,4 +36,22 @@ describe("ChatShellLoadingSkeleton", () => {
     const root = container.firstElementChild as HTMLElement;
     expect(["0", "0px"]).toContain(root.style.minHeight);
   });
+
+  it("applies inline style fallbacks for resilient centering and typography before CSS loads", () => {
+    const { container, getByRole, getByText } = render(
+      <ChatShellLoadingSkeleton statusMessage="Loading your workspace…" />,
+    );
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.style.display).toBe("flex");
+    expect(root.style.fontFamily).toContain("system-ui");
+
+    const spinner = getByRole("status");
+    expect(spinner.style.width).toBe("32px");
+    expect(spinner.style.height).toBe("32px");
+    expect(spinner.style.borderRadius).toBe("50%");
+
+    const statusText = getByText("Loading your workspace…");
+    expect(statusText.style.textAlign).toBe("center");
+    expect(statusText.style.fontSize).toBe("14px");
+  });
 });

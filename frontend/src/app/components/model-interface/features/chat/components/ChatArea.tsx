@@ -14,6 +14,7 @@ import {
 } from "./ChatAreaVirtualizedList";
 import { isVisibleChatMessage } from "@/lib/utils/messageContentUtils";
 import type { MessageEditDraft } from "../../messages/utils/messageEdit.utils";
+import type { RewritePromptOptions } from "../hooks/chatOperations.types";
 import { useChatAreaPinchZoom } from "../hooks/useChatAreaPinchZoom";
 
 interface ChatAreaProps {
@@ -49,6 +50,9 @@ interface ChatAreaProps {
   selectedPersonalityName?: string;
   selectedPersonalityIconUrl?: string;
   showScrollToBottom?: boolean;
+  onPromptButtonSelect?: (label: string) => void;
+  onRewritePrompt?: (options?: RewritePromptOptions) => void;
+  rewritePromptInProgress?: boolean;
 }
 
 export function ChatArea({
@@ -84,6 +88,9 @@ export function ChatArea({
   selectedPersonalityName,
   selectedPersonalityIconUrl,
   showScrollToBottom = false,
+  onPromptButtonSelect,
+  onRewritePrompt,
+  rewritePromptInProgress,
 }: ChatAreaProps) {
   const bindPinchZoom = useChatAreaPinchZoom();
 
@@ -165,6 +172,9 @@ export function ChatArea({
     streaming,
     selectedPersonalityName,
     selectedPersonalityIconUrl,
+    onPromptButtonSelect,
+    onRewritePrompt,
+    rewritePromptInProgress,
   };
 
   return (

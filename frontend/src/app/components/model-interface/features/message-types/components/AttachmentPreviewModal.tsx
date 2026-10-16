@@ -25,6 +25,7 @@ import {
 } from './messageAttachment.utils';
 import { copyImageToClipboard, copyTextToClipboard, resolveAbsoluteUrl } from './imageCopy.utils';
 import { ImagePreviewContextMenu } from './ImagePreviewContextMenu';
+import { ImagePreviewComposerDock } from './ImagePreviewComposerDock';
 import toast from 'react-hot-toast';
 
 export interface AttachmentPreviewTarget {
@@ -38,6 +39,7 @@ export interface AttachmentPreviewTarget {
 export interface AttachmentPreviewModalProps {
     attachment: AttachmentPreviewTarget | string | null;
     onClose: () => void;
+    composer?: React.ReactNode;
 }
 
 const TEXT_FILE_EXTENSIONS = [
@@ -87,7 +89,7 @@ export function triggerFileDownload(fileUrl: string, fileName: string): void {
     document.body.removeChild(anchor);
 }
 
-export function AttachmentPreviewModal({ attachment, onClose }: AttachmentPreviewModalProps) {
+export function AttachmentPreviewModal({ attachment, onClose, composer }: AttachmentPreviewModalProps) {
     const [mounted, setMounted] = useState(false);
     const [textContent, setTextContent] = useState<string | null>(null);
     const [textLoading, setTextLoading] = useState(false);
@@ -748,6 +750,9 @@ export function AttachmentPreviewModal({ attachment, onClose }: AttachmentPrevie
                         onDownload={handleDownload}
                     />
                 )}
+                {target.kind === 'image' && composer ? (
+                    <ImagePreviewComposerDock>{composer}</ImagePreviewComposerDock>
+                ) : null}
             </div>
         ) as React.ReactNode,
         portalTarget,

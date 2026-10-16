@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 const GITHUB_API_URL = 'https://api.github.com/repos/Akintunde102/aigenius-main/releases/latest';
+const FALLBACK_RELEASES_URL = 'https://github.com/Akintunde102/aigenius-main/releases/latest';
 
 export async function GET(
   request: Request,
@@ -13,6 +14,7 @@ export async function GET(
   try {
     const res = await fetch(GITHUB_API_URL, {
       next: { revalidate: 300 }, // Cache for 5 minutes so we don't hit GitHub rate limits
+      signal: AbortSignal.timeout(5000),
       headers: {
         Accept: 'application/vnd.github.v3+json',
         'User-Agent': 'AIGenius-Download-API',
@@ -21,7 +23,7 @@ export async function GET(
 
     if (!res.ok) {
       console.error('Failed to fetch latest release from GitHub', await res.text());
-      return NextResponse.redirect(new URL('/', request.url));
+      return NextResponse.redirect(FALLBACK_RELEASES_URL, 302);
     }
 
     const data = await res.json();
@@ -57,9 +59,9 @@ export async function GET(
     }
 
     // Fallback if no asset found
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(FALLBACK_RELEASES_URL, 302);
   } catch (error) {
     console.error('Error fetching download URL:', error);
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(FALLBACK_RELEASES_URL, 302);
   }
 }

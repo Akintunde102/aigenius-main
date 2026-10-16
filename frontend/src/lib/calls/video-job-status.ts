@@ -1,5 +1,8 @@
 import { getValidAccessToken } from '@/lib/api/auth-client';
-import { getLocalMiniServerApiRootUrl } from '@/lib/api/resolve-gateway-api-root';
+import {
+    getLocalMiniServerApiRootUrl,
+    resolveGatewayApiBaseCandidates,
+} from '@/lib/api/resolve-gateway-api-root';
 
 export interface VideoJobStatusResponse {
     success: boolean;
@@ -24,22 +27,42 @@ export interface VideoJobStatusResponse {
 /**
  * Fetches the live progress percentage, stage, and video URL for a video generation job.
  */
-export async function fetchVideoJobStatus(identifier: string): Promise<VideoJobStatusResponse> {
-    const root = getLocalMiniServerApiRootUrl();
+function videoJobStatusHeaders(): Record<string, string> {
     const token = getValidAccessToken();
-    const url = `${root}/gateway/v1/videos/jobs/${encodeURIComponent(identifier)}/status`;
-
-    const headers: Record<string, string> = {
-        Accept: 'application/json',
-    };
+    const headers: Record<string, string> = { Accept: 'application/json' };
     if (token) {
         headers.Authorization = `Bearer ${token}`;
     }
+    return headers;
+}
 
-    const res = await fetch(url, { headers });
-    if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(`Failed to fetch video job status: ${res.status} ${text}`.trim());
+export async function fetchVideoJobStatus(identifier: string): Promise<VideoJobStatusResponse> {
+    const bases = await resolveGatewayApiBaseCandidates();
+    const roots = bases.length > 0 ? bases : [getLocalMiniServerApiRootUrl()].filter(Boolean);
+    if (roots.length === 0) {
+        throw new Error('Failed to fetch');
     }
-    return (await res.json()) as VideoJobStatusResponse;
+
+    const path = `/gateway/v1/videos/jobs/${encodeURIComponent(identifier)}/status`;
+    const headers = videoJobStatusHeaders();
+    let lastError: unknown;
+
+    for (const root of roots) {
+        try {
+            const res = await fetch(`${root}${path}`, { headers });
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                lastError = new Error(`Failed to fetch video job status: ${res.status} ${text}`.trim());
+                continue;
+            }
+            return (await res.json()) as VideoJobStatusResponse;
+        } catch (err) {
+            lastError = err;
+        }
+    }
+
+    if (lastError instanceof Error) {
+        throw lastError;
+    }
+    throw new Error('Failed to fetch');
 }

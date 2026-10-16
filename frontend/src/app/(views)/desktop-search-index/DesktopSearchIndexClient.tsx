@@ -11,8 +11,10 @@ import { FlatBrowseTable } from "./components/FlatBrowseTable";
 import { SearchIndexPaginationFooter } from "./components/SearchIndexPaginationFooter";
 import { SearchIndexToolbar } from "./components/SearchIndexToolbar";
 import { useDesktopSearchIndex } from "./useDesktopSearchIndex";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 export default function DesktopSearchIndexClient() {
+  const { t } = useLanguage();
   const state = useDesktopSearchIndex();
   const {
     bridgePhase,
@@ -46,19 +48,17 @@ export default function DesktopSearchIndexClient() {
             <header className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h1 className={`${DISPLAY} text-3xl font-normal leading-[1.05] tracking-[-0.03em] sm:text-4xl`}>
-                  Local search index
+                  {t("desktopSearchIndex.title")}
                 </h1>
                 <p className="mt-2 max-w-prose text-[15px] leading-relaxed text-lp-muted">
-                  Inspect how the desktop indexer fills{" "}
-                  <code className="rounded bg-black/[0.06] px-1.5 py-0.5 text-[0.9em] text-lp-fg dark:bg-white/[0.08]">file_index</code>
-                  : folders, excerpts, previews, OS actions. Designed for auditing coverage and OCR/PDF ingestion.
+                  {t("desktopSearchIndex.subtitle")}
                 </p>
               </div>
               <Link
                 href="/"
                 className="shrink-0 text-sm font-medium text-lp-muted underline underline-offset-4 transition-colors duration-150 hover:text-lp-fg"
               >
-                Back to chat
+                {t("desktopSearchIndex.backToChat")}
               </Link>
             </header>
 
@@ -80,7 +80,7 @@ export default function DesktopSearchIndexClient() {
                   <FlatBrowseTable {...state} />
                 )}
                 {showEmptyState ? (
-                  <p className="p-8 text-center text-sm text-lp-muted">No matching records.</p>
+                  <p className="p-8 text-center text-sm text-lp-muted">{t("desktopSearchIndex.noMatchingRecords")}</p>
                 ) : null}
               </div>
               <SearchIndexPaginationFooter {...state} />

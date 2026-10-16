@@ -1,5 +1,5 @@
 import type { ChatMessage, Model } from '@/app/components/model-interface/shared/types';
-import { buildUserMessageState } from '../sendFlow.utils';
+import { buildUserMessageState, resolveModelForChatSend } from '../sendFlow.utils';
 import { optimizeMessagesForAPI } from '../messageOptimization.utils';
 
 const mockModel: Model = {
@@ -8,6 +8,39 @@ const mockModel: Model = {
     description: '',
     context_length: 8192,
 };
+
+describe('resolveModelForChatSend', () => {
+    const hy3: Model = { id: 'tencent/hy3', name: 'Tencent: Hy3', description: '', context_length: 8192 };
+    const kimi: Model = {
+        id: 'ollama:kimi-k2.6:cloud',
+        name: 'Ollama Cloud: Kimi K2.6',
+        description: '',
+        context_length: 128000,
+        provider: 'ollama',
+    };
+
+    it('uses the message catalog model on resend when composer selection differs', () => {
+        const preCreatedMessage: ChatMessage = {
+            role: 'user',
+            content: 'Hi',
+            timestamp: 1,
+            modelId: kimi.id,
+            modelName: kimi.name,
+        };
+        expect(resolveModelForChatSend({
+            selectedModel: hy3,
+            models: [hy3, kimi],
+            preCreatedMessage,
+        })).toBe(kimi);
+    });
+
+    it('uses composer selection for a new message', () => {
+        expect(resolveModelForChatSend({
+            selectedModel: kimi,
+            models: [hy3, kimi],
+        })).toBe(kimi);
+    });
+});
 
 describe('buildUserMessageState', () => {
     it('keeps user-visible content and puts workflow hint in apiContent only', () => {

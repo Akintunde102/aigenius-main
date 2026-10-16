@@ -862,11 +862,10 @@ html.dark .markdown-chat-body.markdown-body .markdown-code-block-pre code.hljs,
   border: 0;
 }
 
-.markdown-chat-body.markdown-body .markdown-media-embed--video {
+.markdown-media-embed--video {
   position: relative;
   width: 100%;
   max-width: 560px;
-  margin: 0.75rem 0;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: 0.75rem;
@@ -874,14 +873,70 @@ html.dark .markdown-chat-body.markdown-body .markdown-code-block-pre code.hljs,
   background: #000;
 }
 
-.markdown-chat-body.markdown-body .markdown-media-embed--video video {
-  position: absolute;
-  inset: 0;
+.markdown-media-embed--video video,
+.markdown-media-embed--video .markdown-media-embed__video {
+  display: block;
   width: 100%;
   height: 100%;
   border: 0;
   object-fit: contain;
   background: #000;
+}
+
+.markdown-media-embed--video:fullscreen,
+.markdown-media-embed--video:-webkit-full-screen {
+  max-width: none;
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
+  border-radius: 0;
+  border: 0;
+}
+
+.markdown-media-embed--video:fullscreen video,
+.markdown-media-embed--video:-webkit-full-screen video {
+  width: 100%;
+  height: 100%;
+}
+
+.markdown-chat-body.markdown-body .markdown-media-embed--video {
+  margin: 0.75rem 0;
+}
+
+.markdown-media-embed--video .markdown-media-embed__fullscreen {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.markdown-media-embed--video:hover .markdown-media-embed__fullscreen,
+.markdown-media-embed--video:focus-within .markdown-media-embed__fullscreen {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.markdown-media-embed--video .markdown-media-embed__fullscreen:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.markdown-media-embed--video:fullscreen .markdown-media-embed__fullscreen,
+.markdown-media-embed--video:-webkit-full-screen .markdown-media-embed__fullscreen {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .markdown-chat-body.markdown-body .markdown-media-embed--audio {

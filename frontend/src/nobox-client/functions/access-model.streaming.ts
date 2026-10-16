@@ -216,4 +216,23 @@ export async function processStreamingData(
       }
     }
   }
+
+  // Flush any trailing non-empty buffer on stream EOF
+  if (buffer && buffer.trim()) {
+    const trailingLine = buffer.trim();
+    if (trailingLine && !trailingLine.startsWith(':')) {
+      const trailingData = extractSseDataPayload(trailingLine);
+      if (trailingData !== undefined) {
+        await processStreamingChunk(
+          trailingData,
+          onData,
+          finalResult,
+          config,
+          onToolStreamEvent,
+          signal,
+        );
+      }
+    }
+    buffer = '';
+  }
 }

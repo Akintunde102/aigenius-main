@@ -72,11 +72,28 @@ export interface UserChatStats {
     pinnedCount: number;
 }
 
+export type ConversationLabel = {
+    id: string;
+    userId?: string;
+    name: string;
+    color: string;
+    sortOrder: number;
+    createdAt?: string;
+    updatedAt?: string;
+};
+
+export type UserChatPreferences = {
+    sidebarOrganization: 'flat' | 'labels';
+    generalRules: string | null;
+};
+
 export type AllChatResourcesPayload = {
     savedChats: ChatMessage[];
     savedFullChats: ChatSession[];
     chatHistory: ChatSession[];
     pinnedChats: ChatSession[];
+    userChatPreferences?: UserChatPreferences;
+    conversationLabels?: ConversationLabel[];
 };
 
 let getAllChatResourcesInflight: Promise<AllChatResourcesPayload> | null = null;
@@ -107,11 +124,15 @@ function normalizeAggregatedResourcesPayload(raw: unknown): AllChatResourcesPayl
         savedFullChats?: ChatSession[];
         chatHistory?: ChatSession[];
         pinnedChats?: ChatSession[];
+        userChatPreferences?: UserChatPreferences;
+        conversationLabels?: ConversationLabel[];
         dataReturned?: {
             savedChats?: ChatMessage[];
             savedFullChats?: ChatSession[];
             chatHistory?: ChatSession[];
             pinnedChats?: ChatSession[];
+            userChatPreferences?: UserChatPreferences;
+            conversationLabels?: ConversationLabel[];
         };
     } | null | undefined;
 
@@ -132,6 +153,8 @@ function normalizeAggregatedResourcesPayload(raw: unknown): AllChatResourcesPayl
             d != null && Array.isArray(d.chatHistory) ? d.chatHistory.map(normalizeSessionMessages) : [],
         pinnedChats:
             d != null && Array.isArray(d.pinnedChats) ? d.pinnedChats.map(normalizeSessionMessages) : [],
+        userChatPreferences: d && d.userChatPreferences ? d.userChatPreferences : { sidebarOrganization: 'flat', generalRules: null },
+        conversationLabels: d && Array.isArray(d.conversationLabels) ? d.conversationLabels : [],
     };
 }
 
@@ -683,4 +706,104 @@ export const deletePublishedConversation = async (conversationId: string): Promi
         authorized: true,
     });
     return response.dataReturned;
+};
+
+export const getUserChatPreferences = async (): Promise<UserChatPreferences> => {
+    const response = await serverCall({
+        serverCallProps: {
+            call: serverCalls.getGatewayModelChatsUserPreferences,
+        },
+        authorized: true,
+    });
+    return response.dataReturned;
+};
+
+export const updateUserChatPreferences = async (
+    payload: Partial<UserChatPreferences>,
+): Promise<UserChatPreferences> => {
+    const response = await serverCall({
+        serverCallProps: {
+            call: serverCalls.patchGatewayModelChatsUserPreferences,
+            data: payload,
+        },
+        authorized: true,
+    });
+    return response.dataReturned;
+};
+
+export const listConversationLabels = async (): Promise<ConversationLabel[]> => {
+    const response = await serverCall({
+        serverCallProps: {
+            call: serverCalls.getGatewayModelChatsConversationLabels,
+        },
+        authorized: true,
+    });
+    return Array.isArray(response.dataReturned) ? response.dataReturned : [];
+};
+
+export const createConversationLabel = async (payload: {
+    name: string;
+    color?: string;
+    sortOrder?: number;
+}): Promise<ConversationLabel> => {
+    const response = await serverCall({
+        serverCallProps: {
+            call: serverCalls.postGatewayModelChatsConversationLabels,
+            data: payload,
+        },
+        authorized: true,
+    });
+    return response.dataReturned;
+};
+
+export const updateConversationLabel = async (
+    id: string,
+    payload: { name?: string; color?: string; sortOrder?: number },
+): Promise<ConversationLabel> => {
+    const response = await serverCall({
+        serverCallProps: {
+            call: serverCalls.patchGatewayModelChatsConversationLabel,
+            data: payload,
+        },
+        pathArgs: { id },
+        authorized: true,
+    });
+    return response.dataReturned;
+};
+
+export const deleteConversationLabel = async (id: string): Promise<boolean> => {
+    const response = await serverCall({
+        serverCallProps: {
+            call: serverCalls.deleteGatewayModelChatsConversationLabel,
+        },
+        pathArgs: { id },
+        authorized: true,
+    });
+    return response.dataReturned;
+};
+
+export const getConversationLabels = async (conversationId: string): Promise<string[]> => {
+    const response = await serverCall({
+        serverCallProps: {
+            call: serverCalls.getGatewayModelChatsConversationLabelsById,
+        },
+        pathArgs: { id: conversationId },
+        authorized: true,
+    });
+    return Array.isArray(response.dataReturned) ? response.dataReturned : [];
+};
+
+export const setConversationLabels = async (
+    conversationId: string,
+    labelIds: string[],
+): Promise<string[]> => {
+    const response = await serverCall({
+        serverCallProps: {
+            call: serverCalls.putGatewayModelChatsConversationLabels,
+            data: { labelIds },
+        },
+        pathArgs: { id: conversationId },
+        authorized: true,
+    });
+    return Array.isArray(response.dataReturned) ? response.dataReturned : [];
 };

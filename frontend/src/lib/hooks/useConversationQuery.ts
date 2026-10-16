@@ -7,6 +7,8 @@ import {
 
 type ConversationQueryOptions = {
   enabled?: boolean;
+  /** Poll while a server-owned run (subagent) is writing this conversation. */
+  refetchInterval?: number | false;
 };
 
 export function useConversationQuery(
@@ -19,7 +21,8 @@ export function useConversationQuery(
     queryKey: chatQueryKeys.conversation(conversationId ?? ''),
     queryFn: () => getConversationById(conversationId!),
     enabled,
-    staleTime: CHAT_CONVERSATION_STALE_MS,
+    staleTime: options?.refetchInterval ? 0 : CHAT_CONVERSATION_STALE_MS,
+    refetchInterval: options?.refetchInterval,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     retry: 3,

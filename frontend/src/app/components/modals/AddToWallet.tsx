@@ -36,9 +36,10 @@ import { trackWalletTopUpStarted } from "@/lib/analytics/product-events";
 import { serverCall } from "@/servercall/init";
 import { serverCalls } from "@/servercall/store";
 import React, { useEffect, useRef, useState } from "react";
-import ReactDOM from "react-dom";
 import toast from "react-hot-toast";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
+import { clientVerboseDebug } from "@/lib/utils/client-verbose-debug";
+import { AppModal, AppModalBody, AppModalHeader } from "@/app/components/modals/AppModal";
 
 interface AddToWalletProps {
   paymentModalLoading: boolean;
@@ -444,6 +445,12 @@ const AddToWallet = ({
       return;
     }
 
+    const numCredits = Number(credits || 0);
+    if (!Number.isFinite(numCredits) || numCredits < minTopUpCredits) {
+      toast.error(`Minimum top-up is ${minTopUpCredits.toLocaleString()} credits.`);
+      return;
+    }
+
     submitInFlightRef.current = true;
     paymentSettledRef.current = false;
     setUpdating(true);
@@ -572,7 +579,7 @@ const AddToWallet = ({
 
       if (data.authorization_url) {
         if (reference) {
-          console.log(
+          clientVerboseDebug(
             `AddToWallet: Storing pending payment reference ${reference} and starting polling loop.`,
           );
           localStorage.setItem(
@@ -613,83 +620,26 @@ const AddToWallet = ({
     }
   }
 
-  // Escape key closes modal
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") closeModal();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [closeModal]);
-
-  // Modal content
-  const modalContent = (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300 ease-out animate-fadeIn"
-      style={{ background: "var(--modal-overlay)" }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) closeModal();
-      }}
+  return (
+    <AppModal
+      open
+      onClose={closeModal}
+      size="sm"
+      ariaLabelledBy="add-credits-title"
+      panelClassName="relative max-h-[95vh] max-w-[420px] animate-slideUp overflow-y-auto"
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="add-credits-title"
-        className="rounded-2xl shadow-2xl w-full max-w-[420px] max-[480px]:max-w-full max-h-[95vh] overflow-y-auto flex flex-col border relative animate-slideUp"
-        style={{
-          background: "var(--modal-bg)",
-          borderColor: "var(--modal-border)",
-          color: "var(--modal-fg)",
-        }}
-      >
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div
-          className="flex items-start justify-between gap-3 px-6 py-5 max-[480px]:px-5 max-[480px]:py-4 border-b"
-          style={{ borderColor: "var(--modal-border)" }}
-        >
-          <div>
-            <h2
-              id="add-credits-title"
-              className="text-[17px] font-bold tracking-tight"
-              style={{ color: "var(--modal-fg)" }}
-            >
-              {showSuccess ? t("wallet.paymentSuccessful", "Payment successful") : t("wallet.addCredits", "Add credits")}
-            </h2>
-            <p
-              className="text-[13px] mt-0.5"
-              style={{ color: "var(--modal-muted-fg)" }}
-            >
-              {showSuccess
-                ? t("wallet.balanceUpdated", "Your balance has been updated.")
-                : t("wallet.topUpSubtitle", "Top up your balance to keep using AIGenius.")}
-            </p>
-          </div>
-          <button
-            className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-current transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-            style={{ background: "var(--modal-bg-muted)" }}
-            onClick={closeModal}
-            aria-label="Close modal"
-            tabIndex={0}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="px-6 pt-5 pb-6 max-[480px]:px-5 flex flex-col gap-4">
+      <AppModalHeader
+        titleId="add-credits-title"
+        title={showSuccess ? t("wallet.paymentSuccessful", "Payment successful") : t("wallet.addCredits", "Add credits")}
+        subtitle={
+          showSuccess
+            ? t("wallet.balanceUpdated", "Your balance has been updated.")
+            : t("wallet.topUpSubtitle", "Top up your balance to keep using AIGenius.")
+        }
+        onClose={closeModal}
+        className="max-[480px]:px-5 max-[480px]:py-4"
+      />
+      <AppModalBody className="flex flex-col gap-4 max-[480px]:px-5">
           {/* Insufficient funds warning */}
           {showInsufficientFundsWarning && !showSuccess && (
             <div
@@ -1073,8 +1023,6 @@ const AddToWallet = ({
               ) : null}
             </form>
           )}
-        </div>
-      </div>
       <style jsx>{`
         .animate-fadeIn {
           animation: fadeIn 0.25s ease-out;
@@ -1101,13 +1049,9 @@ const AddToWallet = ({
           }
         }
       `}</style>
-    </div>
+    </AppModalBody>
+    </AppModal>
   );
-
-  if (typeof window !== "undefined" && typeof document !== "undefined") {
-    return (ReactDOM as any).createPortal(modalContent, document.body);
-  }
-  return null;
 };
 
 export default AddToWallet;

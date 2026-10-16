@@ -1,12 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FiStar, FiTrash2, FiMoreVertical, FiLoader, FiGlobe, FiDownload, FiChevronRight } from 'react-icons/fi';
-import type { TranscriptFormat } from '@/lib/utils/conversationTranscriptExport';
+import { FiStar, FiTrash2, FiMoreVertical, FiLoader, FiGlobe, FiFileText, FiTag } from 'react-icons/fi';
 
 const DROPDOWN_MENU_ROW =
     'sidebar-menu-row flex w-full items-center gap-2 px-3 py-1.5 text-left transition-colors';
-
-const DROPDOWN_SUBMENU_ROW =
-    'sidebar-menu-row flex w-full items-center px-3 py-1.5 pl-8 text-left transition-colors';
 
 interface ActionDropdownProps {
     isStarred: boolean;
@@ -17,8 +13,8 @@ interface ActionDropdownProps {
     onStarClick: (e: React.MouseEvent) => void;
     onDeleteClick: (e: React.MouseEvent) => void;
     onPublishClick?: (e: React.MouseEvent) => void;
-    onDownloadTranscript?: (format: TranscriptFormat) => void | Promise<void>;
-    isDownloadingTranscript?: boolean;
+    onOpenTranscript?: (e: React.MouseEvent) => void;
+    onAssignLabelsClick?: (e: React.MouseEvent) => void;
 }
 
 export const ActionDropdown: React.FC<ActionDropdownProps> = ({
@@ -30,18 +26,16 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
     onStarClick,
     onDeleteClick,
     onPublishClick,
-    onDownloadTranscript,
-    isDownloadingTranscript = false,
+    onOpenTranscript,
+    onAssignLabelsClick,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [showDownloadFormats, setShowDownloadFormats] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
-                setShowDownloadFormats(false);
             }
         };
 
@@ -53,34 +47,16 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
 
     const handleDropdownToggle = (e: React.MouseEvent) => {
         e.stopPropagation();
-        setIsOpen((open) => {
-            if (open) {
-                setShowDownloadFormats(false);
-            }
-            return !open;
-        });
+        setIsOpen((open) => !open);
     };
 
     const handleActionClick = (action: (e: React.MouseEvent) => void) => (e: React.MouseEvent) => {
         e.stopPropagation();
         action(e);
         setIsOpen(false);
-        setShowDownloadFormats(false);
     };
 
-    const handleDownloadToggle = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setShowDownloadFormats((open) => !open);
-    };
-
-    const handleDownloadFormatClick = (format: TranscriptFormat) => (e: React.MouseEvent) => {
-        e.stopPropagation();
-        onDownloadTranscript?.(format);
-        setIsOpen(false);
-        setShowDownloadFormats(false);
-    };
-
-    const isProcessing = isStarring || isDeleting || isPublishing || isDownloadingTranscript;
+    const isProcessing = isStarring || isDeleting || isPublishing;
 
     return (
         <div className="relative" ref={dropdownRef}>
@@ -103,7 +79,6 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
                     }}
                 >
                     <div className="py-1">
-                        {/* Star Action */}
                         <button
                             className={`${DROPDOWN_MENU_ROW} ${isStarred ? "text-amber-400" : ""}`}
                             style={isStarred ? undefined : { color: "var(--sidebar-menu-fg)" }}
@@ -125,7 +100,6 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
                             </span>
                         </button>
 
-                        {/* Publish Action */}
                         {onPublishClick && (
                             <button
                                 className={`${DROPDOWN_MENU_ROW} ${isPublished ? "text-emerald-400" : ""}`}
@@ -149,57 +123,30 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
                             </button>
                         )}
 
-                        {onDownloadTranscript && (
-                            <>
-                                <button
-                                    className={`${DROPDOWN_MENU_ROW} justify-between`}
-                                    style={{ color: 'var(--sidebar-menu-fg)' }}
-                                    onClick={handleDownloadToggle}
-                                    disabled={isDeleting || isStarring || isPublishing}
-                                >
-                                    <span className="flex items-center gap-2">
-                                        {isDownloadingTranscript ? (
-                                            <FiLoader size={13} className="animate-spin shrink-0" />
-                                        ) : (
-                                            <FiDownload size={13} className="shrink-0" />
-                                        )}
-                                        <span>{isDownloadingTranscript ? 'Preparing…' : 'Download transcript'}</span>
-                                    </span>
-                                    <FiChevronRight
-                                        size={12}
-                                        className={`shrink-0 transition-transform ${showDownloadFormats ? 'rotate-90' : ''}`}
-                                    />
-                                </button>
-
-                                {showDownloadFormats && (
-                                    <>
-                                        <button
-                                            className={DROPDOWN_SUBMENU_ROW}
-                                            style={{ color: 'var(--sidebar-menu-fg)' }}
-                                            onClick={handleDownloadFormatClick('txt')}
-                                        >
-                                            Plain text (.txt)
-                                        </button>
-                                        <button
-                                            className={DROPDOWN_SUBMENU_ROW}
-                                            style={{ color: 'var(--sidebar-menu-fg)' }}
-                                            onClick={handleDownloadFormatClick('md')}
-                                        >
-                                            Markdown (.md)
-                                        </button>
-                                        <button
-                                            className={DROPDOWN_SUBMENU_ROW}
-                                            style={{ color: 'var(--sidebar-menu-fg)' }}
-                                            onClick={handleDownloadFormatClick('json')}
-                                        >
-                                            JSON (.json)
-                                        </button>
-                                    </>
-                                )}
-                            </>
+                        {onOpenTranscript && (
+                            <button
+                                className={DROPDOWN_MENU_ROW}
+                                style={{ color: 'var(--sidebar-menu-fg)' }}
+                                onClick={handleActionClick(onOpenTranscript)}
+                                disabled={isDeleting || isStarring || isPublishing}
+                            >
+                                <FiFileText size={13} className="shrink-0" />
+                                <span>Transcript</span>
+                            </button>
                         )}
 
-                        {/* Delete Action */}
+                        {onAssignLabelsClick && (
+                            <button
+                                className={DROPDOWN_MENU_ROW}
+                                style={{ color: 'var(--sidebar-menu-fg)' }}
+                                onClick={handleActionClick(onAssignLabelsClick)}
+                                disabled={isDeleting || isStarring || isPublishing}
+                            >
+                                <FiTag size={13} className="shrink-0" />
+                                <span>Labels...</span>
+                            </button>
+                        )}
+
                         <button
                             className={`${DROPDOWN_MENU_ROW} text-red-500`}
                             onClick={handleActionClick(onDeleteClick)}

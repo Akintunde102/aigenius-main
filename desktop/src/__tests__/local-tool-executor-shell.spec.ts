@@ -152,4 +152,71 @@ describe('runShell long-running commands', () => {
       expect(out.error).toMatch(/timed out/i);
     }
   }, 12_000);
+
+  it('executes PowerShell syntax and cmdlets on Windows', async () => {
+    if (process.platform !== 'win32') {
+      return;
+    }
+    const out = await runShell(
+      mockSender,
+      undefined,
+      {
+        command: "Write-Output 'Hello from PowerShell'; Get-Item . | ForEach-Object { $_.Exists }",
+        cwd: process.cwd(),
+        timeout_ms: 10_000,
+      },
+    );
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.result).toContain('Hello from PowerShell');
+      expect(out.result).toContain('True');
+    }
+  });
+
+  it('manages background processes through list, logs, status, and kill actions', async () => {
+    // 1. Run and background a sleeper process
+    const runRes = await runShell(
+      mockSender,
+      undefined,
+      {
+        command: nodeEval("console.log('background-svc-ready'); setInterval(() => {}, 1000)"),
+        cwd: process.cwd(),
+        block_until_ms: 1000,
+        timeout_ms: 10_000,
+      },
+    );
+    expect(runRes.ok).toBe(true);
+    const pid = (runRes as { rawData?: { pid?: number } }).rawData?.pid;
+    expect(typeof pid).toBe('number');
+
+    try {
+      // 2. Action: list
+      const listRes = await runShell(mockSender, undefined, { action: 'list' });
+      expect(listRes.ok).toBe(true);
+      expect((listRes as { result: string }).result).toContain(String(pid));
+
+      // 3. Action: status
+      const statusRes = await runShell(mockSender, undefined, { action: 'status', pid });
+      expect(statusRes.ok).toBe(true);
+      expect((statusRes as { result: string }).result).toContain('Status**: running');
+
+      // 4. Action: logs
+      const logsRes = await runShell(mockSender, undefined, { action: 'logs', pid, tail_lines: 20 });
+      expect(logsRes.ok).toBe(true);
+
+      // 5. Action: kill
+      const killRes = await runShell(mockSender, undefined, { action: 'kill', pid });
+      expect(killRes.ok).toBe(true);
+      expect((killRes as { result: string }).result).toContain('Successfully terminated');
+
+      // Verify status is now killed
+      const postKillStatus = await runShell(mockSender, undefined, { action: 'status', pid });
+      expect(postKillStatus.ok).toBe(true);
+      expect((postKillStatus as { result: string }).result).toContain('Status**: killed');
+    } finally {
+      if (typeof pid === 'number') {
+        killChildProcessTree({ pid });
+      }
+    }
+  });
 });

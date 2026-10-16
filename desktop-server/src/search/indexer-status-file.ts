@@ -100,12 +100,13 @@ export function readIndexerStatusFile(userData: string): IndexerStatusFile | nul
 }
 
 export function computeCoreReady(counts: Record<IndexTier, number>): boolean {
-  return counts.project_core === 0;
+  return counts.fast_pocket === 0 && counts.project_core === 0;
 }
 
 export function computeEnrichmentReady(counts: Record<IndexTier, number>): boolean {
   return (
-    counts.project_core === 0
+    counts.fast_pocket === 0
+    && counts.project_core === 0
     && counts.project_docs === 0
     && counts.project_media === 0
     && counts.idle_project === 0

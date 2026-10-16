@@ -4,11 +4,18 @@ import ChatHistoryListItem from "./ChatHistoryListItem";
 import { ChatSession } from '@/app/components/model-interface/shared/types';
 import type { ChatMessage } from '@/app/components/model-interface/shared/types';
 import { ConfirmationModal } from './ChatHistoryListItem/components/ConfirmationModal';
+import { ConversationTranscriptModal } from './ChatHistoryListItem/components/ConversationTranscriptModal';
+import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
 import { ChatLoadingIndicator } from "./model-interface/features/chat/components";
-import { groupSidebarSessionsByProject, sortSidebarSessions } from "./ChatHistoryList/chatHistoryListGrouping";
+import { groupSidebarSessionsByProject, sortSidebarSessions, type ProjectSidebarBucket } from "./ChatHistoryList/chatHistoryListGrouping";
 import type { CodeProject } from "@/lib/calls/code-projects";
 import { loadComposerDraftMap } from "@/lib/utils/composerDraftStorage";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
+import { useQueryClient } from "@tanstack/react-query";
+import { chatQueryKeys } from "@/lib/hooks/chat-query-keys";
+import { useChatResourcesQuery } from "@/lib/hooks/useChatResourcesQuery";
+import { setConversationLabels } from "@/lib/calls/model-chat-conversation";
+import { AssignLabelsModal } from "./ChatHistoryListItem/components/AssignLabelsModal";
 import toast from "react-hot-toast";
 
 /** Max conversations shown per sidebar section before "Open more". */
@@ -251,6 +258,108 @@ function ProjectSectionHeader({
     );
 }
 
+function LabelFolderHeader({
+    name,
+    color,
+    count,
+    isCollapsed,
+    onToggleCollapse,
+}: {
+    name: string;
+    color: string;
+    count: number;
+    isCollapsed: boolean;
+    onToggleCollapse: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="flex w-full items-center gap-1.5 px-3 py-1 text-left text-xs transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+            style={{ color: "var(--sidebar-fg)" }}
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-2.5 w-2.5 shrink-0 transition-transform duration-150 ease-out"
+                style={{
+                    transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)",
+                    color: "var(--sidebar-muted-fg)",
+                }}
+                aria-hidden
+            >
+                <polyline points="9 18 15 12 9 6" />
+            </svg>
+            <span
+                className="inline-block h-2.5 w-2.5 rounded-full shrink-0 shadow-xs"
+                style={{ backgroundColor: color }}
+            />
+            <span className="truncate font-medium flex-1 text-[11.5px]" style={{ color: "var(--sidebar-fg)" }}>
+                {name}
+            </span>
+            <span
+                className="text-[10px] shrink-0 font-normal"
+                style={{ color: "var(--sidebar-muted-fg)", opacity: 0.7 }}
+            >
+                {count}
+            </span>
+        </button>
+    );
+}
+
+function OthersFolderHeader({
+    count,
+    isCollapsed,
+    onToggleCollapse,
+}: {
+    count: number;
+    isCollapsed: boolean;
+    onToggleCollapse: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="flex w-full items-center gap-1.5 px-3 py-1 text-left text-xs transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+            style={{ color: "var(--sidebar-muted-fg)" }}
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-2.5 w-2.5 shrink-0 transition-transform duration-150 ease-out"
+                style={{
+                    transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)",
+                }}
+                aria-hidden
+            >
+                <polyline points="9 18 15 12 9 6" />
+            </svg>
+            <span
+                className="inline-block h-2.5 w-2.5 rounded-full shrink-0 bg-slate-400 opacity-60"
+            />
+            <span className="truncate font-medium flex-1 text-[11.5px]">
+                Others
+            </span>
+            <span
+                className="text-[10px] shrink-0 font-normal"
+                style={{ opacity: 0.7 }}
+            >
+                {count}
+            </span>
+        </button>
+    );
+}
+
 interface Model {
     id: string;
     name: string;
@@ -277,6 +386,7 @@ interface ChatHistoryListProps {
     handleSessionSwitch?: (session: ChatSession) => void;
     isSessionActive?: (sessionId: string) => boolean;
     isSessionInFlight?: (sessionId: string) => boolean;
+    onStopSession?: (sessionId: string) => void;
     onSessionSelect?: () => void;
     isInitialLoading?: boolean;
     codeProjects?: CodeProject[];
@@ -284,6 +394,7 @@ interface ChatHistoryListProps {
     onNewChatForProject?: (projectId: string | null) => void;
     onSelectProject?: (projectId: string | null) => void;
     onProjectInfo?: (projectId: string) => void;
+    onGeneralInfo?: () => void;
     folderMissingByProjectId?: Record<string, boolean>;
     getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
     /** Returns true when a conversation has typed text in the composer that hasn't been sent. */
@@ -304,6 +415,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
     handleSessionSwitch,
     isSessionActive,
     isSessionInFlight,
+    onStopSession,
     onSessionSelect,
     isInitialLoading = false,
     codeProjects = [],
@@ -311,13 +423,21 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
     onNewChatForProject,
     onSelectProject,
     onProjectInfo,
+    onGeneralInfo,
     folderMissingByProjectId = {},
     getCachedMessages,
     hasDraftSession,
 }) => {
     const { t } = useLanguage();
+    const queryClient = useQueryClient();
+    const { data: chatResources } = useChatResourcesQuery();
+    const sidebarOrganization = chatResources?.userChatPreferences?.sidebarOrganization ?? 'flat';
+    const conversationLabels = useMemo(() => chatResources?.conversationLabels ?? [], [chatResources?.conversationLabels]);
+
     // Centralized Modal State
     const [actionSession, setActionSession] = useState<ChatSession | null>(null);
+    const [transcriptSession, setTranscriptSession] = useState<ChatSession | null>(null);
+    const [labelSession, setLabelSession] = useState<ChatSession | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showStarModal, setShowStarModal] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -326,6 +446,41 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
     const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
     const [sessionsExpandedByKey, setSessionsExpandedByKey] = useState<Record<string, boolean>>({});
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+    const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>(() => {
+        if (typeof window === 'undefined') return {};
+        const state: Record<string, boolean> = {};
+        try {
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key?.startsWith('aigenius:folder-collapsed:')) {
+                    state[key] = localStorage.getItem(key) === 'true';
+                }
+            }
+        } catch {
+            // ignore
+        }
+        return state;
+    });
+
+    const isFolderCollapsed = useCallback((bucketKey: string, folderKey: string) => {
+        const key = `aigenius:folder-collapsed:${bucketKey}:${folderKey}`;
+        if (collapsedFolders[key] !== undefined) return collapsedFolders[key];
+        return false; // Default open
+    }, [collapsedFolders]);
+
+    const toggleFolderCollapsed = useCallback((bucketKey: string, folderKey: string) => {
+        const key = `aigenius:folder-collapsed:${bucketKey}:${folderKey}`;
+        setCollapsedFolders((prev) => {
+            const nextVal = !(prev[key] ?? false);
+            try {
+                localStorage.setItem(key, String(nextVal));
+            } catch {
+                // ignore
+            }
+            return { ...prev, [key]: nextVal };
+        });
+    }, []);
 
     const toggleSectionCollapsed = useCallback((sectionKey: string) => {
         setCollapsedSections((prev) => ({
@@ -387,16 +542,18 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
     const pinnedSessionId = pinnedSession?.id ?? null;
 
     const projectBuckets = useMemo(
-        () => (codeProjects.length > 0
+        () => (codeProjects.length > 0 || sidebarOrganization === 'labels'
             ? groupSidebarSessionsByProject(sortedSessions, codeProjects, {
                 activeSessionId: activeSessionId,
                 activeProjectId,
+                sidebarOrganization,
+                conversationLabels,
             })
             : []),
-        [sortedSessions, codeProjects, activeSessionId, activeProjectId],
+        [sortedSessions, codeProjects, activeSessionId, activeProjectId, sidebarOrganization, conversationLabels],
     );
 
-    const useProjectLayout = codeProjects.length > 0;
+    const useProjectLayout = codeProjects.length > 0 || sidebarOrganization === 'labels';
 
     // Ref for the scrollable conversation list container
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -483,6 +640,22 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
         }
     }, [onPublish, getCachedMessages]);
 
+    const handleTranscriptRequest = useCallback((session: ChatSession) => {
+        setTranscriptSession(session);
+    }, []);
+
+    const transcriptResolveOptions = useMemo(
+        () => (getCachedMessages ? { getCachedMessages } : undefined),
+        [getCachedMessages],
+    );
+
+    const transcriptModalTitle = useMemo(() => {
+        if (!transcriptSession) return '';
+        const titled = transcriptSession.title?.trim();
+        if (titled) return titled;
+        return deriveChatSessionTitle(transcriptSession.messages?.[0]?.content);
+    }, [transcriptSession]);
+
     // Modal Confirmation Handlers
     const confirmDelete = async () => {
         if (!actionSession?.id) return;
@@ -520,7 +693,17 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
         }
     }, [hasDraftSession]);
 
-    const renderRow = (session: ChatSession, isActive: boolean) => {
+    const handleSaveLabels = async (sessionId: string, labelIds: string[]) => {
+        try {
+            await setConversationLabels(sessionId, labelIds);
+            await queryClient.invalidateQueries({ queryKey: chatQueryKeys.resources() });
+            toast.success("Labels updated");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to update labels");
+        }
+    };
+
+    const renderRow = (session: ChatSession, isActive: boolean, compositeKey?: string) => {
         const sessionId = session.id || "";
         const hasDraft = Boolean(
             hasDraftSession
@@ -529,16 +712,25 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
         );
         return (
             <ChatHistoryListItem
-                key={sessionId || `session-${session.title}`}
+                key={compositeKey || sessionId || `session-${session.title}`}
                 session={session}
                 isActive={isActive}
                 hasDraft={hasDraft}
                 isGenerating={rowIsGenerating(session)}
+                onStopGenerating={
+                    onStopSession && sessionId
+                        ? () => onStopSession(sessionId)
+                        : undefined
+                }
                 models={models}
                 onSelect={handleSelect}
                 onStarRequest={handleStarRequest}
                 onDeleteRequest={handleDeleteRequest}
                 onPublishRequest={handlePublishRequest}
+                onTranscriptRequest={handleTranscriptRequest}
+                onAssignLabelsRequest={(s) => setLabelSession(s)}
+                conversationLabels={conversationLabels}
+                sidebarOrganization={sidebarOrganization}
                 isStarred={session.starred || false}
                 isPublished={session.isPublished || false}
                 isMobile={isMobile}
@@ -547,9 +739,91 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                     (isProcessing && actionSession?.id === sessionId && showStarModal) ||
                     processingIds.has(sessionId)
                 }
-                getCachedMessages={getCachedMessages}
             />
         );
+    };
+
+    const renderProjectBucketContent = (bucket: ProjectSidebarBucket, sectionKey: string) => {
+        if (sidebarOrganization === 'labels') {
+            const folders = bucket.folders ?? [];
+            const others = bucket.others ?? [];
+            const hasContent = folders.length > 0 || others.length > 0;
+
+            if (!hasContent) {
+                return (
+                    <p
+                        className="px-6 pb-2 text-[11px] leading-snug"
+                        style={{ color: "var(--sidebar-muted-fg)" }}
+                    >
+                        {t('sidebar.noChatsYet', 'No chats yet — use + to start one.')}
+                    </p>
+                );
+            }
+
+            return (
+                <div className="space-y-1 pl-3 pb-1">
+                    {folders.map((folder) => {
+                        const hasActiveInFolder = folder.sessions.some((s) => s.id === activeSessionId);
+                        const collapsed = hasActiveInFolder
+                            ? false
+                            : isFolderCollapsed(sectionKey, folder.labelId);
+
+                        return (
+                            <div key={folder.labelId} className="space-y-0.5">
+                                <LabelFolderHeader
+                                    name={folder.name}
+                                    color={folder.color}
+                                    count={folder.sessions.length}
+                                    isCollapsed={collapsed}
+                                    onToggleCollapse={() => toggleFolderCollapsed(sectionKey, folder.labelId)}
+                                />
+                                {!collapsed ? (
+                                    <ul className="m-0 list-none space-y-0.5 pl-4 pr-2 pb-1">
+                                        {folder.sessions.map((session) =>
+                                            renderRow(
+                                                session,
+                                                rowIsActive(session),
+                                                `${sectionKey}-${folder.labelId}-${session.id}`
+                                            )
+                                        )}
+                                    </ul>
+                                ) : null}
+                            </div>
+                        );
+                    })}
+
+                    {others.length > 0 ? (() => {
+                        const hasActiveInOthers = others.some((s) => s.id === activeSessionId);
+                        const collapsed = hasActiveInOthers
+                            ? false
+                            : isFolderCollapsed(sectionKey, 'others');
+
+                        return (
+                            <div key="others" className="space-y-0.5">
+                                <OthersFolderHeader
+                                    count={others.length}
+                                    isCollapsed={collapsed}
+                                    onToggleCollapse={() => toggleFolderCollapsed(sectionKey, 'others')}
+                                />
+                                {!collapsed ? (
+                                    <ul className="m-0 list-none space-y-0.5 pl-4 pr-2 pb-1">
+                                        {others.map((session) =>
+                                            renderRow(
+                                                session,
+                                                rowIsActive(session),
+                                                `${sectionKey}-others-${session.id}`
+                                            )
+                                        )}
+                                    </ul>
+                                ) : null}
+                            </div>
+                        );
+                    })() : null}
+                </div>
+            );
+        }
+
+        return renderFlatSessionList(bucket.sessions, sectionKey, { truncate: true });
     };
 
     const renderFlatSessionList = (
@@ -658,7 +932,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                                         : hasInlineActive
                                             || (!activeSessionId && activeProjectId == null)
                                 }
-                                showInfo={bucket.projectId != null}
+                                showInfo={bucket.projectId != null || onGeneralInfo != null}
                                 onToggleCollapse={
                                     // Prevent collapsing when the active chat is inline
                                     hasInlineActive
@@ -666,9 +940,9 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                                         : () => toggleSectionCollapsed(sectionKey)
                                 }
                                 onInfo={
-                                    bucket.projectId && onProjectInfo
-                                        ? () => onProjectInfo(bucket.projectId as string)
-                                        : undefined
+                                    bucket.projectId
+                                        ? (onProjectInfo ? () => onProjectInfo(bucket.projectId as string) : undefined)
+                                        : onGeneralInfo
                                 }
                                 onNewChat={
                                     onNewChatForProject
@@ -682,11 +956,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                                 }
                             />
                             {!isCollapsed
-                                ? renderFlatSessionList(
-                                    bucket.sessions,
-                                    sectionKey,
-                                    { truncate: true },
-                                )
+                                ? renderProjectBucketContent(bucket, sectionKey)
                                 : null}
                         </div>
                         );
@@ -718,6 +988,22 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                 confirmButtonColor={actionSession?.starred ? "gray" : "yellow"}
                 onConfirm={confirmStar}
                 onCancel={() => setShowStarModal(false)}
+            />
+
+            <ConversationTranscriptModal
+                open={Boolean(transcriptSession)}
+                session={transcriptSession}
+                title={transcriptModalTitle}
+                onClose={() => setTranscriptSession(null)}
+                resolveOptions={transcriptResolveOptions}
+            />
+
+            <AssignLabelsModal
+                isOpen={Boolean(labelSession)}
+                session={labelSession}
+                catalog={conversationLabels}
+                onClose={() => setLabelSession(null)}
+                onSave={handleSaveLabels}
             />
         </div>
     );

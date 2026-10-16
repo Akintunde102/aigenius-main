@@ -76,7 +76,9 @@ describe('useModelInterfaceChatBoxSend image urls', () => {
             { type: 'image_url', image_url: { url: 'https://cdn.example/a.png' } },
             { type: 'file_url', file_url: { url: 'https://cdn.example/notes.pdf', name: 'notes.pdf' } },
         ]);
-        expect(handleSend).toHaveBeenCalledWith('', undefined, getChat()[0]);
+        expect(handleSend).toHaveBeenCalledWith('', undefined, getChat()[0], undefined, {
+            modelOverride: model,
+        });
     });
 
     it('restores the same upload urls when the send is rejected before dispatch', async () => {

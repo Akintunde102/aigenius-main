@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { FiX } from "react-icons/fi";
-import { FolderKanban, FolderOpen, MessageSquare, Pencil, Star } from "lucide-react";
+import { FolderOpen, MessageSquare, Pencil, Star } from "lucide-react";
+import { AppModal, AppModalBody, AppModalCloseButton } from "@/app/components/modals/AppModal";
 import type { CodeProject } from "@/lib/calls/code-projects";
 import type { ChatSession } from "@/app/components/model-interface/shared/types";
 import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
@@ -45,7 +44,6 @@ export function CodeProjectInfoModal({
   onDelete,
   onUpdate,
 }: CodeProjectInfoModalProps) {
-  const [mounted, setMounted] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -82,10 +80,6 @@ export function CodeProjectInfoModal({
   }, [chatHistory, project.id]);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
     if (!editingName) setNameDraft(project.name);
   }, [project.name, editingName]);
 
@@ -101,21 +95,14 @@ export function CodeProjectInfoModal({
     if (editingName) nameInputRef.current?.focus();
   }, [editingName]);
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      e.stopPropagation();
-      if (editingName) {
-        setNameDraft(project.name);
-        setEditingName(false);
-        return;
-      }
-      onClose();
-    };
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [onClose, editingName, project.name]);
+  const handleEscapeClose = useCallback(() => {
+    if (editingName) {
+      setNameDraft(project.name);
+      setEditingName(false);
+      return;
+    }
+    onClose();
+  }, [editingName, onClose, project.name]);
 
   const handleOpenFolder = useCallback(async () => {
     const openFile = window.aigeniusDesktop?.openFile;
@@ -188,50 +175,23 @@ export function CodeProjectInfoModal({
     }
   };
 
-  if (!mounted || typeof document === "undefined") {
-    return null;
-  }
-
-  const overlay = (
-    <div
-      role="presentation"
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-[2px]"
-      style={{ background: "var(--modal-overlay)" }}
-      onClick={onClose}
+  return (
+    <AppModal
+      open
+      onClose={handleEscapeClose}
+      size="sm"
+      ariaLabelledBy="code-project-info-title"
+      panelClassName="flex max-h-[min(90vh,34rem)] flex-col overflow-hidden"
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="code-project-info-title"
-        className="flex max-h-[min(90vh,34rem)] w-full max-w-md flex-col overflow-hidden rounded-xl border shadow-xl"
-        style={{
-          background: "var(--modal-bg)",
-          borderColor: "var(--modal-border)",
-          color: "var(--modal-fg)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex shrink-0 items-center justify-between gap-2.5 px-4 pt-3 pb-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <div
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
-              style={{
-                background: "color-mix(in srgb, var(--chat-accent) 12%, transparent)",
-                color: "var(--chat-accent)",
-              }}
-              aria-hidden
-            >
-              <FolderKanban className="h-3.5 w-3.5" />
-            </div>
-
-            <div className="relative flex h-7 min-w-0 flex-1 items-center">
+      <div className="app-modal-panel-header flex shrink-0 items-center justify-between gap-2.5 !py-2.5">
+        <div className="relative flex h-7 min-w-0 flex-1 items-center">
               <div
                 className={`flex h-full min-w-0 flex-1 items-center gap-1.5 ${editingName ? "invisible" : ""}`}
                 aria-hidden={editingName}
               >
                 <h2
                   id="code-project-info-title"
-                  className="truncate text-sm font-semibold leading-none"
+                  className="app-modal-title truncate !text-sm !font-semibold leading-none"
                 >
                   {project.name}
                 </h2>
@@ -277,20 +237,11 @@ export function CodeProjectInfoModal({
                 />
               ) : null}
             </div>
-          </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
-            style={{ color: "var(--modal-muted-fg)" }}
-            aria-label="Close"
-          >
-            <FiX className="h-4 w-4" />
-          </button>
-        </div>
+        <AppModalCloseButton onClose={onClose} />
+      </div>
 
-        <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 pb-2">
+      <AppModalBody className="min-h-0 flex-1 space-y-2.5 overflow-y-auto !pt-0">
           <div
             className="flex items-center gap-2 rounded-lg px-2.5 py-1.5"
             style={{ background: "var(--modal-bg-muted)" }}
@@ -351,9 +302,9 @@ export function CodeProjectInfoModal({
               aria-label="Project rules"
             />
           </div>
-        </div>
+      </AppModalBody>
 
-        {showConfirmDelete ? (
+      {showConfirmDelete ? (
           <div
             className="flex shrink-0 flex-col gap-2 border-t bg-red-500/5 px-4 py-2.5"
             style={{ borderColor: "var(--modal-border)" }}
@@ -431,10 +382,6 @@ export function CodeProjectInfoModal({
             </div>
           </>
         )}
-      </div>
-    </div>
+    </AppModal>
   );
-
-  const portalTarget = document.getElementById("modal-root") ?? document.body;
-  return createPortal(overlay, portalTarget);
 }

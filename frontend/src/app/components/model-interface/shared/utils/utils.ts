@@ -1,4 +1,8 @@
 import { Model } from "@/app/components/model-interface/shared/types";
+import {
+  getOllamaModelDisplayName,
+  isOllamaCatalogId,
+} from "@/app/components/model-interface/features/models/utils/ollamaModelDisplayName.utils";
 
 // Helper to get the lowest price for a model
 export function getModelLowestPrice(model: Model): number {
@@ -84,7 +88,10 @@ export function formatUSD(value: number): string {
 /** Format backend-provided platform credits for display. */
 export function formatNGN(credits: number, withoutSymbol = false): string {
   if (!isFinite(credits)) return withoutSymbol ? "0" : "0 credits";
-  const formatted = Math.round(credits).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  const formatted = credits.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
   return withoutSymbol ? formatted : `${formatted} credits`;
 }
 
@@ -106,72 +113,6 @@ export function hasWebSearchCapability(model: Model): boolean {
   return !isNaN(webSearchValue) && webSearchValue > 0;
 }
 
-
-// Filter models based on search and filters
-export function filterModels(
-  models: Model[],
-  search: string,
-  selectedModalities: string[],
-  selectedOutputModalities: string[],
-  showWebSearch: boolean,
-  showToolsOnly = false,
-  imageFilterOnly = false,
-): Model[] {
-  const searchLower = search.toLowerCase().trim();
-  const searchImpliesTools =
-    searchLower === "tools" || searchLower === "tooling";
-
-  return models.filter((m) => {
-    const textMatch =
-      m.name?.toLowerCase().includes(searchLower) ||
-      m.id?.toLowerCase().includes(searchLower) ||
-      m.architecture?.input_modalities
-        ?.filter((mod: string) => (mod || "").toLowerCase() !== "text")
-        .some((mod: string) => mod.toLowerCase().includes(searchLower)) ||
-      m.architecture?.output_modalities
-        ?.filter((mod: string) => (mod || "").toLowerCase() !== "text")
-        .some((mod: string) => mod.toLowerCase().includes(searchLower));
-    const matchesSearch =
-      textMatch || (searchImpliesTools && hasExtraToolingCapability(m));
-    const matchesImageOnly = !imageFilterOnly || hasFileOrImageInputSupport(m);
-    const matchesInputModality = imageFilterOnly
-      ? true
-      : selectedModalities.length === 0 ||
-      m.architecture?.input_modalities
-        ?.filter((mod: string) => (mod || "").toLowerCase() !== "text")
-        .some((mod: string) => selectedModalities.includes(mod));
-    const matchesOutputModality = imageFilterOnly
-      ? true
-      : selectedOutputModalities.length === 0 ||
-      m.architecture?.output_modalities
-        ?.filter((mod: string) => (mod || "").toLowerCase() !== "text")
-        .some((mod: string) => selectedOutputModalities.includes(mod));
-    const matchesWebSearch = !showWebSearch || hasWebSearchCapability(m);
-    const toolsFilter = showToolsOnly || searchImpliesTools;
-    const matchesTools = !toolsFilter || hasExtraToolingCapability(m);
-    return (
-      matchesSearch &&
-      matchesImageOnly &&
-      matchesInputModality &&
-      matchesOutputModality &&
-      matchesWebSearch &&
-      matchesTools
-    );
-  });
-}
-
-// Sort models by cost
-export function sortModelsByCost(
-  models: Model[],
-  orderByCost: "none" | "asc" | "desc",
-): Model[] {
-  if (orderByCost === "none") return models;
-  return [...models].sort((a, b) => {
-    const priceA = getModelAverageRequestPrice(a); // use average request price for better UX
-    const priceB = getModelAverageRequestPrice(b);
-    return orderByCost === "asc" ? priceA - priceB : priceB - priceA;
-  });
-}
 
 // Extract all modalities from models
 export function extractModalities(models: Model[]): {
@@ -195,8 +136,6 @@ export function extractModalities(models: Model[]): {
     outputModalities: Array.from(outputModalities),
   };
 }
-
-// --- New filter/sort (used when SHOW_LEGACY_FILTERS is false) ---
 
 /** Provider id from model id (e.g. "openai/gpt-5" -> "openai"). */
 export function getProvider(id: string): string {
@@ -474,6 +413,9 @@ export function getModelDisplayName(model: Model): string {
     return "Free";
   }
   const rawName = (model?.name ?? id) || "";
+  if (isOllamaCatalogId(id) || model?.provider === "ollama") {
+    return getOllamaModelDisplayName(model);
+  }
   return stripLabPrefixFromModelName(rawName, id);
 }
 

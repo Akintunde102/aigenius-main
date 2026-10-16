@@ -1,9 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { ModelSearchBar } from './ModelSearchBar';
-import { ModelFilters } from './ModelFilters';
 import { ModelListItem } from './ModelListItem';
-import { SHOW_LEGACY_FILTERS } from '@/app/components/model-interface/shared/constants';
-import { hasFileOrImageInputSupport } from '@/app/components/model-interface/shared/utils';
 import { getPinnedModels, setPinnedModels, getDeletedModels, setDeletedModels } from '@/lib/utils/modelInterfaceUtils';
 import { Model } from '@/app/components/model-interface/shared/types';
 import { useLanguage } from '@/lib/providers/LanguageProvider';
@@ -19,8 +16,6 @@ interface ModelListSidebarOptimizedProps {
     showModelDetails?: boolean;
     setShowModelList?: (v: boolean) => void;
     setShowModelDetails?: (v: boolean) => void;
-    orderByCost?: 'none' | 'asc' | 'desc';
-    setOrderByCost?: (order: 'none' | 'asc' | 'desc') => void;
     onShowModelDetails?: (model: Model) => void;
     hasWebSearchCapability?: (model: Model) => boolean;
     showNaira?: boolean;
@@ -34,48 +29,19 @@ export const ModelListSidebarOptimized: React.FC<ModelListSidebarOptimizedProps>
     setSearch,
     loading = false,
     showModelList = true,
-    showModelDetails = false,
-    setShowModelList,
-    setShowModelDetails,
-    orderByCost = 'none',
-    setOrderByCost,
     onShowModelDetails,
     hasWebSearchCapability,
     showNaira = false
 }) => {
     const { t } = useLanguage();
-    const [selectedModalities, setSelectedModalities] = useState<string[]>([]);
-    const [selectedOutputModalities, setSelectedOutputModalities] = useState<string[]>([]);
     const [pinnedModels, setPinnedModelsState] = useState<string[]>([]);
     const [deletedModels, setDeletedModelsState] = useState<string[]>([]);
-    const [showWebSearch, setShowWebSearch] = useState(false);
-    const [imageFilterOnly, setImageFilterOnly] = useState(false);
 
-    // Collect all unique input modalities from models
-    const allModalities = useMemo(() => {
-        const set = new Set<string>();
-        models.forEach(m => m.architecture?.input_modalities?.forEach((mod: string) => {
-            if ((mod || '').toLowerCase() !== 'text') set.add(mod);
-        }));
-        return Array.from(set);
-    }, [models]);
-
-    // Collect all unique output modalities from models
-    const allOutputModalities = useMemo(() => {
-        const set = new Set<string>();
-        models.forEach(m => m.architecture?.output_modalities?.forEach((mod: string) => {
-            if ((mod || '').toLowerCase() !== 'text') set.add(mod);
-        }));
-        return Array.from(set);
-    }, [models]);
-
-    // Load from localStorage on mount
     useEffect(() => {
         setPinnedModelsState(getPinnedModels());
         setDeletedModelsState(getDeletedModels());
     }, []);
 
-    // Save to localStorage when changed
     useEffect(() => {
         setPinnedModels(pinnedModels);
     }, [pinnedModels]);
@@ -84,48 +50,26 @@ export const ModelListSidebarOptimized: React.FC<ModelListSidebarOptimizedProps>
         setDeletedModels(deletedModels);
     }, [deletedModels]);
 
-    // Filter models by search and selected modalities (excluding deleted models)
     const filteredModels = useMemo(() => {
+        const searchLower = search.toLowerCase();
         return models.filter(m => {
-            // First, exclude deleted models from the main list
             if (deletedModels.includes(m.id)) return false;
 
-            const matchesSearch =
-                m.name?.toLowerCase().includes(search.toLowerCase()) ||
-                m.id?.toLowerCase().includes(search.toLowerCase()) ||
-                m.description?.toLowerCase().includes(search.toLowerCase()) ||
-                (m.architecture?.input_modalities?.filter((mod: string) => (mod || '').toLowerCase() !== 'text').some((mod: string) => mod.toLowerCase().includes(search.toLowerCase()))) ||
-                (m.architecture?.output_modalities?.filter((mod: string) => (mod || '').toLowerCase() !== 'text').some((mod: string) => mod.toLowerCase().includes(search.toLowerCase())));
-
-            const matchesInputModality = selectedModalities.length === 0 ||
-                (m.architecture?.input_modalities?.filter((mod: string) => (mod || '').toLowerCase() !== 'text').some((mod: string) => selectedModalities.includes(mod)));
-
-            const matchesOutputModality = selectedOutputModalities.length === 0 ||
-                (m.architecture?.output_modalities?.filter((mod: string) => (mod || '').toLowerCase() !== 'text').some((mod: string) => selectedOutputModalities.includes(mod)));
-
-            const matchesWebSearch = !showWebSearch || (hasWebSearchCapability && hasWebSearchCapability(m));
-            const matchesImageOnly = !imageFilterOnly || hasFileOrImageInputSupport(m);
-
-            return matchesSearch && matchesInputModality && matchesOutputModality && matchesWebSearch && matchesImageOnly;
+            return (
+                m.name?.toLowerCase().includes(searchLower) ||
+                m.id?.toLowerCase().includes(searchLower) ||
+                m.description?.toLowerCase().includes(searchLower) ||
+                (m.architecture?.input_modalities?.filter((mod: string) => (mod || '').toLowerCase() !== 'text').some((mod: string) => mod.toLowerCase().includes(searchLower))) ||
+                (m.architecture?.output_modalities?.filter((mod: string) => (mod || '').toLowerCase() !== 'text').some((mod: string) => mod.toLowerCase().includes(searchLower)))
+            );
         });
-    }, [models, search, selectedModalities, selectedOutputModalities, showWebSearch, deletedModels, hasWebSearchCapability, imageFilterOnly]);
+    }, [models, search, deletedModels]);
 
-    // Tag click handlers
-    const toggleModality = (mod: string) => {
-        setSelectedModalities(prev => prev.includes(mod) ? prev.filter(m => m !== mod) : [...prev, mod]);
-    };
-
-    const toggleOutputModality = (mod: string) => {
-        setSelectedOutputModalities(prev => prev.includes(mod) ? prev.filter(m => m !== mod) : [...prev, mod]);
-    };
-
-    // Pin/unpin model
     const togglePinModel = (id: string) => {
         const updated = pinnedModels.includes(id) ? pinnedModels.filter(m => m !== id) : [...pinnedModels, id];
         setPinnedModelsState(updated);
     };
 
-    // Delete/restore model
     const toggleDeleteModel = (id: string) => {
         const updated = deletedModels.includes(id) ? deletedModels.filter(m => m !== id) : [...deletedModels, id];
         setDeletedModelsState(updated);
@@ -141,26 +85,8 @@ export const ModelListSidebarOptimized: React.FC<ModelListSidebarOptimizedProps>
                 <ModelSearchBar
                     search={search}
                     setSearch={setSearch}
-                    isMobile={false} // Sidebar is not shown on mobile, so always false
+                    isMobile={false}
                 />
-
-                {SHOW_LEGACY_FILTERS && (
-                    <ModelFilters
-                        allModalities={allModalities}
-                        selectedModalities={selectedModalities}
-                        toggleModality={toggleModality}
-                        allOutputModalities={allOutputModalities}
-                        selectedOutputModalities={selectedOutputModalities}
-                        toggleOutputModality={toggleOutputModality}
-                        showWebSearch={showWebSearch}
-                        setShowWebSearch={setShowWebSearch}
-                        orderByCost={orderByCost}
-                        setOrderByCost={setOrderByCost || (() => { })}
-                        isMobile={false}
-                        imageFilterOnly={imageFilterOnly}
-                        setImageFilterOnly={setImageFilterOnly}
-                    />
-                )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -195,4 +121,4 @@ export const ModelListSidebarOptimized: React.FC<ModelListSidebarOptimizedProps>
     );
 });
 
-ModelListSidebarOptimized.displayName = 'ModelListSidebarOptimized'; 
+ModelListSidebarOptimized.displayName = 'ModelListSidebarOptimized';

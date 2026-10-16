@@ -3,10 +3,15 @@ import {
     buildConversationTranscriptContent,
     buildConversationTranscriptFilename,
     buildConversationTranscriptMessages,
+    copyConversationTranscript,
     downloadConversationTranscript,
     extractTranscriptMessage,
     resolveConversationTranscriptMessages,
 } from '../conversationTranscriptExport';
+
+jest.mock('copy-to-clipboard', () => jest.fn());
+
+import copy from 'copy-to-clipboard';
 
 jest.mock('@/lib/calls/model-chat-conversation', () => ({
     getConversationById: jest.fn(),
@@ -15,12 +20,14 @@ jest.mock('@/lib/calls/model-chat-conversation', () => ({
 import { getConversationById } from '@/lib/calls/model-chat-conversation';
 
 const mockedGetConversationById = getConversationById as jest.MockedFunction<typeof getConversationById>;
+const mockedCopy = copy as jest.MockedFunction<typeof copy>;
 
 describe('conversationTranscriptExport', () => {
     const exportedAt = new Date('2026-07-26T08:30:00.000Z');
 
     beforeEach(() => {
         mockedGetConversationById.mockReset();
+        mockedCopy.mockReset();
     });
 
     it('extracts user and assistant text while skipping system messages', () => {
@@ -113,6 +120,24 @@ describe('conversationTranscriptExport', () => {
         );
     });
 
+    it('copies formatted transcript text to the clipboard', async () => {
+        mockedCopy.mockReturnValue(true);
+
+        const session: ChatSession = {
+            id: 'session-1',
+            title: 'Export me',
+            modelId: 'model-1',
+            messages: [{ role: 'user', content: 'Hi', timestamp: 1 }],
+        };
+
+        const copied = await copyConversationTranscript(session, 'Export me', 'txt', exportedAt);
+
+        expect(copied).toBe(true);
+        expect(mockedCopy).toHaveBeenCalledWith(
+            expect.stringContaining('User:\nHi'),
+        );
+    });
+
     it('downloads a blob-backed file in the browser', async () => {
         const click = jest.fn();
         const appendChild = jest.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => node);
@@ -199,4 +224,39 @@ describe('conversationTranscriptExport', () => {
         expect(mockedGetConversationById).not.toHaveBeenCalled();
         expect(messages).toEqual(cachedMessages);
     });
+
+    it('falls back to cached messages if server lookup fails', async () => {
+        mockedGetConversationById.mockRejectedValue(new Error('Server offline'));
+
+        const cachedMessages: ChatMessage[] = [
+            { role: 'user', content: '', events: [{ type: 'tool', tool: 'cmd' }] as any, timestamp: 1 },
+        ];
+
+        const session: ChatSession = {
+            id: 'session-1',
+            title: 'Draft chat',
+            modelId: 'model-1',
+            messages: [],
+        };
+
+        const messages = await resolveConversationTranscriptMessages(session, {
+            getCachedMessages: (sessionId) => (sessionId === 'session-1' ? cachedMessages : undefined),
+        });
+
+        expect(messages).toEqual(cachedMessages);
+    });
+
+    it('re-throws server error if no cached or session messages are available', async () => {
+        mockedGetConversationById.mockRejectedValue(new Error('Server 500'));
+
+        const session: ChatSession = {
+            id: 'session-missing',
+            title: 'Missing',
+            modelId: 'model-1',
+            messages: [],
+        };
+
+        await expect(resolveConversationTranscriptMessages(session)).rejects.toThrow('Server 500');
+    });
 });
+

@@ -65,6 +65,7 @@ export const en: TranslationDictionary = {
     autoApproveWarningText:
       'The assistant will be able to run tools without asking — including commands on your device, file changes, emails, and other actions that alter data. Only turn this on if you trust the current session.',
     turnOnAutoApprove: 'Turn on auto-approve',
+    meMenuSuffix: 'Me',
   },
   composer: {
     placeholder: 'Message AIGenius or type / for commands...',
@@ -89,6 +90,7 @@ export const en: TranslationDictionary = {
   },
   chat: {
     emptyState: 'Start a conversation with the model…',
+    promptButtonsAria: 'Suggested prompts',
     calculating: 'calculating...',
     calls: 'calls',
     delete: 'Delete',
@@ -239,6 +241,10 @@ export const en: TranslationDictionary = {
     burnWarning: 'Burns ~{percent}% of credits',
     noModelsShort: 'No models found',
     noModelsShortHint: 'Try adjusting your search or filters',
+    listFailed: 'Could not show the model list.',
+    moreInfo: 'More info',
+    pinModel: 'Pin model',
+    unpinModel: 'Unpin model',
   },
   modelDetails: {
     closeDetails: 'Close details',
@@ -399,6 +405,14 @@ export const en: TranslationDictionary = {
       'Only works with AI models that support tools (e.g. GPT-4, Claude Opus, Gemini Pro)',
     integrationsLinkedInToolsHint:
       'Only works with AI models that support tools. Requires LinkedIn app with Sign In with LinkedIn (OpenID Connect).',
+    meTitle: 'Me',
+    meSubtitle: 'Your account at a glance',
+    meMemberSince: 'Member since',
+    meCredits: 'Credit balance',
+    meVerified: 'Email verified',
+    meNotVerified: 'Email not verified',
+    meUserId: 'User ID',
+    meLoadError: 'Could not load your account details.',
   },
   wallet: {
     addCredits: 'Add credits',
@@ -640,5 +654,28 @@ export const en: TranslationDictionary = {
     newWindowTitle: 'New window',
     emailSubjectGeneral: 'AIGenius Desktop Support Request',
     emailSubjectBug: 'AIGenius Desktop Issue Report',
+  },
+  desktopAuth: {
+    welcome: 'Welcome',
+    welcomeSubtitle: 'Sign in to continue in your desktop workspace.',
+    signInDesktopSubtitle: 'Sign in to your desktop workspace',
+    signInAs: 'Sign in as {name}',
+    completeInBrowser: 'Complete sign-in in your browser',
+    returnHereNotice: 'Return here when you are done and we will finish automatically.',
+    signingYouIn: 'Signing you in…',
+    settingUpWorkspace: 'Setting up your workspace…',
+    cancelAndStartOver: 'Cancel and start over',
+    fullDesktopSignIn: 'Full desktop sign-in',
+    webSignIn: 'Web sign-in',
+  },
+  desktopSearchIndex: {
+    title: 'Local search index',
+    subtitle: 'Inspect how the desktop indexer fills file_index: folders, excerpts, previews, OS actions. Designed for auditing coverage and OCR/PDF ingestion.',
+    backToChat: 'Back to chat',
+    noMatchingRecords: 'No matching records.',
+    actions: 'Actions',
+    dateModified: 'Date modified',
+    detail: 'Detail',
+    preview: 'Preview',
   },
 };

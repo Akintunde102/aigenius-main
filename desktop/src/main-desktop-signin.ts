@@ -104,6 +104,11 @@ export function runDesktopBrowserSignIn(
     const server = http.createServer((req, res) => {
       void (async () => {
         const u = new URL(req.url || '', `http://${req.headers.host}`);
+        if (u.pathname === '/favicon.ico') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
         const oauthCode = u.searchParams.get('code');
 
         const finishSuccess = (accessToken: string) => {

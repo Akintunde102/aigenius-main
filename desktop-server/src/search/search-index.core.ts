@@ -55,6 +55,18 @@ import { startWalMaintenance, stopWalMaintenance } from './indexer/wal-maintenan
 import { startEmbedIdleScheduler, stopEmbedIdleScheduler } from './indexer/embed-idle-scheduler.js';
 import { startGraphIdleScheduler, stopGraphIdleScheduler } from './indexer/graph-idle-scheduler.js';
 import { warmSearchCache } from './warm-search-cache.js';
+import {
+  collectFastIndexPocketPaths,
+  getRememberedPocketPaths,
+  rememberPocketPaths,
+} from './indexer/fast-index-pocket.js';
+import {
+  bootstrapDeviceFastIndexPocket,
+  getDeviceFastIndexDirectories,
+  isUnderDeviceFastIndexDirectory,
+  runInstallDevicePocketPlanner,
+} from './indexer/device-fast-index-pocket.js';
+import { isDeviceFastIndexEnabled } from './indexer/device-fast-index-enabled.js';
 
 type TieredQueue = ReturnType<typeof createTieredIndexQueue>;
 
@@ -77,6 +89,7 @@ let _skipImageSearch = false;
 let _userDataPath = '';
 let _homedirDbPath = '';
 let _stopHomedirWatcher: (() => Promise<void>) | null = null;
+let _stopDevicePocketWatcher: (() => Promise<void>) | null = null;
 let _infraReady = false;
 let _fileBatcher: FileWriteBatcher | null = null;
 let _lastIndexerError: string | null = null;
@@ -397,7 +410,10 @@ function scheduleStructurePasses(): void {
 
   const counts = _queue.pendingCountByTier();
   const activeBusy =
-    counts.project_core > 0 || counts.project_docs > 0 || counts.project_media > 0;
+    counts.fast_pocket > 0
+    || counts.project_core > 0
+    || counts.project_docs > 0
+    || counts.project_media > 0;
   if (activeBusy) return;
 
   for (const slot of _projectSlots.values()) {
@@ -430,6 +446,34 @@ async function enqueueStructurePass(rootPath: string, dbPath: string, force: boo
   return files.length;
 }
 
+function stopDeviceFastPocketWatcher(): void {
+  if (!_stopDevicePocketWatcher) return;
+  void _stopDevicePocketWatcher();
+  _stopDevicePocketWatcher = null;
+}
+
+function ensureDeviceFastPocketWatcher(): void {
+  if (!isDeviceFastIndexEnabled() || !_homedirDbPath) return;
+  stopDeviceFastPocketWatcher();
+  const dirs = getDeviceFastIndexDirectories();
+  if (dirs.length === 0) return;
+
+  const scope = jobScope(_homedirDbPath, null);
+  const db = getDb(_homedirDbPath);
+  _stopDevicePocketWatcher = startWatcher(dirs, (event) => {
+    if (shouldSkipSearchIndexing(event.path)) return;
+    for (const slot of _projectSlots.values()) {
+      if (isPathUnderRoot(event.path, slot.rootPath)) return;
+    }
+    if (event.type === 'unlink') {
+      deleteFile(db, event.path);
+      publishIndexerStatus(_homedirDbPath, null);
+      return;
+    }
+    enqueueScopedEvent(event, scope, 'fast_pocket');
+  });
+}
+
 function ensureHomedirWatcher(): void {
   if (_stopHomedirWatcher || process.env.AIGENIUS_HOMEDIR_INDEX === '0') return;
   const homedir = os.homedir();
@@ -445,8 +489,41 @@ function ensureHomedirWatcher(): void {
       publishIndexerStatus(_homedirDbPath, null);
       return;
     }
-    enqueueScopedEvent(event, scope, 'background');
+    const tier = isUnderDeviceFastIndexDirectory(event.path) ? 'fast_pocket' : 'background';
+    enqueueScopedEvent(event, scope, tier);
   });
+}
+
+function enqueueDeviceFastPocketFiles(filePaths: string[], force = false): number {
+  if (!_queue || !_homedirDbPath || filePaths.length === 0) return 0;
+  const scope = jobScope(_homedirDbPath, null);
+  let queued = 0;
+  for (const filePath of filePaths) {
+    if (shouldSkipSearchIndexing(filePath)) continue;
+    let underProject = false;
+    for (const slot of _projectSlots.values()) {
+      if (isPathUnderRoot(filePath, slot.rootPath)) {
+        underProject = true;
+        break;
+      }
+    }
+    if (underProject) continue;
+    enqueueScopedEvent(
+      {
+        type: 'change',
+        path: filePath,
+        force,
+        phase: 'text',
+      },
+      scope,
+      'fast_pocket',
+    );
+    queued += 1;
+  }
+  if (queued > 0) {
+    publishIndexerStatus(_homedirDbPath, null);
+  }
+  return queued;
 }
 
 async function ensureIndexerInfrastructure(config: {
@@ -488,6 +565,14 @@ async function ensureIndexerInfrastructure(config: {
   _queue = queue;
 
   ensureHomedirWatcher();
+
+  if (_userDataPath) {
+    void bootstrapDeviceFastIndexPocket(_userDataPath, (paths) =>
+      enqueueDeviceFastPocketFiles(paths, false),
+    ).then(() => {
+      ensureDeviceFastPocketWatcher();
+    });
+  }
 
   startStaleEdgeSweepWorker(
     () => getDb(_activeDbPath ?? _homedirDbPath),
@@ -640,7 +725,9 @@ export async function registerProjectSlot(config: {
     slot.initialScanDone = true;
     slot.needsStructurePass = true;
     slot.structurePassScheduled = false;
-    void enqueueProjectIndex(rootPath, dbPath, false);
+    const pocketPaths = collectFastIndexPocketPaths(rootPath, getRememberedPocketPaths(dbPath));
+    enqueueFastIndexPocket(rootPath, dbPath, pocketPaths, false);
+    void enqueueProjectIndex(rootPath, dbPath, false, new Set(pocketPaths));
   }
 
   return slot;
@@ -735,6 +822,7 @@ export async function closeSearchModule(): Promise<void> {
     await _stopHomedirWatcher();
     _stopHomedirWatcher = null;
   }
+  stopDeviceFastPocketWatcher();
 
   if (_pool) {
     await _pool.terminate();
@@ -808,6 +896,7 @@ export async function enqueueProjectIndex(
   rootPath: string,
   dbPath: string,
   force = false,
+  skipPaths?: Set<string>,
 ): Promise<number> {
   const files = listProjectFiles(rootPath);
   const scope = jobScope(dbPath, rootPath);
@@ -818,6 +907,8 @@ export async function enqueueProjectIndex(
 
   const pending = () => _queue?.pendingCount() ?? 0;
   await enqueueWithBackpressure(files, pending, (filePath) => {
+    const norm = path.normalize(filePath);
+    if (skipPaths?.has(norm)) return;
     const tier = tierForFilePath(filePath, rootPath);
     enqueueScopedEvent(
       {
@@ -833,14 +924,106 @@ export async function enqueueProjectIndex(
   return files.length;
 }
 
-export function enqueueReindexPaths(paths: string[], force = false): number {
+/** High-priority paths (entry points, git dirty, hints) — drains before bulk project_core scan. */
+export function enqueueFastIndexPocket(
+  rootPath: string,
+  dbPath: string,
+  filePaths?: string[],
+  force = false,
+): number {
+  if (!_queue) return 0;
+  const resolvedPaths =
+    filePaths ?? collectFastIndexPocketPaths(rootPath, getRememberedPocketPaths(dbPath));
+  if (resolvedPaths.length === 0) return 0;
+  rememberPocketPaths(dbPath, resolvedPaths);
+  const scope = jobScope(dbPath, rootPath);
+  let queued = 0;
+  for (const filePath of resolvedPaths) {
+    if (!isPathUnderRoot(filePath, rootPath)) continue;
+    enqueueScopedEvent(
+      {
+        type: 'change',
+        path: filePath,
+        force,
+        phase: 'text',
+        pipelineStructure: true,
+      },
+      scope,
+      'fast_pocket',
+    );
+    queued += 1;
+  }
+  publishIndexerStatus(dbPath, rootPath);
+  return queued;
+}
+
+export function enqueuePocketIndexHints(paths: string[], force = false): number {
+  let queued = 0;
+  const bySlot = new Map<string, { slot: ProjectSlot; paths: string[] }>();
+  for (const filePath of paths) {
+    const slot = findSlotForFilePath(filePath);
+    if (!slot) continue;
+    const hit = bySlot.get(slot.dbPath);
+    if (hit) {
+      hit.paths.push(filePath);
+    } else {
+      bySlot.set(slot.dbPath, { slot, paths: [filePath] });
+    }
+  }
+  for (const { slot, paths: grouped } of bySlot.values()) {
+    const pocketPaths = collectFastIndexPocketPaths(slot.rootPath, grouped);
+    queued += enqueueFastIndexPocket(slot.rootPath, slot.dbPath, pocketPaths, force);
+  }
+  return queued;
+}
+
+export async function runInstallDevicePocketPlannerForApp(
+  appVersion?: string,
+): Promise<{ ran: boolean; completed: boolean; error: string | null }> {
+  if (!_userDataPath) {
+    return { ran: false, completed: false, error: 'user_data_path_missing' };
+  }
+  await ensureIndexerInfrastructure({
+    modelsDir: _modelsDir || process.env.AIGENIUS_MODELS_DIR || '',
+    skipImageSearch: _skipImageSearch,
+    userDataPath: _userDataPath,
+  });
+  const result = await runInstallDevicePocketPlanner(
+    _userDataPath,
+    (paths) => enqueueDeviceFastPocketFiles(paths, false),
+    appVersion,
+  );
+  ensureDeviceFastPocketWatcher();
+  return result;
+}
+
+export function enqueueReindexPaths(
+  paths: string[],
+  force = false,
+  options?: { priority?: 'fast_pocket' },
+): number {
   let queued = 0;
   for (const filePath of paths) {
     const slot = findSlotForFilePath(filePath);
     if (!slot) continue;
     const scope = jobScope(slot.dbPath, slot.rootPath);
-    const tier = tierForFilePath(filePath, slot.rootPath);
-    enqueueScopedEvent({ type: 'change', path: filePath, force }, scope, tier);
+    if (options?.priority === 'fast_pocket') {
+      rememberPocketPaths(slot.dbPath, [filePath]);
+      enqueueScopedEvent(
+        {
+          type: 'change',
+          path: filePath,
+          force,
+          phase: 'text',
+          pipelineStructure: true,
+        },
+        scope,
+        'fast_pocket',
+      );
+    } else {
+      const tier = tierForFilePath(filePath, slot.rootPath);
+      enqueueScopedEvent({ type: 'change', path: filePath, force }, scope, tier);
+    }
     queued += 1;
   }
   return queued;

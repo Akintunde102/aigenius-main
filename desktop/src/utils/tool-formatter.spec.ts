@@ -79,7 +79,7 @@ describe('tool-formatter', () => {
       const data = { path: '/tmp/test.txt', bytes_read: 10, content: 'trunc', truncated: true, mode: 'bytes' };
       const { result } = formatReadFile(data);
 
-      expect(result).toContain('- **Truncated**: Yes (byte limit');
+      expect(result).toContain('- **Truncated**: Yes (more bytes available');
     });
 
     it('surfaces explicit truncationNotice for LLM continuation', () => {

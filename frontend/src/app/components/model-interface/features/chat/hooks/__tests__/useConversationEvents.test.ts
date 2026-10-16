@@ -13,6 +13,7 @@ jest.mock('@/lib/utils/modelChatConversationUtils', () => ({
     upsertChatHistorySession: jest.fn((prev: any[], session: any) => [session, ...prev.filter((s: any) => s.id !== session.id)]),
 }));
 jest.mock('@/lib/utils/messageContentUtils', () => ({
+    ...jest.requireActual('@/lib/utils/messageContentUtils'),
     normalizeSessionMessages: (x: any) => x,
 }));
 
@@ -221,5 +222,86 @@ describe('runConversationEventsSubscription (conversation events SSE)', () => {
         await runConversationEventsSubscription(url, getToken, { current: jest.fn() }, new AbortController().signal);
 
         expect(addOrMergeSessionToLocalHistory).not.toHaveBeenCalled();
+    });
+
+    it('passes normalized session to onSession callback when event is received', async () => {
+        const setChatHistory = jest.fn();
+        const onSession = jest.fn();
+        const sseChunk = 'event: conversation_created\ndata: {"conversationId":"c-3","title":"Stream Chat","messages":[{"id":"m1","role":"user","content":"hello"}]}\n\n';
+
+        const body = {
+            getReader: () => ({
+                read: jest
+                    .fn()
+                    .mockResolvedValueOnce({ done: false, value: Buffer.from(sseChunk, 'utf8') })
+                    .mockResolvedValueOnce({ done: true, value: undefined }),
+            }),
+        };
+
+        mockFetch.mockResolvedValue({ ok: true, body } as unknown as Response);
+
+        await runConversationEventsSubscription(url, getToken, { current: setChatHistory }, new AbortController().signal, onSession);
+
+        expect(onSession).toHaveBeenCalledTimes(1);
+        expect(onSession).toHaveBeenCalledWith(
+            expect.objectContaining({
+                id: 'c-3',
+                title: 'Stream Chat',
+                messages: [{ id: 'm1', role: 'user', content: 'hello' }],
+            }),
+        );
+    });
+
+    it('rejects stale bootstrap event when local transcript already has completed assistant response', async () => {
+        const { shouldAcceptRemoteConversationSync } = jest.requireActual('@/lib/utils/conversationScrollMemory');
+        const setChatHistory = jest.fn();
+        let capturedSession: any = null;
+        const onSession = (session: any) => {
+            capturedSession = session;
+        };
+
+        // Bootstrap event with only the initial user message (simulates server bootstrap job)
+        const sseChunk = 'event: conversation_created\ndata: {"conversationId":"c-mobile","title":"Mobile Test","messages":[{"id":"u1","role":"user","content":"hi"}]}\n\n';
+
+        const body = {
+            getReader: () => ({
+                read: jest
+                    .fn()
+                    .mockResolvedValueOnce({ done: false, value: Buffer.from(sseChunk, 'utf8') })
+                    .mockResolvedValueOnce({ done: true, value: undefined }),
+            }),
+        };
+
+        mockFetch.mockResolvedValue({ ok: true, body } as unknown as Response);
+
+        await runConversationEventsSubscription(url, getToken, { current: setChatHistory }, new AbortController().signal, onSession);
+
+        expect(capturedSession).not.toBeNull();
+        expect(capturedSession.messages).toHaveLength(1);
+
+        // Local state when streaming just completed: has user message + streamed assistant message
+        const localCompletedMessages = [
+            { id: 'u1', role: 'user', content: 'hi', timestamp: 1000 },
+            { id: 'a1', role: 'assistant', content: 'Hello! How can I help you today?', timestamp: 2000 },
+        ];
+
+        // Simulate the useModelInterface updater logic
+        const incomingMessages = capturedSession.messages;
+        const isPassiveSyncBlocked = () => false; // Streaming just completed, so sync is no longer blocked
+        const updater = (prev: any[]) => {
+            if (isPassiveSyncBlocked()) {
+                return prev;
+            }
+            if (prev.length && !shouldAcceptRemoteConversationSync(prev, incomingMessages)) {
+                return prev;
+            }
+            return incomingMessages.length ? incomingMessages : prev;
+        };
+
+        const result = updater(localCompletedMessages);
+        // Must preserve the full response and not get wiped out by the stale bootstrap event!
+        expect(result).toBe(localCompletedMessages);
+        expect(result).toHaveLength(2);
+        expect(result[1].role).toBe('assistant');
     });
 });

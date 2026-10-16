@@ -1,4 +1,5 @@
 import { ChatMessage, ToolUsageCharge } from '@/app/components/model-interface/shared/types';
+import { applyPromptButtonsToAssistantMessage } from '@/app/components/model-interface/features/messages/utils/applyPromptButtonsToAssistantMessage';
 import { ContentBlock, ProcessedContent, StreamContentChunk } from './chatOperations.types';
 import { CONTENT_TYPES } from './chatOperations.constants';
 import { textPartToPlainString } from '@/lib/utils/messageTextUtils';
@@ -172,7 +173,7 @@ export function createChatMessage(
     timestampOverride?: number
 ): ChatMessage {
     const messageId = messageIdOverride || generateMessageId();
-    return {
+    const message = {
         id: messageId,
         messageId,
         role,
@@ -188,6 +189,8 @@ export function createChatMessage(
         ...(tool_executions && tool_executions.length > 0 && { tool_executions }),
         ...(tool_usage_charges && tool_usage_charges.length > 0 && { tool_usage_charges }),
     } as ChatMessage;
+
+    return role === 'assistant' ? applyPromptButtonsToAssistantMessage(message) : message;
 }
 
 /**

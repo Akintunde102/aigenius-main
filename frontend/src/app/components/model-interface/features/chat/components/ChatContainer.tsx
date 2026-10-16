@@ -1,4 +1,4 @@
-import React, { forwardRef, useRef, useImperativeHandle, useState, useCallback } from 'react';
+import React, { forwardRef, useRef, useImperativeHandle, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowUp, Loader2, Maximize2, Mic, Phone, MessageSquare } from 'lucide-react';
 import { AudioModeOverlay } from './AudioModeOverlay';
@@ -16,6 +16,7 @@ import styles from './ChatContainer.module.scss';
 
 import type { UploadedFileEntry } from '@/app/components/model-interface/ModelInterface.helpers';
 import type { MessageEditDraft } from '../../messages/utils/messageEdit.utils';
+import type { RewritePromptOptions } from '../hooks/chatOperations.types';
 import type { FailedUploadEntry } from '@/app/components/model-interface/features/file-upload/hooks/useFileUpload';
 import { FEATURE_FLAGS } from '@/lib/config/features';
 import { ImagePreviewLightbox } from '@/app/components/model-interface/features/message-types/components/ImagePreviewLightbox';
@@ -118,6 +119,8 @@ interface ChatContainerProps {
     onMiniModeToggle?: () => void;
     isMiniMode?: boolean;
     analyzer?: AnalyserNode | null;
+    onRewritePrompt?: (options?: RewritePromptOptions) => void;
+    rewritePromptInProgress?: boolean;
 }
 
 export interface ChatContainerHandle {
@@ -213,6 +216,8 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     analyzer = null,
     conversationSummary,
     lastSummarizedAt,
+    onRewritePrompt,
+    rewritePromptInProgress,
 }, ref) => {
     const { t } = useLanguage();
     const inputRef = useRef<any>(null);
@@ -235,6 +240,17 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
         || subagentRunInProgress
         || (Boolean(isAudioMode) && audioStatus === 'speaking');
     const responseInProgress = loading || streamVisibleInChat;
+
+    const handlePromptButtonSelect = useCallback(
+        (label: string) => {
+            if (!selectedModel || !label.trim()) {
+                return;
+            }
+            void onSendMessage(label.trim(), selectedModel);
+        },
+        [onSendMessage, selectedModel],
+    );
+
     const {
         markersByMessageId,
         hiddenMessageIds,
@@ -267,7 +283,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     // Track the active marker's viewport position for the tethering string
     React.useEffect(() => {
         if (!activeMarker) {
-            setMarkerViewportPos(null);
+            setMarkerViewportPos((prev) => (prev === null ? prev : null));
             return;
         }
 
@@ -378,6 +394,126 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
         .filter(Boolean)
         .join(' ');
 
+    const chatComposer = useMemo(
+        () => (
+            <ChatBoxInput
+                ref={inputRef}
+                onSendMessage={onSendMessage}
+                onFileUpload={onFileUpload}
+                onAttachmentMenuRequest={onAttachmentMenuRequest}
+                models={models}
+                selectedModel={selectedModel!}
+                onModelChange={(model) => onSelectModel?.(model)}
+                placeholder={t('chat.inputPlaceholder', 'Type...')}
+                responseInProgress={responseInProgress}
+                onStopGeneration={onStopGeneration}
+                uploading={uploading}
+                uploadProgress={uploadProgress}
+                supportsFileUpload={supportsImageUpload}
+                uploadedFiles={uploadedFiles}
+                failedUploadFiles={failedUploadFiles}
+                onRetryFailedUpload={onRetryFailedUpload}
+                onRemoveFailedUpload={onRemoveFailedUpload}
+                onRemoveUploadedFile={onRemoveUploadedFile}
+                onCancelUpload={onCancelUpload}
+                className="p-0"
+                onModelNameClick={onModelNameClick}
+                onSelectModel={onSelectModel}
+                quickPickModels={quickPickModels}
+                favoritesLoaded={favoritesLoaded}
+                onOpenFullModelPicker={onOpenFullModelPicker}
+                wallet={wallet}
+                onAddCredits={onAddCredits}
+                isInsufficientCredits={isInsufficientCredits}
+                selectedPersonalityName={selectedPersonalityName}
+                onPersonalityClick={onPersonalityClick}
+                selectedPersonalityIconUrl={selectedPersonalityIconUrl}
+                onClearPersonality={onClearPersonality}
+                onShowSavedChats={onShowSavedChats}
+                streaming={streamingEnabled}
+                onStreamingToggle={onStreamingToggle}
+                onAudioModeToggle={onAudioModeToggle}
+                isAudioMode={isAudioMode}
+                onStartSTT={onStartSTT}
+                onCancelSTT={onCancelSTT}
+                onConfirmSTT={onConfirmSTT}
+                isSTTActive={isSTTActive}
+                isDictationTranscribing={isDictationTranscribing}
+                audioStatus={audioStatus}
+                audioTranscription={audioTranscription}
+                audioNotice={audioNotice}
+                inputValue={inputValue}
+                onInputChange={onInputChange}
+                composerSessionKey={composerSessionKey}
+                commitComposerDraftForKey={commitComposerDraftForKey}
+                queuedMessages={queuedMessages}
+                onQueueMessage={onQueueMessage}
+                onRemoveQueuedMessage={onRemoveQueuedMessage}
+                onRewritePrompt={onRewritePrompt}
+                rewritePromptInProgress={rewritePromptInProgress}
+                onFocus={() => {
+                    // Focus is handled naturally by the fixed visual viewport container
+                }}
+                onBlur={() => {
+                    // Handled by the viewport listener
+                }}
+            />
+        ),
+        [
+            audioNotice,
+            audioStatus,
+            audioTranscription,
+            commitComposerDraftForKey,
+            composerSessionKey,
+            failedUploadFiles,
+            favoritesLoaded,
+            inputValue,
+            isAudioMode,
+            isDictationTranscribing,
+            isInsufficientCredits,
+            isSTTActive,
+            models,
+            onAddCredits,
+            onAttachmentMenuRequest,
+            onAudioModeToggle,
+            onCancelSTT,
+            onCancelUpload,
+            onClearPersonality,
+            onConfirmSTT,
+            onFileUpload,
+            onInputChange,
+            onModelNameClick,
+            onOpenFullModelPicker,
+            onPersonalityClick,
+            onQueueMessage,
+            onRemoveFailedUpload,
+            onRemoveQueuedMessage,
+            onRemoveUploadedFile,
+            onRetryFailedUpload,
+            onRewritePrompt,
+            onSelectModel,
+            onSendMessage,
+            onShowSavedChats,
+            onStartSTT,
+            onStopGeneration,
+            onStreamingToggle,
+            queuedMessages,
+            quickPickModels,
+            responseInProgress,
+            rewritePromptInProgress,
+            selectedModel,
+            selectedPersonalityIconUrl,
+            selectedPersonalityName,
+            streamingEnabled,
+            supportsImageUpload,
+            t,
+            uploadProgress,
+            uploadedFiles,
+            uploading,
+            wallet,
+        ],
+    );
+
     return (
         <ImagePreviewActionsProvider setImagePreview={setImagePreview}>
         <div
@@ -438,6 +574,9 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         selectedPersonalityName={selectedPersonalityName}
                         selectedPersonalityIconUrl={selectedPersonalityIconUrl}
                         showScrollToBottom={showScrollToBottom}
+                        onPromptButtonSelect={handlePromptButtonSelect}
+                        onRewritePrompt={onRewritePrompt}
+                        rewritePromptInProgress={rewritePromptInProgress}
                     />
                 </div>
                 <div
@@ -473,90 +612,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                             </div>
                         </div>
                     ) : null}
-                    <ChatBoxInput
-                        ref={inputRef}
-                        onSendMessage={onSendMessage}
-                        onFileUpload={onFileUpload}
-                        onAttachmentMenuRequest={onAttachmentMenuRequest}
-                        models={models}
-                        selectedModel={selectedModel!}
-                        onModelChange={(model) => onSelectModel?.(model)}
-                        placeholder={t('chat.inputPlaceholder', 'Type...')}
-                        responseInProgress={responseInProgress}
-                        onStopGeneration={onStopGeneration}
-                        uploading={uploading}
-                        uploadProgress={uploadProgress}
-                        supportsFileUpload={supportsImageUpload}
-                        uploadedFiles={uploadedFiles}
-                        failedUploadFiles={failedUploadFiles}
-                        onRetryFailedUpload={onRetryFailedUpload}
-                        onRemoveFailedUpload={onRemoveFailedUpload}
-                        onRemoveUploadedFile={onRemoveUploadedFile}
-                        onCancelUpload={onCancelUpload}
-                        className="p-0"
-                        onModelNameClick={onModelNameClick}
-                        onSelectModel={onSelectModel}
-                        quickPickModels={quickPickModels}
-                        favoritesLoaded={favoritesLoaded}
-                        onOpenFullModelPicker={onOpenFullModelPicker}
-                        wallet={wallet}
-                        onAddCredits={onAddCredits}
-                        isInsufficientCredits={isInsufficientCredits}
-                        selectedPersonalityName={selectedPersonalityName}
-                        onPersonalityClick={onPersonalityClick}
-                        selectedPersonalityIconUrl={selectedPersonalityIconUrl}
-                        onClearPersonality={onClearPersonality}
-                        onShowSavedChats={onShowSavedChats}
-                        streaming={streamingEnabled}
-                        onStreamingToggle={onStreamingToggle}
-                        onAudioModeToggle={onAudioModeToggle}
-                        isAudioMode={isAudioMode}
-                        onStartSTT={onStartSTT}
-                        onCancelSTT={onCancelSTT}
-                        onConfirmSTT={onConfirmSTT}
-                        isSTTActive={isSTTActive}
-                        isDictationTranscribing={isDictationTranscribing}
-                        audioStatus={audioStatus}
-                        audioTranscription={audioTranscription}
-                        audioNotice={audioNotice}
-                        inputValue={inputValue}
-                        onInputChange={onInputChange}
-                        composerSessionKey={composerSessionKey}
-                        commitComposerDraftForKey={commitComposerDraftForKey}
-                        queuedMessages={queuedMessages}
-                        onQueueMessage={onQueueMessage}
-                        onRemoveQueuedMessage={onRemoveQueuedMessage}
-                        onFocus={() => {
-                            // On mobile, use smooth scrollIntoView for better UX
-                            if (isMobile) {
-                                // Smooth scroll the input into view - works cross-browser
-                                setTimeout(() => {
-                                    if (inputRef.current) {
-                                        const inputElement = inputRef.current;
-                                        // Get the actual DOM element if it's a ref wrapper
-                                        const domElement = inputElement.querySelector ? inputElement : inputElement.current;
-
-                                        if (domElement && typeof domElement.scrollIntoView === 'function') {
-                                            domElement.scrollIntoView({
-                                                behavior: 'smooth',
-                                                block: 'end', // Align to bottom of viewport
-                                                inline: 'nearest'
-                                            });
-                                        }
-                                    }
-                                }, 100); // Reduced delay for better responsiveness
-                            }
-                        }}
-                        onBlur={() => {
-                            // Handle blur events for mobile keyboard management
-                            if (isMobile) {
-                                // Small delay to allow keyboard to close naturally
-                                setTimeout(() => {
-                                    // The keyboard height will be handled by the viewport listener
-                                }, 100);
-                            }
-                        }}
-                    />
+                    {!imagePreview ? chatComposer : null}
                 </div>
             </div>
             {activeMarker && activeModalPosition ? (
@@ -605,6 +661,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                 <ImagePreviewLightbox
                     imageUrl={imagePreview}
                     onClose={() => setImagePreview(null)}
+                    composer={chatComposer}
                 />
             ) : null}
         </div>

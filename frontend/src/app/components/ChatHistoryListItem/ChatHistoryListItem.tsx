@@ -1,7 +1,5 @@
-import React, { useCallback, useState } from 'react';
-import toast from 'react-hot-toast';
+import React, { useState } from 'react';
 import { deriveChatSessionTitle } from '@/lib/utils/messageTextUtils';
-import { downloadConversationTranscript, type TranscriptFormat } from '@/lib/utils/conversationTranscriptExport';
 import { formatSessionRelativeTime } from '@/app/components/model-interface/conversation/sessionRecency';
 import { SessionInfo } from './components/SessionInfo';
 import { ActionButtons } from './components/ActionButtons';
@@ -17,25 +15,35 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
     isActive,
     hasDraft = false,
     isGenerating = false,
+    onStopGenerating,
     models,
     onSelect,
     onStarRequest,
     onDeleteRequest,
     onPublishRequest,
+    onTranscriptRequest,
+    onAssignLabelsRequest,
     isStarred,
     isPublished = false,
     isMobile = false,
     isDeleting = false,
     isStarring = false,
     isPublishing = false,
-    getCachedMessages,
+    conversationLabels,
+    sidebarOrganization = 'flat',
 }) => {
-    const [isDownloadingTranscript, setIsDownloadingTranscript] = useState(false);
     const [isUnread, setIsUnread] = useState(false);
     const wasGenerating = React.useRef(isGenerating);
 
+    const assignedLabels = React.useMemo(() => {
+        if (!session.labelIds?.length || !conversationLabels?.length) return [];
+        const labelMap = new Map(conversationLabels.map((l) => [l.id, l]));
+        return session.labelIds
+            .map((id) => labelMap.get(id))
+            .filter((l): l is NonNullable<typeof l> => Boolean(l));
+    }, [session.labelIds, conversationLabels]);
+
     React.useEffect(() => {
-        // If it just finished generating and we are not looking at it, mark it as unread
         if (wasGenerating.current && !isGenerating && !isActive) {
             setIsUnread(true);
         }
@@ -43,11 +51,11 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
     }, [isGenerating, isActive]);
 
     React.useEffect(() => {
-        // If it becomes active, clear the unread state
         if (isActive) {
             setIsUnread(false);
         }
     }, [isActive]);
+
     const handleDeleteClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         onDeleteRequest(session);
@@ -63,34 +71,18 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
         onPublishRequest?.(session);
     };
 
+    const handleOpenTranscript = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onTranscriptRequest?.(session);
+    };
+
     const displayTitle = typeof session.title === 'string' && session.title.trim()
         ? session.title.trim()
         : deriveChatSessionTitle(session.messages?.[0]?.content);
 
     const relativeTime = formatSessionRelativeTime(session, { hasDraft });
 
-    const handleDownloadTranscript = useCallback(async (format: TranscriptFormat) => {
-        if (isDownloadingTranscript) return;
-
-        setIsDownloadingTranscript(true);
-        try {
-            await downloadConversationTranscript(
-                session,
-                displayTitle || 'Untitled Chat',
-                format,
-                undefined,
-                { getCachedMessages },
-            );
-        } catch (error) {
-            console.error('Failed to download conversation transcript:', error);
-            toast.error('Could not download transcript. Please try again.');
-        } finally {
-            setIsDownloadingTranscript(false);
-        }
-    }, [session, displayTitle, getCachedMessages, isDownloadingTranscript]);
-
     const handleItemClick = () => {
-        // We still check isProcessing to prevent double clicks during global actions
         if (isDeleting || isStarring || isPublishing) {
             return;
         }
@@ -107,10 +99,11 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
                 title={displayTitle || 'Untitled Chat'}
                 isActive={isActive}
                 isGenerating={isGenerating}
+                onStopGenerating={isGenerating ? onStopGenerating : undefined}
                 isUnread={isUnread}
                 relativeTime={relativeTime}
+                labels={sidebarOrganization === 'flat' ? assignedLabels : undefined}
             />
-
 
             <ActionButtons
                 isStarred={isStarred}
@@ -121,8 +114,8 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
                 onStarClick={handleStarClick}
                 onDeleteClick={handleDeleteClick}
                 onPublishClick={onPublishRequest ? handlePublishClick : undefined}
-                onDownloadTranscript={handleDownloadTranscript}
-                isDownloadingTranscript={isDownloadingTranscript}
+                onOpenTranscript={onTranscriptRequest ? handleOpenTranscript : undefined}
+                onAssignLabelsClick={onAssignLabelsRequest ? () => onAssignLabelsRequest(session) : undefined}
             />
         </li>
     );

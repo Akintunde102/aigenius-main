@@ -181,7 +181,7 @@ const ModelSelectionFeaturedCard = memo(function ModelSelectionListRow({
                                 e.stopPropagation();
                                 onShowDetails();
                             }}
-                            title="More info"
+                            title={t('modelPicker.moreInfo', 'More info')}
                         >
                             <FiInfo size={12} strokeWidth={1.75} />
                         </button>

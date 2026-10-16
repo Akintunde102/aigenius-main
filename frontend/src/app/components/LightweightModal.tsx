@@ -1,5 +1,7 @@
 import React, { useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { MODAL_ELEVATED_Z_INDEX } from '@/lib/utils/modal-z-index';
+import { useAppModalEscape } from '@/app/components/modals/AppModal';
 
 interface LightweightModalProps {
     isOpen: boolean;
@@ -15,7 +17,7 @@ interface LightweightModalProps {
 
 /**
  * Ultra-lightweight modal component optimized for minimal processing power consumption.
- * 
+ *
  * Performance optimizations:
  * - No CSS animations or transitions
  * - Minimal DOM operations
@@ -38,33 +40,20 @@ export const LightweightModal: React.FC<LightweightModalProps> = ({
 }) => {
     const overlayRef = useRef<HTMLDivElement>(null);
     const modalRef = useRef<HTMLDivElement>(null);
+    const [mounted, setMounted] = React.useState(false);
 
-    // Memoized overlay click handler to prevent unnecessary re-renders
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    useAppModalEscape(onClose, isOpen && closeOnEscape);
+
     const handleOverlayClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         if (closeOnOverlayClick && e.target === overlayRef.current) {
             onClose();
         }
     }, [closeOnOverlayClick, onClose]);
 
-    // Optimized escape key handler with passive listener
-    useEffect(() => {
-        if (!isOpen || !closeOnEscape) return;
-
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                onClose();
-            }
-        };
-
-        // Use passive listener for better performance
-        document.addEventListener('keydown', handleEscape, { passive: true });
-
-        return () => {
-            document.removeEventListener('keydown', handleEscape);
-        };
-    }, [isOpen, closeOnEscape, onClose]);
-
-    // Focus management for accessibility (minimal implementation)
     useEffect(() => {
         if (!isOpen) return;
 
@@ -77,52 +66,34 @@ export const LightweightModal: React.FC<LightweightModalProps> = ({
         }
     }, [isOpen]);
 
-    // Conditional rendering - no DOM nodes when closed
-    if (!isOpen) return null;
+    if (!isOpen || !mounted || typeof document === 'undefined') {
+        return null;
+    }
 
-    return (
+    const portalTarget = document.getElementById('modal-root') ?? document.body;
+
+    const overlay = (
         <div
             ref={overlayRef}
-            className={`lwm-overlay ${overlayClassName}`}
+            className={`app-modal-overlay ${overlayClassName}`.trim()}
             onClick={handleOverlayClick}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={ariaLabelledBy}
-            aria-describedby={ariaDescribedBy}
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: MODAL_ELEVATED_Z_INDEX,
-                backgroundColor: 'var(--modal-overlay)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '1rem',
-            }}
+            style={{ zIndex: MODAL_ELEVATED_Z_INDEX }}
         >
             <div
                 ref={modalRef}
-                className={`lwm-content ${className}`}
-                style={{
-                    backgroundColor: 'var(--modal-bg)',
-                    color: 'var(--modal-fg)',
-                    border: '1px solid var(--modal-border)',
-                    borderRadius: '12px',
-                    padding: '1.5rem',
-                    maxWidth: '90vw',
-                    maxHeight: '90vh',
-                    overflow: 'auto',
-                    boxShadow: '0 24px 48px -12px rgba(0, 0, 0, 0.45)',
-                }}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={ariaLabelledBy}
+                aria-describedby={ariaDescribedBy}
+                className={`app-modal-panel app-modal-panel--shell max-h-[90vh] max-w-[90vw] overflow-auto ${className}`.trim()}
                 onClick={(e) => e.stopPropagation()}
             >
                 {children}
             </div>
         </div>
     );
+
+    return createPortal(overlay, portalTarget);
 };
 
 /**
@@ -149,23 +120,15 @@ export const MinimalModal: React.FC<{
 
     return (
         <div
+            className="app-modal-overlay"
             style={{
-                position: 'fixed',
-                inset: 0,
                 zIndex: MODAL_ELEVATED_Z_INDEX,
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                backgroundColor: 'var(--modal-overlay)',
             }}
             onClick={onClose}
         >
             <div
-                style={{
-                    backgroundColor: 'white',
-                    padding: '1rem',
-                    borderRadius: '4px',
-                }}
+                className="app-modal-panel app-modal-panel--shell"
                 onClick={(e) => e.stopPropagation()}
             >
                 {children}

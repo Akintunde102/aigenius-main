@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { resolveHomedirDbPathForDeviceFastIndex } from './device-fast-index-db-routing.js';
 
 export type ProjectIndexEntry = {
   projectId: string;
@@ -191,21 +192,30 @@ export function resolveProjectDbPath(opts: ResolveDbPathOptions): string {
     if (hit) return hit.dbPath;
   }
 
-  for (const candidate of [opts.rootPath, opts.pathPrefix, opts.filePath]) {
-    if (typeof candidate === 'string' && candidate.trim()) {
-      const trimmed = candidate.trim();
-      if (path.isAbsolute(trimmed) && userData) {
-        try {
-          if (fs.statSync(trimmed).isDirectory()) {
-            ensureProjectRegisteredFromPath(userData, trimmed);
-          }
-        } catch {
-          /* not a directory */
+  const candidates = [opts.rootPath, opts.pathPrefix, opts.filePath].filter(
+    (c): c is string => typeof c === 'string' && c.trim().length > 0,
+  ).map((c) => c.trim());
+
+  for (const trimmed of candidates) {
+    const hit = findEntryForPathPrefix(registry, trimmed);
+    if (hit) return hit.dbPath;
+  }
+
+  const homedirDb = resolveHomedirDbPathForDeviceFastIndex(userData, candidates);
+  if (homedirDb) return homedirDb;
+
+  for (const trimmed of candidates) {
+    if (path.isAbsolute(trimmed) && userData) {
+      try {
+        if (fs.statSync(trimmed).isDirectory()) {
+          ensureProjectRegisteredFromPath(userData, trimmed);
         }
+      } catch {
+        /* not a directory */
       }
-      const hit = findEntryForPathPrefix(loadProjectIndexRegistry(userData), trimmed);
-      if (hit) return hit.dbPath;
     }
+    const hit = findEntryForPathPrefix(loadProjectIndexRegistry(userData), trimmed);
+    if (hit) return hit.dbPath;
   }
 
   if (registry.activeProjectId) {

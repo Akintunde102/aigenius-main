@@ -374,6 +374,7 @@ describe('local desktop tools — full scenario suite', () => {
           buf.write(text, 0, 'utf8');
           return { bytesRead: text.length };
         }),
+        stat: jest.fn().mockResolvedValue({ size: 11 }),
         close: jest.fn().mockResolvedValue(undefined),
       };
       (fs.open as jest.Mock).mockResolvedValue(mockFd);

@@ -2,6 +2,7 @@ import path from 'path';
 
 /** Index scheduling tier — lower numeric priority runs first. */
 export type IndexTier =
+  | 'fast_pocket'
   | 'project_core'
   | 'project_docs'
   | 'project_media'
@@ -24,6 +25,7 @@ const TEXT_EXTENSIONS = new Set([
 ]);
 
 export const TIER_PROCESS_ORDER: IndexTier[] = [
+  'fast_pocket',
   'project_core',
   'project_docs',
   'project_media',
@@ -33,6 +35,8 @@ export const TIER_PROCESS_ORDER: IndexTier[] = [
 
 /** Pause between files per tier (ms). Docs/media/background are intentionally slow. */
 export const TIER_INTER_ITEM_DELAY_MS: Record<IndexTier, number> = {
+  /** User-likely paths (entry points, git dirty, explicit hints) — no throttle. */
+  fast_pocket: 0,
   project_core: 0,
   project_docs: 800,
   project_media: 4_000,
@@ -61,5 +65,6 @@ export function tierForFilePath(filePath: string, projectRoot: string | null): I
 /** Demote inactive registered projects so active project search/indexing stays responsive. */
 export function tierForInactiveProject(baseTier: IndexTier): IndexTier {
   if (baseTier === 'background') return 'background';
+  if (baseTier === 'fast_pocket') return 'idle_project';
   return 'idle_project';
 }

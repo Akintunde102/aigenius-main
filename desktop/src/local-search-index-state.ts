@@ -14,6 +14,14 @@ export type LocalSearchIndexCatalogEntry = {
   isActive: boolean;
 };
 
+export type DeviceFastIndexSnapshot = {
+  enabled: boolean;
+  mode: 'disabled' | 'warming' | 'ready';
+  roots: string[];
+  indexedFiles: number;
+  fastPocketQueueDepth: number;
+};
+
 export type LocalSearchIndexState = {
   reportedAtIso: string;
   mode: 'active_project_warming' | 'active_project_ready' | 'no_active_project';
@@ -25,6 +33,7 @@ export type LocalSearchIndexState = {
     scanInProgress: boolean;
     lastRunMs: number;
   };
+  deviceFastIndex?: DeviceFastIndexSnapshot;
   catalogs: LocalSearchIndexCatalogEntry[];
 };
 
@@ -37,6 +46,14 @@ type StatusProject = {
   index_ready?: boolean;
 };
 
+type DeviceFastIndexStatusPayload = {
+  enabled?: boolean;
+  mode?: 'disabled' | 'warming' | 'ready';
+  roots?: string[];
+  indexedFiles?: number;
+  fastPocketQueueDepth?: number;
+};
+
 type SearchStatusPayload = {
   indexed?: number;
   lastRun?: number;
@@ -45,11 +62,25 @@ type SearchStatusPayload = {
   project_root?: string | null;
   active_project_id?: string | null;
   projects?: StatusProject[];
+  device_fast_index?: DeviceFastIndexStatusPayload;
   health?: { indexer_ipc_reachable?: boolean };
 };
 
 function normalizeRoot(p: string): string {
   return path.normalize(p).replace(/\\/g, '/').toLowerCase();
+}
+
+function parseDeviceFastIndex(raw: DeviceFastIndexStatusPayload | undefined): DeviceFastIndexSnapshot | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const mode = raw.mode;
+  if (mode !== 'disabled' && mode !== 'warming' && mode !== 'ready') return undefined;
+  return {
+    enabled: raw.enabled === true,
+    mode,
+    roots: Array.isArray(raw.roots) ? raw.roots : [],
+    indexedFiles: typeof raw.indexedFiles === 'number' ? raw.indexedFiles : 0,
+    fastPocketQueueDepth: typeof raw.fastPocketQueueDepth === 'number' ? raw.fastPocketQueueDepth : 0,
+  };
 }
 
 export async function fetchLocalSearchIndexState(): Promise<LocalSearchIndexState> {
@@ -72,6 +103,8 @@ export async function fetchLocalSearchIndexState(): Promise<LocalSearchIndexStat
     status?.scan_in_progress || (typeof status?.queue_depth === 'number' && status.queue_depth > 0),
   );
 
+  const deviceFastIndex = parseDeviceFastIndex(status?.device_fast_index);
+
   const catalogs: LocalSearchIndexCatalogEntry[] = (status?.projects ?? []).map((p) => ({
     projectId: p.project_id ?? path.basename(p.project_root ?? '') ?? 'project',
     rootPath: p.project_root ?? '',
@@ -86,6 +119,7 @@ export async function fetchLocalSearchIndexState(): Promise<LocalSearchIndexStat
     return {
       reportedAtIso,
       mode: 'no_active_project',
+      deviceFastIndex,
       catalogs,
     };
   }
@@ -118,6 +152,7 @@ export async function fetchLocalSearchIndexState(): Promise<LocalSearchIndexStat
     reportedAtIso,
     mode: indexReady ? 'active_project_ready' : 'active_project_warming',
     activeProject,
+    deviceFastIndex,
     catalogs,
   };
 }

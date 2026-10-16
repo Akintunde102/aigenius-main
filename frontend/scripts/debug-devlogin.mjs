@@ -30,7 +30,7 @@ async function main() {
   const bodyText = await page.evaluate(() => document.body.innerText);
   console.log('Body:', bodyText.slice(0, 200));
 
-  await page.screenshot({ path: path.resolve(__dirname, '../../../docs/ui-redesign/snapshots/post-devlogin.png') });
+  await page.screenshot({ path: path.resolve(__dirname, '../test-results/ui-snapshots/post-devlogin.png') });
   await browser.close();
 }
 

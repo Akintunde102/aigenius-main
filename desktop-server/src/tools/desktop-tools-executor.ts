@@ -12,6 +12,7 @@ import { resolveGoToDefinition } from '../search/go-to-definition.js';
 import { selectGrepEngine } from './resolve-ripgrep.js';
 import { blockInteractiveShellCommand } from './shell-interactive-block.js';
 import { hiddenSpawnOptions } from '../utils/hidden-child-process.js';
+import { buildShellInvocation } from '../utils/resolve-windows-executable.js';
 import { killChildProcessTree } from '../utils/shell-process-tree.js';
 import {
   effectiveBlockWaitMs,
@@ -231,8 +232,9 @@ async function executeReadFile(args: Record<string, unknown>): Promise<ToolExecu
     const limit = typeof args.limit === 'number' ? args.limit : MAX_READ_CHARS;
     const offset = typeof args.offset === 'number' ? Math.max(0, args.offset) : 0;
     const slice = text.slice(offset, offset + limit);
+    const startLineNumber = text.slice(0, offset).split('\n').length;
     const lines = slice.split('\n');
-    const numbered = lines.map((line, i) => `${String(offset + i + 1).padStart(6, ' ')}|${line}`).join('\n');
+    const numbered = lines.map((line, i) => `${String(startLineNumber + i).padStart(6, ' ')}|${line}`).join('\n');
     return {
       ok: true,
       result: `# ${path.basename(resolved)}\n\`\`\`\n${numbered}\n\`\`\``,
@@ -302,8 +304,7 @@ async function executeShell(args: Record<string, unknown>): Promise<ToolExecuteR
   const policy = resolveShellRunPolicy(command, args);
   const timeoutMs = policy.timeoutMs;
 
-  const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
-  const shellArgs = process.platform === 'win32' ? ['/c', command] : ['-c', command];
+  const { shell, args: shellArgs, windowsVerbatimArguments } = buildShellInvocation(command);
 
   return new Promise((resolve) => {
     const child = spawn(
@@ -312,7 +313,7 @@ async function executeShell(args: Record<string, unknown>): Promise<ToolExecuteR
       hiddenSpawnOptions({
         cwd: cwdResolved,
         env: process.env,
-        windowsVerbatimArguments: process.platform === 'win32',
+        windowsVerbatimArguments,
         stdio: ['ignore', 'pipe', 'pipe'],
       }),
     );

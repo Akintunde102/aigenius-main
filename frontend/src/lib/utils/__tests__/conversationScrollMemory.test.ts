@@ -69,6 +69,9 @@ describe("conversationScrollMemory", () => {
       createMessage({ id: "user-1", role: "user", timestamp: 1 }),
       createMessage({ id: "assistant-1", role: "assistant", timestamp: 2 }),
     ];
+    const behindServer = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1 }),
+    ];
     const equalCountServer = [
       createMessage({ id: "user-1", role: "user", timestamp: 1 }),
       createMessage({ id: "assistant-1", role: "assistant", timestamp: 99, content: "edited" }),
@@ -79,8 +82,119 @@ describe("conversationScrollMemory", () => {
     ];
 
     expect(shouldAcceptRemoteConversationSync(local, local)).toBe(false);
+    expect(shouldAcceptRemoteConversationSync(local, behindServer)).toBe(false);
     expect(shouldAcceptRemoteConversationSync(local, equalCountServer)).toBe(false);
     expect(shouldAcceptRemoteConversationSync(local, aheadServer)).toBe(true);
+  });
+
+  it("accepts streamed text written into the same assistant message", () => {
+    const local = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1, content: "Analyze the folder" }),
+      createMessage({
+        id: "assistant-1",
+        role: "assistant",
+        timestamp: 2,
+        content: "I'll inventory",
+        events: [{ type: "text", content: "I'll inventory" }],
+      }),
+    ];
+    const streamed = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1, content: "Analyze the folder" }),
+      createMessage({
+        id: "assistant-1",
+        role: "assistant",
+        timestamp: 2,
+        content: "I'll inventory the projects folder.",
+        events: [{ type: "text", content: "I'll inventory the projects folder." }],
+      }),
+    ];
+
+    expect(shouldAcceptRemoteConversationSync(local, streamed)).toBe(true);
+  });
+
+  it("accepts a tool event appended to the same assistant message", () => {
+    const local = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1, content: "Analyze the folder" }),
+      createMessage({
+        id: "assistant-1",
+        role: "assistant",
+        timestamp: 2,
+        content: "I'll inventory the projects folder.",
+        events: [{ type: "text", content: "I'll inventory the projects folder." }],
+      }),
+    ];
+    const withTool = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1, content: "Analyze the folder" }),
+      createMessage({
+        id: "assistant-1",
+        role: "assistant",
+        timestamp: 2,
+        content: "I'll inventory the projects folder.",
+        events: [
+          { type: "text", content: "I'll inventory the projects folder." },
+          {
+            type: "tool",
+            tool: "local_list_directory",
+            displayName: "List directory",
+            arguments: { path: "C:\\projects" },
+            logs: [],
+            loading: false,
+            success: true,
+            result: "13 directories",
+            timestamp: 3,
+          },
+        ],
+      }),
+    ];
+
+    expect(shouldAcceptRemoteConversationSync(local, withTool)).toBe(true);
+  });
+
+  it("rejects a shorter or divergent assistant snapshot on the same message", () => {
+    const local = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1, content: "Analyze the folder" }),
+      createMessage({
+        id: "assistant-1",
+        role: "assistant",
+        timestamp: 2,
+        content: "I'll inventory the projects folder.",
+        events: [{ type: "text", content: "I'll inventory the projects folder." }],
+      }),
+    ];
+    const shorter = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1, content: "Analyze the folder" }),
+      createMessage({
+        id: "assistant-1",
+        role: "assistant",
+        timestamp: 2,
+        content: "I'll",
+        events: [{ type: "text", content: "I'll" }],
+      }),
+    ];
+    const divergent = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1, content: "Analyze the folder" }),
+      createMessage({
+        id: "assistant-1",
+        role: "assistant",
+        timestamp: 2,
+        content: "A different answer that does not extend the draft.",
+        events: [{ type: "text", content: "A different answer that does not extend the draft." }],
+      }),
+    ];
+    const editedUser = [
+      createMessage({ id: "user-1", role: "user", timestamp: 1, content: "A different goal" }),
+      createMessage({
+        id: "assistant-1",
+        role: "assistant",
+        timestamp: 2,
+        content: "I'll inventory the projects folder. Next sentence.",
+        events: [{ type: "text", content: "I'll inventory the projects folder. Next sentence." }],
+      }),
+    ];
+
+    expect(shouldAcceptRemoteConversationSync(local, shorter)).toBe(false);
+    expect(shouldAcceptRemoteConversationSync(local, divergent)).toBe(false);
+    expect(shouldAcceptRemoteConversationSync(local, editedUser)).toBe(false);
   });
 
   it("shouldAcceptRemoteConversationSync rejects replay branches trimmed to a user turn", () => {

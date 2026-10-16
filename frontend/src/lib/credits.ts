@@ -41,14 +41,22 @@ export function creditsToUsd(credits: number, creditsPerUsd: number): number {
   return Math.round((credits / creditsPerUsd) * 100) / 100;
 }
 
-export function formatCredits(value: number, options?: { compact?: boolean }): string {
+/** Max fraction digits for platform credit amounts in the UI (usage, wallet, tool lines). */
+export const CREDIT_DISPLAY_MAX_FRACTION_DIGITS = 2;
+
+export function formatCreditAmount(value: number): string {
   if (!Number.isFinite(value)) {
-    return '0 credits';
+    return '0';
   }
-  const formatted = value.toLocaleString(undefined, {
-    maximumFractionDigits: options?.compact ? 0 : 2,
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: CREDIT_DISPLAY_MAX_FRACTION_DIGITS,
   });
-  return `${formatted} credits`;
+}
+
+/** @deprecated `compact` is ignored; all credit displays use up to 2 decimal places. */
+export function formatCredits(value: number, _options?: { compact?: boolean }): string {
+  return `${formatCreditAmount(value)} credits`;
 }
 
 export function formatUsdAmount(amount: number): string {

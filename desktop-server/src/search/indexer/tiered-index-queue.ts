@@ -25,12 +25,13 @@ type QueueState = {
   onIdle: (fn: () => void) => void;
 };
 
-const ACTIVE_TIERS: IndexTier[] = ['project_core', 'project_docs', 'project_media'];
+const ACTIVE_TIERS: IndexTier[] = ['fast_pocket', 'project_core', 'project_docs', 'project_media'];
 const MAX_ITEM_ATTEMPTS = 3;
 const RETRY_BASE_MS = 1_500;
 
 function emptyTierCounts(): Record<IndexTier, number> {
   return {
+    fast_pocket: 0,
     project_core: 0,
     project_docs: 0,
     project_media: 0,
@@ -49,7 +50,7 @@ function dedupeKey(scope: IndexJobScope, event: WatchEvent): string {
 }
 
 /**
- * Priority queue: project code first, then docs, then media OCR, then homedir background.
+ * Priority queue: fast_pocket first, then project code, docs, media, idle, background.
  * Text phase drains globally before structure phase (bulk scans). Watcher events without
  * `phase` run as a full per-file pipeline.
  */
@@ -57,6 +58,7 @@ export function createTieredIndexQueue(
   onItem: (item: TieredQueueItem) => Promise<void>,
 ): QueueState {
   const buckets: Record<IndexTier, TieredQueueItem[]> = {
+    fast_pocket: [],
     project_core: [],
     project_docs: [],
     project_media: [],
@@ -64,6 +66,7 @@ export function createTieredIndexQueue(
     background: [],
   };
   const queuedPaths: Record<IndexTier, Set<string>> = {
+    fast_pocket: new Set(),
     project_core: new Set(),
     project_docs: new Set(),
     project_media: new Set(),
@@ -73,8 +76,18 @@ export function createTieredIndexQueue(
   let stopped = false;
   let processing = false;
   let processingItem: TieredQueueItem | null = null;
+  let drainScheduled = false;
   const idleListeners: Array<() => void> = [];
   let idleNotified = true;
+
+  function scheduleDrain(): void {
+    if (drainScheduled || stopped) return;
+    drainScheduled = true;
+    setImmediate(() => {
+      drainScheduled = false;
+      void drain();
+    });
+  }
 
   function pendingCountByTier(): Record<IndexTier, number> {
     const counts = emptyTierCounts();
@@ -269,7 +282,7 @@ export function createTieredIndexQueue(
     }
     buckets[tier].push({ ...event, tier, scope });
     queuedPaths[tier].add(key);
-    void drain();
+    scheduleDrain();
   }
 
   function clearTiers(...tiers: IndexTier[]): void {

@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { FolderOpen, FolderPlus, Trash2 } from "lucide-react";
-import { FiX } from "react-icons/fi";
 import type { CodeProject } from "@/lib/calls/code-projects";
 import type { CodeProjectRootHealth } from "@/lib/code-projects/code-project-root-health.types";
+import { AppModal, AppModalBody, AppModalHeader } from "@/app/components/modals/AppModal";
 
 type MissingProjectFolderModalProps = {
   project: CodeProject;
@@ -38,14 +37,14 @@ export function MissingProjectFolderModal({
   onRecreate,
   onRemoveProject,
 }: MissingProjectFolderModalProps) {
-  const [mounted, setMounted] = useState(false);
   const [busy, setBusy] = useState<'relink' | 'recreate' | 'remove' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const dismiss = useCallback(() => {
+    onDismiss();
+    onClose();
+  }, [onClose, onDismiss]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -56,12 +55,11 @@ export function MissingProjectFolderModal({
         setConfirmRemove(false);
         return;
       }
-      onDismiss();
-      onClose();
+      dismiss();
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [busy, confirmRemove, onClose, onDismiss]);
+  }, [busy, confirmRemove, dismiss]);
 
   const runAction = useCallback(
     async (kind: 'relink' | 'recreate' | 'remove', fn: () => Promise<void>) => {
@@ -79,49 +77,23 @@ export function MissingProjectFolderModal({
     [onClose],
   );
 
-  if (!mounted) {
-    return null;
-  }
-
-  return createPortal(
-    <div
-      className="app-modal-overlay fixed inset-0 z-[12000] flex items-center justify-center p-4"
-      style={{ background: "var(--modal-overlay)" }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="missing-folder-title"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !busy) {
-          onDismiss();
-          onClose();
-        }
-      }}
+  return (
+    <AppModal
+      open
+      onClose={dismiss}
+      size="sm"
+      ariaLabelledBy="missing-folder-title"
+      className="z-[12000]"
+      closeOnEscape={false}
+      closeOnOverlayClick={!busy}
     >
-      <div
-        className="app-modal-panel relative w-full max-w-md rounded-xl border p-5 shadow-xl"
-        style={{
-          background: "var(--modal-bg)",
-          borderColor: "var(--modal-border)",
-          color: "var(--modal-fg)",
-        }}
-      >
-        <button
-          type="button"
-          className="absolute right-3 top-3 rounded p-1 opacity-70 transition hover:opacity-100"
-          aria-label="Close"
-          disabled={Boolean(busy)}
-          onClick={() => {
-            onDismiss();
-            onClose();
-          }}
-        >
-          <FiX className="h-4 w-4" />
-        </button>
-
-        <h2 id="missing-folder-title" className="pr-8 text-base font-semibold">
-          Project folder not found
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--modal-muted-fg)" }}>
+      <AppModalHeader
+        titleId="missing-folder-title"
+        title="Project folder not found"
+        onClose={dismiss}
+      />
+      <AppModalBody>
+        <p className="text-sm leading-relaxed" style={{ color: "var(--modal-muted-fg)" }}>
           <span className="font-medium" style={{ color: "var(--modal-fg)" }}>{project.name}</span>
           {" — "}
           {statusMessage(health)}
@@ -206,17 +178,13 @@ export function MissingProjectFolderModal({
               className="mt-1 text-sm underline-offset-2 hover:underline"
               style={{ color: "var(--modal-muted-fg)" }}
               disabled={Boolean(busy)}
-              onClick={() => {
-                onDismiss();
-                onClose();
-              }}
+              onClick={dismiss}
             >
               Not now
             </button>
           </div>
         )}
-      </div>
-    </div>,
-    document.body,
+      </AppModalBody>
+    </AppModal>
   );
 }

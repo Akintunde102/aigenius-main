@@ -93,4 +93,34 @@ describe('useInputState', () => {
 
         expect(result.current.inputValue).toBe('transcribed text');
     });
+
+    it('preserves and commits in-progress typing when a draft session materializes into a real conversation', () => {
+        const commits: Array<{ key: string; value: string }> = [];
+        const onInputChange = jest.fn();
+
+        const { result, rerender } = renderHook(
+            (props: { sessionKey: string; external: string }) =>
+                useInputState({
+                    externalInputValue: props.external,
+                    onInputChange,
+                    composerSessionKey: props.sessionKey,
+                    commitDraftForKey: (key, value) => commits.push({ key, value }),
+                }),
+            {
+                initialProps: { sessionKey: 'cd_initial-draft', external: '' },
+            },
+        );
+
+        act(() => {
+            result.current.handleInputChange('typing while streaming');
+        });
+
+        // The stream completes and materializes the draft into a real conversation id
+        rerender({ sessionKey: 'conv-real-id-123', external: '' });
+
+        // Must retain the typed text and commit under the newly materialized key
+        expect(result.current.inputValue).toBe('typing while streaming');
+        expect(commits).toContainEqual({ key: 'conv-real-id-123', value: 'typing while streaming' });
+        expect(commits).toContainEqual({ key: 'cd_initial-draft', value: '' });
+    });
 });

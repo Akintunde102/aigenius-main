@@ -433,6 +433,12 @@ export function formatReadFile(data: any): FormattedToolResult {
     }
   } else {
     md += `- **Bytes read**: ${bytes_read?.toLocaleString() ?? 0}\n`;
+    if (typeof data.offset === 'number') {
+      md += `- **Byte offset**: ${data.offset.toLocaleString()}\n`;
+    }
+    if (typeof data.total_bytes === 'number') {
+      md += `- **Total bytes**: ${data.total_bytes.toLocaleString()}\n`;
+    }
     if (line_count_omitted) {
       md += `- **Total lines**: _(file too large to count)_\n`;
     } else if (typeof total === 'number') {
@@ -441,7 +447,7 @@ export function formatReadFile(data: any): FormattedToolResult {
     if (truncationNotice) {
       md += `- **Truncated**: Yes — ${truncationNotice}\n`;
     } else if (truncated === true || status === 'truncated') {
-      md += `- **Truncated**: Yes (byte limit — use \`start_line\` / \`max_lines\` for precise windows)\n`;
+      md += `- **Truncated**: Yes (more bytes available — paginate with \`offset\` / \`max_bytes\`)\n`;
     }
   }
 
@@ -691,7 +697,10 @@ export function formatShellResult(data: any): FormattedToolResult {
     md += `- **Exit code**: (none — process was backgrounded)\n\n`;
     md +=
       'The command did not exit (typical for dev servers such as `npm run dev`). '
-      + 'It is still running. Output captured so far is below.\n\n';
+      + 'It is still running in the background. Output captured so far is below.\n\n';
+    if (typeof pid === 'number') {
+      md += `*Process is managed in background registry. Use \`local_shell\` with \`{ action: "logs", pid: ${pid} }\` to inspect ongoing output, or \`{ action: "kill", pid: ${pid} }\` to stop the process and free ports.*\n\n`;
+    }
   } else {
     md += `- **Exit code**: ${exit_code ?? '?'}\n\n`;
   }

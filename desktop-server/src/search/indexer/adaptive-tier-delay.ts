@@ -11,9 +11,9 @@ export function adaptiveTierDelayMs(
   pendingCount: number,
 ): number {
   const base = TIER_INTER_ITEM_DELAY_MS[tier];
-  if (base <= 0 && phase === 'text' && tier === 'project_core') return 0;
+  if (base <= 0 && phase === 'text' && (tier === 'fast_pocket' || tier === 'project_core')) return 0;
 
-  if (phase === 'text' && tier === 'project_core') {
+  if (phase === 'text' && (tier === 'fast_pocket' || tier === 'project_core')) {
     if (pendingCount > 2_000) return 0;
     if (pendingCount < 40) return Math.max(0, Math.floor(base * 0.25));
     return base;

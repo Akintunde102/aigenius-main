@@ -187,6 +187,10 @@ export interface ChatMessage {
         text?: string;
         format?: string;
     }>;
+    /** Tappable labels the model attached; click sends as the next user message. */
+    prompt_buttons?: string[];
+    /** Async video delivery assistant row (OpenRouter job id). */
+    video_delivery_job_id?: string;
 }
 
 export interface OrphanReplyAnchor {
@@ -240,6 +244,7 @@ export interface ChatSession {
     id?: string;
     codeProjectId?: string | null;
     starred?: boolean;
+    labelIds?: string[];
     isPublished?: boolean;
     publishedAt?: string;
     publishedTitle?: string;
@@ -260,6 +265,7 @@ export interface ChatSession {
         /** Denormalized from the last message when sidebar strips message bodies. */
         lastMessageAt?: number;
         orphanAnchor?: OrphanReplyAnchor;
+        parentConversationId?: string | null;
         spawnedBy?: string;
         subagentDepth?: number;
         /** Server-owned: subagent child is still running on the API. */

@@ -93,8 +93,11 @@ export default function ServersListView() {
     setPairResult(null);
     try {
       const result = await pairServer(`server-${Date.now()}`);
+      const installCmd =
+        result.installCommand ||
+        `curl -fsSL https://get.aigenius.app/install.sh | sudo bash -s ${result.serverId} ${result.pairingToken}`;
       setPairResult(
-        `Paired "${result.name}". Server ID: ${result.serverId}\nInstall: ${result.installCommand}`,
+        `Paired "${result.name}". Server ID: ${result.serverId}\nInstall: ${installCmd}`,
       );
       await loadServers();
     } catch (err) {

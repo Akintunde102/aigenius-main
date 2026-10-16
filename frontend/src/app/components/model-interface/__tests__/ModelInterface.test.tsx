@@ -322,6 +322,7 @@ function buildMockModelInterface(overrides: {
         actions: {
             handleSend: jest.fn(),
             handleStop: jest.fn(),
+            handleStopSession: jest.fn(),
             handleInputKeyDown: jest.fn(),
             handleSave: jest.fn(),
             handleInsertSaved: jest.fn(),

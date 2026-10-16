@@ -67,6 +67,95 @@ function getVisibleMessages(messages: ChatMessage[]): ChatMessage[] {
   return messages.filter(isVisibleChatMessage);
 }
 
+function readMessageText(message: ChatMessage): string {
+  return typeof message.content === "string" ? message.content : "";
+}
+
+function readMessageEvents(message: ChatMessage): unknown[] {
+  return Array.isArray(message.events) ? message.events : [];
+}
+
+function isTextEvent(event: unknown): event is { type: "text"; content: string } {
+  if (!event || typeof event !== "object") {
+    return false;
+  }
+  const record = event as { type?: unknown; content?: unknown };
+  return record.type === "text" && typeof record.content === "string";
+}
+
+function eventStillExtends(localEvent: unknown, serverEvent: unknown): boolean {
+  if (isTextEvent(localEvent) && isTextEvent(serverEvent)) {
+    return serverEvent.content.startsWith(localEvent.content);
+  }
+  return JSON.stringify(localEvent) === JSON.stringify(serverEvent);
+}
+
+function messageBodyUnchanged(local: ChatMessage, server: ChatMessage): boolean {
+  return readMessageText(local) === readMessageText(server)
+    && JSON.stringify(readMessageEvents(local)) === JSON.stringify(readMessageEvents(server));
+}
+
+/** Same assistant row grew (streamed tokens or a finished tool) without a new message. */
+function assistantSnapshotExtends(local: ChatMessage, server: ChatMessage): boolean {
+  if (local.role !== "assistant" || server.role !== "assistant") {
+    return false;
+  }
+
+  const localText = readMessageText(local);
+  const serverText = readMessageText(server);
+  if (!serverText.startsWith(localText)) {
+    return false;
+  }
+
+  const localEvents = readMessageEvents(local);
+  const serverEvents = readMessageEvents(server);
+  if (serverEvents.length < localEvents.length) {
+    return false;
+  }
+
+  for (let index = 0; index < localEvents.length; index++) {
+    if (!eventStillExtends(localEvents[index], serverEvents[index])) {
+      return false;
+    }
+  }
+
+  const textGrew = serverText.length > localText.length;
+  const eventsGrew = serverEvents.length > localEvents.length;
+  const textEventGrew = localEvents.some((event, index) => {
+    const serverEvent = serverEvents[index];
+    return isTextEvent(event)
+      && isTextEvent(serverEvent)
+      && serverEvent.content.length > event.content.length;
+  });
+
+  return textGrew || eventsGrew || textEventGrew;
+}
+
+function sameThreadAssistantGrew(
+  localMessages: ChatMessage[],
+  serverMessages: ChatMessage[],
+): boolean {
+  const localVisible = getVisibleMessages(localMessages);
+  const serverVisible = getVisibleMessages(serverMessages);
+  if (localVisible.length === 0 || localVisible.length !== serverVisible.length) {
+    return false;
+  }
+  if (!localMessagesMatchServerPrefix(localMessages, serverMessages)) {
+    return false;
+  }
+
+  for (let index = 0; index < localVisible.length - 1; index++) {
+    if (!messageBodyUnchanged(localVisible[index], serverVisible[index])) {
+      return false;
+    }
+  }
+
+  return assistantSnapshotExtends(
+    localVisible[localVisible.length - 1],
+    serverVisible[serverVisible.length - 1],
+  );
+}
+
 /** Stable identity for prefix comparisons across client/server snapshots. */
 export function messageStableKey(message: ChatMessage): string {
   return message.messageId ?? message.id ?? `ts_${message.timestamp}`;
@@ -107,8 +196,9 @@ export function localMessagesMatchServerPrefix(
 
 /**
  * Whether passive server sync may replace the live local transcript.
- * Only accepts merges when the server snapshot is strictly ahead on message count
- * and extends the local transcript — not when local intentionally branched (replay).
+ * Accepts a server snapshot that appends turns, or that extends the same
+ * assistant message in place (subagent tokens and finished tool events).
+ * Rejects snapshots that rewind, diverge, or follow a local replay branch.
  */
 export function shouldAcceptRemoteConversationSync(
   localMessages: ChatMessage[],
@@ -126,7 +216,7 @@ export function shouldAcceptRemoteConversationSync(
   const localSignature = buildConversationMessageSignature(localMessages);
   const serverSignature = buildConversationMessageSignature(serverMessages);
   if (localSignature === serverSignature) {
-    return false;
+    return sameThreadAssistantGrew(localMessages, serverMessages);
   }
 
   const localVisible = getVisibleMessages(localMessages);

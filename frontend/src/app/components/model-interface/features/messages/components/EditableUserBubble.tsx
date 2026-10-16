@@ -18,6 +18,8 @@ export interface EditableUserBubbleProps {
     selectedModel: Model;
     models: Model[];
     supportsFileUpload?: boolean;
+    onRewritePrompt?: () => void;
+    rewritePromptInProgress?: boolean;
 }
 
 function attachmentsToUploadedFiles(attachments: EditAttachment[]): UploadedFileInfo[] {
@@ -40,6 +42,8 @@ export function EditableUserBubble({
     selectedModel,
     models,
     supportsFileUpload = true,
+    onRewritePrompt,
+    rewritePromptInProgress = false,
 }: EditableUserBubbleProps) {
     const draftRef = useRef(draft);
     draftRef.current = draft;
@@ -148,6 +152,8 @@ export function EditableUserBubble({
             composerTextareaId="message-edit-composer-textarea"
             composerRootId="message-edit-input"
             placeholder="Edit message..."
+            onRewritePrompt={onRewritePrompt}
+            rewritePromptInProgress={rewritePromptInProgress}
         />
     );
 }

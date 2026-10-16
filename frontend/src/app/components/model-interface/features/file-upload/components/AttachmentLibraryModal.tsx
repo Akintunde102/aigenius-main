@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { FiX } from "react-icons/fi";
 import { UserFilesBrowser } from "@/app/components/user-files/UserFilesBrowser";
 import type { UploadedFilesLibraryState } from "@/app/components/user-files/useUploadedFilesList";
 import type { CloudFile } from "@/app/components/file/file.interface";
+import { AppModal, AppModalHeader } from "@/app/components/modals/AppModal";
 
 export interface AttachmentLibraryModalProps {
   onClose: () => void;
@@ -18,11 +17,9 @@ export function AttachmentLibraryModal({
   library,
   onConfirm,
 }: AttachmentLibraryModalProps) {
-  const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     if (typeof window === "undefined") return;
     const check = () => setIsMobile(window.innerWidth < 1024);
     check();
@@ -42,97 +39,38 @@ export function AttachmentLibraryModal({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [onClose]);
 
-  if (!mounted || typeof document === "undefined") {
-    return null;
-  }
-
-  const portalTarget = document.getElementById("modal-root") ?? document.body;
-
   const filesCount = library.files?.length ?? 0;
+  const subtitle =
+    filesCount > 0
+      ? `${filesCount} files · Select uploaded files to attach to your prompt`
+      : "Select uploaded files to attach to your prompt";
 
-  return createPortal(
-    (
-      <div
-        role="presentation"
-        className={`app-modal-overlay backdrop-blur-[2px] ${isMobile ? "p-0" : ""}`}
-        onClick={onClose}
-      >
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="attachment-library-title"
-          className={`app-modal-panel ${
-            isMobile
-              ? "h-full max-h-none rounded-none border-0"
-              : "h-[min(85vh,720px)] max-h-[min(90vh,720px)] max-w-2xl sm:max-w-3xl shadow-2xl"
-          }`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="app-modal-panel-header flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <div
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                style={{
-                  background: "color-mix(in srgb, var(--chat-accent) 12%, transparent)",
-                  color: "var(--chat-accent)",
-                }}
-                aria-hidden
-              >
-                <FiX className="h-4.5 w-4.5 rotate-45" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h2
-                    id="attachment-library-title"
-                    className="text-base font-semibold leading-none"
-                    style={{ color: "var(--modal-fg)" }}
-                  >
-                    Choose from My files
-                  </h2>
-                  {filesCount > 0 && (
-                    <span
-                      className="rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums"
-                      style={{
-                        background: "color-mix(in srgb, var(--modal-fg) 8%, transparent)",
-                        color: "var(--modal-muted-fg)",
-                      }}
-                    >
-                      {filesCount}
-                    </span>
-                  )}
-                </div>
-                <p className="mt-1 text-xs" style={{ color: "var(--modal-muted-fg)" }}>
-                  Select uploaded files to attach to your prompt
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              aria-label="Close"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-none"
-              style={{ color: "var(--modal-muted-fg)" }}
-              onClick={onClose}
-            >
-              <FiX className="h-4 w-4" aria-hidden />
-            </button>
-          </div>
-
-          <div className="attachment-library-browser flex min-h-0 flex-1 flex-col overflow-hidden">
-            <UserFilesBrowser
-              variant="modal"
-              mode="pick"
-              library={library}
-              onRequestClose={onClose}
-              isMobileLayout={isMobile}
-              onConfirmPick={(files) => {
-                onConfirm(files);
-                onClose();
-              }}
-            />
-          </div>
-        </div>
+  return (
+    <AppModal
+      open
+      onClose={onClose}
+      size="tall"
+      mobileFullScreen={isMobile}
+      closeOnEscape={false}
+      ariaLabelledBy="attachment-library-title"
+      panelClassName="!max-h-[min(90vh,720px)]"
+    >
+      <AppModalHeader
+        titleId="attachment-library-title"
+        title="Choose from My files"
+        subtitle={subtitle}
+        onClose={onClose}
+      />
+      <div className="attachment-library-browser flex min-h-0 flex-1 flex-col overflow-hidden">
+        <UserFilesBrowser
+          variant="modal"
+          mode="pick"
+          library={library}
+          onRequestClose={onClose}
+          onConfirmPick={onConfirm}
+          isMobileLayout={isMobile}
+        />
       </div>
-    ) as any,
-    portalTarget,
+    </AppModal>
   );
 }

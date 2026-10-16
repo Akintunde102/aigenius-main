@@ -1,6 +1,7 @@
 import type { ChatSession } from "@/app/components/model-interface/shared/types";
 import type { CodeProject } from "@/lib/calls/code-projects";
-import { groupSidebarSessionsByProject, sortSidebarSessions } from "./chatHistoryListGrouping";
+import { groupSidebarSessionsByProject, sortSidebarSessions, groupProjectBucketByLabels } from "./chatHistoryListGrouping";
+import type { ConversationLabel } from "@/lib/calls/model-chat-conversation";
 
 const projects: CodeProject[] = [
   {
@@ -221,5 +222,79 @@ describe("groupSidebarSessionsByProject", () => {
     expect(buckets[0]?.projectId).toBe("proj-nobox");
     const general = buckets.find((b) => b.projectId === null);
     expect(general?.hasActiveSession).toBe(true);
+  });
+
+  describe("groupProjectBucketByLabels", () => {
+    const catalog: ConversationLabel[] = [
+      { id: "lbl-bug", name: "Bug", color: "#ef4444", sortOrder: 0 },
+      { id: "lbl-feature", name: "Feature", color: "#10b981", sortOrder: 1 },
+      { id: "lbl-empty", name: "Empty", color: "#3b82f6", sortOrder: 2 },
+    ];
+
+    it("partitions sessions into matching folders and unlabeled others", () => {
+      const s1 = session("chat-1", { labelIds: ["lbl-bug"] });
+      const s2 = session("chat-2", { labelIds: ["lbl-feature"] });
+      const s3 = session("chat-3", { labelIds: [] });
+
+      const { folders, others } = groupProjectBucketByLabels([s1, s2, s3], catalog);
+
+      expect(folders).toHaveLength(2);
+      expect(folders[0]?.name).toBe("Bug");
+      expect(folders[0]?.sessions.map((s) => s.id)).toEqual(["chat-1"]);
+      expect(folders[1]?.name).toBe("Feature");
+      expect(folders[1]?.sessions.map((s) => s.id)).toEqual(["chat-2"]);
+      expect(others.map((s) => s.id)).toEqual(["chat-3"]);
+    });
+
+    it("places multi-labeled sessions in all corresponding folders", () => {
+      const multi = session("chat-multi", { labelIds: ["lbl-bug", "lbl-feature"] });
+
+      const { folders, others } = groupProjectBucketByLabels([multi], catalog);
+
+      expect(folders).toHaveLength(2);
+      expect(folders[0]?.sessions[0]?.id).toBe("chat-multi");
+      expect(folders[1]?.sessions[0]?.id).toBe("chat-multi");
+      expect(others).toHaveLength(0);
+    });
+
+    it("excludes empty folders from the result", () => {
+      const s1 = session("chat-1", { labelIds: ["lbl-bug"] });
+
+      const { folders } = groupProjectBucketByLabels([s1], catalog);
+
+      expect(folders.some((f) => f.labelId === "lbl-empty")).toBe(false);
+    });
+
+    it("treats sessions with deleted or unknown label IDs as others", () => {
+      const unknown = session("chat-ghost", { labelIds: ["lbl-deleted"] });
+
+      const { folders, others } = groupProjectBucketByLabels([unknown], catalog);
+
+      expect(folders).toHaveLength(0);
+      expect(others.map((s) => s.id)).toEqual(["chat-ghost"]);
+    });
+  });
+
+  describe("groupSidebarSessionsByProject with labels mode", () => {
+    const catalog: ConversationLabel[] = [
+      { id: "lbl-bug", name: "Bug", color: "#ef4444", sortOrder: 0 },
+    ];
+
+    it("populates folders and others on project buckets when sidebarOrganization is labels", () => {
+      const s1 = session("chat-1", { codeProjectId: "proj-nobox", labelIds: ["lbl-bug"] });
+      const s2 = session("chat-2", { codeProjectId: "proj-nobox", labelIds: [] });
+
+      const buckets = groupSidebarSessionsByProject([s1, s2], projects, {
+        sidebarOrganization: "labels",
+        conversationLabels: catalog,
+      });
+
+      const nobox = buckets.find((b) => b.projectId === "proj-nobox");
+      expect(nobox).toBeDefined();
+      expect(nobox?.folders).toHaveLength(1);
+      expect(nobox?.folders?.[0]?.name).toBe("Bug");
+      expect(nobox?.others).toHaveLength(1);
+      expect(nobox?.others?.[0]?.id).toBe("chat-2");
+    });
   });
 });

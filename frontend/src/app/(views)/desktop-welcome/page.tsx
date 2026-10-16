@@ -14,10 +14,12 @@ import { PublicPageShell } from "@/app/components/PublicPageShell";
 import { hasAuthSession, syncAuthSessionCookiesFromStorage } from "@/lib/utils/auth-session";
 import { resolveAuthenticatedDesktopShellRedirect } from "@/lib/utils/safe-internal-next-path";
 import { LINKS } from "@/lib/links";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 const DESKTOP_SHELL_ENTRY_QUERY_PARAM = 'desktop';
 
 export default function DesktopWelcomePage() {
+  const { t } = useLanguage();
   const pathname = usePathname();
   const didSessionRedirectRef = useRef(false);
 
@@ -55,7 +57,7 @@ export default function DesktopWelcomePage() {
   return (
     <PublicPageShell hideHeader showFooter={false} contentClassName="justify-center">
       <DesktopAuthFrame>
-        <DesktopAuthHeading title="Welcome" subtitle="Sign in to continue in your desktop workspace." />
+        <DesktopAuthHeading title={t("desktopAuth.welcome")} subtitle={t("desktopAuth.welcomeSubtitle")} />
 
         <div className="mt-8 w-full max-w-xs">
           <button
@@ -65,19 +67,19 @@ export default function DesktopWelcomePage() {
             }}
             className={DESKTOP_PRIMARY_BUTTON}
           >
-            Continue with Google
+            {t("auth.continueWithGoogle")}
           </button>
         </div>
 
         <p className="mt-6 text-sm text-lp-muted">
           <Link prefetch href={`/desktop-login?${DESKTOP_SHELL_ENTRY_QUERY_PARAM}=1`} className={`text-lp-fg ${DESKTOP_TEXT_LINK}`}>
-            Full desktop sign-in
+            {t("desktopAuth.fullDesktopSignIn")}
           </Link>
           <span className="mx-2" aria-hidden>
             ·
           </span>
           <Link prefetch href="/login" className={DESKTOP_TEXT_LINK}>
-            Web sign-in
+            {t("desktopAuth.webSignIn")}
           </Link>
         </p>
 

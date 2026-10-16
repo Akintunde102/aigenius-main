@@ -2,6 +2,7 @@ import React from 'react';
 import { FiInfo, FiCopy, FiRepeat, FiBookmark } from 'react-icons/fi';
 import { Sparkles } from 'lucide-react';
 import { ChatMessage as ChatMessageType } from '@/app/components/model-interface/shared/types';
+import { useLanguage } from '@/lib/providers/LanguageProvider';
 
 interface ActionIconsProps {
     msg: ChatMessageType;
@@ -25,7 +26,9 @@ export const ActionIcons: React.FC<ActionIconsProps> = ({
     onSave,
     onReplay,
     setShowUsageDetails
-}) => (
+}) => {
+    const { t } = useLanguage();
+    return (
     <div className="flex gap-2">
 
         {msg.role === 'assistant' && (
@@ -33,7 +36,7 @@ export const ActionIcons: React.FC<ActionIconsProps> = ({
                 className="text-gray-400 hover:text-yellow-500 transition-colors relative"
                 title={msg.usage ?
                     `Tokens: ${msg.usage.prompt_tokens} prompt + ${msg.usage.completion_tokens} completion = ${msg.usage.total_tokens} total` :
-                    (streaming ? "Cost calculation in progress..." : "No token information available")
+                    (streaming ? t('chat.calculating') : t('chat.tokenDetails'))
                 }
                 onClick={() => setShowUsageDetails(true)}
             >
@@ -44,7 +47,7 @@ export const ActionIcons: React.FC<ActionIconsProps> = ({
 
         <button
             className="text-gray-400 hover:text-blue-500 transition-colors"
-            title="Copy message"
+            title={t('chat.copy')}
             onClick={onCopy}
         >
             <FiCopy size={14} />
@@ -56,7 +59,7 @@ export const ActionIcons: React.FC<ActionIconsProps> = ({
                     ? "text-yellow-500 cursor-not-allowed"
                     : "text-gray-400 hover:text-blue-600 transition-colors"
             }
-            title={isSaved ? "Already saved" : "Save message"}
+            title={isSaved ? t('chat.saved') : t('chat.saveMessage')}
             onClick={onSave}
             disabled={isSaved}
             style={{ position: 'relative' }}
@@ -72,7 +75,7 @@ export const ActionIcons: React.FC<ActionIconsProps> = ({
         {msg.role === "user" && (
             <button
                 className="text-gray-400 hover:text-green-500 transition-colors"
-                title="Replay message"
+                title={t('chat.replay')}
                 onClick={onReplay}
                 disabled={loading}
             >
@@ -80,4 +83,5 @@ export const ActionIcons: React.FC<ActionIconsProps> = ({
             </button>
         )}
     </div>
-);
+    );
+};

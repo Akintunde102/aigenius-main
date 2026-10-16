@@ -191,6 +191,8 @@ if (!gotLock) {
 
     setupCrashHandlers();
     initLocalRetrievalMemory(app.getPath('userData'));
+    const { initToolbox } = await import('./electron/main-toolbox');
+    initToolbox();
     const lastProject = loadLastCodeProject(app.getPath('userData'));
     if (lastProject?.projectId && lastProject?.rootPath) {
       setActiveCodeProjectIndex({
@@ -309,12 +311,19 @@ if (!gotLock) {
       }
     });
 
+    const allowedSessionPermissions = new Set([
+      'media',
+      'audioCapture',
+      'notifications',
+      'fullscreen',
+    ]);
+
     session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-      const allowed = ['media', 'audioCapture', 'notifications'];
-      if (allowed.includes(permission)) {
-        return callback(true);
-      }
-      callback(false);
+      callback(allowedSessionPermissions.has(permission));
+    });
+
+    session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+      return allowedSessionPermissions.has(permission);
     });
   });
 

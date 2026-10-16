@@ -29,7 +29,14 @@ export function sidecarAuthHeaders(): Record<string, string> {
 
 export function toolHasDedicatedApprovalUi(tool: string): boolean {
   const id = normalizeDesktopToolId(tool);
-  return id === 'local_shell' || id === 'local_apply_patch';
+  return (
+    id === 'local_shell' ||
+    id === 'local_apply_patch' ||
+    id === 'local_toolbox_search' ||
+    id === 'local_toolbox_get' ||
+    id === 'local_toolbox_run' ||
+    id === 'local_toolbox_save'
+  );
 }
 
 export function toolApprovalLabel(tool: string): string {

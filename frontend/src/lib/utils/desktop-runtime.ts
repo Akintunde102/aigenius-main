@@ -212,6 +212,7 @@ export type AigeniusDesktopBridgeSurface = {
     | { ok: true; path: string; created: boolean }
     | { ok: false; error: string }
   >;
+  getProjectFolderPickerDefaults?: () => Promise<{ defaultBrowsePath: string }>;
   pickProjectDirectory?: () => Promise<{ path: string } | null>;
   createNamedProjectDirectory?: (payload: { folderName: string; silent?: boolean }) => Promise<
     | { ok: true; path: string; created?: boolean }
@@ -228,6 +229,13 @@ export type AigeniusDesktopBridgeSurface = {
       indexReady: boolean;
       scanInProgress: boolean;
       lastRunMs: number;
+    };
+    deviceFastIndex?: {
+      enabled: boolean;
+      mode: 'disabled' | 'warming' | 'ready';
+      roots: string[];
+      indexedFiles: number;
+      fastPocketQueueDepth: number;
     };
     catalogs: Array<{
       projectId: string;

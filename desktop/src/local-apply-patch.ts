@@ -1,4 +1,5 @@
-import { BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
+import { isInsideToolbox } from './toolbox/paths';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
@@ -40,6 +41,13 @@ function resolveIfAbsolute(p: string): { ok: true; resolved: string } | { ok: fa
     return { ok: false, error: `Path must be absolute: ${p}` };
   }
   const resolved = path.resolve(p);
+  try {
+    if (isInsideToolbox(app.getPath('userData'), resolved)) {
+      return { ok: false, error: 'Cannot modify toolbox storage via local_apply_patch' };
+    }
+  } catch {
+    /* ignore outside Electron */
+  }
   if (!isUnderAllowedRoot(resolved)) {
     return {
       ok: false,
@@ -147,7 +155,7 @@ async function reindexFileQuiet(filePath: string): Promise<void> {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ paths: [filePath], force: true }),
+      body: JSON.stringify({ paths: [filePath], force: true, priority: 'fast_pocket' }),
     });
   } catch {
     /* best-effort */
@@ -164,32 +172,24 @@ export async function applyLocalPatch(
   }
   const { ops } = parsed;
 
-  console.log('[DEBUG] applyLocalPatch called with operations:', ops.length);
   const gateError = checkBlastRadiusGate(ops);
   if (gateError) {
-    console.log('[DEBUG] checkBlastRadiusGate returned an error:', gateError);
     return { ok: false, error: gateError };
   }
 
   const riskyPaths = riskyPatchPaths(ops);
-  console.log('[DEBUG] riskyPaths:', riskyPaths);
-  
   let blastSummary = null;
   if (riskyPaths.length) {
-    console.log('[DEBUG] Calling fetchBlastRadiusSummaryForPaths...');
     try {
       blastSummary = await fetchBlastRadiusSummaryForPaths(riskyPaths);
-      console.log('[DEBUG] fetchBlastRadiusSummaryForPaths completed:', blastSummary);
-    } catch (e) {
-      console.log('[DEBUG] fetchBlastRadiusSummaryForPaths threw an error:', e);
+    } catch {
+      /* ignore */
     }
   }
 
   if (parent && shouldRequireToolApproval('local_apply_patch')) {
-    console.log('[DEBUG] Parent exists and approval required. Calling showPatchApprovalDialog...');
     try {
       const approved = await showPatchApprovalDialog(parent, ops, blastSummary);
-      console.log('[DEBUG] showPatchApprovalDialog completed with approved =', approved);
       if (!approved) {
         return { ok: false, error: 'User declined to apply file changes' };
       }
@@ -210,78 +210,145 @@ export async function applyLocalPatch(
     }
   }
 
-  const results: Array<{ path: string; op: string; status: string; error?: string }> = [];
+  // --- Phase 1: Pre-flight dry-run and in-memory simulation ---
+  const stagedContents = new Map<string, string>();
+  const stagedDeletions = new Set<string>();
+  const preImages = new Map<string, string | null>();
+  const opAudit: Array<{ path: string; op: string; status: string; error?: string }> = [];
 
-  for (const op of ops) {
+  for (let i = 0; i < ops.length; i++) {
+    const op = ops[i];
     try {
       if (op.kind === 'delete_file') {
         let target = op.path;
         try {
           target = await fs.realpath(op.path);
         } catch {
-          /* use original if missing */
+          target = path.resolve(op.path);
         }
         if (!isUnderAllowedRoot(target)) {
           throw new Error('Resolved path left allowed roots');
         }
-        await fs.unlink(target);
-        recordTouchedFile(target);
-        void reindexFileQuiet(target);
-        results.push({ path: target, op: 'delete_file', status: 'ok' });
+
+        if (!preImages.has(target)) {
+          try {
+            const diskContent = await fs.readFile(target, 'utf8');
+            preImages.set(target, diskContent);
+          } catch {
+            preImages.set(target, null);
+          }
+        }
+
+        stagedContents.delete(target);
+        stagedDeletions.add(target);
+        opAudit.push({ path: target, op: 'delete_file', status: 'ok' });
         continue;
       }
 
       if (op.kind === 'create_file') {
         const dir = path.dirname(op.path);
-        const dirReal = path.resolve(dir);
+        let dirReal = dir;
+        try {
+          dirReal = await fs.realpath(dir);
+        } catch {
+          dirReal = path.resolve(dir);
+        }
         if (!isUnderAllowedRoot(dirReal)) {
           throw new Error('Parent directory outside allowed roots');
         }
-        await ensureParentDir(op.path);
-        try {
-          await fs.writeFile(op.path, op.content, { encoding: 'utf8', flag: 'wx' });
-        } catch (e: unknown) {
-          const code = (e as NodeJS.ErrnoException)?.code;
-          if (code === 'EEXIST') {
-            throw new Error('File already exists (create_file is exclusive)');
-          }
-          throw e;
+
+        const target = path.resolve(op.path);
+        if (!isUnderAllowedRoot(target)) {
+          throw new Error('Resolved path left allowed roots');
         }
-        results.push({ path: op.path, op: 'create_file', status: 'ok' });
-        recordTouchedFile(op.path);
-        void reindexFileQuiet(op.path);
+
+        const existsInStaged = stagedContents.has(target);
+        const deletedInStaged = stagedDeletions.has(target);
+        let existsOnDisk = false;
+        try {
+          await fs.access(target);
+          existsOnDisk = true;
+        } catch {
+          existsOnDisk = false;
+        }
+
+        if ((existsOnDisk && !deletedInStaged) || existsInStaged) {
+          throw new Error('File already exists (create_file is exclusive)');
+        }
+
+        if (!preImages.has(target)) {
+          preImages.set(target, existsOnDisk ? await fs.readFile(target, 'utf8').catch(() => null) : null);
+        }
+
+        stagedDeletions.delete(target);
+        stagedContents.set(target, op.content);
+        opAudit.push({ path: target, op: 'create_file', status: 'ok' });
         continue;
       }
 
       if (op.kind === 'apply_hunk') {
-        const existing = await fs.realpath(op.path);
-        if (!isUnderAllowedRoot(existing)) {
+        let target = op.path;
+        try {
+          target = await fs.realpath(op.path);
+        } catch {
+          target = path.resolve(op.path);
+        }
+        if (!isUnderAllowedRoot(target)) {
           throw new Error('Resolved path left allowed roots');
         }
-        const prior = await fs.readFile(existing, 'utf8');
-        const hunk = applySearchReplaceHunk(prior, op.search, op.replace, op.replaceAll);
+
+        let currentContent: string;
+        if (stagedContents.has(target)) {
+          currentContent = stagedContents.get(target)!;
+        } else if (stagedDeletions.has(target)) {
+          throw new Error('Cannot apply hunk: file was marked for deletion in this batch');
+        } else {
+          try {
+            currentContent = await fs.readFile(target, 'utf8');
+            if (!preImages.has(target)) {
+              preImages.set(target, currentContent);
+            }
+          } catch {
+            throw new Error(`File does not exist: ${target}`);
+          }
+        }
+
+        const hunk = applySearchReplaceHunk(currentContent, op.search, op.replace, op.replaceAll);
         if (!hunk.ok) {
           throw new Error(hunk.error);
         }
-        await fs.writeFile(existing, hunk.content, { encoding: 'utf8', flag: 'w' });
-        results.push({ path: existing, op: 'apply_hunk', status: 'ok' });
-        recordTouchedFile(existing);
-        void reindexFileQuiet(existing);
+
+        stagedContents.set(target, hunk.content);
+        opAudit.push({ path: target, op: 'apply_hunk', status: 'ok' });
         continue;
       }
 
       // update_file
-      const existing = await fs.realpath(op.path);
-      if (!isUnderAllowedRoot(existing)) {
+      let target = op.path;
+      try {
+        target = await fs.realpath(op.path);
+      } catch {
+        target = path.resolve(op.path);
+      }
+      if (!isUnderAllowedRoot(target)) {
         throw new Error('Resolved path left allowed roots');
       }
-      await fs.writeFile(existing, op.content, { encoding: 'utf8', flag: 'w' });
-      results.push({ path: existing, op: 'update_file', status: 'ok' });
-      recordTouchedFile(existing);
-      void reindexFileQuiet(existing);
+
+      if (!preImages.has(target)) {
+        try {
+          const diskContent = await fs.readFile(target, 'utf8');
+          preImages.set(target, diskContent);
+        } catch {
+          preImages.set(target, null);
+        }
+      }
+
+      stagedDeletions.delete(target);
+      stagedContents.set(target, op.content);
+      opAudit.push({ path: target, op: 'update_file', status: 'ok' });
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'operation failed';
-      results.push({
+      const msg = e instanceof Error ? e.message : 'Operation dry-run failed';
+      opAudit.push({
         path: op.path,
         op: op.kind,
         status: 'error',
@@ -290,19 +357,91 @@ export async function applyLocalPatch(
       return {
         ok: true,
         result: JSON.stringify({
-          partial: true,
-          results,
-          error: `Stopped after failure: ${msg}`,
+          partial: false,
+          success: false,
+          results: opAudit,
+          error: `Pre-flight dry-run failed at operation ${i + 1} (${op.kind}): ${msg}. No files were changed.`,
         }),
       };
     }
+  }
+
+  // --- Phase 2: Atomic Disk Application & Rollback Guarantee ---
+  const appliedRollbacks: Array<() => Promise<void>> = [];
+  const touchedPaths: string[] = [];
+
+  try {
+    for (const deletePath of stagedDeletions) {
+      const prior = preImages.get(deletePath);
+      let existedOnDisk = false;
+      try {
+        await fs.access(deletePath);
+        existedOnDisk = true;
+      } catch {
+        existedOnDisk = false;
+      }
+
+      if (existedOnDisk) {
+        await fs.unlink(deletePath);
+        touchedPaths.push(deletePath);
+        if (prior !== null && prior !== undefined) {
+          appliedRollbacks.push(async () => {
+            await ensureParentDir(deletePath);
+            await fs.writeFile(deletePath, prior, 'utf8');
+          });
+        }
+      }
+    }
+
+    for (const [targetPath, newContent] of stagedContents.entries()) {
+      const prior = preImages.get(targetPath);
+      const isNew = prior === null;
+
+      await ensureParentDir(targetPath);
+      await fs.writeFile(targetPath, newContent, 'utf8');
+      touchedPaths.push(targetPath);
+
+      if (isNew) {
+        appliedRollbacks.push(async () => {
+          await fs.unlink(targetPath).catch(() => {});
+        });
+      } else if (prior !== undefined && prior !== null) {
+        appliedRollbacks.push(async () => {
+          await fs.writeFile(targetPath, prior, 'utf8').catch(() => {});
+        });
+      }
+    }
+  } catch (diskErr: unknown) {
+    for (let j = appliedRollbacks.length - 1; j >= 0; j--) {
+      try {
+        await appliedRollbacks[j]();
+      } catch {
+        /* best-effort rollback */
+      }
+    }
+
+    const diskMsg = diskErr instanceof Error ? diskErr.message : 'Disk write failure';
+    return {
+      ok: true,
+      result: JSON.stringify({
+        partial: false,
+        success: false,
+        results: opAudit.map((item) => ({ ...item, status: 'rolled_back' })),
+        error: `Disk write failed: ${diskMsg}. All disk mutations were rolled back.`,
+      }),
+    };
+  }
+
+  for (const p of touchedPaths) {
+    recordTouchedFile(p);
+    void reindexFileQuiet(p);
   }
 
   return {
     ok: true,
     result: JSON.stringify({
       partial: false,
-      results,
+      results: opAudit,
       ...(blastSummary
         ? {
             blastRadius: {

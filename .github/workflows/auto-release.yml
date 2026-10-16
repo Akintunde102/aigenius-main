@@ -27,16 +27,16 @@ jobs:
 
       - name: Detect Release Type & Compatibility Contract
         id: detect
-        run: node desktop/scripts/auto-detect-release.cjs
+        run: node desktop/scripts/auto-detect-release.cjs ${{ github.event.before }}
+        env:
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
 
-      # ── BRANCH 1: SILENT UI OTA (No native files touched) ───────────────
-      - name: Build & Package Silent UI Bundle
-        if: steps.detect.outputs.release_type == 'UI_OTA'
+      # ── UI OTA PIPELINE (Always build & publish UI bundle) ───────────────
+      - name: Build & Package UI Bundle
         run: |
           yarn workspace aigenius-desktop run package:ui:ota --min-desktop-version ${{ steps.detect.outputs.min_desktop_version }}
 
       - name: Publish Silent OTA to Cloudflare CDN
-        if: steps.detect.outputs.release_type == 'UI_OTA'
         run: node desktop/scripts/publish-ui-ota-r2.cjs
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -44,15 +44,17 @@ jobs:
           CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
           CLOUDFLARE_R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_BUCKET }}
 
-      # ── BRANCH 2: NATIVE UPDATE (Store Submission Required) ──────────────
+      # ── OPTIONAL NATIVE SHELL UPDATE (When native files modified) ────────
       - name: Build Full Native MSIX Package for Microsoft Store
         if: steps.detect.outputs.release_type == 'NATIVE_REQUIRED'
+        continue-on-error: true
         run: yarn workspace aigenius-desktop run package:win:appx
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Standalone Windows NSIS Setup
         if: steps.detect.outputs.release_type == 'NATIVE_REQUIRED'
+        continue-on-error: true
         run: yarn workspace aigenius-desktop run package:win
 
       - name: Upload Microsoft Store MSIX Artifact
@@ -61,17 +63,4 @@ jobs:
         with:
           name: AIGenius-Store-Package
           path: desktop/release/*.appx
-
-      - name: Package Matched UI Bundle for New Native Shell
-        if: steps.detect.outputs.release_type == 'NATIVE_REQUIRED'
-        run: |
-          yarn workspace aigenius-desktop run package:ui:ota --min-desktop-version ${{ steps.detect.outputs.min_desktop_version }}
-
-      - name: Publish Matched UI to Cloudflare CDN for New Native Shell
-        if: steps.detect.outputs.release_type == 'NATIVE_REQUIRED'
-        run: node desktop/scripts/publish-ui-ota-r2.cjs
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
-          CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
-          CLOUDFLARE_R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_BUCKET }}
+          if-no-files-found: ignore

@@ -7,6 +7,7 @@ import type { Model } from '@/app/components/model-interface/shared/types';
 import { ModelWalletLockIndicator } from '@/app/components/model-interface/features/models/components/ModelWalletLockIndicator';
 import { ModelCreditBurnIndicator } from '@/app/components/model-interface/features/models/components/ModelCreditBurnIndicator';
 import { getModelCreditBurnPercentage } from '@/app/components/model-interface/features/models/utils/modelWalletAffordance.utils';
+import { getModelDisplayName } from '@/app/components/model-interface/shared/utils';
 
 // Left Controls Section Component
 const LeftControlsSection: React.FC<{
@@ -44,6 +45,9 @@ const LeftControlsSection: React.FC<{
     onConfirmSTT?: () => void;
     isSTTActive?: boolean;
     isDictationTranscribing?: boolean;
+    onRewritePrompt?: () => void;
+    rewritePromptDisabled?: boolean;
+    rewritePromptInProgress?: boolean;
 }> = ({
     disabled,
     modelSelectorDisabled,
@@ -79,6 +83,9 @@ const LeftControlsSection: React.FC<{
     onConfirmSTT,
     isSTTActive,
     isDictationTranscribing,
+    onRewritePrompt,
+    rewritePromptDisabled,
+    rewritePromptInProgress,
 }) => {
         const modelDisabled = modelSelectorDisabled ?? disabled;
         const showComposerWalletHint =
@@ -110,10 +117,10 @@ const LeftControlsSection: React.FC<{
                             onClick={onModelNameClick}
                             disabled={modelDisabled || !onModelNameClick}
                             className={`inline-flex items-center gap-1.5 rounded-full border text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 [border-color:var(--chat-composer-border)] [background-color:color-mix(in_srgb,var(--chat-composer-bg)_88%,transparent)] [color:var(--sidebar-muted-fg)] hover:[color:var(--sidebar-fg)] hover:[background-color:var(--chat-composer-bg)] ${mini ? 'px-1.5 py-0.5' : 'px-2 py-0.5'}`}
-                            title={selectedModel?.name ? `Model: ${selectedModel.name}` : 'Select model'}
+                            title={selectedModel ? `Model: ${getModelDisplayName(selectedModel)}` : 'Select model'}
                         >
                             <span className={`${mini ? 'text-[10px]' : 'text-xs'} font-medium truncate max-w-32`}>
-                                {selectedModel?.name ?? 'Select model'}
+                                {selectedModel ? getModelDisplayName(selectedModel) : 'Select model'}
                             </span>
                             {!showComposerWalletHint &&
                                 selectedModelBurnPercentage !== null &&
@@ -214,6 +221,9 @@ const LeftControlsSection: React.FC<{
                         onConfirmSTT={onConfirmSTT}
                         isSTTActive={isSTTActive}
                         isDictationTranscribing={isDictationTranscribing}
+                        onRewritePrompt={onRewritePrompt}
+                        rewritePromptDisabled={rewritePromptDisabled}
+                        rewritePromptInProgress={rewritePromptInProgress}
                     />
                 )}
             </div>
@@ -260,7 +270,7 @@ const ModelSelectionSection: React.FC<{
                     disabled={disabled || uploading || !onModelNameClick}
                     className={modelButtonStyles}
                 >
-                    {selectedModel?.name || "Select model"}
+                    {selectedModel ? getModelDisplayName(selectedModel) : "Select model"}
                 </button>
 
                 // Modalities commented out for now
@@ -325,6 +335,9 @@ export const ChatControls: React.FC<ChatControlsProps> = React.memo(({
     onConfirmSTT,
     isSTTActive,
     isDictationTranscribing,
+    onRewritePrompt,
+    rewritePromptDisabled,
+    rewritePromptInProgress,
 }) => {
     return (
         <div className={`bg-white px-2 pb-1 [background-clip:padding-box] dark:bg-transparent ${compact ? 'border-none' : ''}`}>
@@ -364,6 +377,9 @@ export const ChatControls: React.FC<ChatControlsProps> = React.memo(({
                     onConfirmSTT={onConfirmSTT}
                     isSTTActive={isSTTActive}
                     isDictationTranscribing={isDictationTranscribing}
+                    onRewritePrompt={onRewritePrompt}
+                    rewritePromptDisabled={rewritePromptDisabled}
+                    rewritePromptInProgress={rewritePromptInProgress}
                 />
             </div>
         </div>

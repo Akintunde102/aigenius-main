@@ -54,7 +54,7 @@ export function shouldRetryGatewayFetch(params: {
   maxAttempts: number;
 }): boolean {
   const { error, httpStatus, attempt, maxAttempts } = params;
-  if (attempt >= maxAttempts) {
+  if (maxAttempts > 0 && Number.isFinite(maxAttempts) && attempt >= maxAttempts) {
     return false;
   }
   if (error != null) {
@@ -125,7 +125,7 @@ export async function fetchGatewayWithRetries(
   const { signal } = init;
   let lastError: unknown;
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  for (let attempt = 1; maxAttempts === Infinity || attempt <= maxAttempts; attempt++) {
     try {
       const response = await fetchFn(init);
       if (!response.ok && shouldRetryGatewayFetch({ httpStatus: response.status, attempt, maxAttempts })) {

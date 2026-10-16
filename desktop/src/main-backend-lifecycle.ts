@@ -17,6 +17,7 @@ import { startIndexerUtilityProcess, stopIndexerUtilityProcess } from './indexer
 import { resolveFrontendPort } from './frontend-port';
 import { resolveMiniServerCorsOrigins } from './resolve-mini-server-cors-origins';
 import { resolveActiveOtaUiDir } from './desktop-ui-ota';
+import { processRegistry } from './process-registry';
 
 export const INDEXER_IPC_PORT = process.env.AIGENIUS_INDEXER_IPC_PORT ?? '18012';
 export const FRONTEND_PORT = resolveFrontendPort();
@@ -172,6 +173,11 @@ export function killChildren(): void {
   }
   children.length = 0;
   stopIndexerUtilityProcess();
+  try {
+    processRegistry.terminateAll();
+  } catch {
+    /* best-effort */
+  }
 }
 
 export let appShutdownStarted = false;
@@ -279,6 +285,9 @@ export async function startIndexerProcess(userDataPath: string, modelsDir: strin
     logsDir,
   });
   await waitForIndexerIpc(INDEXER_IPC_PORT, 90_000);
+
+  const { scheduleDeviceInstallPocketPlanner } = await import('./device-install-pocket-planner');
+  scheduleDeviceInstallPocketPlanner(userDataPath);
 }
 
 type DeferredIndexerContext = {

@@ -28,6 +28,9 @@ jest.mock('../search/db/connection.js', () => ({
   getActiveDbPath: jest.fn(() => '/tmp/aigenius-test.sqlite'),
 }));
 
+const mockGetDeviceFastIndexPocketStatus = jest.fn();
+const mockRunInstallDevicePocketPlannerForApp = jest.fn();
+
 jest.mock('../search/index.js', () => ({
   getSearchQueue: () => ({ push: mockQueuePush, pendingCount: () => 0 }),
   getSearchWatchPaths: () => ['/home/user/project'],
@@ -40,6 +43,9 @@ jest.mock('../search/index.js', () => ({
     return paths.length;
   }),
   enqueueProjectIndex: jest.fn(() => 1),
+  getDeviceFastIndexPocketStatus: (...args: unknown[]) => mockGetDeviceFastIndexPocketStatus(...args),
+  runInstallDevicePocketPlannerForApp: (...args: unknown[]) =>
+    mockRunInstallDevicePocketPlannerForApp(...args),
 }));
 
 jest.mock('../sidecar/index.js', () => ({
@@ -128,6 +134,21 @@ describe('local desktop search routes (scenario + timing)', () => {
     mockRagQueryHybrid.mockReset();
     mockListSymbolsForFile.mockReset();
     mockGetContext.mockReset();
+    mockGetDeviceFastIndexPocketStatus.mockReset();
+    mockRunInstallDevicePocketPlannerForApp.mockReset();
+
+    mockGetDeviceFastIndexPocketStatus.mockReturnValue({
+      directories: ['C:\\Users\\alice\\Desktop'],
+      state: {
+        install_planner_completed: false,
+        install_planner_app_version: null,
+      },
+    });
+    mockRunInstallDevicePocketPlannerForApp.mockResolvedValue({
+      ran: true,
+      completed: true,
+      error: null,
+    });
 
     mockGetStatusSnapshot.mockReturnValue({
       indexed: 0,
@@ -172,6 +193,13 @@ describe('local desktop search routes (scenario + timing)', () => {
         db_path: '/tmp/aigenius-test.sqlite',
         core_ready: true,
         enrichment_ready: true,
+        device_fast_index: {
+          enabled: true,
+          fastPocketQueueDepth: 0,
+          indexedFiles: 0,
+          mode: 'ready',
+          roots: [],
+        },
         health: {
           db_integrity: 'unknown',
           indexer_ipc_reachable: true,
@@ -276,6 +304,34 @@ describe('local desktop search routes (scenario + timing)', () => {
       expect(res.status).toBe(200);
       expect(res.body).toMatchObject({ type: 'file' });
       assertWithinBudget(res.ms, { label: 'POST /search/context', maxMs: CONTEXT_BUDGET_MS });
+    });
+  });
+
+  describe('device fast index routes', () => {
+    it('GET /device-fast-index returns pocket status', async () => {
+      const res = await searchRequest(app, 'GET', '/device-fast-index');
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({
+        directories: ['C:\\Users\\alice\\Desktop'],
+        install_planner_completed: false,
+      });
+    });
+
+    it('POST /device-fast-index/run-install-planner invokes planner', async () => {
+      const res = await searchRequest(app, 'POST', '/device-fast-index/run-install-planner', {
+        body: { appVersion: '9.9.9' },
+      });
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ ran: true, completed: true, error: null });
+      expect(mockRunInstallDevicePocketPlannerForApp).toHaveBeenCalled();
+    });
+
+    it('POST /reindex accepts fast_pocket priority', async () => {
+      const res = await searchRequest(app, 'POST', '/reindex', {
+        body: { paths: ['/home/user/Desktop/note.txt'], priority: 'fast_pocket', force: true },
+      });
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ queued: 1 });
     });
   });
 

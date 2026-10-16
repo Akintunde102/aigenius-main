@@ -1,3 +1,4 @@
+import copy from 'copy-to-clipboard';
 import type { ChatMessage, ChatSession } from '@/app/components/model-interface/shared/types';
 import { getConversationById } from '@/lib/calls/model-chat-conversation';
 import { normalizeSessionMessages } from '@/lib/utils/messageContentUtils';
@@ -183,28 +184,52 @@ export async function resolveConversationTranscriptMessages(
     }
 
     const sessionId = session.id?.trim();
-    if (sessionId && options?.getCachedMessages) {
-        const cached = options.getCachedMessages(sessionId);
-        if (cached?.length && hasExportableTranscript(cached)) {
-            return cached;
-        }
+    const cached = sessionId && options?.getCachedMessages ? options.getCachedMessages(sessionId) : undefined;
+    if (cached?.length && hasExportableTranscript(cached)) {
+        return cached;
     }
 
     if (!sessionId) {
-        return sessionMessages;
+        return cached?.length ? cached : sessionMessages;
     }
 
-    const conversation = await getConversationById(sessionId);
-    const loadedMessages = conversation?.session?.messages;
-    if (!loadedMessages?.length) {
-        return sessionMessages;
+    try {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            timer = setTimeout(() => {
+                reject(new Error('Request timed out while loading transcript'));
+            }, 10_000);
+        });
+
+        const conversation = await Promise.race([
+            getConversationById(sessionId),
+            timeoutPromise,
+        ]).finally(() => {
+            if (timer) clearTimeout(timer);
+        });
+
+        const loadedMessages = conversation?.session?.messages;
+        if (loadedMessages?.length) {
+            const normalized = normalizeSessionMessages({
+                ...session,
+                messages: loadedMessages,
+            });
+            return (normalized.messages ?? []) as ChatMessage[];
+        }
+    } catch (err) {
+        if (cached?.length) {
+            return cached;
+        }
+        if (sessionMessages.length) {
+            return sessionMessages;
+        }
+        throw err;
     }
 
-    const normalized = normalizeSessionMessages({
-        ...session,
-        messages: loadedMessages,
-    });
-    return (normalized.messages ?? []) as ChatMessage[];
+    if (cached?.length) {
+        return cached;
+    }
+    return sessionMessages;
 }
 
 function roleLabel(role: TranscriptMessage['role']): string {
@@ -307,4 +332,17 @@ export async function downloadConversationTranscript(
     const content = buildConversationTranscriptContent(title, messages, format, exportedAt);
     const filename = buildConversationTranscriptFilename(title, format, session.id, exportedAt);
     downloadTextFile(filename, content, MIME_TYPES[format]);
+}
+
+/** Resolves messages and copies formatted transcript text to the clipboard. */
+export async function copyConversationTranscript(
+    session: ChatSession,
+    title: string,
+    format: TranscriptFormat,
+    exportedAt = new Date(),
+    options?: ResolveConversationTranscriptMessagesOptions,
+): Promise<boolean> {
+    const messages = await resolveConversationTranscriptMessages(session, options);
+    const content = buildConversationTranscriptContent(title, messages, format, exportedAt);
+    return copy(content);
 }

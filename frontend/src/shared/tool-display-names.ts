@@ -22,6 +22,8 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
     check_slug_availability: 'Check Slug',
     list_user_pages: 'List Published Apps',
     convert_to_pdf_and_upload: 'Convert to PDF',
+    upload_user_file: 'Upload file',
+    local_upload_file: 'Upload local file (desktop)',
     web_fetch: 'Fetch web page',
     youtube_get_transcript: 'YouTube transcript',
     serper_google_search: 'Google search',
@@ -63,6 +65,8 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
     local_git_diff: 'Git diff (desktop)',
     local_retrieval_memory_get: 'Retrieval memory get (desktop)',
     local_retrieval_memory_upsert: 'Retrieval memory save (desktop)',
+    list_conversation_labels: 'List Conversation Labels',
+    set_conversation_labels: 'Set Conversation Labels',
 };
 
 export function getToolDisplayName(toolName: string): string {
@@ -153,6 +157,10 @@ export function getToolActivityHint(
             return 'Listing published web apps…';
         case 'convert_to_pdf_and_upload':
             return 'Converting and uploading PDF…';
+        case 'upload_user_file':
+            return 'Uploading file to your library…';
+        case 'local_upload_file':
+            return 'Uploading a local file to your library…';
         case 'serper_google_search': {
             const q = args.query;
             if (typeof q === 'string' && q.trim()) {

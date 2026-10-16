@@ -1,5 +1,5 @@
 import React from 'react';
-import { Paperclip, Mic, Phone, Loader2, X, Check } from 'lucide-react';
+import { Paperclip, Mic, Phone, Loader2, X, Check, Wand2 } from 'lucide-react';
 import { ActionButtonsProps } from './types';
 import { FEATURE_FLAGS } from '@/lib/config/features';
 import { useLanguage } from '@/lib/providers/LanguageProvider';
@@ -15,6 +15,9 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     onConfirmSTT,
     isSTTActive,
     isDictationTranscribing = false,
+    onRewritePrompt,
+    rewritePromptDisabled = false,
+    rewritePromptInProgress = false,
 }) => {
     const { t } = useLanguage();
     /** Dictation-only — do not tie to conversational `audioStatus` or the mic flickers in phone mode. */
@@ -82,6 +85,31 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 >
                     <Mic size={12} />
                 </button>
+            ) : null}
+
+            {onRewritePrompt ? (
+                rewritePromptInProgress ? (
+                    <button
+                        type="button"
+                        className="p-1.5 rounded-full text-[var(--chat-accent)] bg-[color-mix(in_srgb,var(--chat-accent)_12%,transparent)] disabled:opacity-50 cursor-not-allowed"
+                        title={t('composer.rewritingPrompt', 'Rewriting prompt...')}
+                        aria-label={t('composer.rewritingPrompt', 'Rewriting prompt...')}
+                        disabled
+                    >
+                        <Loader2 size={12} className="animate-spin" />
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        className="p-1.5 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 [color:var(--chat-muted-fg)] hover:[color:var(--chat-accent)] hover:bg-[color-mix(in_srgb,var(--chat-accent)_10%,transparent)]"
+                        title={t('composer.rewritePrompt', 'Rewrite prompt')}
+                        aria-label={t('composer.rewritePrompt', 'Rewrite prompt')}
+                        disabled={rewritePromptDisabled}
+                        onClick={() => onRewritePrompt()}
+                    >
+                        <Wand2 size={12} />
+                    </button>
+                )
             ) : null}
 
             {/* File attachment button */}

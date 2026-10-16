@@ -25,4 +25,10 @@ export const FEATURE_FLAGS = {
   INTEGRATIONS: false,
 
   WORKFLOWS: false,
+
+  /**
+   * Saved desktop scripts (toolbox). Off by default.
+   * Set NEXT_PUBLIC_ENABLE_TOOLBOX=true and AIGENIUS_ENABLE_TOOLBOX=1 in the desktop shell.
+   */
+  TOOLBOX: process.env.NEXT_PUBLIC_ENABLE_TOOLBOX === 'true',
 } as const;

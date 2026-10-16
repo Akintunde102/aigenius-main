@@ -19,6 +19,10 @@ export function isClientDraftSessionId(id: string | null | undefined): boolean {
   return typeof id === 'string' && id.startsWith(CLIENT_DRAFT_SESSION_PREFIX);
 }
 
+export function isDraftSessionKey(id: string | null | undefined): boolean {
+  return !id || id === DRAFT_SESSION_KEY || isClientDraftSessionId(id);
+}
+
 let activeClientDraftSessionId = createClientDraftSessionId();
 
 export function getClientDraftSessionId(): string {

@@ -4,6 +4,7 @@ import { Config } from '../types';
 import { extractErrorMessage } from '../utils';
 import { authorizedFetch, getAccessToken } from '../../lib/api/auth-client';
 import { fetchGatewayWithRetries } from './gateway-fetch-retry';
+import { ResilientStreamReader, ReattachOutcome } from './resilient-stream-reader';
 import { getE2eWalletBypassHeaders } from '../../lib/e2e-wallet-bypass';
 import {
   getAigeniusDesktopBridgeFromBrowsingContext,
@@ -23,8 +24,10 @@ import { resolveProjectScopeForChatRequest } from '@/lib/code-projects/chat-proj
 import { getCodeProjectRootHealth } from '@/lib/code-projects/code-project-root-health-store';
 import { enrichActiveCodeProjectWithFolderHealth } from '@/lib/code-projects/enrich-active-code-project-folder-health';
 import { runCreateCodeProjectFromToolArgs } from '@/lib/code-projects/create-code-project-workflow';
+import { argumentsForLocalDesktopTool } from './local-upload-gateway-auth';
 import { clientVerboseDebug, isClientVerboseDebugEnabled } from '@/lib/utils/client-verbose-debug';
 import { getActiveClientLanguage } from '@/lib/providers/LanguageProvider';
+import { FEATURE_FLAGS } from '@/lib/config/features';
 
 // Constants
 const OPENAI_CHAT_COMPLETIONS_PATH = '/gateway/*/openai/v1/chat/completions';
@@ -87,6 +90,7 @@ const CHAT_RUNTIME_CONTEXT_CACHE_TTL_MS = 45_000;
 
 type CachedDesktopIpcRuntime = {
   desktopHost: unknown;
+  desktopToolboxEnabled?: boolean;
   retrievalMemoryCatalog: unknown;
   localToolCapabilities?: unknown;
   structuralDigest?: string;
@@ -485,6 +489,9 @@ async function mergeRuntimeContextIntoRequestBody(
         ...(cachedDesktopIpcRuntime.localToolCapabilities
           ? { localToolCapabilities: cachedDesktopIpcRuntime.localToolCapabilities }
           : {}),
+        ...(FEATURE_FLAGS.TOOLBOX && cachedDesktopIpcRuntime.desktopToolboxEnabled === true
+          ? { desktopToolboxEnabled: true }
+          : {}),
       });
       applyProjectScopeToRequest(
         ctx,
@@ -505,6 +512,8 @@ async function mergeRuntimeContextIntoRequestBody(
         && typeof extra.localToolCapabilities === 'object'
         ? extra.localToolCapabilities
         : undefined;
+      const toolboxEnabled =
+        FEATURE_FLAGS.TOOLBOX && (extra as { desktopToolboxEnabled?: boolean })?.desktopToolboxEnabled === true;
       const digest =
         typeof (extra as any)?.structuralDigest === 'string' && (extra as any).structuralDigest.trim()
           ? (extra as any).structuralDigest.trim()
@@ -515,6 +524,7 @@ async function mergeRuntimeContextIntoRequestBody(
           retrievalMemoryCatalog: cat,
           ...(caps ? { localToolCapabilities: caps } : {}),
           ...(digest ? { structuralDigest: digest } : {}),
+          ...(toolboxEnabled ? { desktopToolboxEnabled: true } : {}),
           expiresAt: now + CHAT_RUNTIME_CONTEXT_CACHE_TTL_MS,
         };
       }
@@ -524,6 +534,7 @@ async function mergeRuntimeContextIntoRequestBody(
         ...(dh ? { desktopHost: dh } : {}),
         ...(cat ? { retrievalMemoryCatalog: cat } : {}),
         ...(caps ? { localToolCapabilities: caps } : {}),
+        ...(toolboxEnabled ? { desktopToolboxEnabled: true } : {}),
       });
       applyProjectScopeToRequest(
         ctx,
@@ -838,10 +849,16 @@ async function fulfillDesktopToolDelegate(
         }
         : undefined;
 
+    const prepared = await argumentsForLocalDesktopTool(ev.tool, ev.arguments);
+    if (prepared.error) {
+      await postDesktopToolDelegateResult(config, ev.delegate_id, { error: prepared.error }, signal);
+      return;
+    }
+
     const run = desktop.runLocalDesktopTool(
       {
         tool: ev.tool,
-        arguments: ev.arguments ?? {},
+        arguments: prepared.arguments,
       },
       streamOpts,
     );
@@ -1039,7 +1056,7 @@ async function processStreamingChunk(
         onData(contentToSend, reasoning, reasoningDetails);
       } else if (Array.isArray(contentToSend) && contentToSend.length > 0) {
         onData(contentToSend, reasoning, reasoningDetails);
-      } else if (reasoning) {
+      } else if (reasoning || (Array.isArray(reasoningDetails) && reasoningDetails.length > 0)) {
         // Send reasoning even without content (for thinking display)
         onData('', reasoning, reasoningDetails);
       }
@@ -1113,6 +1130,25 @@ async function processStreamingData(
         return; // Stream completed
       }
     }
+  }
+
+  // Flush any trailing non-empty buffer on stream EOF
+  if (buffer && buffer.trim()) {
+    const trailingLine = buffer.trim();
+    if (trailingLine && !trailingLine.startsWith(':')) {
+      const trailingData = extractSseDataPayload(trailingLine);
+      if (trailingData !== undefined) {
+        await processStreamingChunk(
+          trailingData,
+          onData,
+          finalResult,
+          config,
+          onToolStreamEvent,
+          signal,
+        );
+      }
+    }
+    buffer = '';
   }
 }
 
@@ -1241,6 +1277,8 @@ export type Body = {
   /** Stable id assigned client-side before the request (persisted with the assistant turn). */
   assistantMessageId?: string;
   assistantTimestamp?: number;
+  /** Ephemeral composer rewrite — billed like chat, not saved to the conversation transcript. */
+  composerPromptRewrite?: boolean;
 };
 
 /**
@@ -1265,6 +1303,8 @@ export type AccessModelResponse<T> = {
   usage?: UsageInfo;
   /** Platform credits charged for the model interaction */
   cost_credits?: number;
+  /** Remaining wallet balance when returned by the gateway */
+  wallet?: number;
   /** Conversation id when backend created/updated a session (from X-Conversation-Id) */
   conversationId?: string;
   /** Authentication token used */
@@ -1335,6 +1375,7 @@ export const _accessModel = async <T>(args: AccessModelArgs<T> & { signal?: Abor
       ...(body.parentConversationId && { parentConversationId: body.parentConversationId }),
       ...(body.parentMessageId && { parentMessageId: body.parentMessageId }),
       ...(body.anchor && { anchor: body.anchor }),
+      ...(body.composerPromptRewrite === true && { composerPromptRewrite: true }),
     };
     const { endpoint, headers, body: requestBodyString } = await setupApiRequest(config, requestBody);
 
@@ -1361,6 +1402,7 @@ export const _accessModel = async <T>(args: AccessModelArgs<T> & { signal?: Abor
       content: openAIResponse.choices[0]?.message?.content || DEFAULT_EMPTY_CONTENT,
       usage: openAIResponse.usage,
       cost_credits: openAIResponse.cost_credits,
+      ...(openAIResponse.wallet !== undefined && { wallet: openAIResponse.wallet }),
       conversationId,
       token: config.token,
       user: undefined as T,
@@ -1521,6 +1563,7 @@ export const accessModelStream = async <T>(args: AccessModelArgs<T> & {
         body: requestBodyString,
         signal,
       },
+      { maxAttempts: Infinity },
     );
   } catch (error: any) {
     if (error.name === 'AbortError') {
@@ -1536,15 +1579,51 @@ export const accessModelStream = async <T>(args: AccessModelArgs<T> & {
 
   if (!res.body) throw new Error(ERROR_MESSAGES.NO_RESPONSE_BODY);
 
-
   const conversationId = res.headers.get('X-Conversation-Id') ?? undefined;
   onStreamStart?.({ conversationId });
-  const reader = res.body.getReader();
+  const rawReader = res.body.getReader();
   const decoder = new TextDecoder();
   let finalResult: StreamingResult = { ...(conversationId && { conversationId }) };
 
+  const openReattach = async (bytesConsumed: number): Promise<ReattachOutcome> => {
+    if (!conversationId) {
+      return { kind: 'gone' };
+    }
+    const jwtToken = getAccessToken();
+    if (!jwtToken) {
+      return { kind: 'retry' };
+    }
+    const streamUrl = `${config.endpoint}/gateway/*/model-chats/conversation/${conversationId}/stream?after=${bytesConsumed}`;
+    try {
+      const reattachRes = await authorizedFetch(streamUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `${AUTHORIZATION_BEARER_PREFIX}${jwtToken}`,
+          ...getE2eWalletBypassHeaders(),
+        },
+        signal,
+      });
+      if (reattachRes.status === 404) {
+        return { kind: 'gone' };
+      }
+      if (!reattachRes.ok || !reattachRes.body) {
+        return { kind: 'retry' };
+      }
+      return { kind: 'attached', reader: reattachRes.body.getReader() };
+    } catch (e: any) {
+      if (signal?.aborted) throw e;
+      return { kind: 'retry' };
+    }
+  };
+
+  const reader = new ResilientStreamReader({
+    initial: rawReader,
+    openReattach,
+    signal,
+  });
+
   try {
-    await processStreamingData(reader, decoder, onData, finalResult, config, signal, onToolStreamEvent);
+    await processStreamingData(reader as unknown as ReadableStreamDefaultReader<Uint8Array>, decoder, onData, finalResult, config, signal, onToolStreamEvent);
 
     // Call onComplete when streaming is done
     if (onComplete) onComplete(finalResult);

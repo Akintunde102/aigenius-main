@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { FiX, FiCheck, FiLayers, FiDollarSign, FiMaximize2, FiCalendar, FiAlertCircle } from 'react-icons/fi';
+import React from 'react';
+import { FiCheck, FiLayers, FiDollarSign, FiMaximize2, FiCalendar, FiAlertCircle } from 'react-icons/fi';
 import { Model } from '@/app/components/model-interface/shared/types';
 import {
     getModelAverageRequestCredits,
@@ -28,7 +27,12 @@ import {
 import { ModelCreditBurnIndicator } from './ModelCreditBurnIndicator';
 import { isConversationPickableModel, isNonTextModel } from '../utils/modelConversationEligibility.utils';
 import { useLanguage } from '@/lib/providers/LanguageProvider';
-import { MODAL_ELEVATED_Z_INDEX } from '@/lib/utils/modal-z-index';
+import {
+    AppModal,
+    AppModalHeader,
+    AppModalBody,
+    AppModalFooter,
+} from '@/app/components/modals/AppModal';
 
 interface ModelDetailsModalProps {
     isOpen: boolean;
@@ -55,23 +59,8 @@ export function ModelDetailsModal({
     onAddCredits,
 }: ModelDetailsModalProps) {
     const { t } = useLanguage();
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    useEffect(() => {
-        if (!isOpen) return;
-        const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [isOpen, onClose]);
 
     if (!isOpen || !model) return null;
-    if (!mounted) return null;
 
     const provider = getProvider(model.id);
     const providerLabel = getProviderLabel(provider) || provider;
@@ -108,448 +97,327 @@ export function ModelDetailsModal({
           })
         : null;
 
-    const portalTarget =
-        typeof document !== 'undefined'
-            ? document.getElementById('modal-root') ?? document.body
-            : null;
-    if (!portalTarget) return null;
-
-    return createPortal(
-        (
-            <div
-                className="fixed inset-0 flex items-center justify-center p-3 sm:p-4 md:p-6 backdrop-blur-sm transition-opacity duration-200"
-                style={{ zIndex: MODAL_ELEVATED_Z_INDEX, background: 'var(--modal-overlay)' }}
-                onClick={onClose}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="model-details-title"
-            >
-                <div
-                    className="relative flex flex-col w-full max-w-2xl max-h-[88vh] overflow-hidden rounded-2xl border shadow-2xl transition-all"
-                    style={{
-                        background: 'var(--modal-bg)',
-                        borderColor: 'var(--modal-border)',
-                        color: 'var(--modal-fg)',
-                        boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--modal-border)',
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    {/* Header Area */}
-                    <div
-                        className="flex-shrink-0 px-6 sm:px-7 pt-6 pb-4 border-b"
-                        style={{ borderColor: 'var(--modal-border)' }}
-                    >
-                        <div className="flex items-start justify-between gap-4">
-                            <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span
-                                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                                        style={{
-                                            background: isFree
-                                                ? 'color-mix(in srgb, #10b981 12%, transparent)'
-                                                : 'var(--surface-muted)',
-                                            color: isFree ? '#10b981' : 'var(--modal-fg)',
-                                            border: `1px solid ${isFree ? 'color-mix(in srgb, #10b981 30%, transparent)' : 'var(--modal-border)'}`,
-                                        }}
-                                    >
-                                        {isFree ? t('modelDetails.freeModel', 'Free Model') : providerLabel}
-                                    </span>
-                                    {supportsTools && (
-                                        <span
-                                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium"
-                                            style={{
-                                                background: 'color-mix(in srgb, var(--chat-accent) 8%, var(--surface-muted))',
-                                                color: 'var(--modal-fg)',
-                                                border: '1px solid var(--modal-border)',
-                                            }}
-                                        >
-                                            <FiLayers size={11} strokeWidth={2} />
-                                            {t('modelDetails.toolingReady', 'Tooling Ready')}
-                                        </span>
-                                    )}
-                                </div>
-
-                                <h2
-                                    id="model-details-title"
-                                    className="text-xl sm:text-2xl font-bold tracking-tight mt-2.5 leading-snug truncate"
-                                    style={{ color: 'var(--modal-fg)' }}
-                                >
-                                    {getModelDisplayName(model)}
-                                </h2>
-
-                                <p
-                                    className="text-xs font-mono mt-1 opacity-75 truncate select-all"
-                                    style={{ color: 'var(--modal-muted-fg)' }}
-                                >
-                                    {model.id}
-                                </p>
-                            </div>
-
-                            <button
-                                type="button"
-                                className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors hover:bg-black/5 dark:hover:bg-white/10 shrink-0"
-                                style={{ color: 'var(--modal-muted-fg)' }}
-                                onClick={onClose}
-                                title={t('modelDetails.closeDetails', 'Close details')}
-                                aria-label={t('common.close', 'Close')}
-                            >
-                                <FiX size={18} strokeWidth={2} />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Scrollable Body */}
-                    <div className="overflow-y-auto flex-1 px-6 sm:px-7 py-5 space-y-6">
-                        {/* Metrics Overview Cards */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            {/* Cost Metric */}
-                            <div
-                                className="p-3.5 rounded-xl border flex flex-col justify-between"
-                                style={{
-                                    background: 'var(--surface-muted)',
-                                    borderColor: 'var(--modal-border)',
-                                }}
-                            >
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <span
-                                        className="text-[11px] font-semibold uppercase tracking-wider"
-                                        style={{ color: 'var(--sidebar-muted-fg)' }}
-                                    >
-                                        {isMediaModel ? t('modelDetails.typicalCost', 'Typical cost') : t('modelDetails.estCostPerMsg', 'Est. Cost / Msg')}
-                                    </span>
-                                    <FiDollarSign size={13} style={{ color: 'var(--sidebar-muted-fg)' }} />
-                                </div>
-                                <div>
-                                    <div
-                                        className="text-base font-semibold tabular-nums leading-tight"
-                                        style={{ color: 'var(--modal-fg)' }}
-                                    >
-                                        {showAvgCost ? formatNGN(avgCredits) : isFree ? t('modelDetails.free', 'Free') : '—'}
-                                    </div>
-                                    <div
-                                        className="text-[11px] mt-0.5 truncate"
-                                        style={{ color: 'var(--modal-muted-fg)' }}
-                                    >
-                                        {showAvgCost
-                                            ? (isMediaModel
-                                                ? (averageUnit
-                                                    ? t('modelDetails.typicalUnit', 'Typical {unit}', { unit: averageUnit })
-                                                    : t('modelDetails.estimatedCredits', 'Estimated credits'))
-                                                : t('modelDetails.estimatedCredits', 'Estimated credits'))
-                                            : isFree
-                                                ? t('modelDetails.zeroCredits', '0 credits')
-                                                : t('modelDetails.pricingOnRequest', 'Pricing on request')}
-                                    </div>
-                                    {!isWalletLocked && burnPercentage !== null && burnPercentage >= 60 ? (
-                                        <div className="mt-1.5">
-                                            <ModelCreditBurnIndicator
-                                                burnPercentage={burnPercentage}
-                                            />
-                                        </div>
-                                    ) : null}
-                                </div>
-                            </div>
-
-                            {/* Context Window Metric */}
-                            <div
-                                className="p-3.5 rounded-xl border flex flex-col justify-between"
-                                style={{
-                                    background: 'var(--surface-muted)',
-                                    borderColor: 'var(--modal-border)',
-                                }}
-                            >
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <span
-                                        className="text-[11px] font-semibold uppercase tracking-wider"
-                                        style={{ color: 'var(--sidebar-muted-fg)' }}
-                                    >
-                                        {t('modelDetails.contextWindow', 'Context Window')}
-                                    </span>
-                                    <FiMaximize2 size={13} style={{ color: 'var(--sidebar-muted-fg)' }} />
-                                </div>
-                                <div>
-                                    <div
-                                        className="text-base font-semibold tabular-nums leading-tight"
-                                        style={{ color: 'var(--modal-fg)' }}
-                                    >
-                                        {model.context_length > 0
-                                            ? `${formatContextLength(model.context_length)} ${t('modelDetails.tokens', 'tokens')}`
-                                            : t('modelDetails.standard', 'Standard')}
-                                    </div>
-                                    <div
-                                        className="text-[11px] mt-0.5 truncate"
-                                        style={{ color: 'var(--modal-muted-fg)' }}
-                                    >
-                                        {t('modelDetails.maxPromptReply', 'Max prompt + reply')}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Release / Provider Metric */}
-                            <div
-                                className="p-3.5 rounded-xl border flex flex-col justify-between"
-                                style={{
-                                    background: 'var(--surface-muted)',
-                                    borderColor: 'var(--modal-border)',
-                                }}
-                            >
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <span
-                                        className="text-[11px] font-semibold uppercase tracking-wider"
-                                        style={{ color: 'var(--sidebar-muted-fg)' }}
-                                    >
-                                        {t('modelDetails.release', 'Release')}
-                                    </span>
-                                    <FiCalendar size={13} style={{ color: 'var(--sidebar-muted-fg)' }} />
-                                </div>
-                                <div>
-                                    <div
-                                        className="text-base font-semibold truncate leading-tight"
-                                        style={{ color: 'var(--modal-fg)' }}
-                                    >
-                                        {releaseDate || providerLabel}
-                                    </div>
-                                    <div
-                                        className="text-[11px] mt-0.5 truncate"
-                                        style={{ color: 'var(--modal-muted-fg)' }}
-                                    >
-                                        {releaseDate ? `${providerLabel}` : t('modelDetails.activeCatalog', 'Active catalog')}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Description */}
-                        <div>
+    return (
+        <AppModal
+            open={isOpen}
+            onClose={onClose}
+            size="lg"
+            elevated
+            ariaLabelledBy="model-details-title"
+        >
+            <AppModalHeader
+                titleId="model-details-title"
+                title={getModelDisplayName(model)}
+                subtitle={model.id}
+                onClose={onClose}
+                trailing={
+                    <div className="flex items-center gap-1.5 mr-1">
+                        <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold"
+                            style={{
+                                background: isFree
+                                    ? 'color-mix(in srgb, #10b981 12%, transparent)'
+                                    : 'var(--surface-muted)',
+                                color: isFree ? '#10b981' : 'var(--modal-fg)',
+                                border: `1px solid ${isFree ? 'color-mix(in srgb, #10b981 30%, transparent)' : 'var(--modal-border)'}`,
+                            }}
+                        >
+                            {isFree ? t('modelDetails.freeModel', 'Free Model') : providerLabel}
+                        </span>
+                        {supportsTools && (
                             <span
-                                className="block text-[11px] font-semibold uppercase tracking-widest mb-2"
-                                style={{ color: 'var(--sidebar-muted-fg)' }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium"
+                                style={{
+                                    background: 'color-mix(in srgb, var(--chat-accent) 8%, var(--surface-muted))',
+                                    color: 'var(--modal-fg)',
+                                    border: '1px solid var(--modal-border)',
+                                }}
                             >
-                                {t('modelDetails.aboutModel', 'About Model')}
+                                <FiLayers size={10} strokeWidth={2} />
+                                {t('modelDetails.toolingReady', 'Tools')}
                             </span>
-                            <p
-                                className="text-sm leading-relaxed whitespace-pre-line"
-                                style={{ color: 'var(--modal-muted-fg)' }}
-                            >
-                                {model.description || t('modelDetails.noDescription', 'No detailed description available for this model.')}
-                            </p>
-                        </div>
-
-                        {/* Modalities / Capabilities */}
-                        {hasModalities && (
-                            <div>
-                                <span
-                                    className="block text-[11px] font-semibold uppercase tracking-widest mb-2.5"
-                                    style={{ color: 'var(--sidebar-muted-fg)' }}
-                                >
-                                    {t('modelDetails.supportedModalities', 'Supported Modalities')}
-                                </span>
-                                <div className="flex flex-wrap gap-2">
-                                    {inputMods.map((mod, i) => (
-                                        <span
-                                            key={`in-${i}`}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                                            style={{
-                                                background: 'var(--surface-muted)',
-                                                color: 'var(--modal-fg)',
-                                                border: '1px solid var(--modal-border)',
-                                            }}
-                                        >
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                            {t('modelDetails.inputModality', 'Input: {mod}', { mod })}
-                                        </span>
-                                    ))}
-                                    {outputMods.map((mod, i) => (
-                                        <span
-                                            key={`out-${i}`}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                                            style={{
-                                                background: 'var(--surface-muted)',
-                                                color: 'var(--modal-fg)',
-                                                border: '1px solid var(--modal-border)',
-                                            }}
-                                        >
-                                            <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
-                                            {t('modelDetails.outputModality', 'Output: {mod}', { mod })}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Pricing Breakdown Table */}
-                        {hasPricing && !isMediaModel && (
-                            <div>
-                                <span
-                                    className="block text-[11px] font-semibold uppercase tracking-widest mb-2.5"
-                                    style={{ color: 'var(--sidebar-muted-fg)' }}
-                                >
-                                    {t('modelDetails.detailedPricing', 'Detailed Pricing Rates')}
-                                </span>
-                                <div
-                                    className="rounded-xl border overflow-hidden"
-                                    style={{
-                                        background: 'var(--modal-bg)',
-                                        borderColor: 'var(--modal-border)',
-                                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-                                    }}
-                                >
-                                    <div
-                                        className="grid grid-cols-2 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider border-b"
-                                        style={{
-                                            background: 'var(--surface-muted)',
-                                            borderColor: 'var(--modal-border)',
-                                            color: 'var(--sidebar-muted-fg)',
-                                        }}
-                                    >
-                                        <span>{t('modelDetails.item', 'Item')}</span>
-                                        <span className="text-right">{t('modelDetails.rate', 'Rate')}</span>
-                                    </div>
-
-                                    {scalarPricingEntries.map(([key, value], idx) => (
-                                        <div
-                                            key={key}
-                                            className={`grid grid-cols-2 px-4 py-2.5 text-xs items-center ${
-                                                idx !== 0 ? 'border-t' : ''
-                                            }`}
-                                            style={{ borderColor: 'var(--modal-border)' }}
-                                        >
-                                            <span
-                                                className="font-medium truncate"
-                                                style={{ color: 'var(--modal-fg)' }}
-                                            >
-                                                {pricingLabel(key)}
-                                            </span>
-                                            <span
-                                                className="font-mono text-right tabular-nums font-medium"
-                                                style={{ color: 'var(--modal-muted-fg)' }}
-                                            >
-                                                {formatPricingAmount(key, value, { valuesAreCredits: pricingValuesAreCredits })}
-                                            </span>
-                                        </div>
-                                    ))}
-
-                                    {pricingOverrides.map((tier, index) => (
-                                        <div
-                                            key={`tier-${tier.min_prompt_tokens ?? index}`}
-                                            className="border-t"
-                                            style={{ borderColor: 'var(--modal-border)' }}
-                                        >
-                                            <div
-                                                className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider"
-                                                style={{
-                                                    background: 'color-mix(in srgb, var(--surface-muted) 60%, transparent)',
-                                                    color: 'var(--sidebar-muted-fg)',
-                                                }}
-                                            >
-                                                {formatPricingTierLabel(tier.min_prompt_tokens)}
-                                            </div>
-                                            {getTierPricingEntries(tier).map(([key, value]) => (
-                                                <div
-                                                    key={key}
-                                                    className="grid grid-cols-2 px-4 py-2.5 text-xs items-center border-t"
-                                                    style={{ borderColor: 'var(--modal-border)' }}
-                                                >
-                                                    <span
-                                                        className="font-medium truncate pl-2"
-                                                        style={{ color: 'var(--modal-fg)' }}
-                                                    >
-                                                        {pricingLabel(key)}
-                                                    </span>
-                                                    <span
-                                                        className="font-mono text-right tabular-nums font-medium"
-                                                        style={{ color: 'var(--modal-muted-fg)' }}
-                                                    >
-                                                        {formatPricingAmount(key, value, { valuesAreCredits: pricingValuesAreCredits })}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
                         )}
                     </div>
+                }
+            />
 
-                    {/* Action Bar Footer */}
+            <AppModalBody className="space-y-3.5 !py-3 overflow-y-auto">
+                {/* Metrics Overview Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {/* Cost Metric */}
                     <div
-                        className="flex-shrink-0 px-6 sm:px-7 py-3.5 border-t flex flex-wrap items-center justify-between gap-3"
+                        className="p-3 rounded-xl border flex flex-col justify-between"
                         style={{
+                            background: 'var(--surface-muted)',
                             borderColor: 'var(--modal-border)',
-                            background: 'var(--modal-bg-muted)',
                         }}
                     >
-                        {/* Status / Balance Hint */}
-                        <div className="flex items-center gap-2 min-w-0">
-                            {isWalletLocked ? (
-                                <div className="flex items-center gap-1.5 text-xs text-amber-500">
-                                    <FiAlertCircle size={14} className="shrink-0" />
-                                    <span className="truncate">
-                                        {t('modelPicker.walletLockShort', 'Load {more} more credits to use', {
-                                            more: computeCreditsShortfall(wallet, requiredBalance),
-                                        })}
-                                    </span>
-                                    {onAddCredits && (
-                                        <button
-                                            type="button"
-                                            onClick={onAddCredits}
-                                            className="ml-1 underline font-semibold hover:opacity-85"
-                                        >
-                                            {t('modelDetails.addCredits', 'Add Credits')}
-                                        </button>
-                                    )}
-                                </div>
-                            ) : !canPickForChat ? (
-                                <div className="flex items-center gap-1.5 text-xs text-[var(--modal-muted-fg)]">
-                                    <FiAlertCircle size={14} className="shrink-0 opacity-80" />
-                                    <span>{t('modelDetails.catalogPreviewOnly', 'Catalog preview only — not available for text chat')}</span>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-1.5 text-xs text-[var(--modal-muted-fg)]">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                                    <span>{t('modelDetails.readyForChat', 'Ready for active chat session')}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Buttons */}
-                        <div className="flex items-center gap-2.5 shrink-0 ml-auto">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                        <div className="flex items-center justify-between mb-1">
+                            <span
+                                className="text-[10px] font-semibold uppercase tracking-wider"
                                 style={{ color: 'var(--modal-muted-fg)' }}
                             >
-                                {t('common.close', 'Close')}
-                            </button>
+                                {isMediaModel ? t('modelDetails.typicalCost', 'Typical cost') : t('modelDetails.estCostPerMsg', 'Est. Cost / Msg')}
+                            </span>
+                            <FiDollarSign size={12} style={{ color: 'var(--modal-muted-fg)' }} />
+                        </div>
+                        <div className="text-base font-bold tabular-nums" style={{ color: 'var(--modal-fg)' }}>
+                            {showAvgCost
+                                ? formatNGN(avgCredits, true)
+                                : isFree
+                                  ? t('modelPicker.freeLabel', 'Free')
+                                  : '—'}
+                            {showAvgCost && averageUnit ? (
+                                <span className="ml-1 text-[11px] font-normal" style={{ color: 'var(--modal-muted-fg)' }}>
+                                    / {averageUnit}
+                                </span>
+                            ) : null}
+                        </div>
+                        <div className="text-[10px] mt-0.5" style={{ color: 'var(--modal-muted-fg)' }}>
+                            {isMediaModel
+                                ? t('modelDetails.typicalSpendGeneration', 'Typical spend per generation')
+                                : t('modelDetails.tokenInferenceEstimate', 'Estimated token inference')}
+                        </div>
+                    </div>
 
-                            {onPickModel && canPickForChat && (
-                                <button
-                                    type="button"
-                                    disabled={isWalletLocked}
-                                    onClick={() => {
-                                        if (isWalletLocked) {
-                                            onAddCredits?.();
-                                            return;
-                                        }
-                                        onPickModel(model);
-                                    }}
-                                    className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 shadow-sm"
-                                    style={{
-                                        background: 'var(--chat-accent)',
-                                        color: 'var(--chat-canvas-bg)',
-                                    }}
-                                >
-                                    <FiCheck size={14} strokeWidth={2.5} />
-                                    {t('modelDetails.useModel', 'Use Model')}
-                                </button>
-                            )}
+                    {/* Context Metric */}
+                    <div
+                        className="p-3 rounded-xl border flex flex-col justify-between"
+                        style={{
+                            background: 'var(--surface-muted)',
+                            borderColor: 'var(--modal-border)',
+                        }}
+                    >
+                        <div className="flex items-center justify-between mb-1">
+                            <span
+                                className="text-[10px] font-semibold uppercase tracking-wider"
+                                style={{ color: 'var(--modal-muted-fg)' }}
+                            >
+                                {t('modelDetails.contextWindow', 'Context Window')}
+                            </span>
+                            <FiMaximize2 size={12} style={{ color: 'var(--modal-muted-fg)' }} />
+                        </div>
+                        <div className="text-base font-bold tabular-nums" style={{ color: 'var(--modal-fg)' }}>
+                            {formatContextLength(model.context_length)} tokens
+                        </div>
+                        <div className="text-[10px] mt-0.5" style={{ color: 'var(--modal-muted-fg)' }}>
+                            {t('modelDetails.maxInputOutputTokens', 'Max input + output tokens')}
+                        </div>
+                    </div>
+
+                    {/* Release Metric */}
+                    <div
+                        className="p-3 rounded-xl border flex flex-col justify-between"
+                        style={{
+                            background: 'var(--surface-muted)',
+                            borderColor: 'var(--modal-border)',
+                        }}
+                    >
+                        <div className="flex items-center justify-between mb-1">
+                            <span
+                                className="text-[10px] font-semibold uppercase tracking-wider"
+                                style={{ color: 'var(--modal-muted-fg)' }}
+                            >
+                                {t('modelDetails.releaseDate', 'Release Date')}
+                            </span>
+                            <FiCalendar size={12} style={{ color: 'var(--modal-muted-fg)' }} />
+                        </div>
+                        <div className="text-base font-semibold" style={{ color: 'var(--modal-fg)' }}>
+                            {releaseDate ?? '—'}
+                        </div>
+                        <div className="text-[10px] mt-0.5" style={{ color: 'var(--modal-muted-fg)' }}>
+                            {t('modelDetails.providerCatalogIndex', 'Provider catalog index')}
                         </div>
                     </div>
                 </div>
-            </div>
-        ) as any,
-        portalTarget,
+
+                {/* Credit Burn / Wallet Affordance Warning */}
+                {burnPercentage !== null && burnPercentage >= 40 && (
+                    <div className="pt-0.5">
+                        <ModelCreditBurnIndicator
+                            burnPercentage={burnPercentage}
+                            className="w-full"
+                        />
+                    </div>
+                )}
+
+                {/* Description */}
+                {model.description && (
+                    <div>
+                        <p className="app-modal-field-label !mb-1.5">{t('modelDetails.aboutModel', 'About Model')}</p>
+                        <p className="text-xs leading-relaxed" style={{ color: 'var(--modal-muted-fg)' }}>
+                            {model.description}
+                        </p>
+                    </div>
+                )}
+
+                {/* Modalities */}
+                {hasModalities && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <p className="app-modal-field-label !mb-1.5">{t('modelDetails.supportedInputs', 'Supported Inputs')}</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {inputMods.length > 0 ? (
+                                    inputMods.map((mod, i) => (
+                                        <span
+                                            key={i}
+                                            className="px-2 py-0.5 rounded-md text-[11px] font-medium border"
+                                            style={{
+                                                background: 'var(--surface-muted)',
+                                                borderColor: 'var(--modal-border)',
+                                                color: 'var(--modal-fg)',
+                                            }}
+                                        >
+                                            {mod}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <span className="text-xs" style={{ color: 'var(--modal-muted-fg)' }}>Text only</span>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <p className="app-modal-field-label !mb-1.5">{t('modelDetails.supportedOutputs', 'Supported Outputs')}</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {outputMods.length > 0 ? (
+                                    outputMods.map((mod, i) => (
+                                        <span
+                                            key={i}
+                                            className="px-2 py-0.5 rounded-md text-[11px] font-medium border"
+                                            style={{
+                                                background: 'var(--surface-muted)',
+                                                borderColor: 'var(--modal-border)',
+                                                color: 'var(--modal-fg)',
+                                            }}
+                                        >
+                                            {mod}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <span className="text-xs" style={{ color: 'var(--modal-muted-fg)' }}>Text only</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Pricing Breakdown */}
+                {hasPricing && (
+                    <div>
+                        <p className="app-modal-field-label !mb-1.5">
+                            {pricingValuesAreCredits
+                                ? t('modelDetails.pricingCreditsBreakdown', 'Pricing (Credits Breakdown)')
+                                : t('modelDetails.pricingBaseRate', 'Pricing (Base Rate)')}
+                        </p>
+                        <div
+                            className="rounded-lg border p-3"
+                            style={{
+                                background: 'var(--modal-bg-muted)',
+                                borderColor: 'var(--modal-border)',
+                            }}
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                                {scalarPricingEntries.map(([key, value]) => (
+                                    <div key={key} className="flex justify-between items-center py-0.5">
+                                        <span style={{ color: 'var(--modal-muted-fg)' }}>{pricingLabel(key)}:</span>
+                                        <span className="font-mono font-medium" style={{ color: 'var(--modal-fg)' }}>
+                                            {formatPricingAmount(key, value, { valuesAreCredits: pricingValuesAreCredits })}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {pricingOverrides.map((tier, index) => (
+                                <div
+                                    key={`tier-${tier.min_prompt_tokens ?? index}`}
+                                    className="mt-2.5 border-t pt-2"
+                                    style={{ borderColor: 'var(--modal-border)' }}
+                                >
+                                    <p className="text-[11px] font-medium mb-1.5" style={{ color: 'var(--modal-muted-fg)' }}>
+                                        {formatPricingTierLabel(tier.min_prompt_tokens)}
+                                    </p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                                        {getTierPricingEntries(tier).map(([key, value]) => (
+                                            <div key={key} className="flex justify-between items-center py-0.5">
+                                                <span style={{ color: 'var(--modal-muted-fg)' }}>{pricingLabel(key)}:</span>
+                                                <span className="font-mono font-medium" style={{ color: 'var(--modal-fg)' }}>
+                                                    {formatPricingAmount(key, value, { valuesAreCredits: pricingValuesAreCredits })}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </AppModalBody>
+
+            <AppModalFooter className="justify-between !py-2.5">
+                {/* Status / Balance Hint */}
+                <div className="flex items-center gap-2 min-w-0">
+                    {isWalletLocked ? (
+                        <div className="flex items-center gap-1.5 text-xs text-amber-500">
+                            <FiAlertCircle size={13} className="shrink-0" />
+                            <span className="truncate">
+                                {t('modelPicker.walletLockShort', 'Load {more} more credits to use', {
+                                    more: computeCreditsShortfall(wallet, requiredBalance),
+                                })}
+                            </span>
+                            {onAddCredits && (
+                                <button
+                                    type="button"
+                                    onClick={onAddCredits}
+                                    className="ml-1 underline font-semibold hover:opacity-85"
+                                >
+                                    {t('modelDetails.addCredits', 'Add Credits')}
+                                </button>
+                            )}
+                        </div>
+                    ) : !canPickForChat ? (
+                        <div className="flex items-center gap-1.5 text-xs text-[var(--modal-muted-fg)]">
+                            <FiAlertCircle size={13} className="shrink-0 opacity-80" />
+                            <span className="truncate">{t('modelDetails.catalogPreviewOnly', 'Catalog preview only')}</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-1.5 text-xs text-[var(--modal-muted-fg)]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                            <span>{t('modelDetails.readyForChat', 'Ready for chat')}</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Buttons */}
+                <div className="flex items-center gap-2 shrink-0 ml-auto">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="app-modal-btn-secondary !text-xs !py-1.5"
+                    >
+                        {t('common.close', 'Close')}
+                    </button>
+
+                    {onPickModel && canPickForChat && (
+                        <button
+                            type="button"
+                            disabled={isWalletLocked}
+                            onClick={() => {
+                                if (isWalletLocked) {
+                                    onAddCredits?.();
+                                    return;
+                                }
+                                onPickModel(model);
+                            }}
+                            className="app-modal-btn-primary !text-xs !py-1.5"
+                        >
+                            <FiCheck size={13} strokeWidth={2.5} />
+                            {t('modelDetails.useModel', 'Use Model')}
+                        </button>
+                    )}
+                </div>
+            </AppModalFooter>
+        </AppModal>
     );
 }
 

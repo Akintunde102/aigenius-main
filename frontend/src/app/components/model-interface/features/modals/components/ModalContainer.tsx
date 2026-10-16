@@ -52,7 +52,7 @@ interface ModalContainerProps {
   togglePinModel: (id: string) => void;
   favoritesLoaded?: boolean;
   recentModels?: Model[];
-  // New filter/sort (when !SHOW_LEGACY_FILTERS)
+  // Filter/sort for model selection modal
   orderBy?: ModelOrderBy;
   setOrderBy?: (v: ModelOrderBy) => void;
   orderDir?: ModelOrderDir;

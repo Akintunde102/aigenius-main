@@ -171,9 +171,9 @@
 
 /* Global chat area styles for keyboard handling */
 .keyboard-open .chat-area {
-    max-height: calc(100% - 140px) !important;
     overflow-y: auto !important;
     flex: 1 1 auto !important;
+    min-height: 0 !important;
     transition: none !important;
     scroll-behavior: auto !important;
     -webkit-overflow-scrolling: touch;
@@ -189,12 +189,7 @@
 }
 
 .keyboard-open-ios .chat-area {
-    max-height: calc(100% - 160px) !important;
     overscroll-behavior: contain !important;
-}
-
-.keyboard-open-android .chat-area {
-    max-height: calc(100% - 120px) !important;
 }
 
 /* Chat scrollbar styles */

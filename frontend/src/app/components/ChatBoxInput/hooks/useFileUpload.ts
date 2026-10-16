@@ -1,4 +1,12 @@
 import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
+
+const ALLOWED_EXTENSIONS = new Set([
+    'jpg', 'jpeg', 'png', 'gif', 'webp',
+    'txt', 'csv', 'json', 'md', 'markdown', 'pdf', 'xml', 'yaml', 'yml',
+    'mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac',
+    'ts', 'tsx', 'js', 'jsx', 'py', 'sh', 'sql', 'env'
+]);
 
 const FILE_VALIDATION = {
     maxSize: 10 * 1024 * 1024, // 10MB
@@ -49,8 +57,12 @@ export const useFileUpload = ({
             return { isValid: false, error: 'File too large. Maximum size is 10MB.' };
         }
 
-        if (!FILE_VALIDATION.allowedTypes.includes(file.type)) {
-            return { isValid: false, error: `File type not supported: ${file.type}` };
+        const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+        const isMimeAllowed = Boolean(file.type && FILE_VALIDATION.allowedTypes.includes(file.type));
+        const isExtAllowed = ALLOWED_EXTENSIONS.has(ext);
+
+        if (!isMimeAllowed && !isExtAllowed) {
+            return { isValid: false, error: `File type not supported (${file.type || ext || 'unknown'}).` };
         }
 
         return { isValid: true };
@@ -96,8 +108,7 @@ export const useFileUpload = ({
         });
 
         if (errors.length > 0) {
-            // TODO: Replace with toast once available
-            alert(errors[0]);
+            toast.error(errors[0]);
         }
 
         if (validItems.length > 0) {

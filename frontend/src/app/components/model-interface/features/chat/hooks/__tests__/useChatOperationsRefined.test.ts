@@ -8,6 +8,7 @@ import {
     conversationTargetRef,
     getDraftConversationEpoch,
     setPendingDraftMode,
+    setActiveRouteConversationTarget,
 } from '@/app/components/model-interface/conversation/conversationViewSession';
 import getNoboxFunctions from '@/lib/calls/get-nobox-functions';
 import { abortSubagentConversation } from '@/lib/calls/model-chat-conversation';
@@ -101,6 +102,7 @@ describe('useChatOperationsRefined', () => {
         function Wrapper() {
             const result = useChatOperationsRefined({
                 selectedModel: model,
+                models: [model],
                 chat: baseChat,
                 setChat,
                 setChatForSession,
@@ -238,6 +240,7 @@ describe('useChatOperationsRefined', () => {
         expect(handleStreamingResponse.mock.calls[0][3]).toEqual({
             conversationId: 'session-1',
             sendGeneration: expect.any(Number),
+            modelOverride: model,
             orphanReply: expect.objectContaining({
                 conversationKind: 'orphan_question',
                 parentConversationId: 'parent-conv-1',
@@ -260,6 +263,7 @@ describe('useChatOperationsRefined', () => {
             clientDraftMapKey: expect.stringMatching(/^cd_/),
             draftEpoch: expect.any(Number),
             sendGeneration: expect.any(Number),
+            modelOverride: model,
         });
     });
 
@@ -276,6 +280,7 @@ describe('useChatOperationsRefined', () => {
             clientDraftMapKey: expect.stringMatching(/^cd_/),
             draftEpoch: expect.any(Number),
             sendGeneration: expect.any(Number),
+            modelOverride: model,
         });
     });
 
@@ -297,6 +302,7 @@ describe('useChatOperationsRefined', () => {
             clientDraftMapKey: expect.stringMatching(/^cd_/),
             draftEpoch: expect.any(Number),
             sendGeneration: expect.any(Number),
+            modelOverride: model,
         });
     });
 
@@ -309,6 +315,7 @@ describe('useChatOperationsRefined', () => {
         function Wrapper() {
             const result = useChatOperationsRefined({
                 selectedModel: model,
+                models: [model],
                 chat: baseChat,
                 setChat,
                 setChatForSession,
@@ -384,6 +391,7 @@ describe('useChatOperationsRefined', () => {
         function Wrapper() {
             const result = useChatOperationsRefined({
                 selectedModel: model,
+                models: [model],
                 chat: baseChat,
                 setChat,
                 setChatForSession,
@@ -531,6 +539,7 @@ describe('useChatOperationsRefined', () => {
         function Wrapper() {
             const result = useChatOperationsRefined({
                 selectedModel: model,
+                models: [model],
                 chat: baseChat,
                 setChat,
                 setChatForSession,
@@ -571,6 +580,7 @@ describe('useChatOperationsRefined', () => {
             currentSessionId: 'subagent-conv',
             routeConversationId: 'subagent-conv',
         };
+        setActiveRouteConversationTarget('subagent-conv');
         act(() => {
             root.render(React.createElement(Wrapper));
         });
@@ -582,5 +592,69 @@ describe('useChatOperationsRefined', () => {
         expect(abortSubagentConversation).toHaveBeenCalledTimes(1);
         expect(abortSubagentConversation).toHaveBeenCalledWith('subagent-conv');
     });
+
+    it('also aborts and marks completed child subagents when stopping the parent conversation', () => {
+        const mockSetChatHistory = jest.fn();
+        const testChatHistory: any[] = [
+            { id: 'parent-conv', title: 'Parent conversation' },
+            {
+                id: 'child-subagent-1',
+                title: 'Child subagent',
+                parentConversationId: 'parent-conv',
+                metadata: { subagentRunStatus: 'running' },
+            },
+        ];
+
+        function ParentWrapper() {
+            const result = useChatOperationsRefined({
+                selectedModel: model,
+                models: [model],
+                chat: baseChat,
+                setChat,
+                setChatForSession,
+                getChatForSession: () => baseChat,
+                streaming: true,
+                setStreamingForSession,
+                setLoadingForSession,
+                setError,
+                streamingEnabled: true,
+                chatEndRef,
+                refreshChatHistory: undefined,
+                currentSessionId: 'parent-conv',
+                routeConversationId: 'parent-conv',
+                setCurrentSessionId,
+                setChatHistory: mockSetChatHistory,
+                chatHistory: testChatHistory,
+                updateSessionMessages,
+                selectedPersonalityName: undefined,
+                selectedPersonalityIconUrl: undefined,
+            });
+            resultRef.current = result;
+            return null;
+        }
+
+        const container = document.createElement('div');
+        const root = createRoot(container);
+        setActiveRouteConversationTarget('parent-conv');
+        act(() => {
+            root.render(React.createElement(ParentWrapper));
+        });
+
+        (abortSubagentConversation as jest.Mock).mockClear();
+
+        act(() => {
+            resultRef.current!.handleStop();
+        });
+
+        expect(abortSubagentConversation).toHaveBeenCalledWith('parent-conv');
+        expect(abortSubagentConversation).toHaveBeenCalledWith('child-subagent-1');
+
+        expect(mockSetChatHistory).toHaveBeenCalled();
+        const updater = mockSetChatHistory.mock.calls[0][0];
+        const updatedHistory = updater(testChatHistory);
+        const child = updatedHistory.find((s: any) => s.id === 'child-subagent-1');
+        expect(child?.metadata?.subagentRunStatus).toBe('completed');
+    });
 });
+
 

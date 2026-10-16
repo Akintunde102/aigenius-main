@@ -35,7 +35,7 @@ describe('RouteErrorFallback', () => {
     render(<RouteErrorFallback error={error} reset={reset} />);
 
     expect(screen.getByRole('heading', { name: 'Something went wrong' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Go home' })).toHaveAttribute('href', '/');
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(reset).toHaveBeenCalledTimes(1);
     expect(reportClientError).toHaveBeenCalledWith(error, 'route-error', { digest: 'digest-1' });

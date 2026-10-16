@@ -27,6 +27,7 @@ interface SidebarContentProps {
     handleSessionSwitch?: (session: ChatSession) => void;
     isSessionActive?: (sessionId: string) => boolean;
     isSessionInFlight?: (sessionId: string) => boolean;
+    onStopSession?: (sessionId: string) => void;
     isInitialLoading?: boolean;
     codeProjects?: import("@/lib/calls/code-projects").CodeProject[];
     activeProjectId?: string | null;
@@ -36,6 +37,7 @@ interface SidebarContentProps {
     folderMissingByProjectId?: Record<string, boolean>;
     getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
     hasDraftSession?: (sessionId: string) => boolean;
+    onGeneralInfo?: () => void;
 }
 
 const SidebarContent = React.memo<SidebarContentProps>(({
@@ -55,6 +57,7 @@ const SidebarContent = React.memo<SidebarContentProps>(({
     handleSessionSwitch,
     isSessionActive,
     isSessionInFlight,
+    onStopSession,
     hasDraftSession,
     isInitialLoading = false,
     codeProjects = [],
@@ -64,6 +67,7 @@ const SidebarContent = React.memo<SidebarContentProps>(({
     onProjectInfo,
     folderMissingByProjectId,
     getCachedMessages,
+    onGeneralInfo,
 }) => {
     const deferredHistorySearch = React.useDeferredValue(historySearch);
 
@@ -110,6 +114,7 @@ const SidebarContent = React.memo<SidebarContentProps>(({
                         handleSessionSwitch={handleSessionSwitch}
                         isSessionActive={isSessionActive}
                         isSessionInFlight={isSessionInFlight}
+                        onStopSession={onStopSession}
                         onSessionSelect={handleSessionSelect}
                         isInitialLoading={isInitialLoading}
                         codeProjects={codeProjects}
@@ -117,6 +122,7 @@ const SidebarContent = React.memo<SidebarContentProps>(({
                         onNewChatForProject={onNewChatForProject}
                         onSelectProject={onSelectProject}
                         onProjectInfo={onProjectInfo}
+                        onGeneralInfo={onGeneralInfo}
                         folderMissingByProjectId={folderMissingByProjectId}
                         getCachedMessages={getCachedMessages}
                         hasDraftSession={hasDraftSession}

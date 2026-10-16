@@ -28,11 +28,16 @@ import WalletModal from "./ChatHistorySidebar/WalletModal";
 import IntegrationsModal from "./ChatHistorySidebar/IntegrationsModal";
 import ToolPermissionsModal from "./ChatHistorySidebar/ToolPermissionsModal";
 import MyFilesModal from "./ChatHistorySidebar/MyFilesModal";
+import MeModal from "./ChatHistorySidebar/MeModal";
 import GrantCreditsModal from "./modals/GrantCreditsModal";
+import { FastButtonsModal } from "@/app/components/model-interface/features/fast-buttons/FastButtonsModal";
 import { getAdminStatus } from "@/lib/calls/admin";
 import { SidebarCollapsedRail } from "./ChatHistorySidebar/SidebarCollapsedRail";
 import { useUploadedFilesList } from "@/app/components/user-files/useUploadedFilesList";
 import { useWalletTopUpReturn } from "@/lib/hooks/useWalletTopUpReturn";
+import { ConversationLabelsModal } from "./ChatHistorySidebar/ConversationLabelsModal";
+import { GeneralWorkspaceInfoModal } from "./ChatHistorySidebar/GeneralWorkspaceInfoModal";
+import { useChatResourcesQuery } from "@/lib/hooks/useChatResourcesQuery";
 
 interface Model {
     id: string;
@@ -77,10 +82,12 @@ interface ChatHistorySidebarProps {
     createNewSessionAndSwitch?: (modelId: string) => void;
     isSessionActive?: (sessionId: string) => boolean;
     isSessionInFlight?: (sessionId: string) => boolean;
+    onStopSession?: (sessionId: string) => void;
     isInitialLoading?: boolean;
     onLogout?: () => void;
     /** Initials for collapsed desktop rail avatar (e.g. from logged-in user). */
     userInitials?: string;
+    userEmail?: string;
     getCachedMessages?: (sessionId: string) => ChatMessage[] | undefined;
     hasDraftSession?: (sessionId: string) => boolean;
 }
@@ -117,9 +124,11 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     createNewSessionAndSwitch,
     isSessionActive,
     isSessionInFlight,
+    onStopSession,
     isInitialLoading = false,
     onLogout,
     userInitials = "?",
+    userEmail,
     getCachedMessages,
     hasDraftSession,
 }) => {
@@ -127,6 +136,8 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     const [paymentModalLoading, setPaymentModalLoading] = React.useState(false);
     useWalletTopUpReturn(setShowWalletModal, 'sidebar');
     const [showIntegrationsModal, setShowIntegrationsModal] = React.useState(false);
+    const [showFastButtonsModal, setShowFastButtonsModal] = React.useState(false);
+    const [showMeModal, setShowMeModal] = React.useState(false);
     const [showToolPermissionsModal, setShowToolPermissionsModal] = React.useState(false);
     const [showMyFilesModal, setShowMyFilesModal] = React.useState(false);
     const myFilesLibrary = useUploadedFilesList();
@@ -145,6 +156,9 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
     const [accountMenuSignal, setAccountMenuSignal] = React.useState(0);
     const [showCreateProjectModal, setShowCreateProjectModal] = React.useState(false);
     const [infoProjectId, setInfoProjectId] = React.useState<string | null>(null);
+    const [showLabelsModal, setShowLabelsModal] = React.useState(false);
+    const [showGeneralInfoModal, setShowGeneralInfoModal] = React.useState(false);
+    const { data: chatResources } = useChatResourcesQuery();
     const {
         projects: codeProjects,
         addProject,
@@ -191,12 +205,12 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
 
     React.useEffect(() => {
         if (!isAigeniusDesktopRuntime() || !desktopSyncProject) {
-            setMissingFolderModalProjectId(null);
+            setMissingFolderModalProjectId((prev) => (prev === null ? prev : null));
             return;
         }
         const health = healthByProjectId[desktopSyncProject.id];
         if (!health || health.ok) {
-            setMissingFolderModalProjectId(null);
+            setMissingFolderModalProjectId((prev) => (prev === null ? prev : null));
             return;
         }
         const shouldPrompt = shouldPromptMissingFolderModal({
@@ -401,8 +415,16 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
 
     const modals = (
         <>
+            {showMeModal && (
+                <MeModal onClose={() => setShowMeModal(false)} />
+            )}
+
             {FEATURE_FLAGS.INTEGRATIONS && showIntegrationsModal && (
                 <IntegrationsModal onClose={() => setShowIntegrationsModal(false)} />
+            )}
+
+            {showFastButtonsModal && (
+                <FastButtonsModal onClose={() => setShowFastButtonsModal(false)} />
             )}
 
             {showToolPermissionsModal && (
@@ -463,6 +485,21 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 paymentModalLoading={paymentModalLoading}
                 setPaymentModalLoading={setPaymentModalLoading}
             />
+
+            <ConversationLabelsModal
+                isOpen={showLabelsModal}
+                preferences={chatResources?.userChatPreferences}
+                labels={chatResources?.conversationLabels ?? []}
+                onClose={() => setShowLabelsModal(false)}
+            />
+
+            {showGeneralInfoModal ? (
+                <GeneralWorkspaceInfoModal
+                    chatHistory={(chatHistory || []).filter((s) => s.conversationKind !== "orphan_question")}
+                    initialRules={chatResources?.userChatPreferences?.generalRules}
+                    onClose={() => setShowGeneralInfoModal(false)}
+                />
+            ) : null}
         </>
     );
 
@@ -501,11 +538,13 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
                 handleSessionSwitch={handleSessionSwitch}
                 isSessionActive={isSessionActive}
                 isSessionInFlight={isSessionInFlight}
+                onStopSession={onStopSession}
                 isInitialLoading={isInitialLoading}
                 codeProjects={codeProjects}
                 activeProjectId={sidebarActiveProjectId}
                 onNewChatForProject={handleNewChatForProject}
                 onProjectInfo={setInfoProjectId}
+                onGeneralInfo={() => setShowGeneralInfoModal(true)}
                 folderMissingByProjectId={folderMissingByProjectId}
                 getCachedMessages={getCachedMessages}
                 hasDraftSession={hasDraftSession}
@@ -514,13 +553,17 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
             <SidebarFooter
                 wallet={wallet}
                 onAddCredits={handleAddCredits}
+                onOpenMe={() => setShowMeModal(true)}
+                userEmail={userEmail}
                 onShowSavedChats={() => setShowSaved(true)}
                 onOpenMyFiles={() => setShowMyFilesModal(true)}
                 onOpenWorkflows={onOpenWorkflows}
+                onOpenFastButtons={() => setShowFastButtonsModal(true)}
                 onOpenNotifications={onOpenNotifications}
                 onIntegrations={FEATURE_FLAGS.INTEGRATIONS ? () => setShowIntegrationsModal(true) : undefined}
                 onOpenToolPermissions={() => setShowToolPermissionsModal(true)}
                 onOpenNonTextModels={onOpenNonTextModels}
+                onOpenConversationLabels={() => setShowLabelsModal(true)}
                 onGiveCredits={isMaster ? () => setShowGrantCreditsModal(true) : undefined}
                 onLogout={onLogout}
                 openMenuSignal={accountMenuSignal}

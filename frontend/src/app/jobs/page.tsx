@@ -43,13 +43,22 @@ export default function JobsReviewPage() {
   const PROGRESS_KEY = 'outreach_progress_v1';
   const GLOBAL_SENT_KEY = 'outreach_global_sent_v1';
 
+  const safeParseJson = <T,>(raw: string | null, fallback: T): T => {
+    if (!raw) return fallback;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return fallback;
+    }
+  };
+
   // Load and sync jobs
   useEffect(() => {
     fetch('/jobs.json')
       .then(res => res.json())
       .then((data) => {
-        const savedProgress = JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}');
-        const globalSent = JSON.parse(localStorage.getItem(GLOBAL_SENT_KEY) || '[]');
+        const savedProgress = safeParseJson<Record<string, any>>(localStorage.getItem(PROGRESS_KEY), {});
+        const globalSent = safeParseJson<string[]>(localStorage.getItem(GLOBAL_SENT_KEY), []);
 
         const enrichedJobs = data.map((job: any) => {
           // Check both current session progress AND global history
@@ -98,7 +107,7 @@ export default function JobsReviewPage() {
       if (job.id === jobId) {
         // If status becomes "sent", add to global registry
         if (newStatus === 'sent') {
-          const globalSent = JSON.parse(localStorage.getItem(GLOBAL_SENT_KEY) || '[]');
+          const globalSent = safeParseJson<string[]>(localStorage.getItem(GLOBAL_SENT_KEY), []);
           if (!globalSent.includes(job.contactEmail)) {
             localStorage.setItem(GLOBAL_SENT_KEY, JSON.stringify([...globalSent, job.contactEmail]));
           }

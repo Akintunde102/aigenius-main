@@ -182,7 +182,16 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     handleConfirmSTT,
     analyzer,
   } = audioState;
-  const { handleSend, handleStop, handleSave, handleInsertSaved, handleRemoveSaved } = actions;
+  const {
+    handleSend,
+    handleStop,
+    handleStopSession,
+    handleSave,
+    handleInsertSaved,
+    handleRemoveSaved,
+    handleRewritePrompt,
+    isRewritingPrompt,
+  } = actions;
 
   const chatContainerRef = useRef<ChatContainerHandle | null>(null);
   const [showPersonalityModal, setShowPersonalityModal] = useState(false);
@@ -580,9 +589,13 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     createNewSessionAndSwitch={createNewSessionAndSwitchWrapper}
                     isSessionActive={isSessionActive}
                     isSessionInFlight={isSessionInFlight}
+                    onStopSession={handleStopSession}
                     isInitialLoading={isInitialLoading || (modelsLoading && models.length === 0)}
                     onLogout={handleLogout}
                     userInitials={getSidebarUserInitials(currentUser)}
+                    userEmail={
+                      typeof currentUser?.email === 'string' ? currentUser.email : undefined
+                    }
                     getCachedMessages={getCachedMessages}
                     hasDraftSession={hasDraftSession}
                   />
@@ -679,6 +692,10 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     onMiniModeToggle={handleMiniModeToggle}
                     isMiniMode={isMiniMode}
                     analyzer={analyzer}
+                    onRewritePrompt={(options) => {
+                      void handleRewritePrompt(options);
+                    }}
+                    rewritePromptInProgress={isRewritingPrompt}
                   />
                   </RenderErrorBoundary>
                 </div>

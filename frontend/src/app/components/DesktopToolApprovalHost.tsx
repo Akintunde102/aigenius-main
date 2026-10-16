@@ -283,7 +283,6 @@ export default function DesktopToolApprovalHost() {
     }
 
     return bridge.onToolApprovalRequest((request: DesktopToolApprovalRequest) => {
-      console.log('[DEBUG] DesktopToolApprovalHost received onToolApprovalRequest:', request);
       const item: PendingApproval =
         request.kind === 'shell'
           ? {
@@ -291,7 +290,6 @@ export default function DesktopToolApprovalHost() {
               kind: 'shell',
               payload: request.payload as ShellApprovalPayload,
               respond: (approved) => {
-                console.log(`[DEBUG] Responding to tool approval ${request.requestId} with:`, approved);
                 bridge.respondToolApproval!(request.requestId, approved);
               },
             }
@@ -300,7 +298,6 @@ export default function DesktopToolApprovalHost() {
               kind: 'patch',
               payload: request.payload as PatchApprovalPayload,
               respond: (approved) => {
-                console.log(`[DEBUG] Responding to tool approval ${request.requestId} with:`, approved);
                 bridge.respondToolApproval!(request.requestId, approved);
               },
             };

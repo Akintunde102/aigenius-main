@@ -438,11 +438,16 @@ export function registerMainIpcHandlers(): void {
     return recreateCodeProjectRootAtPath(rootPath);
   });
 
+  ipcMain.handle('get-project-folder-picker-defaults', async () => {
+    return { defaultBrowsePath: app.getPath('documents') };
+  });
+
   ipcMain.handle('pick-project-directory', async () => {
     const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
     const result = await dialog.showOpenDialog(win, {
       properties: ['openDirectory'],
       title: 'Select project folder',
+      defaultPath: app.getPath('documents'),
     });
     if (result.canceled || !result.filePaths[0]) {
       return null;
@@ -527,6 +532,7 @@ export function registerMainIpcHandlers(): void {
 
         const switchRes = await fetch(loopbackHttpUrl(port, '/search/switch-project'), {
           method: 'POST',
+          signal: AbortSignal.timeout(5000),
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
@@ -543,6 +549,7 @@ export function registerMainIpcHandlers(): void {
 
         const res = await fetch(loopbackHttpUrl(port, '/search/index-project'), {
           method: 'POST',
+          signal: AbortSignal.timeout(60000),
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,

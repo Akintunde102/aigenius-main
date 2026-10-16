@@ -11,5 +11,9 @@ export const navigateTo = (url: string): void => {
 
 /** Reload the current page. */
 export const reloadPage = (): void => {
+    if (typeof window !== 'undefined' && typeof window.location?.reload === 'function') {
+        window.location.reload();
+        return;
+    }
     window.location.assign(window.location.href);
 };

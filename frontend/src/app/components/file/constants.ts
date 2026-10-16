@@ -73,7 +73,7 @@ export const listUploadAccessUrl = (folderId?: string) => {
     return `${UPLOAD_GATEWAY}/access/list?folderId=${folderId}`;
 }
 
-export const getUserDetails = (email: string) => `${API_LINK}/user-details?email=${email}`;
+export const getUserDetails = (email: string) => `${API_LINK}/gateway/*/user-details?email=${email}`;
 
 export const UPLOAD_TOKEN = "nobox_upload_client_token";
 
