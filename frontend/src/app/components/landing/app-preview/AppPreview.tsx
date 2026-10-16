@@ -8,10 +8,10 @@ import { Conversation, type StreamingReply } from "./Conversation";
 import {
   DEFAULT_CHAT_ID,
   DEFAULT_PROJECT_ID,
-  INITIAL_CHATS,
   INITIAL_OPEN_PROJECT_IDS,
-  INITIAL_PROJECTS,
   NEW_CHAT_TITLE,
+  getInitialChats,
+  getInitialProjects,
   pickReply,
   type Chat,
   type Message,
@@ -20,6 +20,7 @@ import {
 } from "./data";
 import { Sidebar } from "./Sidebar";
 import { APP } from "./theme";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 const NOTICE_MS = 2600;
@@ -27,10 +28,6 @@ const THINK_MS = 600;
 const WORD_MS = 55;
 const TITLE_MAX = 28;
 const LIVE_PREVIEW_NOTICE = "This is a live preview, so the window stays put.";
-
-const INITIAL_CHAT_MAP: Readonly<Record<string, Chat>> = Object.fromEntries(
-  INITIAL_CHATS.map((chat) => [chat.id, chat]),
-);
 
 interface WindowControlProps {
   label: string;
@@ -58,8 +55,11 @@ function WindowControl({ label, onClick, children }: WindowControlProps) {
  * Controls that need the real backend show a short notice instead of doing nothing.
  */
 export function AppPreview() {
-  const [chats, setChats] = useState<Readonly<Record<string, Chat>>>(INITIAL_CHAT_MAP);
-  const [projects, setProjects] = useState<readonly Project[]>(INITIAL_PROJECTS);
+  const { t } = useLanguage();
+  const [chats, setChats] = useState<Readonly<Record<string, Chat>>>(() =>
+    Object.fromEntries(getInitialChats().map((chat) => [chat.id, chat])),
+  );
+  const [projects, setProjects] = useState<readonly Project[]>(() => getInitialProjects());
   const [activeId, setActiveId] = useState(DEFAULT_CHAT_ID);
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(new Set(INITIAL_OPEN_PROJECT_IDS));
   const [query, setQuery] = useState("");
@@ -71,6 +71,12 @@ export function AppPreview() {
   const [desktopOpen, setDesktopOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const counter = useRef(1);
+
+  // Re-sync default illustrative content whenever the user changes the active interface language
+  useEffect(() => {
+    setChats(Object.fromEntries(getInitialChats(t).map((chat) => [chat.id, chat])));
+    setProjects(getInitialProjects(t));
+  }, [t]);
 
   const activeChat = chats[activeId] ?? chats[DEFAULT_CHAT_ID];
   const nextId = (prefix: string) => `${prefix}-${counter.current++}`;
@@ -146,7 +152,10 @@ export function AppPreview() {
 
   const newChat = () => {
     const id = nextId("chat");
-    setChats((prev) => ({ ...prev, [id]: { id, title: NEW_CHAT_TITLE, age: "now", messages: [] } }));
+    setChats((prev) => ({
+      ...prev,
+      [id]: { id, title: t("landing.demoNewChat", NEW_CHAT_TITLE), age: t("landing.demoAgoNow", "now"), messages: [] },
+    }));
     setProjects((prev) =>
       prev.map((project) => (project.id === DEFAULT_PROJECT_ID ? { ...project, chatIds: [id, ...project.chatIds] } : project)),
     );
@@ -216,7 +225,7 @@ export function AppPreview() {
   return (
     <div
       role="group"
-      aria-label="Interactive preview of the AIGenius app"
+      aria-label={t("landing.demoAriaPreview", "Interactive preview of the AIGenius app")}
       className={`relative flex h-[34rem] flex-col overflow-hidden rounded-xl text-left shadow-lp-lift md:h-[41rem] ${APP.frame}`}
     >
       <header
@@ -226,20 +235,20 @@ export function AppPreview() {
         <div className="flex shrink-0 items-center gap-[7px]">
           <button
             type="button"
-            aria-label="Close"
-            onClick={() => showNotice(LIVE_PREVIEW_NOTICE)}
+            aria-label={t("landing.demoAriaClose", "Close")}
+            onClick={() => showNotice(t("landing.demoNoticeLive", LIVE_PREVIEW_NOTICE))}
             className="h-3 w-3 rounded-full bg-[#ff5f57] transition-opacity duration-150 hover:opacity-80"
           />
           <button
             type="button"
-            aria-label="Minimize"
-            onClick={() => showNotice(LIVE_PREVIEW_NOTICE)}
+            aria-label={t("landing.demoAriaMinimize", "Minimize")}
+            onClick={() => showNotice(t("landing.demoNoticeLive", LIVE_PREVIEW_NOTICE))}
             className="h-3 w-3 rounded-full bg-[#febc2e] transition-opacity duration-150 hover:opacity-80"
           />
           <button
             type="button"
-            aria-label="Maximize"
-            onClick={() => showNotice(LIVE_PREVIEW_NOTICE)}
+            aria-label={t("landing.demoAriaMaximize", "Maximize")}
+            onClick={() => showNotice(t("landing.demoNoticeLive", LIVE_PREVIEW_NOTICE))}
             className="h-3 w-3 rounded-full bg-[#28c840] transition-opacity duration-150 hover:opacity-80"
           />
         </div>
@@ -247,7 +256,7 @@ export function AppPreview() {
         <button
           type="button"
           onClick={() =>
-            showNotice("Switching workspaces is part of the full app.")
+            showNotice(t("landing.demoNoticeWorkspaces", "Switching workspaces is part of the full app."))
           }
           className="flex items-center gap-1 text-sm font-semibold"
         >
@@ -260,7 +269,7 @@ export function AppPreview() {
         {mobileOpen && (
           <button
             type="button"
-            aria-label="Close sidebar"
+            aria-label={t("landing.demoAriaCloseSidebar", "Close sidebar")}
             aria-hidden={!mobileOpen}
             tabIndex={mobileOpen ? 0 : -1}
             onClick={() => setMobileOpen(false)}
@@ -296,7 +305,7 @@ export function AppPreview() {
         <section className="relative flex min-w-0 flex-1 flex-col">
           <button
             type="button"
-            aria-label="Open sidebar"
+            aria-label={t("landing.demoAriaOpenSidebar", "Open sidebar")}
             onClick={togglePanel}
             className={`absolute left-3 top-3 z-10 h-8 w-8 items-center justify-center rounded-md ${APP.muted} ${APP.hover} ${
               mobileOpen ? "hidden" : "flex"

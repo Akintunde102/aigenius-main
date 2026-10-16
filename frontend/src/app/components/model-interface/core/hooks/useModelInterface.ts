@@ -498,7 +498,7 @@ export function useModelInterface(options?: {
   ]);
 
   // Session switching
-  const { switchToSession, createAndSwitchToNewSession } =
+  const { switchToSession, createAndSwitchToNewSession, hydratingTranscriptSessionId } =
     useSessionSwitcher({
       currentSessionId,
       chatMap,
@@ -750,6 +750,7 @@ export function useModelInterface(options?: {
       createNewSessionAndSwitch: enhancedCreateNewSession,
       isSessionActive,
       isSessionInFlight,
+      hydratingTranscriptSessionId,
       startOrphanReply,
       project: "projectt",
       onClearDraftQueueRef,

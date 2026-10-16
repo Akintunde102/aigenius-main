@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { FiX } from "react-icons/fi";
 import { UserFilesBrowser } from "@/app/components/user-files/UserFilesBrowser";
 import type { UploadedFilesLibraryState } from "@/app/components/user-files/useUploadedFilesList";
 import type { CloudFile } from "@/app/components/file/file.interface";
 import { AppModal, AppModalHeader } from "@/app/components/modals/AppModal";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 export interface AttachmentLibraryModalProps {
   onClose: () => void;
@@ -17,6 +19,7 @@ export function AttachmentLibraryModal({
   library,
   onConfirm,
 }: AttachmentLibraryModalProps) {
+  const { t } = useLanguage();
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -39,28 +42,26 @@ export function AttachmentLibraryModal({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [onClose]);
 
-  const filesCount = library.files?.length ?? 0;
-  const subtitle =
-    filesCount > 0
-      ? `${filesCount} files · Select uploaded files to attach to your prompt`
-      : "Select uploaded files to attach to your prompt";
-
   return (
     <AppModal
       open
       onClose={onClose}
-      size="tall"
+      size="xl"
+      className="z-[110]"
       mobileFullScreen={isMobile}
       closeOnEscape={false}
       ariaLabelledBy="attachment-library-title"
-      panelClassName="!max-h-[min(90vh,720px)]"
     >
       <AppModalHeader
         titleId="attachment-library-title"
-        title="Choose from My files"
-        subtitle={subtitle}
+        title={t("modals.chooseFromMyFiles", "Choose from My Files")}
+        subtitle={t(
+          "modals.chooseFromMyFilesSubtitle",
+          "Select files from your library to attach to this conversation."
+        )}
         onClose={onClose}
       />
+
       <div className="attachment-library-browser flex min-h-0 flex-1 flex-col overflow-hidden">
         <UserFilesBrowser
           variant="modal"

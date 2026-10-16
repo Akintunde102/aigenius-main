@@ -11,7 +11,13 @@ function PublicFooter() {
   return (
     <footer className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-5 py-10 text-sm text-lp-muted sm:flex-row sm:items-center sm:justify-between">
       <span>&#169; {year} Nobox Labs Limited</span>
-      <nav className="flex gap-6" aria-label="Legal">
+      <nav className="flex flex-wrap gap-6" aria-label="Footer navigation">
+        <Link prefetch href="/published-conversations" className={FOOTER_LINK}>
+          Published conversations
+        </Link>
+        <Link prefetch href="/h" className={FOOTER_LINK}>
+          Published pages
+        </Link>
         <Link prefetch href="/docs/privacy-policy" className={FOOTER_LINK}>
           Privacy Policy
         </Link>

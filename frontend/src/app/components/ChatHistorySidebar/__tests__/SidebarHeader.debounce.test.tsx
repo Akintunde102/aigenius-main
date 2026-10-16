@@ -109,4 +109,23 @@ describe("SidebarHeader (history search debounce)", () => {
 
     expect(input).toHaveValue("cleared");
   });
+
+  it("closes the sidebar when pressing Home in mobile view without logging out", () => {
+    const setMobileSidebarOpen = jest.fn();
+    render(
+      <SidebarHeader
+        isMobile={true}
+        mobileSidebarOpen={true}
+        setMobileSidebarOpen={setMobileSidebarOpen}
+        historySearch=""
+        setHistorySearch={jest.fn()}
+      />,
+    );
+
+    const homeButtons = screen.getAllByRole("button", { name: /^home$/i });
+    expect(homeButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(homeButtons[0]);
+    expect(setMobileSidebarOpen).toHaveBeenCalledWith(false);
+  });
 });

@@ -1,5 +1,6 @@
 import { AudioStatus } from '@/app/components/model-interface/features/chat/hooks/audioMode.utils';
 import type { QueuedComposerMessage } from '@/app/components/model-interface/features/chat/hooks/messageSendQueue.types';
+import type { AttachmentPreviewTarget } from '@/app/components/model-interface/features/message-types/components/AttachmentPreviewModal';
 
 export interface Model {
     id: string;
@@ -67,6 +68,8 @@ export interface ChatBoxInputProps {
     onRetryFailedUpload?: (id: string) => void;
     onRemoveFailedUpload?: (id: string) => void;
     onRemoveUploadedFile?: (index: number) => void;
+    /** Optional handler when clicking an image attachment preview. If omitted, ChatBoxInput opens the preview lightbox internally. */
+    onImagePreview?: (target: AttachmentPreviewTarget) => void;
     inputValue?: string;
     onInputChange?: (value: string) => void;
     composerSessionKey?: string;
@@ -131,6 +134,7 @@ export interface ChatTextareaProps {
     textareaRef?: React.RefObject<HTMLTextAreaElement>;
     sidebarStyle?: boolean; // new prop for Sidebar-matching style
     mini?: boolean;
+    hideDefaultSubmit?: boolean;
     // Audio
     onAudioModeToggle?: (enabled: boolean) => void;
     isAudioMode?: boolean;

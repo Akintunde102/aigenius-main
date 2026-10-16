@@ -124,4 +124,19 @@ declare global {
       [key: string]: any;
     };
   }
+
+  namespace JSX {
+    interface IntrinsicElements {
+      "ms-store-badge": React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement> & {
+          productid?: string;
+          launchmode?: string;
+          cid?: string;
+          theme?: string;
+        },
+        HTMLElement
+      >;
+    }
+  }
 }
+

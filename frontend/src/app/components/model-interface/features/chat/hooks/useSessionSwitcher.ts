@@ -1,9 +1,13 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChatMessage, ChatSession } from '@/app/components/model-interface/shared/types';
 import { normalizeSessionMessages } from '@/lib/utils/messageContentUtils';
 import { getConversationById } from '@/lib/calls/model-chat-conversation';
 import { CHAT_CONVERSATION_STALE_MS, chatQueryKeys } from '@/lib/hooks/chat-query-keys';
+import {
+    conversationToChatSession,
+    readConversationSessionFromCache,
+} from '@/app/components/model-interface/conversation/conversationTranscriptQuery';
 import { SetChatForSession } from './chatOperations.types';
 import { bumpDraftConversationEpoch } from '@/app/components/model-interface/conversation/conversationViewSession';
 import {
@@ -38,6 +42,7 @@ export function useSessionSwitcher({
     isPassiveSyncBlocked,
 }: UseSessionSwitcherOptions) {
     const queryClient = useQueryClient();
+    const [hydratingTranscriptSessionId, setHydratingTranscriptSessionId] = useState<string | null>(null);
 
     const ensureSystemPromptMessage = useCallback((session: ChatSession): ChatSession => {
         if (!session.systemPrompt) return session;
@@ -77,30 +82,46 @@ export function useSessionSwitcher({
 
         applyChatProjectScopeFromSession(session.codeProjectId);
 
-        // 1. Key change — chat derives from chatMap[session.id] automatically.
-        setCurrentSessionId(session.id);
+        const sid = session.id!;
 
-        // 2. Cold path: load transcript when not in chatMap (sidebar history is metadata-only).
-        if (!chatMap[session.id]) {
+        // 1. Hydrate chatMap before switching the view key (avoids "Start a conversation…" flash).
+        let hydrated = Boolean(chatMap[sid]?.length);
+        if (!hydrated) {
             if (session.messages?.length) {
                 const normalized = normalizeSessionMessages(ensureSystemPromptMessage(session));
-                setChatForSession(session.id, (normalized.messages || []) as ChatMessage[]);
+                setChatForSession(sid, (normalized.messages || []) as ChatMessage[]);
+                hydrated = true;
             } else {
-                void loadSessionFromBackend(queryClient, session.id).then((loaded) => {
-                    if (!loaded?.messages?.length) return;
-                    const sid = session.id!;
-                    if (isPassiveSyncBlocked?.(sid)) return;
-                    const normalized = normalizeSessionMessages(ensureSystemPromptMessage(loaded));
-                    const incoming = (normalized.messages || []) as ChatMessage[];
-                    setChatForSession(sid, (prev) => {
-                        if (prev.length && !shouldAcceptRemoteConversationSync(prev, incoming)) {
-                            return prev;
-                        }
-                        return incoming;
-                    });
-                });
+                const cached = readConversationSessionFromCache(queryClient, sid);
+                if (cached?.messages?.length) {
+                    const normalized = normalizeSessionMessages(ensureSystemPromptMessage(cached));
+                    setChatForSession(sid, (normalized.messages || []) as ChatMessage[]);
+                    hydrated = true;
+                }
             }
         }
+
+        if (!hydrated) {
+            setHydratingTranscriptSessionId(sid);
+            void loadSessionFromBackend(queryClient, sid).then((loaded) => {
+                setHydratingTranscriptSessionId((prev) => (prev === sid ? null : prev));
+                if (!loaded?.messages?.length) return;
+                if (isPassiveSyncBlocked?.(sid)) return;
+                const normalized = normalizeSessionMessages(ensureSystemPromptMessage(loaded));
+                const incoming = (normalized.messages || []) as ChatMessage[];
+                setChatForSession(sid, (prev) => {
+                    if (prev.length && !shouldAcceptRemoteConversationSync(prev, incoming)) {
+                        return prev;
+                    }
+                    return incoming;
+                });
+            });
+        } else {
+            setHydratingTranscriptSessionId(null);
+        }
+
+        // 2. Key change — chat derives from chatMap[session.id] automatically.
+        setCurrentSessionId(sid);
 
         // 3. Background reconciliation with the server — updates the map silently.
         (async () => {
@@ -146,6 +167,7 @@ export function useSessionSwitcher({
     ) => {
         bumpDraftConversationEpoch();
         renewClientDraftSessionId();
+        setHydratingTranscriptSessionId(null);
         setCurrentSessionId(null);
         setChatForSession(getClientDraftSessionId(), []);
     }, [setChatForSession]);
@@ -158,28 +180,8 @@ export function useSessionSwitcher({
     return {
         switchToSession,
         createAndSwitchToNewSession,
-        isSessionActive
-    };
-}
-
-function conversationToSession(
-    conversation: NonNullable<Awaited<ReturnType<typeof getConversationById>>>,
-): ChatSession {
-    return {
-        id: conversation.id,
-        codeProjectId: conversation.codeProjectId ?? null,
-        title: conversation.session.title,
-        modelId: conversation.session.modelId,
-        messages: conversation.session.messages,
-        metadata: conversation.metadata,
-        personalityId: conversation.personalityId,
-        systemPrompt: conversation.systemPrompt,
-        starred: conversation.starred,
-        isPublished: conversation.isPublished,
-        publishedAt: conversation.publishedAt,
-        publishedTitle: conversation.publishedTitle,
-        publishedDescription: conversation.publishedDescription,
-        parentConversationId: conversation.parentConversationId ?? null,
+        isSessionActive,
+        hydratingTranscriptSessionId,
     };
 }
 
@@ -196,7 +198,7 @@ async function loadSessionFromBackend(
             retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30_000),
         });
         if (!conversation?.session) return null;
-        return conversationToSession(conversation);
+        return conversationToChatSession(conversation);
     } catch {
         return null;
     }

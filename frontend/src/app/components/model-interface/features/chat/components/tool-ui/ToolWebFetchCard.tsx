@@ -29,7 +29,7 @@ export function ToolWebFetchCard({
 }: ToolStreamingCardProps) {
   const { displayName, loading, success } = streaming_tool;
   const toolArgs = toolArgsProp ?? streaming_tool.arguments;
-  const [containerCollapsed, setContainerCollapsed] = useState(groupItem);
+  const [containerCollapsed, setContainerCollapsed] = useState(true);
   const [contentOpen, setContentOpen] = useState(false);
   const wasLoadingRef = useRef(loading);
 
@@ -47,22 +47,9 @@ export function ToolWebFetchCard({
 
   useEffect(() => {
     if (!groupItem) return;
-    if (loading) {
-      setContainerCollapsed(false);
-    }
-  }, [groupItem, loading]);
-
-  useEffect(() => {
-    if (wasLoadingRef.current && !loading) {
-      if (success === false) {
-        setContainerCollapsed(false);
-        setContentOpen(false);
-      } else if (success === true) {
-        setContentOpen(false);
-        if (groupItem) {
-          setContainerCollapsed(true);
-        }
-      }
+    if (wasLoadingRef.current && !loading && success === true) {
+      setContentOpen(false);
+      setContainerCollapsed(true);
     }
     wasLoadingRef.current = loading;
   }, [groupItem, loading, success]);

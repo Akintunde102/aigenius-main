@@ -54,6 +54,7 @@ type Props = {
   setImagePreview: (v: import('@/app/components/model-interface/features/message-types/components/ImagePreviewActionsContext').ImagePreviewOpenTarget | null) => void;
   chatAreaRef: React.RefObject<HTMLDivElement | null>;
   showScrollToBottom: boolean;
+  isTranscriptHydrating?: boolean;
   handleSave: (message: ChatMessage) => void;
   handleChatBoxSend: (
     message: string,
@@ -125,6 +126,12 @@ type Props = {
   analyzer?: AnalyserNode | null;
   onRewritePrompt?: (options?: RewritePromptOptions) => void;
   rewritePromptInProgress?: boolean;
+  onOpenSidebar?: () => void;
+  onNewChat?: () => void;
+  onRenameSession?: (sessionId: string, newTitle: string) => void;
+  onDeleteSession?: (sessionId: string) => void;
+  onStarToggle?: (sessionId: string, isStarred: boolean) => Promise<void>;
+  onPublishSession?: (session: ChatSession) => void;
 };
 
 export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatColumn({
@@ -148,6 +155,7 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   setImagePreview,
   chatAreaRef,
   showScrollToBottom,
+  isTranscriptHydrating = false,
   handleSave,
   handleChatBoxSend,
   handleFileUpload,
@@ -212,6 +220,12 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
   analyzer = null,
   onRewritePrompt,
   rewritePromptInProgress,
+  onOpenSidebar,
+  onNewChat,
+  onRenameSession,
+  onDeleteSession,
+  onStarToggle,
+  onPublishSession,
 }: Props) {
   const handleRemoveUploadedFile = useCallback(
     (idx: number) => {
@@ -277,6 +291,7 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           chatEndRef={chatEndRef as React.RefObject<HTMLDivElement>}
           chatAreaRef={chatAreaRef as React.RefObject<HTMLDivElement>}
           showScrollToBottom={showScrollToBottom}
+          isTranscriptHydrating={isTranscriptHydrating}
           onDeleteMessage={handleDeleteMessage}
           onDeleteMessageById={handleDeleteMessageById}
           onSaveMessage={handleSave}
@@ -350,6 +365,12 @@ export const ModelInterfaceChatColumn = React.memo(function ModelInterfaceChatCo
           analyzer={analyzer}
           onRewritePrompt={onRewritePrompt}
           rewritePromptInProgress={rewritePromptInProgress}
+          onOpenSidebar={onOpenSidebar}
+          onNewChat={onNewChat}
+          onRenameSession={onRenameSession}
+          onDeleteSession={onDeleteSession}
+          onStarToggle={onStarToggle}
+          onPublishSession={onPublishSession}
         />
       )}
     </MessageHandlers>

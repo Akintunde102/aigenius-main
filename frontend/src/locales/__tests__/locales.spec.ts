@@ -5,9 +5,13 @@ import {
   hasUiDictionary,
   translate,
   DEFAULT_LANGUAGE_CODE,
+  preloadAllDictionaries,
 } from '../index';
 
 describe('locales internationalization module', () => {
+  beforeAll(async () => {
+    await preloadAllDictionaries();
+  });
   it('contains all 110 supported Microsoft Store locales in catalog', () => {
     expect(LANGUAGE_CATALOG.length).toBe(110);
   });

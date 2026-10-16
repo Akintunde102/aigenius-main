@@ -72,6 +72,23 @@
   transform: translateY(-0.5px);
 }
 
+.spinner {
+  flex-shrink: 0;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 1.5px solid color-mix(in srgb, var(--tool-work-muted, #64748b) 35%, transparent);
+  border-top-color: var(--tool-work-muted, #64748b);
+  border-radius: 50%;
+  animation: reasoningSpin 0.7s linear infinite;
+  transform: translateY(1px);
+}
+
+@keyframes reasoningSpin {
+  to {
+    transform: translateY(1px) rotate(360deg);
+  }
+}
+
 .body {
   margin: 0.25rem 0 0;
   padding: 0;
@@ -99,6 +116,11 @@
   .headerLabelActive {
     animation: none;
     opacity: 0.85;
+  }
+
+  .spinner {
+    animation: none;
+    opacity: 0.75;
   }
 }
 

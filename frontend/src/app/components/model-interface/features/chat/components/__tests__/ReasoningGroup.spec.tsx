@@ -27,7 +27,7 @@ describe('ReasoningGroup', () => {
     cleanup();
   });
 
-  it('stays expanded and labeled Thinking… while reasoning is loading', () => {
+  it('stays collapsed with Thinking… label while reasoning is loading until the user expands', () => {
     render(
       <ReasoningGroup
         event={{ type: 'thinking', content: 'Plan the rename', loading: true, timestamp: 1 }}
@@ -35,8 +35,8 @@ describe('ReasoningGroup', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: /thinking/i })).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByTestId('reasoning-markdown')).toHaveTextContent('Plan the rename');
+    expect(screen.getByRole('button', { name: /thinking/i })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('reasoning-markdown')).not.toBeInTheDocument();
   });
 
   it('collapses once thinking finishes even if the turn is still streaming', () => {

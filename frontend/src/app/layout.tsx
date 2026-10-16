@@ -20,6 +20,8 @@ import { CrashBootstrapScript } from "@/app/components/CrashBootstrapScript";
 import { FilePreviewModal } from "@/app/components/modals/FilePreviewModal";
 import { ThemeProvider } from "@/lib/providers/ThemeProvider";
 import { LanguageProvider } from "@/lib/providers/LanguageProvider";
+import { LocaleBootstrapScript } from "@/app/components/LocaleBootstrapScript";
+import { UserLocalePreferenceSync } from "@/app/components/UserLocalePreferenceSync";
 import { LanguageSelectionModal } from "@/app/components/modals/LanguageSelectionModal";
 import { VideoJobProgressModal } from "@/app/components/modals/VideoJobProgressModal";
 import { SpeechJobProgressModal } from "@/app/components/modals/SpeechJobProgressModal";
@@ -162,6 +164,7 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
         <ColorModeBootstrapScript />
+        <LocaleBootstrapScript />
         <CrashBootstrapScript />
         <script
           type="application/ld+json"
@@ -172,6 +175,7 @@ export default function RootLayout({
         <DesktopShellDocumentFlag />
         <ThemeProvider>
           <LanguageProvider>
+            <UserLocalePreferenceSync />
             <DesktopShellChrome>
               <EarlyDesktopAuthCookieSync />
               <ViewportHeightSetter />

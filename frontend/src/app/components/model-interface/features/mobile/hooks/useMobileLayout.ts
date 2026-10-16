@@ -36,7 +36,9 @@ export function useMobileLayout({
             zIndex: isMobile ? 45 : 40,
             top: isMobile ? (followVisibleViewport ? visualViewportRect!.top : 0) : 'auto',
             left: isMobile ? 0 : 'auto',
-            width: isMobile ? '100vw' : '100%',
+            right: isMobile ? 0 : 'auto',
+            bottom: isMobile ? (followVisibleViewport ? 'auto' : 0) : 'auto',
+            width: '100%',
             height: isMobile
                 ? (followVisibleViewport
                     ? `${visualViewportRect!.height}px`
@@ -48,8 +50,8 @@ export function useMobileLayout({
     const chatAreaStyle = useMemo(() => ({
         minHeight: 0,
         overflow: 'hidden' as const,
-        paddingLeft: isFullScreenMobile ? '16px' : undefined,
-        paddingRight: isFullScreenMobile ? '16px' : undefined,
+        paddingLeft: isFullScreenMobile ? '0px' : undefined,
+        paddingRight: isFullScreenMobile ? '0px' : undefined,
         display: 'flex',
         flexDirection: 'column' as const
     }), [isFullScreenMobile]);

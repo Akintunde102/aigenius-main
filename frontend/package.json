@@ -15,7 +15,7 @@
     "lint": "next lint --max-warnings=10",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "test": "npx jest",
-    "test:resilience": "npx jest --ci --testPathPattern=\"ToolStreamingCard|RenderErrorBoundary|report-client-error|crash-bootstrap|explain-client-error|lazy-component|ErrorBoundary.spec|ChatMessage.resilience|PreviewRenderer.resilience|ToolExecutionDisplay.safety|DefaultToolStreamingCard.subagent\" --forceExit",
+    "test:resilience": "cross-env NODE_ENV=test jest --ci --testPathPattern=ToolStreamingCard --testPathPattern=RenderErrorBoundary --testPathPattern=report-client-error --testPathPattern=crash-bootstrap --testPathPattern=explain-client-error --testPathPattern=lazy-component --testPathPattern=ErrorBoundary.spec --testPathPattern=ChatMessage.resilience --testPathPattern=PreviewRenderer.resilience --testPathPattern=ToolExecutionDisplay.safety --testPathPattern=DefaultToolStreamingCard.subagent --forceExit",
     "test:watch": "npx jest --watch",
     "test:coverage": "npx jest --coverage",
     "capture:home-hero": "node scripts/capture-home-hero-screenshot.cjs",

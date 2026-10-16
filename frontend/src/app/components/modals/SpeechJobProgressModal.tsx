@@ -13,7 +13,7 @@ import {
     speechTrackingEmitter,
     type SpeechTrackingModalPayload,
 } from './SpeechTrackingManager';
-import { isPlaybackSrcClaimed } from '@/app/components/playback/playback-session';
+import { isPlaybackSrcClaimed, updatePlaybackSession } from '@/app/components/playback/playback-session';
 import { AppModal, AppModalHeader, AppModalBody } from './AppModal';
 import { AlertCircle } from 'lucide-react';
 
@@ -94,6 +94,22 @@ export const SpeechJobProgressModal: React.FC = () => {
         };
     }, [rawAudio, stage]);
 
+    const derivedTitle = statusData?.title
+        || (payload?.title && !/^(track\s+speech|speech\s+generation)$/i.test(payload.title) ? payload.title : null)
+        || (payload?.identifier.includes('_job-') ? payload.identifier.split('_job-')[0].split('-').filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : null)
+        || 'Generated Speech';
+    const conversationId = statusData?.conversation_id || payload?.conversationId;
+    const subtitle = statusData?.model_name ? `${statusData.model_name}${statusData.voice ? ` · ${statusData.voice}` : ''}` : undefined;
+
+    useEffect(() => {
+        if (!statusData || !payload) return;
+        updatePlaybackSession({
+            title: derivedTitle,
+            subtitle,
+            conversationId: conversationId || undefined,
+        });
+    }, [statusData, payload, derivedTitle, subtitle, conversationId]);
+
     if (!payload) return null;
 
     const handleClose = () => {
@@ -112,7 +128,7 @@ export const SpeechJobProgressModal: React.FC = () => {
             >
                 <AppModalHeader
                     titleId="speech-progress-title"
-                    title={payload.title || 'Speech generation'}
+                    title={derivedTitle}
                     subtitle={
                         statusData?.stage_label
                             ? `${statusData.stage_label}${statusData.remaining_label ? ` · ${statusData.remaining_label}` : ''}`
@@ -178,8 +194,10 @@ export const SpeechJobProgressModal: React.FC = () => {
                                 controls
                                 preload="metadata"
                                 src={playbackUrl}
-                                title={payload.title || 'Speech'}
-                                data-playback-title={payload.title || 'Speech'}
+                                title={derivedTitle}
+                                data-playback-title={derivedTitle}
+                                data-playback-subtitle={subtitle}
+                                data-playback-conversation={conversationId || undefined}
                                 data-playback-return={`speech:${payload.identifier}`}
                             >
                                 <track kind="captions" />

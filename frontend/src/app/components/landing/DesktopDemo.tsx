@@ -10,6 +10,7 @@ import {
   UserBubble,
 } from "./app-preview/AppWindow";
 import { useLoopClock } from "./useLoopClock";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 const LOOP_MS = 11000;
 const SETTLED_MS = 8500;
@@ -30,6 +31,7 @@ const AT = {
 
 /** Illustrative conversation. Credits are example figures. */
 export function DesktopDemo() {
+  const { t } = useLanguage();
   const { ref, time } = useLoopClock(LOOP_MS, SETTLED_MS);
   const has = (at: number) => time >= at;
   const waitingForApproval = has(AT.approval) && !has(AT.moved);
@@ -43,28 +45,29 @@ export function DesktopDemo() {
       {has(AT.prompt) && (
         <Appear>
           <UserBubble>
-            Sort my Downloads folder into folders by type.
+            {t("landing.demoDesktopPrompt", "Sort my Downloads folder into folders by type.")}
           </UserBubble>
         </Appear>
       )}
       {has(AT.intro) && (
         <Appear>
           <AssistantText>
-            I will start by looking at what is in your Downloads folder.
+            {t("landing.demoDesktopIntro", "I will start by looking at what is in your Downloads folder.")}
           </AssistantText>
         </Appear>
       )}
       {has(AT.listed) && (
         <Appear>
-          <ToolLine label="Listed Downloads" />
+          <ToolLine label={t("landing.demoDesktopListed", "Listed Downloads")} />
         </Appear>
       )}
       {has(AT.plan) && (
         <Appear>
           <AssistantText>
-            Found <strong className="font-semibold">142 files</strong>. I will
-            group them into Documents, Images, Installers, Archives and Other.
-            Moving files needs your approval first.
+            {t(
+              "landing.demoDesktopPlan",
+              "Found 142 files. I will group them into Documents, Images, Installers, Archives and Other. Moving files needs your approval first.",
+            )}
           </AssistantText>
         </Appear>
       )}
@@ -79,13 +82,13 @@ export function DesktopDemo() {
       )}
       {has(AT.moved) && (
         <Appear>
-          <ToolLine label="move_files" status="done" />
+          <ToolLine label="move_files" status={t("landing.demoDoneStatus", "done")} />
         </Appear>
       )}
       {has(AT.summary) && (
         <Appear>
           <AssistantText>
-            Done. 5 folders created and 142 files moved. Nothing was deleted.
+            {t("landing.demoDesktopDone", "Done. 5 folders created and 142 files moved. Nothing was deleted.")}
           </AssistantText>
         </Appear>
       )}

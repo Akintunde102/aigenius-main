@@ -126,8 +126,7 @@ describe("UserFilesBrowser", () => {
     );
 
     expect(screen.getByText("photo.png")).toBeInTheDocument();
-    expect(screen.getByText("Name")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /copy link/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^copy$/i })).toBeInTheDocument();
   });
 
   it("filters by search query", () => {

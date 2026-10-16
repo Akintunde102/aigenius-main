@@ -33,7 +33,7 @@ interface PublicProseProps {
 
 export function PublicProse({ title, updated, children }: PublicProseProps) {
   return (
-    <article className="mx-auto max-w-3xl px-5 py-16 text-[17px] leading-relaxed lg:py-24">
+    <article className="mx-auto max-w-3xl px-5 py-16 text-[17px] leading-relaxed tracking-[-0.015em] lg:py-24">
       <h1 className={`${DISPLAY} text-[clamp(2.25rem,5vw,3.5rem)] font-normal leading-[1.04] tracking-[-0.03em]`}>
         {title}
       </h1>

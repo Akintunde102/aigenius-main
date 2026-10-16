@@ -25,8 +25,7 @@ export function LocalShellToolCard({ streaming_tool, result, arguments: toolArgs
   const [activityOpen, setActivityOpen] = useState(false);
   const [inputOpen, setInputOpen] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
-  const [containerCollapsed, setContainerCollapsed] = useState(false);
-  const wasLoadingRef = useRef(loading);
+  const [containerCollapsed, setContainerCollapsed] = useState(true);
   const streamScrollRef = useRef<HTMLPreElement>(null);
 
   const streamLogs = useMemo(
@@ -95,31 +94,6 @@ export function LocalShellToolCard({ streaming_tool, result, arguments: toolArgs
   const showTerminalPre = Boolean(promptParts || loading || hasStreamText);
 
   useEffect(() => {
-    if (loading && filteredLogs.length > 1) {
-      setActivityOpen(true);
-    }
-  }, [loading, filteredLogs.length]);
-
-  useEffect(() => {
-    if (loading) {
-      setResultOpen(true);
-    }
-  }, [loading]);
-
-  useEffect(() => {
-    if (wasLoadingRef.current && !loading) {
-      if (success === true) {
-        setActivityOpen(false);
-      }
-      if (success === false) {
-        setActivityOpen(true);
-        setResultOpen(true);
-      }
-    }
-    wasLoadingRef.current = loading;
-  }, [loading, success]);
-
-  useEffect(() => {
     if (!resultOpen || !loading || !streamScrollRef.current || !showTerminalPre) return;
     const el = streamScrollRef.current;
     el.scrollTop = el.scrollHeight;
@@ -135,6 +109,7 @@ export function LocalShellToolCard({ streaming_tool, result, arguments: toolArgs
       >
         <span className="min-w-0 shrink font-medium text-slate-700 dark:text-zinc-200">{resolvedDisplayName}</span>
         <span className="shrink-0 text-slate-400 dark:text-zinc-500">· {statusText}</span>
+        {loading ? <FiLoader className="h-3 w-3 shrink-0 animate-spin text-slate-400 dark:text-zinc-500" aria-hidden /> : null}
         <span className="shrink-0 text-slate-400 tabular-nums dark:text-zinc-500" aria-hidden>
           {containerCollapsed ? '▸' : '▾'}
         </span>

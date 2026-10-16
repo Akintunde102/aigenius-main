@@ -95,6 +95,12 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/', request.url));
     }
 
+    if (pathname === '/register') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/signup';
+        return NextResponse.redirect(url);
+    }
+
     const hasSession =
         Boolean(request.cookies.get('nobox_client_token')?.value) ||
         Boolean(request.cookies.get('nobox_token')?.value);

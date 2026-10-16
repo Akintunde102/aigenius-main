@@ -22,6 +22,7 @@ import {
 type ModelQuickPickDropdownProps = {
   disabled?: boolean;
   mini?: boolean;
+  variant?: 'pill' | 'header';
   selectedModel: Model | null;
   quickPickModels: Model[];
   favoritesLoaded: boolean;
@@ -187,6 +188,7 @@ function computeMenuPosition(
 export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
   disabled = false,
   mini = false,
+  variant = 'pill',
   selectedModel,
   quickPickModels,
   favoritesLoaded,
@@ -466,11 +468,19 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`inline-flex items-center gap-1 rounded-full border text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 [border-color:var(--chat-composer-border)] [background-color:color-mix(in_srgb,var(--chat-composer-bg)_88%,transparent)] [color:var(--sidebar-muted-fg)] hover:[color:var(--sidebar-fg)] hover:[background-color:var(--chat-composer-bg)] ${mini ? "px-1.5 py-0.5" : "px-2 py-0.5"}`}
+        className={
+          variant === 'header'
+            ? "flex items-center gap-1 rounded-full px-1.5 py-0.5 text-sm font-normal text-[var(--chat-muted-fg)] transition-colors hover:text-[var(--app-ink-900)] focus:outline-none"
+            : `inline-flex items-center gap-1 rounded-full border text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 [border-color:var(--chat-composer-border)] [background-color:color-mix(in_srgb,var(--chat-composer-bg)_88%,transparent)] [color:var(--sidebar-muted-fg)] hover:[color:var(--sidebar-fg)] hover:[background-color:var(--chat-composer-bg)] ${mini ? "px-1.5 py-0.5" : "px-2 py-0.5"}`
+        }
         title={selectedModel ? `${t('composer.currentModel', 'Current model')}: ${displayName}` : t('modelPicker.title', "Select model")}
       >
         <span
-          className={`${mini ? "text-[10px]" : "text-xs"} font-medium truncate max-w-32`}
+          className={
+            variant === 'header'
+              ? "truncate max-w-[120px] font-normal text-[14px]"
+              : `${mini ? "text-[10px]" : "text-xs"} font-medium truncate max-w-32`
+          }
         >
           {displayName}
         </span>
@@ -486,7 +496,7 @@ export const ModelQuickPickDropdown: React.FC<ModelQuickPickDropdownProps> = ({
             </span>
           )}
         <FiChevronDown
-          size={mini ? 10 : 12}
+          size={variant === 'header' ? 13 : mini ? 10 : 12}
           className={`shrink-0 opacity-70 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         />
       </button>

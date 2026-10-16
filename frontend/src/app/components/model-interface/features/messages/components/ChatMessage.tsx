@@ -631,7 +631,7 @@ export function ChatMessage({
         }
         if (msg.role === "user") {
             return [
-                "relative ml-auto max-w-sm min-w-0 rounded-[22px] border px-4 py-3 leading-relaxed",
+                "relative ml-auto max-w-[88%] sm:max-w-md min-w-0 rounded-[22px] border px-4 py-3 leading-relaxed",
                 "[background-color:var(--user-bubble-bg)] [border-color:var(--user-bubble-border)] [color:var(--user-bubble-fg)]",
             ].join(" ");
         }
@@ -647,7 +647,7 @@ export function ChatMessage({
             ? { maxWidth: '100%' }
             : isEditing
                 ? { maxWidth: '48rem' }
-                : { maxWidth: isLongUserText ? '352px' : '320px' })
+                : { maxWidth: isLongUserText ? 'min(88%, 32rem)' : 'min(85%, 26rem)' })
     }), [msg.role, isLongUserText, isEditing]);
 
     useEffect(() => {
@@ -664,10 +664,10 @@ export function ChatMessage({
     return (
         <div
             id={`chat-message-${msg.messageId || msg.id || `ts_${msg.timestamp}`}`}
-            className={`relative flex w-full ${msg.role === "user" ? "justify-end" : "justify-start md:justify-center"} ${messageActionsMenuOpen ? "z-[80]" : "z-0"}`}
+            className={`relative flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"} ${messageActionsMenuOpen ? "z-[80]" : "z-0"}`}
         >
             <div
-                className={`relative group flex items-end gap-3 ${msg.role === "user" ? "justify-end w-full" : "justify-start w-full md:max-w-[720px]"}`}
+                className={`relative group flex items-end gap-3 ${msg.role === "user" ? "justify-end w-full" : "justify-start w-full"}`}
             >
                 <div
                     className={`${messageContainerClasses} min-w-0${msg.role === 'user' && !isEditing && !loading && !streaming ? ' cursor-text' : ''}`}

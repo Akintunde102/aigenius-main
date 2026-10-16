@@ -42,7 +42,7 @@ export function GalleryTile({
   onToggleSelect?: () => void;
 }) {
   const ext = getFileExtensionFromCloudFile(file);
-  const cat = classifyUserFileCategory(ext);
+  const cat = classifyUserFileCategory(ext, file.s3Link);
   const theme = CATEGORY_THEME[cat];
   const isImg = isImageCloudFile(file);
   const [imgErr, setImgErr] = useState(false);

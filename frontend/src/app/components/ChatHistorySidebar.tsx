@@ -621,7 +621,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
         <aside
             data-mobile-sidebar
             className={[
-                "fixed inset-y-0 left-0 flex h-full w-screen max-w-[100vw] flex-col overflow-hidden",
+                "fixed inset-y-0 left-0 flex h-full w-[82vw] max-w-[320px] flex-col overflow-hidden shadow-2xl",
                 "transform transition-transform will-change-transform [backface-visibility:hidden]",
                 mobileDrawerMotion,
                 open
@@ -631,7 +631,7 @@ const ChatHistorySidebar = React.memo<ChatHistorySidebarProps>(({
             style={{
                 backgroundColor: "var(--sidebar-bg)",
                 borderRight: "1px solid var(--sidebar-border)",
-                boxShadow: "0 1px 0 0 rgba(0,0,0,0.15)",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.18)",
             }}
             aria-hidden={!open}
         >

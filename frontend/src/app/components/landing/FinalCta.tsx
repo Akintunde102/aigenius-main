@@ -10,6 +10,7 @@ import { Magnetic } from "./Magnetic";
 import { ParallaxPhoto } from "./ParallaxPhoto";
 import type { Platform } from "./platforms";
 import { DISPLAY } from "./typography";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 interface FinalCtaProps {
   initialPlatform: Platform | null;
@@ -17,6 +18,7 @@ interface FinalCtaProps {
 
 /** Bookends the hero: the same photo, parallaxing the other way as it scrolls past. */
 export function FinalCta({ initialPlatform }: FinalCtaProps) {
+  const { t } = useLanguage();
   const container = useLandingScroll();
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
@@ -32,10 +34,13 @@ export function FinalCta({ initialPlatform }: FinalCtaProps) {
         <h2
           className={`${DISPLAY} mx-auto max-w-2xl text-[clamp(2.25rem,5.4vw,4rem)] font-normal leading-[1.02] tracking-[-0.035em]`}
         >
-          Start with {FREE_CREDITS} free credits.
+          {t("landing.finalCtaTitle", "Start with {credits} free credits.", { credits: FREE_CREDITS })}
         </h2>
         <p className="mx-auto mt-5 max-w-md text-lg text-white/85">
-          Download the app or open it in your browser. There is no subscription to cancel.
+          {t(
+            "landing.finalCtaSubtitle",
+            "Download the app or open it in your browser. There is no subscription to cancel.",
+          )}
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:items-start">
           <DownloadCta initialPlatform={initialPlatform} onImage />
@@ -44,7 +49,7 @@ export function FinalCta({ initialPlatform }: FinalCtaProps) {
               href="/login"
               className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-white/15 font-medium text-white backdrop-blur-md hover:bg-white/25 ${BUTTON_SIZE.lg} ${PRESS}`}
             >
-              Use it on the web
+              {t("landing.useOnWeb", "Use it on the web")}
             </Link>
           </Magnetic>
         </div>

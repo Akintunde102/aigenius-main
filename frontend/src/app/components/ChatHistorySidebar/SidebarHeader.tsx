@@ -1,12 +1,11 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { FiHome, FiPlus, FiX } from "react-icons/fi";
 import { FolderPlus, PanelLeft, PanelLeftClose, Search } from "lucide-react";
 import ChatHistorySearchBar from "../ChatHistorySearchBar";
 import { useRouter } from "next/navigation";
-import { LINKS } from "@/lib/links";
-import { clearAuthSession } from "@/lib/utils/auth-session";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 interface SidebarHeaderProps {
@@ -99,11 +98,6 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
       return () => window.clearTimeout(handle);
     }, [draftHistorySearch, setHistorySearch]);
 
-    const handleLogout = React.useCallback(() => {
-      clearAuthSession();
-      window.location.href = LINKS.internalPages.login.github;
-    }, []);
-
     const handleCloseSearch = React.useCallback(() => {
       setDraftHistorySearch("");
       setHistorySearch("");
@@ -121,124 +115,186 @@ const SidebarHeader = React.memo<SidebarHeaderProps>(
         }}
       >
         <div className="flex min-h-9 flex-nowrap items-center gap-x-1 px-3 py-2 sm:min-h-10">
-          {isMobile && setMobileSidebarOpen ? (
-            <button
-              aria-label={t("sidebar.closeSidebar", "Close sidebar")}
-              title={t("sidebar.closeSidebar", "Close sidebar")}
-              type="button"
-              className="flex shrink-0 touch-manipulation items-center justify-center rounded p-2 transition hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
-              style={{ minWidth: 40, minHeight: 40, color: "var(--sidebar-muted-fg)" }}
-              onClick={() => setMobileSidebarOpen(false)}
-            >
-              <FiX size={20} />
-            </button>
-          ) : null}
-
-          {!isMobile && setMobileSidebarOpen ? (
-            <SidebarIconButton
-              isMobile={isMobile}
-              ariaLabel={t("sidebar.closeSidebar", "Close sidebar")}
-              title={`${t("sidebar.closeSidebar", "Close sidebar")} (⌘B)`}
-              onClick={() => setMobileSidebarOpen(false)}
-            >
-              <PanelLeftClose
-                className={isMobile ? "h-5 w-5" : "h-[18px] w-[18px]"}
-                strokeWidth={1.5}
-                aria-hidden
-              />
-            </SidebarIconButton>
-          ) : null}
-
-          {onNewChat ? (
-            <SidebarIconButton
-              isMobile={isMobile}
-              ariaLabel={t("sidebar.newChat", "New Chat")}
-              title={t("sidebar.newChat", "New Chat")}
-              onClick={onNewChat}
-            >
-              <FiPlus size={isMobile ? 20 : 18} strokeWidth={1.5} aria-hidden />
-            </SidebarIconButton>
-          ) : null}
-
-          {onNewProject ? (
-            <SidebarIconButton
-              isMobile={isMobile}
-              ariaLabel={t("sidebar.newProject", "New project")}
-              title={t("sidebar.newProject", "New project")}
-              onClick={onNewProject}
-            >
-              <FolderPlus
-                className={isMobile ? "h-5 w-5" : "h-[18px] w-[18px]"}
-                strokeWidth={1.5}
-                aria-hidden
-              />
-            </SidebarIconButton>
-          ) : null}
-
-          {showSearchInput ? (
-            <div className="relative min-h-8 min-w-0 flex-1 sm:min-h-7 flex items-center gap-1">
-              <div className="relative min-w-0 flex-1">
-                <Search
-                  className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
-                  style={{ color: "var(--sidebar-muted-fg)" }}
-                  strokeWidth={1.5}
-                  aria-hidden
-                />
-                <ChatHistorySearchBar
-                  value={draftHistorySearch}
-                  onChange={setDraftHistorySearch}
-                  className="h-8 w-full rounded-md py-1.5 pl-8 pr-7 text-xs outline-none ring-0 placeholder:text-[color:var(--sidebar-muted-fg)] focus:ring-1 focus:ring-sky-500/30 sm:h-7"
-                  style={{
-                    backgroundColor: "var(--sidebar-search-bg)",
-                    border: "1px solid var(--sidebar-search-border)",
-                    color: "var(--sidebar-search-fg)",
-                  }}
-                />
+          {isMobile ? (
+            showSearchInput ? (
+              <div className="relative min-h-8 min-w-0 flex-1 flex items-center gap-1">
+                <div className="relative min-w-0 flex-1">
+                  <Search
+                    className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
+                    style={{ color: "var(--sidebar-muted-fg)" }}
+                    strokeWidth={1.5}
+                    aria-hidden
+                  />
+                  <ChatHistorySearchBar
+                    value={draftHistorySearch}
+                    onChange={setDraftHistorySearch}
+                    className="h-8 w-full rounded-md py-1.5 pl-8 pr-7 text-xs outline-none ring-0 placeholder:text-[color:var(--sidebar-muted-fg)] focus:ring-1 focus:ring-sky-500/30"
+                    style={{
+                      backgroundColor: "var(--sidebar-search-bg)",
+                      border: "1px solid var(--sidebar-search-border)",
+                      color: "var(--sidebar-search-fg)",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    aria-label={t("common.close", "Close search")}
+                    title={t("common.close", "Close search")}
+                    onClick={handleCloseSearch}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded transition hover:opacity-80"
+                    style={{ color: "var(--sidebar-muted-fg)" }}
+                  >
+                    <FiX size={13} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex w-full items-center justify-between">
                 <button
                   type="button"
-                  aria-label={t("common.close", "Close search")}
-                  title={t("common.close", "Close search")}
-                  onClick={handleCloseSearch}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded transition hover:opacity-80"
-                  style={{ color: "var(--sidebar-muted-fg)" }}
+                  aria-label={t("sidebar.home", "Home")}
+                  title={t("sidebar.home", "Home")}
+                  onClick={() => setMobileSidebarOpen?.(false)}
+                  className="flex items-center gap-2 transition hover:opacity-85 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 rounded"
                 >
-                  <FiX size={13} />
+                  <Image
+                    src="/logo.png"
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="h-5 w-5 shrink-0 rounded-md"
+                  />
+                  <span className="font-semibold text-base tracking-tight text-[var(--sidebar-fg)]">
+                    AIGenius
+                  </span>
                 </button>
+                <div className="flex items-center gap-1">
+                  {setMobileSidebarOpen && (
+                    <button
+                      type="button"
+                      aria-label={t("sidebar.home", "Home")}
+                      title={t("sidebar.home", "Home")}
+                      onClick={() => setMobileSidebarOpen(false)}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-black/5 dark:hover:bg-white/10"
+                      style={{ color: "var(--sidebar-muted-fg)" }}
+                    >
+                      <FiHome size={18} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    aria-label={t("sidebar.searchConversations", "Search conversations")}
+                    title={t("sidebar.searchConversations", "Search conversations")}
+                    onClick={() => setIsSearchOpen(true)}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-black/5 dark:hover:bg-white/10"
+                    style={{ color: "var(--sidebar-muted-fg)" }}
+                  >
+                    <Search className="h-5 w-5" strokeWidth={1.5} />
+                  </button>
+                  {setMobileSidebarOpen && (
+                    <button
+                      type="button"
+                      aria-label={t("sidebar.closeSidebar", "Close sidebar")}
+                      title={t("sidebar.closeSidebar", "Close sidebar")}
+                      onClick={() => setMobileSidebarOpen(false)}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-black/5 dark:hover:bg-white/10"
+                      style={{ color: "var(--sidebar-muted-fg)" }}
+                    >
+                      <FiX size={20} />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )
           ) : (
-            <SidebarIconButton
-              isMobile={isMobile}
-              ariaLabel={t("sidebar.searchConversations", "Search conversations")}
-              title={t("sidebar.searchConversations", "Search conversations")}
-              onClick={() => setIsSearchOpen(true)}
-            >
-              <Search
-                className={isMobile ? "h-5 w-5" : "h-[18px] w-[18px]"}
-                strokeWidth={1.5}
-                aria-hidden
-              />
-            </SidebarIconButton>
-          )}
+            <>
+              {setMobileSidebarOpen ? (
+                <SidebarIconButton
+                  isMobile={isMobile}
+                  ariaLabel={t("sidebar.closeSidebar", "Close sidebar")}
+                  title={`${t("sidebar.closeSidebar", "Close sidebar")} (⌘B)`}
+                  onClick={() => setMobileSidebarOpen(false)}
+                >
+                  <PanelLeftClose
+                    className="h-[18px] w-[18px]"
+                    strokeWidth={1.5}
+                    aria-hidden
+                  />
+                </SidebarIconButton>
+              ) : null}
 
-          {isMobile && setMobileSidebarOpen ? (
-            <a
-              className="not-affected shrink-0"
-              onClick={() => {
-                handleLogout();
-              }}
-              style={{ padding: 0, margin: 0, display: "block" }}
-            >
-              <button
-                aria-label="Home"
-                type="button"
-                className="flex items-center justify-center rounded-md p-2 transition hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
-                style={{ width: 40, height: 40, color: "var(--sidebar-muted-fg)" }}
-              >
-                <FiHome size={18} />
-              </button>
-            </a>
-          ) : null}
+              {onNewChat ? (
+                <SidebarIconButton
+                  isMobile={isMobile}
+                  ariaLabel={t("sidebar.newChat", "New Chat")}
+                  title={t("sidebar.newChat", "New Chat")}
+                  onClick={onNewChat}
+                >
+                  <FiPlus size={18} strokeWidth={1.5} aria-hidden />
+                </SidebarIconButton>
+              ) : null}
+
+              {onNewProject ? (
+                <SidebarIconButton
+                  isMobile={isMobile}
+                  ariaLabel={t("sidebar.newProject", "New project")}
+                  title={t("sidebar.newProject", "New project")}
+                  onClick={onNewProject}
+                >
+                  <FolderPlus
+                    className="h-[18px] w-[18px]"
+                    strokeWidth={1.5}
+                    aria-hidden
+                  />
+                </SidebarIconButton>
+              ) : null}
+
+              {showSearchInput ? (
+                <div className="relative min-h-8 min-w-0 flex-1 sm:min-h-7 flex items-center gap-1">
+                  <div className="relative min-w-0 flex-1">
+                    <Search
+                      className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
+                      style={{ color: "var(--sidebar-muted-fg)" }}
+                      strokeWidth={1.5}
+                      aria-hidden
+                    />
+                    <ChatHistorySearchBar
+                      value={draftHistorySearch}
+                      onChange={setDraftHistorySearch}
+                      className="h-8 w-full rounded-md py-1.5 pl-8 pr-7 text-xs outline-none ring-0 placeholder:text-[color:var(--sidebar-muted-fg)] focus:ring-1 focus:ring-sky-500/30 sm:h-7"
+                      style={{
+                        backgroundColor: "var(--sidebar-search-bg)",
+                        border: "1px solid var(--sidebar-search-border)",
+                        color: "var(--sidebar-search-fg)",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      aria-label={t("common.close", "Close search")}
+                      title={t("common.close", "Close search")}
+                      onClick={handleCloseSearch}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded transition hover:opacity-80"
+                      style={{ color: "var(--sidebar-muted-fg)" }}
+                    >
+                      <FiX size={13} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <SidebarIconButton
+                  isMobile={isMobile}
+                  ariaLabel={t("sidebar.searchConversations", "Search conversations")}
+                  title={t("sidebar.searchConversations", "Search conversations")}
+                  onClick={() => setIsSearchOpen(true)}
+                >
+                  <Search
+                    className="h-[18px] w-[18px]"
+                    strokeWidth={1.5}
+                    aria-hidden
+                  />
+                </SidebarIconButton>
+              )}
+            </>
+          )}
         </div>
       </header>
     );

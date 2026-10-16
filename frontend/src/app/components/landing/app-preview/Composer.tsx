@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowUpIcon, ChevronDownIcon, PaperclipIcon, UserIcon } from "./appIcons";
 import { MODELS, type ModelName } from "./data";
 import { APP } from "./theme";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
@@ -19,6 +20,7 @@ interface ComposerProps {
 }
 
 export function Composer({ draft, model, disabled, onDraft, onModel, onSend, onNotice }: ComposerProps) {
+  const { t } = useLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const canSend = draft.trim().length > 0 && !disabled;
@@ -61,14 +63,14 @@ export function Composer({ draft, model, disabled, onDraft, onModel, onSend, onN
             value={draft}
             onChange={(event) => onDraft(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type..."
+            placeholder={t("landing.demoTypePlaceholder", "Type...")}
             className="min-h-10 flex-1 resize-none border-0 bg-transparent px-3 py-2 text-lg outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none placeholder:text-black/40 dark:placeholder:text-white/40"
           />
           <button
             type="button"
             onClick={onSend}
             disabled={!canSend}
-            aria-label="Send message"
+            aria-label={t("landing.demoSendMessage", "Send message")}
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-[transform,background-color] duration-150 ease-out-strong active:scale-[0.94] ${
               canSend ? APP.sendActive : APP.send
             }`}
@@ -125,16 +127,16 @@ export function Composer({ draft, model, disabled, onDraft, onModel, onSend, onN
 
           <button
             type="button"
-            aria-label="Choose a persona"
-            onClick={() => onNotice("Personas are part of the full app.")}
+            aria-label={t("landing.demoNoticePersona", "Choose a persona")}
+            onClick={() => onNotice(t("landing.demoNoticePersona", "Personas are part of the full app."))}
             className={`flex h-7 w-9 items-center justify-center rounded-full ${APP.muted} ${APP.hover}`}
           >
             <UserIcon className="h-3.5 w-3.5" />
           </button>
           <button
             type="button"
-            aria-label="Attach a file"
-            onClick={() => onNotice("Attaching files works in the full app.")}
+            aria-label={t("landing.demoNoticeAttach", "Attach a file")}
+            onClick={() => onNotice(t("landing.demoNoticeAttach", "Attaching files works in the full app."))}
             className={`flex h-7 w-7 items-center justify-center rounded-full ${APP.muted} ${APP.hover}`}
           >
             <PaperclipIcon className="h-3.5 w-3.5" />

@@ -51,12 +51,13 @@
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
+            width: min(82vw, 320px);
             height: 100vh;
             z-index: 65; // Higher z-index to ensure it's above backdrop
-            background: white;
+            background: var(--sidebar-bg, white);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             overflow: hidden;
-            transition: transform 0.2s ease-out;
+            transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
             transform: translateX(0);
             will-change: transform;
             pointer-events: auto; // Ensure sidebar content is clickable
@@ -66,12 +67,12 @@
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
+            width: min(82vw, 320px);
             height: 100vh;
             z-index: 65;
-            background: white;
+            background: var(--sidebar-bg, white);
             overflow: hidden;
-            transition: transform 0.2s ease-out;
+            transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
             transform: translateX(-100%);
             will-change: transform;
             pointer-events: none;

@@ -10,8 +10,8 @@ export interface FeatureItem {
   readonly title: string;
   /** One sentence, no lists. */
   readonly body: string;
-  /** Tells the visitor what to do or what they are watching. Shown under the preview. */
-  readonly hint: string;
+  /** Instruction under an interactive preview. Auto-playing previews leave this off. */
+  readonly hint?: string;
   /** Only pass a link that goes somewhere real. */
   readonly cta?: { readonly label: string; readonly href: string };
   /** Shows the download button alongside the CTA if true. */
@@ -70,15 +70,17 @@ export function FeatureSection({ item, flip }: FeatureSectionProps) {
                 {item.visual}
               </div>
             </div>
-            <p className="mt-4 flex items-center gap-2 text-sm text-lp-muted">
-              {!item.decorative && (
-                <span
-                  aria-hidden="true"
-                  className="h-1.5 w-1.5 rounded-full bg-lp-accent motion-safe:animate-pulse"
-                />
-              )}
-              {item.hint}
-            </p>
+            {item.hint ? (
+              <p className="mt-4 flex items-center gap-2 text-sm text-lp-muted">
+                {!item.decorative && (
+                  <span
+                    aria-hidden="true"
+                    className="h-1.5 w-1.5 rounded-full bg-lp-accent motion-safe:animate-pulse"
+                  />
+                )}
+                {item.hint}
+              </p>
+            ) : null}
           </Reveal>
         </div>
       </div>

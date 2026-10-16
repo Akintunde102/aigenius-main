@@ -33,12 +33,22 @@ export const AVG_COST_PER_REQUEST = 0.004;
 export const FLAT_PLAN_USD = 20;
 export const BREAK_EVEN_REQUESTS = Math.round(FLAT_PLAN_USD / AVG_COST_PER_REQUEST);
 
-export const NAV_LINKS = [
+export const HEADER_NAV_LINKS = [
+  { href: "#pricing", label: "Pricing" },
+  { href: "/published-conversations", label: "Published conversations" },
+  { href: "/h", label: "Published pages" },
+] as const;
+
+export const FOOTER_NAV_LINKS = [
   { href: "#models", label: "Models" },
   { href: "#desktop", label: "Desktop" },
   { href: "#tools", label: "Tools" },
   { href: "#pricing", label: "Pricing" },
+  { href: "/published-conversations", label: "Published conversations" },
+  { href: "/h", label: "Published pages" },
 ] as const;
+
+export const NAV_LINKS = HEADER_NAV_LINKS;
 
 export const PROVIDERS = [
   "Anthropic",

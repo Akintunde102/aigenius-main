@@ -30,8 +30,7 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
   const { tool, displayName, logs, loading, success } = streaming_tool;
   const toolArgs = toolArgsProp ?? streaming_tool.arguments;
   const [activityOpen, setActivityOpen] = useState(false);
-  const [containerCollapsed, setContainerCollapsed] = useState(groupItem && !detailsOnly);
-  const wasLoadingRef = useRef(loading);
+  const [containerCollapsed, setContainerCollapsed] = useState(!detailsOnly);
   const wasGroupLoadingRef = useRef(loading);
 
   const filteredLogs = useMemo(() => {
@@ -93,6 +92,43 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
     return extractWorkflowIdsFromToolResult(parsedResult);
   }, [tool, parsedResult]);
 
+  const hostedMarkdownInfo = useMemo(() => {
+    if (tool !== 'host_markdown' || !parsedResult || typeof parsedResult !== 'object') {
+      return null;
+    }
+    const pr = parsedResult as Record<string, unknown>;
+    const slug = typeof pr.slug === 'string' ? pr.slug.trim() : '';
+    const path = typeof pr.path === 'string' ? pr.path.trim() : (slug ? `/h/${slug}` : '');
+    const url = typeof pr.url === 'string' ? pr.url.trim() : '';
+    const title = typeof pr.title === 'string' ? pr.title.trim() : (slug || 'Hosted Document');
+    const action = typeof pr.action === 'string' ? pr.action : '';
+    if (!slug && !path && !url) return null;
+    return {
+      slug,
+      path: path || url,
+      url: url || path,
+      title,
+      isPublished: pr.isPublished === true,
+      action,
+    };
+  }, [tool, parsedResult]);
+
+  const publishedHtmlInfo = useMemo(() => {
+    if (tool !== 'publish_html' || !parsedResult || typeof parsedResult !== 'object') {
+      return null;
+    }
+    const pr = parsedResult as Record<string, unknown>;
+    const slug = typeof pr.slug === 'string' ? pr.slug.trim() : '';
+    const url = typeof pr.url === 'string' ? pr.url.trim() : '';
+    if (!slug && !url) return null;
+    return {
+      slug,
+      url,
+      title: typeof pr.title === 'string' ? pr.title.trim() : (slug || 'Web App'),
+      isDraft: pr.status === 'draft',
+    };
+  }, [tool, parsedResult]);
+
   const resolvedDisplayName = resolveStreamingToolRowLabel({
     tool,
     displayName,
@@ -113,25 +149,6 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
       wasGroupLoadingRef.current = true;
     }
   }, [groupItem, detailsOnly, loading]);
-
-  useEffect(() => {
-    if (groupItem) return;
-    // Do not auto-open activity logs while running —
-    // the user opens the panel manually.
-  }, [groupItem, loading, filteredLogs.length]);
-
-  useEffect(() => {
-    if (groupItem) return;
-    if (wasLoadingRef.current && !loading) {
-      if (success === true) {
-        setActivityOpen(false);
-      }
-      if (success === false) {
-        setActivityOpen(true);
-      }
-    }
-    wasLoadingRef.current = loading;
-  }, [groupItem, loading, success]);
 
   const inputEntries = useMemo(() => {
     if (!toolArgs) return [];
@@ -160,6 +177,12 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
       >
         {resolvedDisplayName}
       </span>
+      {loading ? (
+        <FiLoader
+          className={`h-3 w-3 shrink-0 animate-spin ${groupItem ? '' : 'text-slate-400 dark:text-zinc-500'}`}
+          aria-hidden
+        />
+      ) : null}
       <span
         className={groupItem ? cardStyles.chevron : 'shrink-0 text-slate-400 tabular-nums dark:text-zinc-500'}
         aria-hidden
@@ -177,7 +200,32 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
             {toggleButton}
           </ToolSearchFilesHover>
         ) : (
-          toggleButton
+          <div className="flex items-center justify-between gap-2">
+            {toggleButton}
+            {hostedMarkdownInfo && success !== false ? (
+              <a
+                href={hostedMarkdownInfo.url || hostedMarkdownInfo.path}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex shrink-0 items-center gap-1 rounded bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 transition-colors hover:bg-sky-100 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-900/60"
+              >
+                <span>{hostedMarkdownInfo.action === 'create_draft' ? 'View draft' : 'Open page'}</span>
+                <span aria-hidden className="text-[10px]">↗</span>
+              </a>
+            ) : publishedHtmlInfo && success !== false ? (
+              <a
+                href={publishedHtmlInfo.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex shrink-0 items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
+              >
+                <span>{publishedHtmlInfo.isDraft ? 'Preview app' : 'Open app'}</span>
+                <span aria-hidden className="text-[10px]">↗</span>
+              </a>
+            ) : null}
+          </div>
         )
       ) : null}
 
@@ -307,6 +355,45 @@ export const DefaultToolStreamingCard = React.memo(function DefaultToolStreaming
           {workflowAgentRunId && success !== false && (
             <div className="border-t border-slate-200/70 pt-2 dark:border-zinc-700/80">
               <WorkflowIntentTranscriptExpand agentRunId={workflowAgentRunId} />
+            </div>
+          )}
+
+          {hostedMarkdownInfo && success !== false && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-200/70 pt-2 dark:border-zinc-700/80">
+              <a
+                href={hostedMarkdownInfo.url || hostedMarkdownInfo.path}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md bg-sky-50 px-2.5 py-1 text-[11px] font-medium text-sky-700 transition-colors hover:bg-sky-100 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-900/60"
+              >
+                <span>
+                  {hostedMarkdownInfo.action === 'create_draft' ? 'View Markdown Draft' : 'Open Hosted Page'}
+                  {hostedMarkdownInfo.slug ? ` (${hostedMarkdownInfo.slug})` : ''}
+                </span>
+                <span aria-hidden className="text-[10px]">↗</span>
+              </a>
+              {hostedMarkdownInfo.path ? (
+                <span className="font-mono text-[10px] text-slate-400 dark:text-zinc-500">
+                  {hostedMarkdownInfo.path}
+                </span>
+              ) : null}
+            </div>
+          )}
+
+          {publishedHtmlInfo && success !== false && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-200/70 pt-2 dark:border-zinc-700/80">
+              <a
+                href={publishedHtmlInfo.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
+              >
+                <span>
+                  {publishedHtmlInfo.isDraft ? 'Preview Web App Draft' : 'Open Published Web App'}
+                  {publishedHtmlInfo.slug ? ` (${publishedHtmlInfo.slug})` : ''}
+                </span>
+                <span aria-hidden className="text-[10px]">↗</span>
+              </a>
             </div>
           )}
         </div>

@@ -123,18 +123,51 @@ const AV_EXT = new Set([
   "mkv",
 ]);
 
+export function stripStorageKeyPrefix(name: string): string {
+  let cleaned = name.trim();
+  if (cleaned.includes("/")) {
+    cleaned = cleaned.split("/").pop() ?? cleaned;
+  }
+  // Matches standard UUIDv4 followed by '_' or '-' prefix
+  const stripped = cleaned.replace(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[-_]/i,
+    "",
+  );
+  const withoutExt = stripped.includes(".")
+    ? stripped.slice(0, stripped.lastIndexOf("."))
+    : stripped;
+  if (withoutExt.trim().length > 0) {
+    return stripped;
+  }
+  return cleaned;
+}
+
 export function getFileExtensionFromCloudFile(file: CloudFile): string {
   const pickExt = (value: string | undefined): string => {
-    const v = value?.trim() ?? "";
-    if (!v.includes(".")) return "";
-    return v.split(".").pop()?.toLowerCase() ?? "";
+    if (!value) return "";
+    const clean = value.split("?")[0].split("#")[0].trim();
+    const lastSlash = clean.lastIndexOf("/");
+    const basename = lastSlash >= 0 ? clean.slice(lastSlash + 1) : clean;
+    if (!basename.includes(".")) return "";
+    const ext = basename.split(".").pop()?.toLowerCase() ?? "";
+    if (/^[a-z0-9]{1,10}$/.test(ext)) {
+      return ext;
+    }
+    return "";
   };
-  return pickExt(file.name) || pickExt(file.originalName);
+  return pickExt(file.name) || pickExt(file.originalName) || pickExt(file.s3Link);
 }
 
 export function isImageCloudFile(file: CloudFile): boolean {
   const ext = getFileExtensionFromCloudFile(file);
-  return IMAGE_EXT.has(ext.toLowerCase());
+  if (IMAGE_EXT.has(ext.toLowerCase())) return true;
+  if (file.s3Link) {
+    const cleanUrl = file.s3Link.split("?")[0].split("#")[0].toLowerCase();
+    if (cleanUrl.includes("/image/upload/") || cleanUrl.includes("/images/")) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function isMarkdownCloudFile(file: CloudFile): boolean {
@@ -142,9 +175,11 @@ export function isMarkdownCloudFile(file: CloudFile): boolean {
   return ext === "md" || ext === "markdown";
 }
 
-export function classifyUserFileCategory(extension: string): UserFileCategory {
+export function classifyUserFileCategory(
+  extension: string,
+  s3Link?: string,
+): UserFileCategory {
   const ext = extension.toLowerCase();
-  if (!ext) return "other";
   if (IMAGE_EXT.has(ext)) return "images";
   if (DOC_EXT.has(ext)) return "documents";
   if (SHEET_EXT.has(ext)) return "spreadsheets";
@@ -152,12 +187,35 @@ export function classifyUserFileCategory(extension: string): UserFileCategory {
   if (CODE_EXT.has(ext)) return "code";
   if (ARCHIVE_EXT.has(ext)) return "archives";
   if (AV_EXT.has(ext)) return "audio_video";
+  if (s3Link) {
+    const lower = s3Link.split("?")[0].split("#")[0].toLowerCase();
+    if (lower.includes("/image/upload/") || lower.includes("/images/")) return "images";
+    if (lower.includes("/video/upload/") || lower.includes("/videos/")) return "audio_video";
+  }
   return "other";
 }
 
 export function buildCloudFileDisplayName(file: CloudFile): string {
   const ext = getFileExtensionFromCloudFile(file);
-  const base = (file.originalName || file.name || "file").trim();
+
+  let raw = "";
+  const orig = file.originalName?.trim();
+  const name = file.name?.trim();
+
+  if (orig && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[-_]/i.test(orig)) {
+    raw = orig;
+  } else if (orig) {
+    raw = stripStorageKeyPrefix(orig);
+  } else if (name) {
+    raw = stripStorageKeyPrefix(name);
+  } else if (file.s3Link) {
+    const fromUrl = file.s3Link.split("?")[0].split("#")[0].split("/").pop();
+    if (fromUrl) raw = stripStorageKeyPrefix(decodeURIComponent(fromUrl));
+  }
+
+  let base = (raw || "file").trim();
+  base = stripStorageKeyPrefix(base);
+
   if (!ext) return base;
   const baseLower = base.toLowerCase();
   if (baseLower.endsWith(`.${ext}`)) {
@@ -186,7 +244,7 @@ export function groupCloudFilesByCategory(
 
   for (const file of files) {
     const ext = getFileExtensionFromCloudFile(file);
-    const cat = classifyUserFileCategory(ext);
+    const cat = classifyUserFileCategory(ext, file.s3Link);
     empty[cat].push(file);
   }
 

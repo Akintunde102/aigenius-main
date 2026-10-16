@@ -22,6 +22,7 @@ import { TOOL_PERMISSION_CATALOG } from '@/lib/tool-permissions/catalog';
 import { TOOL_DISPLAY_NAMES, getToolDisplayName } from '@/shared/tool-display-names';
 import { ToolStreamingCard } from '../ToolStreamingCard';
 import { resolveToolStreamingUi } from '../tool-ui/tool-ui-registry';
+import { expandDefaultToolCard } from './expand-default-tool-card';
 
 const CHECK_SLUG_RESULT = JSON.stringify({
   success: true,
@@ -76,6 +77,11 @@ function assertChatStayedUp() {
   expect(screen.queryByRole('heading', { name: 'Something went wrong' })).not.toBeInTheDocument();
 }
 
+function expandToolResult(tool: string) {
+  if (resolveToolStreamingUi(tool)) return;
+  expandDefaultToolCard();
+}
+
 describe('ToolStreamingCard result safety', () => {
   const tools = everyToolId();
 
@@ -90,6 +96,7 @@ describe('ToolStreamingCard result safety', () => {
     if (resolveToolStreamingUi(tool)) {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     } else {
+      expandToolResult(tool);
       expect(document.body.textContent).toContain('roi-calc');
       expect(document.body.textContent).toContain('"available": true');
     }
@@ -101,6 +108,7 @@ describe('ToolStreamingCard result safety', () => {
     assertChatStayedUp();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     if (!resolveToolStreamingUi(tool)) {
+      expandToolResult(tool);
       expect(document.body.textContent).toContain('tool failed');
     }
     view.unmount();
@@ -139,6 +147,7 @@ describe('ToolStreamingCard result safety', () => {
   it('keeps the chat up when Check Slug returns plain text', () => {
     renderTool('check_slug_availability', 'not json');
     assertChatStayedUp();
+    expandToolResult('check_slug_availability');
     expect(document.body.textContent).toContain('not json');
   });
 });

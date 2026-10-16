@@ -73,13 +73,20 @@ export function useScrollAndKeyboard({
 
         // Always use instant scroll while following the stream — switching to
         // smooth when streaming ends causes a visible jump/flash.
+        // Use container scrollTop instead of scrollIntoView to prevent the browser window from scrolling
+        // and pushing the chat input down below the screen on mobile.
         setTimeout(() => {
-            const el = chatEndRef.current;
-            if (!el) return;
-            el.scrollIntoView({ behavior: 'auto', block: 'end' });
+            const chatArea = chatAreaRef.current;
+            if (chatArea) {
+                chatArea.scrollTop = chatArea.scrollHeight;
+            } else {
+                const el = chatEndRef.current;
+                if (!el) return;
+                el.scrollIntoView({ behavior: 'auto', block: 'end' });
+            }
         }, 0);
         previousChatLengthRef.current = chat.length;
-    }, [chat.length, lastMessageScrollSignal, streaming, loading]);
+    }, [chat.length, lastMessageScrollSignal, streaming, loading, chatAreaRef]);
 
     const lastMessageRole = chat.length > 0 ? chat[chat.length - 1].role : null;
     useEffect(() => {

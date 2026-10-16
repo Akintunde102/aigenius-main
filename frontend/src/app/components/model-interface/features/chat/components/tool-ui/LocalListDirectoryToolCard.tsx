@@ -24,8 +24,7 @@ export function LocalListDirectoryToolCard({
   const toolArgs = toolArgsProp ?? streaming_tool.arguments;
   const [inputOpen, setInputOpen] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
-  const [containerCollapsed, setContainerCollapsed] = useState(groupItem && !detailsOnly);
-  const wasLoadingRef = useRef(loading);
+  const [containerCollapsed, setContainerCollapsed] = useState(!detailsOnly);
   const wasGroupLoadingRef = useRef(loading);
 
   const filteredLogs = useMemo(() => {
@@ -83,32 +82,16 @@ export function LocalListDirectoryToolCard({
 
   useEffect(() => {
     if (!groupItem || detailsOnly) return;
-    if (loading) {
-      setContainerCollapsed(false);
-      wasGroupLoadingRef.current = true;
-      return;
-    }
-
-    if (wasGroupLoadingRef.current) {
+    if (!loading && wasGroupLoadingRef.current) {
       setContainerCollapsed(true);
       setInputOpen(false);
       setResultOpen(false);
       wasGroupLoadingRef.current = false;
     }
-  }, [groupItem, detailsOnly, loading]);
-
-  useEffect(() => {
-    if (groupItem) return;
-    if (wasLoadingRef.current && !loading) {
-      if (success === true && listing) {
-        setResultOpen(true);
-      }
-      if (success === false) {
-        setResultOpen(true);
-      }
+    if (loading) {
+      wasGroupLoadingRef.current = true;
     }
-    wasLoadingRef.current = loading;
-  }, [groupItem, loading, success, listing]);
+  }, [groupItem, detailsOnly, loading]);
 
   const toggleButton = (
     <button
@@ -126,6 +109,12 @@ export function LocalListDirectoryToolCard({
       >
         {resolvedDisplayName}
       </span>
+      {loading ? (
+        <FiLoader
+          className={`h-3 w-3 shrink-0 animate-spin ${groupItem ? '' : 'text-slate-400 dark:text-zinc-500'}`}
+          aria-hidden
+        />
+      ) : null}
       <span
         className={groupItem ? cardStyles.chevron : 'shrink-0 text-slate-400 tabular-nums dark:text-zinc-500'}
         aria-hidden

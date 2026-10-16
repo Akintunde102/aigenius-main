@@ -3,15 +3,20 @@ import {
     FiTrash2,
     FiShare2,
     FiCopy,
+    FiCheck,
     FiBookmark,
     FiChevronDown,
     FiCornerDownLeft,
+    FiSearch,
+    FiX,
+    FiUser,
+    FiZap,
 } from 'react-icons/fi';
 import {
     AppModal,
-    AppModalBody,
     AppModalHeader,
     AppModalSearchRow,
+    AppModalBody,
 } from '@/app/components/modals/AppModal';
 import copy from 'copy-to-clipboard';
 import toast from 'react-hot-toast';
@@ -24,6 +29,8 @@ import { ImageMessage, StructuredMessage } from '../../message-types';
 import { ImagePreviewLightbox } from '../../message-types/components/ImagePreviewLightbox';
 import { useLanguage } from '@/lib/providers/LanguageProvider';
 import { RenderErrorBoundary } from '@/app/components/RenderErrorBoundary';
+
+type RoleFilter = 'all' | 'assistant' | 'user';
 
 function getMessageExcerpt(msg: ChatMessage, maxLen = 280): string {
     let text = '';
@@ -42,6 +49,36 @@ function getMessageExcerpt(msg: ChatMessage, maxLen = 280): string {
     }
     const oneLine = text.replace(/\s+/g, ' ').trim();
     return oneLine.length > maxLen ? oneLine.slice(0, maxLen) + '…' : oneLine;
+}
+
+function FormattedExcerpt({ excerpt }: { excerpt: string }) {
+    // Parse inline code blocks `code` and bold **bold**
+    const parts = excerpt.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+
+    return (
+        <p className="mt-1.5 text-[12.5px] leading-relaxed text-zinc-600 dark:text-zinc-300 line-clamp-2">
+            {parts.map((part, i) => {
+                if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+                    return (
+                        <code
+                            key={i}
+                            className="rounded border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.04] dark:bg-white/[0.08] px-1 py-0.2 font-mono text-[11px] text-zinc-800 dark:text-zinc-200"
+                        >
+                            {part.slice(1, -1)}
+                        </code>
+                    );
+                }
+                if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+                    return (
+                        <strong key={i} className="font-semibold text-zinc-900 dark:text-zinc-100">
+                            {part.slice(2, -2)}
+                        </strong>
+                    );
+                }
+                return part;
+            })}
+        </p>
+    );
 }
 
 function getShareableText(msg: ChatMessage): string {
@@ -80,9 +117,11 @@ function SavedMessageItem({
     const excerpt = getMessageExcerpt(msg);
     const messageContent = useMessageContent(msg.content);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [copied, setCopied] = useState(false);
     const isUser = msg.role === 'user';
 
-    const handleCopy = () => {
+    const handleCopy = (e: React.MouseEvent) => {
+        e.stopPropagation();
         if (messageContent.isImageMsg) {
             copy(messageContent.imageUrl);
             toast.success('Image link copied');
@@ -100,6 +139,8 @@ function SavedMessageItem({
             copy(typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content));
             toast.success('Copied to clipboard');
         }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1800);
     };
 
     const toggleExpand = () => onExpand(isExpanded ? null : idx);
@@ -117,109 +158,119 @@ function SavedMessageItem({
                             toggleExpand();
                         }
                     }}
-                    className={`app-model-card group relative flex flex-col gap-2 rounded-xl border cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--chat-accent)_35%,transparent)] ${isExpanded ? 'app-model-card--selected' : ''}`}
-                    style={{ padding: '12px 14px' }}
+                    className={`group relative flex flex-col rounded-xl border transition-all cursor-pointer p-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20 ${
+                        isExpanded
+                            ? 'shadow-sm'
+                            : 'hover:border-black/20 dark:hover:border-white/20 hover:bg-black/[0.01] dark:hover:bg-white/[0.02]'
+                    }`}
+                    style={{
+                        borderColor: isExpanded ? 'var(--chat-accent)' : 'var(--modal-border)',
+                        background: isExpanded ? 'var(--surface-muted)' : 'var(--modal-bg)',
+                    }}
                     aria-expanded={isExpanded}
                 >
-                    <div className="flex items-start gap-2.5 min-w-0 pr-1">
-                        <div
-                            className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-semibold uppercase tracking-wide"
-                            style={{
-                                background: isUser
-                                    ? 'color-mix(in srgb, var(--chat-accent) 14%, var(--surface-muted))'
-                                    : 'var(--surface-muted)',
-                                color: isUser ? 'var(--chat-accent)' : 'var(--modal-muted-fg)',
-                            }}
-                            aria-hidden
-                        >
-                            {isUser ? 'You' : 'AI'}
-                        </div>
+                    <div className="flex items-start justify-between gap-3 min-w-0">
+                        {/* Avatar & Role Meta */}
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <span
+                                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border text-[11px] font-semibold transition-colors"
+                                style={{
+                                    borderColor: 'var(--modal-border)',
+                                    background: 'var(--surface-muted)',
+                                    color: 'var(--modal-fg)',
+                                }}
+                                aria-hidden
+                            >
+                                {isUser ? <FiUser size={12} /> : <FiZap size={12} />}
+                            </span>
 
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 min-w-0">
-                                <span className="app-model-card__title truncate text-[13px] font-medium">
-                                    {isUser ? 'Your message' : 'Assistant'}
-                                </span>
+                            <div className="flex items-center gap-2 min-w-0 flex-wrap">
                                 <span
-                                    className="shrink-0 text-[10px] tabular-nums"
-                                    style={{ color: 'var(--modal-muted-fg)' }}
+                                    className={`text-xs font-semibold tracking-tight uppercase ${
+                                        isUser
+                                            ? 'text-sky-700 dark:text-sky-400'
+                                            : 'text-emerald-700 dark:text-emerald-400'
+                                    }`}
                                 >
+                                    {isUser ? 'You' : 'Assistant'}
+                                </span>
+                                <span className="text-zinc-300 dark:text-zinc-600 text-xs select-none">•</span>
+                                <span className="shrink-0 text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500">
                                     {formatTime(msg.timestamp)}
                                 </span>
                             </div>
-                            {!isExpanded && (
-                                <p
-                                    className="mt-1 text-xs leading-relaxed line-clamp-2"
-                                    style={{ color: 'var(--modal-muted-fg)' }}
-                                >
-                                    {excerpt}
-                                </p>
-                            )}
                         </div>
 
-                        <div className="flex shrink-0 items-center gap-0.5">
-                            <div
-                                className="flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity"
-                                onClick={(e) => e.stopPropagation()}
+                        {/* Quick Action Toolbar */}
+                        <div
+                            className="flex shrink-0 items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button
+                                type="button"
+                                title="Insert into chat"
+                                aria-label="Insert into chat"
+                                className="h-7 w-7 flex items-center justify-center rounded-lg text-zinc-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
+                                onClick={() => onInsert(msg)}
                             >
-                                <button
-                                    type="button"
-                                    title="Share"
-                                    className="h-7 w-7 flex items-center justify-center rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-                                    style={{ color: 'var(--modal-muted-fg)' }}
-                                    onClick={() => shareContent(getShareableText(msg))}
-                                >
-                                    <FiShare2 size={13} strokeWidth={2} />
-                                </button>
-                                <button
-                                    type="button"
-                                    title="Copy"
-                                    className="h-7 w-7 flex items-center justify-center rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-                                    style={{ color: 'var(--modal-muted-fg)' }}
-                                    onClick={handleCopy}
-                                >
-                                    <FiCopy size={13} strokeWidth={2} />
-                                </button>
-                                <button
-                                    type="button"
-                                    title="Insert into chat"
-                                    className="h-7 w-7 flex items-center justify-center rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-                                    style={{ color: 'var(--modal-muted-fg)' }}
-                                    onClick={() => onInsert(msg)}
-                                >
-                                    <FiCornerDownLeft size={13} strokeWidth={2} />
-                                </button>
-                                <button
-                                    type="button"
-                                    title="Remove from saved"
-                                    className="h-7 w-7 flex items-center justify-center rounded-lg transition-colors hover:bg-red-500/10 hover:text-red-500"
-                                    style={{ color: 'var(--modal-muted-fg)' }}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onDelete(msg.id ?? String(idx));
-                                    }}
-                                >
-                                    <FiTrash2 size={13} strokeWidth={2} />
-                                </button>
-                            </div>
-                            <FiChevronDown
-                                size={16}
-                                strokeWidth={2}
-                                className={`shrink-0 ml-0.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                                style={{ color: 'var(--modal-muted-fg)' }}
-                                aria-hidden
-                            />
+                                <FiCornerDownLeft size={13} strokeWidth={2} />
+                            </button>
+                            <button
+                                type="button"
+                                title={copied ? 'Copied!' : 'Copy'}
+                                aria-label="Copy"
+                                className={`h-7 w-7 flex items-center justify-center rounded-lg transition-colors ${
+                                    copied
+                                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                                        : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10'
+                                }`}
+                                onClick={handleCopy}
+                            >
+                                {copied ? <FiCheck size={13} className="text-emerald-500" /> : <FiCopy size={13} strokeWidth={2} />}
+                            </button>
+                            <button
+                                type="button"
+                                title="Share"
+                                aria-label="Share"
+                                className="h-7 w-7 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                                onClick={() => shareContent(getShareableText(msg))}
+                            >
+                                <FiShare2 size={13} strokeWidth={2} />
+                            </button>
+                            <button
+                                type="button"
+                                title="Remove from saved"
+                                aria-label="Remove from saved"
+                                className="h-7 w-7 flex items-center justify-center rounded-lg text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDelete(msg.id ?? String(idx));
+                                }}
+                            >
+                                <FiTrash2 size={13} strokeWidth={2} />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={toggleExpand}
+                                aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                                className="h-7 w-7 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors ml-0.5"
+                            >
+                                <FiChevronDown
+                                    size={15}
+                                    strokeWidth={2}
+                                    className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                />
+                            </button>
                         </div>
                     </div>
 
+                    {/* Excerpt in Collapsed View */}
+                    {!isExpanded && <FormattedExcerpt excerpt={excerpt} />}
+
+                    {/* Full Content in Expanded View */}
                     {isExpanded && (
                         <div
-                            className="mt-1 rounded-lg border p-3 text-sm max-h-[min(40vh,320px)] overflow-y-auto"
-                            style={{
-                                background: 'var(--modal-bg-muted)',
-                                borderColor: 'var(--modal-border)',
-                                color: 'var(--modal-fg)',
-                            }}
+                            className="mt-3 rounded-xl border border-black/[0.06] dark:border-white/[0.06] bg-zinc-50/90 dark:bg-[#0c0c10] p-4 text-xs leading-relaxed max-h-[min(48vh,380px)] overflow-y-auto"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <RenderErrorBoundary logLabel="[saved-chats-modal]">
@@ -240,9 +291,28 @@ function SavedMessageItem({
                                 ) : typeof msg.content === 'string' ? (
                                     <MarkdownRenderer content={msg.content} />
                                 ) : (
-                                    <pre className="whitespace-pre-wrap text-xs">{JSON.stringify(msg.content, null, 2)}</pre>
+                                    <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-zinc-800 dark:text-zinc-200">
+                                        {JSON.stringify(msg.content, null, 2)}
+                                    </pre>
                                 )}
                             </RenderErrorBoundary>
+
+                            {/* Expanded Quick Action Bar */}
+                            <div className="mt-4 pt-3 border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-2 flex-wrap text-xs">
+                                <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-mono">
+                                    ID: {msg.id ?? `#${idx + 1}`}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => onInsert(msg)}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.04] dark:bg-white/[0.06] px-2.5 py-1 text-xs font-medium text-zinc-800 dark:text-zinc-200 hover:bg-black/[0.08] dark:hover:bg-white/[0.1] transition-colors"
+                                    >
+                                        <FiCornerDownLeft size={12} />
+                                        <span>Insert into composer</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -265,98 +335,197 @@ interface SavedChatsModalProps {
 export function SavedChatsModal({
     isOpen,
     onClose,
-    savedChats,
+    savedChats = [],
     onInsertSaved,
     onRemoveSaved,
 }: SavedChatsModalProps) {
     const { t } = useLanguage();
     const [expandedMsg, setExpandedMsg] = useState<number | null>(null);
     const [search, setSearch] = useState('');
+    const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
 
     useEffect(() => {
         if (!isOpen) {
             setExpandedMsg(null);
             setSearch('');
+            setRoleFilter('all');
         }
     }, [isOpen]);
 
+    const allChats = savedChats ?? [];
+
+    const roleCounts = useMemo(() => {
+        let assistant = 0;
+        let user = 0;
+        for (const msg of allChats) {
+            if (msg.role === 'user') user++;
+            else assistant++;
+        }
+        return { all: allChats.length, assistant, user };
+    }, [allChats]);
+
     const filteredMessages = useMemo(() => {
         const q = search.trim().toLowerCase();
-        const list = savedChats ?? [];
-        const filtered = q
-            ? list.filter((msg) => {
-                  const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-                  return content.toLowerCase().includes(q);
-              })
-            : list;
-        return [...filtered].sort((a, b) => b.timestamp - a.timestamp);
-    }, [savedChats, search]);
+        let list = allChats;
 
-    const headerSubtitle =
-        filteredMessages.length > 0
-            ? `${filteredMessages.length} saved ${filteredMessages.length === 1 ? 'message' : 'messages'}`
-            : search.trim()
-              ? 'No matches for your search'
-              : 'Bookmark any message from chat to find it here';
+        if (roleFilter === 'assistant') {
+            list = list.filter((m) => m.role !== 'user');
+        } else if (roleFilter === 'user') {
+            list = list.filter((m) => m.role === 'user');
+        }
+
+        if (q) {
+            list = list.filter((msg) => {
+                const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+                return content.toLowerCase().includes(q);
+            });
+        }
+
+        return [...list].sort((a, b) => b.timestamp - a.timestamp);
+    }, [allChats, search, roleFilter]);
 
     return (
-        <AppModal open={isOpen} onClose={onClose} size="lg" ariaLabelledBy="saved-chats-modal-title">
+        <AppModal
+            open={isOpen}
+            onClose={onClose}
+            size="lg"
+            className="z-[110]"
+            ariaLabelledBy="saved-chats-modal-title"
+        >
             <AppModalHeader
                 titleId="saved-chats-modal-title"
                 title={t('modals.savedChatsTitle', 'Saved Messages')}
-                subtitle={headerSubtitle}
+                subtitle={t('modals.savedChatsSubtitle', 'Browse, search, and insert saved messages.')}
                 onClose={onClose}
             />
+
             <AppModalSearchRow
                 value={search}
                 onChange={setSearch}
                 placeholder={t('modals.searchSavedMessages', 'Search saved messages...')}
-                autoFocus
             />
-            <AppModalBody className="!py-2">
-                    {filteredMessages.length === 0 ? (
-                        <div
-                            className="flex flex-col items-center justify-center rounded-xl border border-dashed px-6 py-14 text-center"
+
+            {/* Filter row */}
+            <div
+                className="border-b px-4 py-2 shrink-0 flex items-center justify-between gap-2 overflow-x-auto [scrollbar-width:none]"
+                style={{ borderColor: 'var(--modal-border)', background: 'transparent' }}
+            >
+                <div className="flex items-center gap-1.5">
+                    <button
+                        type="button"
+                        onClick={() => setRoleFilter('all')}
+                        aria-pressed={roleFilter === 'all'}
+                        className={`app-filter-pill inline-flex items-center gap-1.5 h-7 px-2.5 text-[11px] font-medium whitespace-nowrap tabular-nums transition-colors ${
+                            roleFilter === 'all' ? 'app-filter-pill--active' : ''
+                        }`}
+                    >
+                        <span>All</span>
+                        <span
+                            className="text-[10px] font-semibold px-1 py-0.5 rounded-md leading-none"
                             style={{
-                                borderColor: 'var(--modal-border)',
-                                background: 'var(--modal-bg-muted)',
+                                background:
+                                    roleFilter === 'all'
+                                        ? 'color-mix(in srgb, currentColor 14%, transparent)'
+                                        : 'color-mix(in srgb, var(--modal-fg) 7%, transparent)',
+                                color: roleFilter === 'all' ? 'inherit' : 'var(--sidebar-muted-fg)',
                             }}
                         >
-                            <div
-                                className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl"
-                                style={{
-                                    background: 'color-mix(in srgb, var(--chat-accent) 10%, var(--surface-muted))',
-                                    color: 'var(--chat-accent)',
-                                }}
+                            {roleCounts.all}
+                        </span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setRoleFilter('assistant')}
+                        aria-pressed={roleFilter === 'assistant'}
+                        className={`app-filter-pill inline-flex items-center gap-1.5 h-7 px-2.5 text-[11px] font-medium whitespace-nowrap tabular-nums transition-colors ${
+                            roleFilter === 'assistant' ? 'app-filter-pill--active' : ''
+                        }`}
+                    >
+                        <span>Assistant</span>
+                        <span
+                            className="text-[10px] font-semibold px-1 py-0.5 rounded-md leading-none"
+                            style={{
+                                background:
+                                    roleFilter === 'assistant'
+                                        ? 'color-mix(in srgb, currentColor 14%, transparent)'
+                                        : 'color-mix(in srgb, var(--modal-fg) 7%, transparent)',
+                                color: roleFilter === 'assistant' ? 'inherit' : 'var(--sidebar-muted-fg)',
+                            }}
+                        >
+                            {roleCounts.assistant}
+                        </span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setRoleFilter('user')}
+                        aria-pressed={roleFilter === 'user'}
+                        className={`app-filter-pill inline-flex items-center gap-1.5 h-7 px-2.5 text-[11px] font-medium whitespace-nowrap tabular-nums transition-colors ${
+                            roleFilter === 'user' ? 'app-filter-pill--active' : ''
+                        }`}
+                    >
+                        <span>You</span>
+                        <span
+                            className="text-[10px] font-semibold px-1 py-0.5 rounded-md leading-none"
+                            style={{
+                                background:
+                                    roleFilter === 'user'
+                                        ? 'color-mix(in srgb, currentColor 14%, transparent)'
+                                        : 'color-mix(in srgb, var(--modal-fg) 7%, transparent)',
+                                color: roleFilter === 'user' ? 'inherit' : 'var(--sidebar-muted-fg)',
+                            }}
+                        >
+                            {roleCounts.user}
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Body */}
+            <AppModalBody className="flex-1 overflow-y-auto px-4 py-3 custom-scrollbar">
+                {filteredMessages.length === 0 ? (
+                    <div
+                        className="m-4 rounded-xl border border-dashed py-14 text-center text-xs"
+                        style={{
+                            borderColor: 'var(--modal-border)',
+                            background: 'var(--surface-muted)',
+                            color: 'var(--modal-muted-fg)',
+                        }}
+                    >
+                        <p className="text-sm font-semibold" style={{ color: 'var(--modal-fg)' }}>
+                            {search.trim()
+                                ? 'No matching saved messages'
+                                : t('modals.noSavedMessages', 'No saved messages.')}
+                        </p>
+                        <p className="mt-1 text-xs">
+                            {search.trim()
+                                ? 'Try searching with a different term or clear the active filter.'
+                                : t('modals.saveMessageHint', 'Save a message to see it here!')}
+                        </p>
+                        {search.trim() && (
+                            <button
+                                type="button"
+                                onClick={() => setSearch('')}
+                                className="app-modal-btn-primary !text-xs !py-1.5 mt-3"
                             >
-                                <FiBookmark size={22} strokeWidth={1.75} />
-                            </div>
-                            <p className="text-sm font-medium" style={{ color: 'var(--modal-fg)' }}>
-                                {search.trim()
-                                    ? t('modals.noSavedMessages', 'No saved messages.')
-                                    : t('modals.noSavedMessages', 'No saved messages.')}
-                            </p>
-                            <p className="mt-1 max-w-xs text-xs leading-relaxed" style={{ color: 'var(--modal-muted-fg)' }}>
-                                {search.trim()
-                                    ? 'Try a different search term.'
-                                    : t('modals.saveMessageHint', 'Save a message to see it here!')}
-                            </p>
-                        </div>
-                    ) : (
-                        <ul className="flex flex-col gap-2">
-                            {filteredMessages.map((msg: ChatMessage, idx: number) => (
-                                <SavedMessageItem
-                                    key={msg.id || `${msg.timestamp}-${idx}`}
-                                    msg={msg}
-                                    idx={idx}
-                                    isExpanded={expandedMsg === idx}
-                                    onExpand={setExpandedMsg}
-                                    onInsert={onInsertSaved}
-                                    onDelete={onRemoveSaved}
-                                />
-                            ))}
-                        </ul>
-                    )}
+                                Clear search
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <ul className="flex flex-col gap-2.5" role="list">
+                        {filteredMessages.map((msg: ChatMessage, idx: number) => (
+                            <SavedMessageItem
+                                key={msg.id || `${msg.timestamp}-${idx}`}
+                                msg={msg}
+                                idx={idx}
+                                isExpanded={expandedMsg === idx}
+                                onExpand={setExpandedMsg}
+                                onInsert={onInsertSaved}
+                                onDelete={onRemoveSaved}
+                            />
+                        ))}
+                    </ul>
+                )}
             </AppModalBody>
         </AppModal>
     );

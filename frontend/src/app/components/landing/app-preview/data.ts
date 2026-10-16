@@ -44,84 +44,171 @@ export type ModelName = (typeof MODELS)[number];
 
 export const NEW_CHAT_TITLE = "New chat";
 
-const t = (text: string): Segment => ({ text });
-const b = (text: string): Segment => ({ text, bold: true });
+export type TranslateFn = (key: string, fallback?: string, params?: Record<string, any>) => string;
+
+const seg = (text: string): Segment => ({ text });
+const bld = (text: string): Segment => ({ text, bold: true });
+const t = seg;
+const b = bld;
 const h1 = (text: string): Block => ({ type: "heading", level: 1, text });
 const h2 = (text: string): Block => ({ type: "heading", level: 2, text });
 const paragraph = (...segments: Segment[]): Block => ({ type: "paragraph", segments });
 const list = (...items: Segment[][]): Block => ({ type: "list", items });
 
-export const INITIAL_CHATS: readonly Chat[] = [
-  {
-    id: "folder-analysis",
-    title: "Project folder analysis",
-    age: "22m",
-    messages: [
-      { id: "fa-1", role: "user", text: "Analyse my project folders using parallel subagents", ago: "22 minutes ago" },
-      {
-        id: "fa-2",
-        role: "assistant",
-        model: "Claude",
-        blocks: [
-          {
-            type: "thought",
-            text: "List the folder first, then split the analysis across subagents so each one reads a few folders in parallel. Everything stays read-only.",
-          },
-          paragraph(
-            t("I'll start by exploring your Projects folder to see what exists, then spin up parallel subagents to analyse each one."),
-          ),
-          {
-            type: "tool",
-            label: "Listed Projects",
-            detail: "api-gateway/\nmarketing-site/\ninvoices-2025/\nmobile-app/\nnotes/\nold-experiments/\n... 17 more",
-          },
-          paragraph(t("Let me get a clean list of just the folders so I can delegate the analysis in parallel.")),
-          { type: "tool", label: "local_shell", status: "done", detail: "$ ls -d */ | wc -l\n23" },
-          paragraph(
-            t("Your Projects folder has "),
-            b("23 folders"),
-            t(". I'll launch 6 parallel subagents, each analysing about 4 folders, then combine their findings."),
-          ),
-          { type: "tool", label: "6 subagent", check: true, detail: "6 of 6 finished. Read-only: no files were changed." },
-          paragraph(t("All 6 subagents finished (23 folders analysed, read-only). Here is the combined analysis.")),
-          h1("Project Folder Analysis — 23 folders"),
-          h2("Snapshot"),
-          {
-            type: "table",
-            headers: ["Category", "Folders", "Verdict"],
-            rows: [
-              ["Active code projects", "10", "Keep"],
-              ["Finished projects", "4", "Archive when confirmed"],
-              ["Documents, notes and media", "5", "Tidy or archive"],
-              ["Empty folders", "3", "Delete"],
-              ["Dormant one-offs", "1", "Archive"],
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "acme-proposal",
-    title: "Acme proposal draft",
-    age: "3d",
-    messages: [
-      { id: "ac-1", role: "user", text: "Draft a one-page proposal for Acme Labs.", ago: "3 days ago" },
-      {
-        id: "ac-2",
-        role: "assistant",
-        model: "Claude",
-        blocks: [
-          h2("Overview"),
-          paragraph(t("A six-week engagement to redesign the onboarding experience and measure the lift.")),
-          h2("Scope"),
-          list([t("Research and audit, weeks 1 to 2.")], [t("Design and prototype, weeks 3 to 4.")], [t("Build and measure, weeks 5 to 6.")]),
-        ],
-      },
-    ],
-  },
-  {
-    id: "vendor-contract",
+export function getInitialChats(tFn?: TranslateFn): readonly Chat[] {
+  const tr = tFn ?? ((_key: string, fallback?: string) => fallback ?? "");
+
+  return [
+    {
+      id: "folder-analysis",
+      title: tr("landing.demoChatFolderAnalysis", "Project folder analysis"),
+      age: tr("landing.demoAgo22m", "22m"),
+      messages: [
+        {
+          id: "fa-1",
+          role: "user",
+          text: tr("landing.demoFaUserPrompt", "Analyse my project folders using parallel subagents"),
+          ago: tr("landing.demoAgoMinutes", "{count} minutes ago", { count: 22 }),
+        },
+        {
+          id: "fa-2",
+          role: "assistant",
+          model: "Claude",
+          blocks: [
+            {
+              type: "thought",
+              text: tr(
+                "landing.demoFaThought",
+                "List the folder first, then split the analysis across subagents so each one reads a few folders in parallel. Everything stays read-only.",
+              ),
+            },
+            paragraph(
+              seg(
+                tr(
+                  "landing.demoFaP1",
+                  "I'll start by exploring your Projects folder to see what exists, then spin up parallel subagents to analyse each one.",
+                ),
+              ),
+            ),
+            {
+              type: "tool",
+              label: tr("landing.demoFaTool1Label", "Listed Projects"),
+              detail: tr(
+                "landing.demoFaTool1Detail",
+                "api-gateway/\nmarketing-site/\ninvoices-2025/\nmobile-app/\nnotes/\nold-experiments/\n... 17 more",
+              ),
+            },
+            paragraph(
+              seg(
+                tr(
+                  "landing.demoFaP2",
+                  "Let me get a clean list of just the folders so I can delegate the analysis in parallel.",
+                ),
+              ),
+            ),
+            {
+              type: "tool",
+              label: tr("landing.demoFaTool2Label", "local_shell"),
+              status: tr("landing.demoDoneStatus", "done"),
+              detail: "$ ls -d */ | wc -l\n23",
+            },
+            paragraph(
+              seg(tr("landing.demoFaP3Part1", "Your Projects folder has ")),
+              bld(tr("landing.demoFaP3Bold", "23 folders")),
+              seg(
+                tr(
+                  "landing.demoFaP3Part2",
+                  ". I'll launch 6 parallel subagents, each analysing about 4 folders, then combine their findings.",
+                ),
+              ),
+            ),
+            {
+              type: "tool",
+              label: tr("landing.demoFaTool3Label", "6 subagent"),
+              check: true,
+              detail: tr("landing.demoFaTool3Detail", "6 of 6 finished. Read-only: no files were changed."),
+            },
+            paragraph(
+              seg(
+                tr(
+                  "landing.demoFaP4",
+                  "All 6 subagents finished (23 folders analysed, read-only). Here is the combined analysis.",
+                ),
+              ),
+            ),
+            h1(tr("landing.demoFaHeading", "Project Folder Analysis — 23 folders")),
+            h2(tr("landing.demoFaSnapshot", "Snapshot")),
+            {
+              type: "table",
+              headers: [
+                tr("landing.demoFaThCategory", "Category"),
+                tr("landing.demoFaThFolders", "Folders"),
+                tr("landing.demoFaThVerdict", "Verdict"),
+              ],
+              rows: [
+                [
+                  tr("landing.demoFaRowActive", "Active code projects"),
+                  "10",
+                  tr("landing.demoFaRowKeep", "Keep"),
+                ],
+                [
+                  tr("landing.demoFaRowFinished", "Finished projects"),
+                  "4",
+                  tr("landing.demoFaRowArchiveConfirmed", "Archive when confirmed"),
+                ],
+                [
+                  tr("landing.demoFaRowDocuments", "Documents, notes and media"),
+                  "5",
+                  tr("landing.demoFaRowTidy", "Tidy or archive"),
+                ],
+                [
+                  tr("landing.demoFaRowEmpty", "Empty folders"),
+                  "3",
+                  tr("landing.demoFaRowDelete", "Delete"),
+                ],
+                [
+                  tr("landing.demoFaRowDormant", "Dormant one-offs"),
+                  "1",
+                  tr("landing.demoFaRowArchive", "Archive"),
+                ],
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "acme-proposal",
+      title: tr("landing.demoChatAcmeProposal", "Acme proposal draft"),
+      age: tr("landing.demoAgo3d", "3d"),
+      messages: [
+        {
+          id: "ac-1",
+          role: "user",
+          text: tr("landing.useCaseProposals", "Draft a one-page proposal for Acme Labs."),
+          ago: tr("landing.demoAgoDays", "{count} days ago", { count: 3 }),
+        },
+        {
+          id: "ac-2",
+          role: "assistant",
+          model: "Claude",
+          blocks: [
+            h2(tr("landing.demoOverview", "Overview")),
+            paragraph(
+              seg("A six-week engagement to redesign the onboarding experience and measure the lift."),
+            ),
+            h2(tr("landing.demoScope", "Scope")),
+            list(
+              [seg("Research and audit, weeks 1 to 2.")],
+              [seg("Design and prototype, weeks 3 to 4.")],
+              [seg("Build and measure, weeks 5 to 6.")],
+            ),
+          ],
+        },
+      ],
+    },
+    {
+      id: "vendor-contract",
     title: "Vendor contract review",
     age: "3d",
     messages: [
@@ -264,27 +351,54 @@ export const INITIAL_CHATS: readonly Chat[] = [
       },
     ],
   },
-];
+  ];
+}
 
-export const INITIAL_PROJECTS: readonly Project[] = [
-  { id: "job", name: "Job", chatIds: ["folder-analysis"] },
-  { id: "client-work", name: "Client work", chatIds: ["acme-proposal", "vendor-contract"], moreCount: 4 },
-  { id: "finance", name: "Finance", chatIds: ["q3-report", "invoice-digest"] },
-  { id: "website", name: "Website", chatIds: ["landing-copy", "seo-audit"], moreCount: 2 },
-  { id: "research", name: "Research", chatIds: ["competitor-pricing"] },
-  { id: "general", name: "General", chatIds: ["weekly-report"] },
-];
+export function getInitialProjects(tFn?: TranslateFn): readonly Project[] {
+  const tr = tFn ?? ((_key: string, fallback?: string) => fallback ?? "");
+
+  return [
+    { id: "job", name: tr("landing.demoProjectJob", "Job"), chatIds: ["folder-analysis"] },
+    {
+      id: "client-work",
+      name: tr("landing.demoProjectClientWork", "Client work"),
+      chatIds: ["acme-proposal", "vendor-contract"],
+      moreCount: 4,
+    },
+    {
+      id: "finance",
+      name: tr("landing.demoProjectFinance", "Finance"),
+      chatIds: ["q3-report", "invoice-digest"],
+    },
+    {
+      id: "website",
+      name: tr("landing.demoProjectWebsite", "Website"),
+      chatIds: ["landing-copy", "seo-audit"],
+      moreCount: 2,
+    },
+    { id: "research", name: tr("landing.demoProjectResearch", "Research"), chatIds: ["competitor-pricing"] },
+    { id: "general", name: tr("landing.demoProjectGeneral", "General"), chatIds: ["weekly-report"] },
+  ];
+}
+
+export const INITIAL_CHATS: readonly Chat[] = getInitialChats();
+export const INITIAL_PROJECTS: readonly Project[] = getInitialProjects();
 
 export const INITIAL_OPEN_PROJECT_IDS: readonly string[] = ["job", "client-work", "finance"];
 export const DEFAULT_PROJECT_ID = "job";
 export const DEFAULT_CHAT_ID = "folder-analysis";
 
-export const SUGGESTIONS = [
-  "Summarize this contract and flag anything risky",
-  "Draft a proposal for a new client",
-  "What do my competitors charge?",
-  "Which invoices are overdue?",
-] as const;
+export function getSuggestions(tFn?: TranslateFn): readonly string[] {
+  const tr = tFn ?? ((_key: string, fallback?: string) => fallback ?? "");
+  return [
+    tr("landing.demoSuggestContract", "Summarize this contract and flag anything risky"),
+    tr("landing.demoSuggestProposal", "Draft a proposal for a new client"),
+    tr("landing.demoSuggestCompetitors", "What do my competitors charge?"),
+    tr("landing.demoSuggestInvoices", "Which invoices are overdue?"),
+  ];
+}
+
+export const SUGGESTIONS = getSuggestions();
 
 const REPLIES: readonly { readonly keywords: readonly string[]; readonly text: string }[] = [
   {
@@ -310,7 +424,7 @@ const REPLIES: readonly { readonly keywords: readonly string[]; readonly text: s
 ];
 
 /** Scripted reply for the preview. Picks by keyword, else a friendly default naming the chosen model. */
-export function pickReply(input: string, model: ModelName): string {
+export function pickReply(input: string, model: ModelName, _tFn?: TranslateFn): string {
   const lower = input.toLowerCase();
   const match = REPLIES.find((reply) => reply.keywords.some((keyword) => lower.includes(keyword)));
   if (match) return match.text;

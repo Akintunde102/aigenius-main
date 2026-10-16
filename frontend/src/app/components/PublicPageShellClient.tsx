@@ -63,6 +63,20 @@ export function PublicHeader() {
           <div className="flex items-center gap-1.5">
             <Link
               prefetch
+              href="/published-conversations"
+              className={`hidden sm:inline-flex h-9 items-center rounded-full px-3 text-sm text-lp-muted hover:text-lp-fg ${PRESS}`}
+            >
+              Published conversations
+            </Link>
+            <Link
+              prefetch
+              href="/h"
+              className={`hidden sm:inline-flex h-9 items-center rounded-full px-3 text-sm text-lp-muted hover:text-lp-fg ${PRESS}`}
+            >
+              Published pages
+            </Link>
+            <Link
+              prefetch
               href="/docs"
               className={`inline-flex h-9 items-center rounded-full px-3.5 text-sm text-lp-muted hover:text-lp-fg ${PRESS}`}
             >

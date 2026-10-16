@@ -8,28 +8,41 @@ import {
   resolveLanguageItem,
   getDictionary,
   translate,
+  ensureDictionaryLoaded,
   TranslationDictionary,
   TranslationKeyPath,
 } from '@/locales';
-
-const STORAGE_KEY = 'aigenius_locale';
-const COOKIE_KEY = 'aigenius_locale';
+import {
+  readStoredLocaleCode,
+  persistClientLocaleCode,
+} from '@/lib/locale-preference';
+import { patchUserPreferredLocale } from '@/lib/calls/user-locale-preference';
 
 // Singleton for non-React callers (e.g. access-model.ts runtimeContext)
 let activeClientLanguageItem: LanguageCatalogItem = resolveLanguageItem(DEFAULT_LANGUAGE_CODE);
 
 export function getActiveClientLanguage(): LanguageCatalogItem {
-  if (typeof window !== 'undefined' && (!activeClientLanguageItem || activeClientLanguageItem.code === DEFAULT_LANGUAGE_CODE)) {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        activeClientLanguageItem = resolveLanguageItem(stored);
-      }
-    } catch {
-      // Ignore localStorage access failure
+  if (typeof window !== 'undefined') {
+    const stored = readStoredLocaleCode();
+    if (stored) {
+      activeClientLanguageItem = resolveLanguageItem(stored);
     }
   }
   return activeClientLanguageItem;
+}
+
+function resolveInitialLanguageCode(): string {
+  if (typeof window === 'undefined') return DEFAULT_LANGUAGE_CODE;
+  try {
+    const stored = readStoredLocaleCode();
+    if (stored) return resolveLanguageItem(stored).code;
+    if (navigator.language) {
+      return resolveLanguageItem(navigator.language).code;
+    }
+  } catch {
+    // Fallback
+  }
+  return DEFAULT_LANGUAGE_CODE;
 }
 
 interface LanguageContextValue {
@@ -38,6 +51,7 @@ interface LanguageContextValue {
   setLanguage: (code: string) => void;
   t: (keyPath: TranslationKeyPath | string, fallback?: string, params?: Record<string, string | number>) => string;
   dictionary: TranslationDictionary;
+  dictionaryReady: boolean;
   catalog: LanguageCatalogItem[];
   isLanguageModalOpen: boolean;
   languageModalVariant: 'app' | 'landing';
@@ -48,22 +62,11 @@ interface LanguageContextValue {
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<string>(() => {
-    if (typeof window === 'undefined') return DEFAULT_LANGUAGE_CODE;
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) return resolveLanguageItem(stored).code;
-      // Check document cookie
-      const match = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_KEY}=([^;]*)`));
-      if (match && match[1]) return resolveLanguageItem(decodeURIComponent(match[1])).code;
-      // Check navigator language
-      if (navigator.language) {
-        return resolveLanguageItem(navigator.language).code;
-      }
-    } catch {
-      // Fallback
-    }
-    return DEFAULT_LANGUAGE_CODE;
+  const [language, setLanguageState] = useState<string>(resolveInitialLanguageCode);
+  const [dictionaryEpoch, setDictionaryEpoch] = useState(0);
+  const [dictionaryReady, setDictionaryReady] = useState(() => {
+    const code = resolveInitialLanguageCode();
+    return code === DEFAULT_LANGUAGE_CODE || code.startsWith('en');
   });
 
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
@@ -71,29 +74,41 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const languageInfo = useMemo(() => resolveLanguageItem(language), [language]);
 
-  const dictionary = useMemo(() => getDictionary(languageInfo.code), [languageInfo.code]);
+  const dictionary = useMemo(
+    () => getDictionary(languageInfo.code),
+    [languageInfo.code, dictionaryEpoch],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setDictionaryReady(languageInfo.code === DEFAULT_LANGUAGE_CODE || languageInfo.code.startsWith('en'));
+
+    void ensureDictionaryLoaded(languageInfo.code).then(() => {
+      if (!cancelled) {
+        setDictionaryEpoch((n) => n + 1);
+        setDictionaryReady(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [languageInfo.code]);
 
   const setLanguage = useCallback((newCode: string) => {
     const item = resolveLanguageItem(newCode);
     setLanguageState(item.code);
     activeClientLanguageItem = item;
+    persistClientLocaleCode(item.code);
 
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(STORAGE_KEY, item.code);
-        document.cookie = `${COOKIE_KEY}=${encodeURIComponent(item.code)}; path=/; max-age=31536000; SameSite=Lax`;
-        document.documentElement.lang = item.code;
-        // Keep layout LTR. The shell uses physical left/right styles, so dir=rtl
-        // mirrors the desktop window instead of just the text.
-      } catch {
-        // Ignore storage exceptions
-      }
-    }
+    void patchUserPreferredLocale(item.code).catch(() => {
+      /* unauthenticated or offline */
+    });
   }, []);
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      if (event.key !== STORAGE_KEY || !event.newValue) return;
+      if (event.key !== 'aigenius_locale' || !event.newValue) return;
       const item = resolveLanguageItem(event.newValue);
       setLanguageState(item.code);
       activeClientLanguageItem = item;
@@ -114,7 +129,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     (keyPath: TranslationKeyPath | string, fallback?: string, params?: Record<string, string | number>) => {
       return translate(languageInfo.code, keyPath, fallback, params);
     },
-    [languageInfo.code],
+    [languageInfo.code, dictionaryEpoch],
   );
 
   const openLanguageModal = useCallback((variant: 'app' | 'landing' = 'app') => {
@@ -130,13 +145,24 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       setLanguage,
       t,
       dictionary,
+      dictionaryReady,
       catalog: LANGUAGE_CATALOG,
       isLanguageModalOpen,
       languageModalVariant,
       openLanguageModal,
       closeLanguageModal,
     }),
-    [languageInfo, setLanguage, t, dictionary, isLanguageModalOpen, languageModalVariant, openLanguageModal, closeLanguageModal],
+    [
+      languageInfo,
+      setLanguage,
+      t,
+      dictionary,
+      dictionaryReady,
+      isLanguageModalOpen,
+      languageModalVariant,
+      openLanguageModal,
+      closeLanguageModal,
+    ],
   );
 
   return (
@@ -156,6 +182,7 @@ export function useLanguage(): LanguageContextValue {
       setLanguage: () => {},
       t: (keyPath, fallback, params) => translate(fallbackItem.code, keyPath, fallback, params),
       dictionary: getDictionary(fallbackItem.code),
+      dictionaryReady: true,
       catalog: LANGUAGE_CATALOG,
       isLanguageModalOpen: false,
       languageModalVariant: 'app',

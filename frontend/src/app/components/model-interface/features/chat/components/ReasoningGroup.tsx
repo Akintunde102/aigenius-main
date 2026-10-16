@@ -23,7 +23,7 @@ export function ReasoningGroup({
 }: ReasoningGroupProps) {
   const isTimeline = variant === 'timeline';
   const thinkingInProgress = !isTimeline && event.loading;
-  const [open, setOpen] = useState(() => thinkingInProgress);
+  const [open, setOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const wasThinkingRef = useRef(thinkingInProgress);
 
@@ -33,7 +33,6 @@ export function ReasoningGroup({
     if (isTimeline) return;
 
     if (thinkingInProgress) {
-      setOpen(true);
       wasThinkingRef.current = true;
       return;
     }
@@ -67,6 +66,7 @@ export function ReasoningGroup({
         <span className={`${styles.headerLabel} ${thinkingInProgress ? styles.headerLabelActive : ''}`}>
           {headerLabel}
         </span>
+        {thinkingInProgress ? <span className={styles.spinner} aria-hidden /> : null}
       </button>
 
       {open ? (

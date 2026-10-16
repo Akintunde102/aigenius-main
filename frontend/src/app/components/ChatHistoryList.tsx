@@ -13,6 +13,7 @@ import { loadComposerDraftMap } from "@/lib/utils/composerDraftStorage";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
 import { useQueryClient } from "@tanstack/react-query";
 import { chatQueryKeys } from "@/lib/hooks/chat-query-keys";
+import { prefetchConversationTranscript } from "@/app/components/model-interface/conversation/conversationTranscriptQuery";
 import { useChatResourcesQuery } from "@/lib/hooks/useChatResourcesQuery";
 import { setConversationLabels } from "@/lib/calls/model-chat-conversation";
 import { AssignLabelsModal } from "./ChatHistoryListItem/components/AssignLabelsModal";
@@ -21,14 +22,31 @@ import toast from "react-hot-toast";
 /** Max conversations shown per sidebar section before "Open more". */
 const SIDEBAR_SESSION_PREVIEW_LIMIT = 5;
 
+/**
+ * Formats raw project / folder titles to clean title or sentence case.
+ * Converts ALL-CAPS names (e.g. AUDIOFORDAMI, APP-SCREENSHOTS) to readable Title Case,
+ * while preserving custom casing when already formatted.
+ */
+export function formatProjectFolderTitle(raw: string): string {
+    if (!raw) return raw;
+    const trimmed = raw.trim();
+    const isAllUpper = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
+    if (isAllUpper) {
+        return trimmed
+            .toLowerCase()
+            .replace(/(^|[\s\-_/])(\p{L})/gu, (_, sep, char) => `${sep}${char.toUpperCase()}`);
+    }
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}
+
 function SidebarSectionHeader({ label }: { label: string }) {
     return (
         <div className="px-3 pb-0.5 pt-2 first:pt-1">
             <span
-                className="sidebar-section-label font-medium uppercase tracking-wide"
-                style={{ color: "var(--sidebar-muted-fg)", opacity: 0.65 }}
+                className="sidebar-section-label text-xs font-medium normal-case tracking-normal"
+                style={{ color: "var(--sidebar-muted-fg)", opacity: 0.75 }}
             >
-                {label}
+                {formatProjectFolderTitle(label)}
             </span>
         </div>
     );
@@ -117,7 +135,7 @@ function ProjectSectionHeader({
                 <button
                     type="button"
                     onClick={handleLabelClick}
-                    className="flex min-w-0 flex-1 items-center gap-1.5 rounded px-0.5 py-0.5 text-left sidebar-section-label font-medium uppercase tracking-wide transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
+                    className="flex min-w-0 flex-1 items-center gap-1.5 rounded px-0.5 py-0.5 text-left sidebar-section-label text-xs font-medium normal-case tracking-normal transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/40"
                     style={{
                         color: isActive || hasActiveChat ? "var(--sidebar-fg, #1c1c1a)" : "var(--sidebar-muted-fg)",
                         opacity: isActive || hasActiveChat ? 0.9 : "var(--sidebar-project-title-opacity, 1)",
@@ -140,7 +158,7 @@ function ProjectSectionHeader({
                     >
                         <polyline points="9 18 15 12 9 6" />
                     </svg>
-                    <span className="truncate uppercase">{label}</span>
+                    <span className="truncate font-medium normal-case">{formatProjectFolderTitle(label)}</span>
                     {folderMissing ? (
                         <span
                             className="ml-1 shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold normal-case tracking-normal"
@@ -579,7 +597,14 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
     }, [isInitialLoading, activeSessionId]);
 
     // Stable Handlers
+    const prefetchSessionTranscript = useCallback((sessionId: string) => {
+        prefetchConversationTranscript(queryClient, sessionId);
+    }, [queryClient]);
+
     const handleSelect = useCallback((session: ChatSession) => {
+        if (session.id) {
+            prefetchSessionTranscript(session.id);
+        }
         // 1. Immediate UI Switch
         if (handleSessionSwitch) {
             handleSessionSwitch(session);
@@ -597,7 +622,7 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                 onSessionSelect();
             }
         });
-    }, [handleSessionSwitch, models, setSelectedModel, onSessionSelect]);
+    }, [handleSessionSwitch, models, prefetchSessionTranscript, setSelectedModel, onSessionSelect]);
 
     const handleStarRequest = useCallback((session: ChatSession) => {
         if (isMobile) {
@@ -724,6 +749,9 @@ const ChatHistoryList = React.memo<ChatHistoryListProps>(({
                 }
                 models={models}
                 onSelect={handleSelect}
+                onPrefetchTranscript={
+                    sessionId ? () => prefetchSessionTranscript(sessionId) : undefined
+                }
                 onStarRequest={handleStarRequest}
                 onDeleteRequest={handleDeleteRequest}
                 onPublishRequest={handlePublishRequest}

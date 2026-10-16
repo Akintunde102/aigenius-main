@@ -1,4 +1,3 @@
-import { Inter, Inter_Tight } from "next/font/google";
 
 /**
  * Inter for UI and body, Inter Tight for headlines.
@@ -8,8 +7,8 @@ import { Inter, Inter_Tight } from "next/font/google";
  * If the CEO wants a different feel, Geist is a one-line swap for `display`
  * (import { Geist } from "next/font/google").
  */
-export const sans = Inter({ subsets: ["latin"], display: "swap" });
-const display = Inter_Tight({ subsets: ["latin"], display: "swap", weight: ["400", "500", "600", "700"] });
+export const sans = { className: "font-sans" };
+const display = { className: "font-sans" };
 
 export const DISPLAY = display.className;
 export const H1 = `${DISPLAY} text-[clamp(2.75rem,7.4vw,5.75rem)] font-medium leading-[0.98] tracking-[-0.04em]`;

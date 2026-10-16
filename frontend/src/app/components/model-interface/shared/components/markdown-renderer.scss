@@ -7,11 +7,11 @@
      containers higher up the tree. Element-level margins provide spacing. */
   padding: 0;
   background-color: transparent;
-  color: #222;
+  color: #1c1c1a;
   /*
    * github-markdown-css applies @media (prefers-color-scheme: dark) to `.markdown-body` and sets
    * --bgColor-default / --bgColor-muted to near-black for table zebra rows. Chat copy uses dark ink
-   * (#222) but does not override those variables → dark rows + dark text. Force the light semantic
+   * (#1c1c1a) but does not override those variables → dark rows + dark text. Force the light semantic
    * palette inside chat so tables/pre match the product design regardless of OS theme.
    */
   color-scheme: light;
@@ -34,31 +34,31 @@
     "Apple Color Emoji",
     "Segoe UI Emoji",
     sans-serif;
-  font-size: var(--chat-body-size, 0.9375rem);
+  font-size: var(--chat-body-size, 1.0625rem);
   font-weight: 400;
-  line-height: var(--chat-body-leading, 1.5);
-  letter-spacing: 0;
+  line-height: var(--chat-body-leading, 1.625);
+  letter-spacing: -0.015em;
 }
 
 @media (min-width: 768px) {
   .markdown-chat-body.markdown-body {
-    line-height: 1.55;
+    line-height: 1.65;
   }
 }
 
 .markdown-chat-body.markdown-body p,
 .markdown-chat-body.markdown-body ul,
 .markdown-chat-body.markdown-body ol {
-  margin-top: 0.75rem;
-  margin-bottom: 0.75rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
 }
 
 @media (min-width: 768px) {
   .markdown-chat-body.markdown-body p,
   .markdown-chat-body.markdown-body ul,
   .markdown-chat-body.markdown-body ol {
-    margin-top: 0.875rem;
-    margin-bottom: 0.875rem;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
   }
 }
 
@@ -87,8 +87,8 @@
 
 .markdown-chat-body.markdown-body li {
   display: list-item;
-  margin-top: 0.2rem;
-  margin-bottom: 0.2rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
 }
 
 .markdown-chat-body.markdown-body h1,
@@ -300,18 +300,19 @@
   .markdown-inline-code {
     display: inline;
     max-width: 100%;
-    padding: 0.07em 0.245em;
+    padding: 0.1em 0.35em;
     font-size: 0.875em;
-    border-radius: 4px;
-    color: var(--markdown-code-fg, #334155);
-    background: var(--markdown-code-bg, rgba(15, 23, 42, 0.06));
-    border: 1px solid var(--markdown-code-border, rgba(15, 23, 42, 0.07));
+    border-radius: 6px;
+    color: var(--markdown-code-fg, #1c1c1a);
+    background: var(--markdown-code-bg, rgba(15, 23, 42, 0.05));
+    border: 1px solid var(--markdown-code-border, rgba(15, 23, 42, 0.08));
     box-shadow: none;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     word-break: break-word;
     vertical-align: 0.05em;
+    letter-spacing: normal;
   }
 
   .markdown-inline-code:hover {

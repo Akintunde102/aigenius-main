@@ -13,6 +13,7 @@ import {
 } from "./appIcons";
 import type { Chat, Project } from "./data";
 import { APP } from "./theme";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
@@ -62,6 +63,7 @@ export function Sidebar({
   onTogglePanel,
   onNotice,
 }: SidebarProps) {
+  const { t } = useLanguage();
   const visible = useMemo<readonly VisibleProject[]>(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) {
@@ -94,7 +96,7 @@ export function Sidebar({
       <div className="flex items-center gap-2 px-1.5 pb-3 pt-3">
         <button
           type="button"
-          aria-label="Toggle sidebar"
+          aria-label={t("landing.demoToggleSidebar", "Toggle sidebar")}
           onClick={onTogglePanel}
           className={TOOL_BUTTON}
         >
@@ -102,7 +104,7 @@ export function Sidebar({
         </button>
         <button
           type="button"
-          aria-label="New chat"
+          aria-label={t("landing.demoNewChatAction", "New chat")}
           onClick={onNewChat}
           className={TOOL_BUTTON}
         >
@@ -110,7 +112,7 @@ export function Sidebar({
         </button>
         <button
           type="button"
-          aria-label="New project"
+          aria-label={t("landing.demoNewProjectAction", "New project")}
           onClick={onNewProject}
           className={TOOL_BUTTON}
         >
@@ -118,7 +120,7 @@ export function Sidebar({
         </button>
         <button
           type="button"
-          aria-label="Search conversations"
+          aria-label={t("landing.demoSearchConversations", "Search conversations")}
           aria-expanded={searchOpen}
           onClick={onToggleSearch}
           className={TOOL_BUTTON}
@@ -139,12 +141,12 @@ export function Sidebar({
             <label
               className={`mb-2 flex h-8 items-center gap-2 rounded-lg border px-2.5 ${APP.line}`}
             >
-              <span className="sr-only">Search conversations</span>
+              <span className="sr-only">{t("landing.demoSearchConversations", "Search conversations")}</span>
               <input
                 autoFocus
                 value={query}
                 onChange={(event) => onQuery(event.target.value)}
-                placeholder="Search conversation"
+                placeholder={t("landing.demoSearchPlaceholder", "Search conversation")}
                 className="min-w-0 flex-1 bg-transparent text-xs outline-none ring-0 focus:outline-none focus:ring-0 placeholder:text-black/40 dark:placeholder:text-white/40"
               />
             </label>
@@ -153,12 +155,12 @@ export function Sidebar({
       </AnimatePresence>
 
       <nav
-        aria-label="Conversations"
+        aria-label={t("landing.demoSearchConversations", "Conversations")}
         className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2 pt-1 [scrollbar-width:thin]"
       >
         {visible.length === 0 && (
           <p className={`px-2 py-6 text-center text-xs ${APP.muted}`}>
-            No conversations found
+            {t("landing.demoNoConversations", "No conversations found")}
           </p>
         )}
         {visible.map(({ project, chatIds, open }) => (
@@ -219,11 +221,11 @@ export function Sidebar({
                       <button
                         type="button"
                         onClick={() =>
-                          onNotice("Older conversations are in the full app.")
+                          onNotice(t("landing.demoNoticeOlder", "Older conversations are in the full app."))
                         }
                         className={`block w-full rounded-lg py-2 pl-6 pr-2 text-left text-[13px] leading-5 ${APP.muted} ${APP.hover}`}
                       >
-                        Open more ({project.moreCount})
+                        {t("landing.demoOpenMore", "Open more ({count})", { count: project.moreCount ?? 0 })}
                       </button>
                     </li>
                   )}
@@ -239,13 +241,13 @@ export function Sidebar({
       >
         <span className="flex items-center gap-1.5">
           <BoltIcon className={`h-3.5 w-3.5 ${APP.brand}`} />
-          <span className={APP.muted}>by</span>
+          <span className={APP.muted}>{t("landing.demoBy", "by")}</span>
           <span className={`font-semibold ${APP.brand}`}>Nobox</span>
         </span>
         <button
           type="button"
-          aria-label="Settings"
-          onClick={() => onNotice("Settings are part of the full app.")}
+          aria-label={t("landing.demoSettings", "Settings")}
+          onClick={() => onNotice(t("landing.demoNoticeSettings", "Settings are part of the full app."))}
           className={TOOL_BUTTON}
         >
           <SettingsIcon className={TOOL_ICON} strokeWidth={TOOL_STROKE} />

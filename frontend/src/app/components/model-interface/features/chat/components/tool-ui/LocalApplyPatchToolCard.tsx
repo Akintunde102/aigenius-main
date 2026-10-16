@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import { JsonSyntaxBlock } from '@/app/components/JsonSyntaxBlock';
 import { FiLoader, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { valueToDisplayString } from '@/lib/utils/messageTextUtils';
@@ -45,8 +45,7 @@ export function LocalApplyPatchToolCard({
   const toolArgs = toolArgsProp ?? streaming_tool.arguments;
   const [inputOpen, setInputOpen] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
-  const [containerCollapsed, setContainerCollapsed] = useState(false);
-  const wasLoadingRef = useRef(loading);
+  const [containerCollapsed, setContainerCollapsed] = useState(true);
 
   const parsed = useMemo(() => parsePatchOperationsForDisplay(toolArgs), [toolArgs]);
 
@@ -86,15 +85,6 @@ export function LocalApplyPatchToolCard({
     if (!rawStr) return null;
     return rawStr.replace(/\\n/g, '\n').replace(/\\r/g, '').trim();
   }, [parsedResult]);
-
-  useEffect(() => {
-    if (wasLoadingRef.current && !loading) {
-      if (success === false) {
-        setResultOpen(true);
-      }
-    }
-    wasLoadingRef.current = loading;
-  }, [loading, success]);
 
   const activityTitle = toolArgs?.activityTitle as string | undefined;
   const resolvedDisplayName = activityTitle || displayName || getToolDisplayName('local_apply_patch');
@@ -171,6 +161,7 @@ export function LocalApplyPatchToolCard({
       >
         <span className="min-w-0 shrink font-medium text-slate-700 dark:text-zinc-200">{resolvedDisplayName}</span>
         <span className="shrink-0 text-slate-400 dark:text-zinc-500">· {statusText}</span>
+        {loading ? <FiLoader className="h-3 w-3 shrink-0 animate-spin text-slate-400 dark:text-zinc-500" aria-hidden /> : null}
         <span className="shrink-0 text-slate-400 tabular-nums dark:text-zinc-500" aria-hidden>
           {containerCollapsed ? '▸' : '▾'}
         </span>

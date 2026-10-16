@@ -7,6 +7,7 @@ import {
 } from "@/lib/color-mode";
 import { PRESS } from "./constants";
 import { MoonIcon, SunIcon } from "./icons";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 interface ThemeToggleProps {
   /** True while the header sits on the hero photo. */
@@ -14,6 +15,8 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ onImage = false }: ThemeToggleProps) {
+  const { t } = useLanguage();
+
   const toggle = () => {
     const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
     try {
@@ -28,7 +31,8 @@ export function ThemeToggle({ onImage = false }: ThemeToggleProps) {
   return (
     <button
       type="button"
-      aria-label="Toggle theme"
+      aria-label={t("sidebar.appearance", "Toggle theme")}
+      title={t("sidebar.appearance", "Toggle theme")}
       onClick={toggle}
       className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${
         onImage

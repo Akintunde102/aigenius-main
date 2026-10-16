@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { ArrowUp, Loader2, Maximize2, Mic, Phone, MessageSquare } from 'lucide-react';
 import { AudioModeOverlay } from './AudioModeOverlay';
 import { ChatArea } from './ChatArea';
+import { JumpToLatestButton } from './JumpToLatestButton';
+import { isVisibleChatMessage } from '@/lib/utils/messageContentUtils';
 import { ChatBoxInput } from '@/app/components/ChatBoxInput';
 import { OrphanThreadModal } from './OrphanThreadModal';
 import { ContextSummaryBadge } from './ContextSummaryBadge';
@@ -25,6 +27,7 @@ import type { ImagePreviewOpenTarget } from '@/app/components/model-interface/fe
 import type { SetChatUiError } from '@/app/components/model-interface/features/chat/hooks/chatUiError';
 
 import { useLanguage } from '@/lib/providers/LanguageProvider';
+import { MobileChatHeader } from './MobileChatHeader';
 
 interface ChatContainerProps {
     chat: ChatMessage[];
@@ -42,6 +45,7 @@ interface ChatContainerProps {
     chatEndRef: React.RefObject<HTMLDivElement>;
     chatAreaRef: React.MutableRefObject<HTMLDivElement | null>;
     showScrollToBottom: boolean;
+    isTranscriptHydrating?: boolean;
     onDeleteMessage: (idx: number) => void;
     onDeleteMessageById?: (id: string) => void;
     onSaveMessage: (msg: ChatMessage) => void;
@@ -121,6 +125,12 @@ interface ChatContainerProps {
     analyzer?: AnalyserNode | null;
     onRewritePrompt?: (options?: RewritePromptOptions) => void;
     rewritePromptInProgress?: boolean;
+    onOpenSidebar?: () => void;
+    onNewChat?: () => void;
+    onRenameSession?: (sessionId: string, newTitle: string) => void;
+    onDeleteSession?: (sessionId: string) => void;
+    onStarToggle?: (sessionId: string, isStarred: boolean) => Promise<void>;
+    onPublishSession?: (session: ChatSession) => void;
 }
 
 export interface ChatContainerHandle {
@@ -143,6 +153,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     chatEndRef,
     chatAreaRef,
     showScrollToBottom,
+    isTranscriptHydrating = false,
     onDeleteMessage,
     onDeleteMessageById,
     onSaveMessage,
@@ -218,12 +229,53 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     lastSummarizedAt,
     onRewritePrompt,
     rewritePromptInProgress,
+    onOpenSidebar,
+    onNewChat,
+    onRenameSession,
+    onDeleteSession,
+    onStarToggle,
+    onPublishSession,
 }, ref) => {
     const { t } = useLanguage();
     const inputRef = useRef<any>(null);
     const orphanInputRef = useRef<HTMLTextAreaElement>(null);
+    const inputContainerRef = useRef<HTMLDivElement>(null);
+    const [composerHeight, setComposerHeight] = useState<number>(96);
+    const [isChatScrolledUp, setIsChatScrolledUp] = useState(false);
 
-    const currentSession = chatHistory?.find((s) => s.id === currentSessionId);
+    const hasVisibleMessages = useMemo(
+        () => chat.some(isVisibleChatMessage),
+        [chat],
+    );
+
+    const showJumpToLatest = hasVisibleMessages && (isChatScrolledUp || showScrollToBottom);
+
+    const handleJumpToLatest = useCallback(() => {
+        const chatArea = chatAreaRef.current;
+        if (chatArea) {
+            chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: 'smooth' });
+            return;
+        }
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatAreaRef, chatEndRef]);
+
+    React.useEffect(() => {
+        const el = inputContainerRef.current;
+        if (!el || typeof ResizeObserver === 'undefined') return;
+        const observer = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const h = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+                if (h > 0) {
+                    setComposerHeight(Math.round(h));
+                }
+            }
+        });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
+
+    const currentSession = chatHistory?.find((s) => s.id === currentSessionId) ?? null;
+    const isStarred = Boolean(currentSession?.starred);
     const subagentParentId =
         currentSession?.metadata?.spawnedBy === 'subagent' && currentSession.parentConversationId
             ? currentSession.parentConversationId
@@ -388,7 +440,7 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
     const mainAreaClass = [
         styles.chatMainArea,
         isFullScreenMobile ? styles.fullScreenMobile : '',
-        'flex flex-col h-full chat-main-area',
+        'flex flex-col flex-1 min-h-0 chat-main-area',
         desktopConversationCentered ? 'w-full max-w-4xl mx-auto' : '',
     ]
         .filter(Boolean)
@@ -520,6 +572,27 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
             className={`${styles.chatContainer} flex-1 flex flex-col min-w-0 h-full`}
             style={containerStyle}
         >
+            {isMobile && onOpenSidebar ? (
+                <MobileChatHeader
+                    onOpenSidebar={onOpenSidebar}
+                    selectedModel={selectedModel}
+                    onModelNameClick={onModelNameClick}
+                    onNewChat={onNewChat || (() => {})}
+                    currentSession={currentSession}
+                    chat={chat}
+                    onStarToggle={onStarToggle}
+                    isStarred={isStarred}
+                    onPublish={onPublishSession}
+                    onRename={onRenameSession}
+                    onDelete={onDeleteSession}
+                    quickPickModels={quickPickModels}
+                    favoritesLoaded={favoritesLoaded}
+                    onSelectModel={onSelectModel}
+                    onOpenFullModelPicker={onOpenFullModelPicker}
+                    wallet={wallet}
+                    onAddCredits={onAddCredits}
+                />
+            ) : null}
             <div
                 className={mainAreaClass}
             >
@@ -573,16 +646,23 @@ const ChatContainer = forwardRef<ChatContainerHandle, ChatContainerProps & { onS
                         streaming={streamVisibleInChat}
                         selectedPersonalityName={selectedPersonalityName}
                         selectedPersonalityIconUrl={selectedPersonalityIconUrl}
-                        showScrollToBottom={showScrollToBottom}
+                        isTranscriptHydrating={isTranscriptHydrating}
+                        onScrolledUpChange={setIsChatScrolledUp}
                         onPromptButtonSelect={handlePromptButtonSelect}
                         onRewritePrompt={onRewritePrompt}
                         rewritePromptInProgress={rewritePromptInProgress}
+                        composerHeight={composerHeight}
                     />
                 </div>
                 <div
-                    className={`${styles.chatInputContainer} ${isKeyboardOpen ? styles.keyboardOpen : ''} ${browserInfo?.isIOS && isKeyboardOpen ? styles.keyboardOpenIos : ''} ${browserInfo?.isAndroid && isKeyboardOpen ? styles.keyboardOpenAndroid : ''} chat-input-container mx-auto w-full max-w-3xl flex-shrink-0 px-4 pb-5 pt-2`}
+                    ref={inputContainerRef}
+                    className={`${styles.chatInputContainer} ${isKeyboardOpen ? styles.keyboardOpen : ''} ${browserInfo?.isIOS && isKeyboardOpen ? styles.keyboardOpenIos : ''} ${browserInfo?.isAndroid && isKeyboardOpen ? styles.keyboardOpenAndroid : ''} chat-input-container relative mx-auto w-full max-w-3xl flex-shrink-0 px-2 sm:px-4 pb-2 sm:pb-5 pt-1.5`}
                     style={inputContainerStyle}
                 >
+                    <JumpToLatestButton
+                        visible={showJumpToLatest}
+                        onClick={handleJumpToLatest}
+                    />
                     {pendingOrphanReply ? (
                         <div
                             className="mb-3 rounded-2xl border border-emerald-200/80 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm"

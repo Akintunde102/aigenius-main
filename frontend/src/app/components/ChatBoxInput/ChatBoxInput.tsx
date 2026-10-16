@@ -1,5 +1,5 @@
 import React, { useRef, useImperativeHandle, forwardRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { FileText, Loader2, X, AlertCircle, RotateCcw } from 'lucide-react';
+import { FileText, Loader2, X, AlertCircle, RotateCcw, Plus, Mic, ArrowUp, Square } from 'lucide-react';
 import { UploadProgressBar } from './UploadProgressBar';
 import { ChatTextarea } from './ChatTextarea';
 import { ChatControls } from './ChatControls';
@@ -14,6 +14,12 @@ import { ComposerMessageQueue } from './ComposerMessageQueue';
 import { computeModelRequiredBalance } from '@/app/components/model-interface/features/models/utils/modelWalletAffordance.utils';
 import { FEATURE_FLAGS } from '@/lib/config/features';
 import { useLanguage } from '@/lib/providers/LanguageProvider';
+import { MessageAttachmentCard } from '@/app/components/model-interface/features/message-types/components/MessageAttachmentCard';
+import { ImagePreviewLightbox } from '@/app/components/model-interface/features/message-types/components/ImagePreviewLightbox';
+import type { AttachmentPreviewTarget } from '@/app/components/model-interface/features/message-types/components/AttachmentPreviewModal';
+import { isImagePreviewTarget } from '@/app/components/model-interface/features/message-types/components/imageAnnotator.utils';
+import { resolveAttachmentKind } from '@/app/components/model-interface/features/message-types/components/messageAttachment.utils';
+import { openFilePreview } from '@/app/components/modals/FilePreviewManager';
 
 /** True when viewport is wide (PC); false for mobile viewport. Uses 768px breakpoint to match app layout. */
 function useIsPc() {
@@ -57,6 +63,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     onRetryFailedUpload,
     onRemoveFailedUpload,
     onRemoveUploadedFile,
+    onImagePreview: onImagePreviewProp,
     inputValue: externalInputValue,
     onInputChange,
     composerSessionKey,
@@ -173,6 +180,7 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
     const isAnyFileUploading = uploading || activePendingFiles.length > 0;
     const hasFilesButModelUnsupported = uploadedFiles.length > 0 && !supportsFileUpload;
     const sendBlocked = responseInProgress || hasFilesButModelUnsupported || isAnyFileUploading;
+    const canSend = (Boolean(inputValue.trim()) || uploadedFiles.length > 0) && !sendBlocked;
     const rewritePromptDisabled =
         !inputValue.trim() || responseInProgress || rewritePromptInProgress || attachmentsDisabled;
     const canQueueMessage = false;
@@ -250,57 +258,79 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
         [selectedModel],
     );
 
+    const [previewTarget, setPreviewTarget] = useState<AttachmentPreviewTarget | null>(null);
+
+    useEffect(() => {
+        if (!previewTarget) return;
+        document.body.dataset.myfilesLightbox = '1';
+        return () => {
+            delete document.body.dataset.myfilesLightbox;
+        };
+    }, [previewTarget]);
+
+    const handlePreviewAttachment = useCallback(
+        (target: { fileUrl: string; fileName?: string; kind?: 'image' | 'file' | 'audio' }) => {
+            const isImg = target.kind === 'image' || isImagePreviewTarget(target as AttachmentPreviewTarget);
+            if (isImg) {
+                if (onImagePreviewProp) {
+                    onImagePreviewProp(target as AttachmentPreviewTarget);
+                } else {
+                    setPreviewTarget({
+                        fileUrl: target.fileUrl,
+                        fileName: target.fileName || 'Image',
+                        kind: 'image',
+                    });
+                }
+            } else {
+                openFilePreview({
+                    url: target.fileUrl,
+                    name: target.fileName || 'File',
+                    type: target.kind === 'audio' ? 'audio' : 'code',
+                });
+            }
+        },
+        [onImagePreviewProp],
+    );
+
     const attachmentPreviews =
         uploadedFiles.length > 0 || activePendingFiles.length > 0 || failedUploadFiles.length > 0 ? (
             <div className="mb-2 flex flex-wrap gap-2 px-1">
                 {uploadedFiles.map((item, idx) => {
                     const displayName = item.displayName || item.file?.name || 'attachment';
-                    const ext = displayName.split('.').pop()?.toUpperCase() || '';
+                    const kind = item.isImage
+                        ? 'image'
+                        : item.mimeType?.startsWith('audio/')
+                        ? 'audio'
+                        : resolveAttachmentKind(displayName, item.fileUrl);
                     return (
-                        <div
+                        <MessageAttachmentCard
                             key={`uploaded-${idx}`}
-                            className="group relative flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800/80 dark:hover:border-slate-600"
-                            title={displayName}
-                        >
-                            <div className="absolute inset-0 overflow-hidden rounded-xl">
-                                {item.isImage ? (
-                                    <img
-                                        src={item.fileUrl}
-                                        alt={displayName}
-                                        className="h-full w-full object-cover"
-                                        loading="lazy"
-                                        decoding="async"
-                                    />
-                                ) : (
-                                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-2">
-                                        <FileText size={20} className="text-slate-400 dark:text-slate-500" />
-                                        <span className="max-w-[64px] truncate text-[9px] font-medium text-slate-600 dark:text-slate-300">
-                                            {displayName}
-                                        </span>
-                                        {ext && (
-                                            <span className="rounded bg-orange-100 px-1 py-px text-[8px] font-bold uppercase text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">
-                                                {ext}
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                            {/* Green checkmark badge */}
-                            <span className="absolute bottom-1 left-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
-                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5.5L4 7.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                            </span>
-                            {onRemoveUploadedFile && (
-                                <button
-                                    type="button"
-                                    onClick={() => onRemoveUploadedFile(idx)}
-                                    className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-red-500/90 text-white shadow-sm transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-600"
-                                    title="Remove"
-                                    aria-label="Remove file"
-                                >
-                                    <X size={8} />
-                                </button>
-                            )}
-                        </div>
+                            kind={kind}
+                            fileName={displayName}
+                            fileUrl={item.fileUrl}
+                            onRemove={onRemoveUploadedFile ? () => onRemoveUploadedFile(idx) : undefined}
+                            onPreview={handlePreviewAttachment}
+                            onImagePreview={(url, name, k) =>
+                                handlePreviewAttachment({
+                                    fileUrl: url,
+                                    fileName: name || displayName,
+                                    kind: k || 'image',
+                                })
+                            }
+                            badge={
+                                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
+                                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                        <path
+                                            d="M2 5.5L4 7.5L8 3"
+                                            stroke="currentColor"
+                                            strokeWidth="1.5"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                    </svg>
+                                </span>
+                            }
+                        />
                     );
                 })}
 
@@ -541,111 +571,242 @@ const ChatBoxInput = forwardRef<any, ChatBoxInputProps & { onShowSavedChats?: ()
                         </div>
                     )}
 
-                    {/* Input area */}
-                    <div className={styles.inputArea}>
-                        {/* Hidden file input */}
-                        <label htmlFor="chat-file-upload" className="sr-only">
-                            Upload files
-                        </label>
-                        <input
-                            id="chat-file-upload"
-                            type="file"
-                            ref={fileInputRef}
-                            style={{ display: 'none' }}
-                            onChange={handleFileInputChange}
-                            tabIndex={-1}
-                            disabled={attachmentsDisabled}
-                            multiple
-                            accept="image/*,audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.webm,.mp4,.pdf,.txt,.csv,.json,.md,.xml"
-                        />
+                    {!isPc ? (
+                        <div className="flex items-center gap-1.5 px-3 py-2 min-h-[50px]">
+                            {/* Hidden file input */}
+                            <label htmlFor="chat-file-upload" className="sr-only">
+                                Upload files
+                            </label>
+                            <input
+                                id="chat-file-upload"
+                                type="file"
+                                ref={fileInputRef}
+                                style={{ display: 'none' }}
+                                onChange={handleFileInputChange}
+                                tabIndex={-1}
+                                disabled={attachmentsDisabled}
+                                multiple
+                                accept="image/*,audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.webm,.mp4,.pdf,.txt,.csv,.json,.md,.xml"
+                            />
 
-                        <ChatTextarea
-                            value={inputValue}
-                            onChange={handleInputChange}
-                            onKeyDown={handleKeyDown}
-                            onPaste={handlePaste}
-                            placeholder={
-                                isDictationTranscribing
-                                    ? "Transcribing..."
-                                    : isSTTActive
-                                        ? "Listening..."
-                                        : placeholder
-                            }
-                            textareaDisabled={isDictationTranscribing}
-                            uploading={isAnyFileUploading}
-                            responseInProgress={responseInProgress}
-                            onStopGeneration={onStopGeneration}
-                            textareaRef={textareaRef}
-                            sidebarStyle={sidebarStyle}
-                            onFocus={onFocus}
-                            onBlur={onBlur}
-                            onSubmit={handleSubmit}
-                            sendBlocked={sendBlocked}
-                            submitTitle={
-                                isAnyFileUploading
-                                    ? 'Please wait for file uploads to complete'
-                                    : hasFilesButModelUnsupported
-                                        ? 'The selected model does not support file attachments'
-                                        : isPc
-                                            ? 'Send message (Enter). New line: Shift+Enter'
-                                            : 'Send message'
-                            }
-                            hasUploadedFiles={uploadedFiles.length > 0}
-                            mini={mini}
-                            textareaId={composerTextareaId}
-                            canQueueMessage={canQueueMessage}
-                            actionSlot={(
-                                <ComposerMessageQueue
-                                    queuedMessages={queuedMessages}
-                                    onRemoveQueuedMessage={onRemoveQueuedMessage ?? (() => undefined)}
-                                    mini={mini}
-                                />
+                            {/* Left: + (plus) button */}
+                            {supportsFileUpload && !hideUpload && (
+                                <button
+                                    type="button"
+                                    onClick={handleAttachmentClick}
+                                    disabled={attachmentsDisabled}
+                                    aria-label="Add files"
+                                    title="Add files"
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--sidebar-fg)] transition-colors hover:bg-black/5 active:scale-95 disabled:opacity-40"
+                                >
+                                    <Plus size={22} strokeWidth={2} />
+                                </button>
                             )}
-                        />
-                    </div>
 
-                    <ChatControls
-                        disabled={attachmentsDisabled}
-                        modelSelectorDisabled={false}
-                        uploading={isAnyFileUploading}
-                        supportsFileUpload={supportsFileUpload && !hideUpload}
-                        selectedModel={selectedModel}
-                        onModelNameClick={onModelNameClick}
-                        onSelectModel={handleQuickPickSelect}
-                        quickPickModels={quickPickModels}
-                        favoritesLoaded={favoritesLoaded}
-                        onOpenFullModelPicker={onOpenFullModelPicker}
-                        wallet={wallet}
-                        onAddCredits={onAddCredits}
-                        isInsufficientCredits={isInsufficientCredits}
-                        requiredWalletBalance={requiredWalletBalance}
-                        onAttachmentClick={handleAttachmentClick}
-                        sidebarStyle={sidebarStyle}
-                        streaming={streaming}
-                        onStreamingToggle={onStreamingToggle}
-                        glisten={glisten && !compact}
-                        selectedPersonalityName={selectedPersonalityName}
-                        onPersonalityClick={onPersonalityClick}
-                        selectedPersonalityIconUrl={selectedPersonalityIconUrl}
-                        onClearPersonality={onClearPersonality}
-                        compact={compact}
-                        hideModelSelector={hideModelSelector}
-                        hideUpload={hideUpload}
-                        mini={mini}
-                        onAudioModeToggle={onAudioModeToggle}
-                        isAudioMode={isAudioMode}
-                        onStartSTT={onStartSTT}
-                        onCancelSTT={onCancelSTT}
-                        onConfirmSTT={onConfirmSTT}
-                        isSTTActive={isSTTActive}
-                        isDictationTranscribing={isDictationTranscribing}
-                        onRewritePrompt={onRewritePrompt}
-                        rewritePromptDisabled={rewritePromptDisabled}
-                        rewritePromptInProgress={rewritePromptInProgress}
-                    />
+                            {/* Center: Textarea */}
+                            <div className="flex-1 min-w-0 flex items-center">
+                                <ChatTextarea
+                                    value={inputValue}
+                                    onChange={handleInputChange}
+                                    onKeyDown={handleKeyDown}
+                                    onPaste={handlePaste}
+                                    placeholder={
+                                        isDictationTranscribing
+                                            ? "Transcribing..."
+                                            : isSTTActive
+                                                ? "Listening..."
+                                                : "Ask AIGenius"
+                                    }
+                                    textareaDisabled={isDictationTranscribing}
+                                    uploading={isAnyFileUploading}
+                                    responseInProgress={responseInProgress}
+                                    onStopGeneration={onStopGeneration}
+                                    textareaRef={textareaRef}
+                                    sidebarStyle={sidebarStyle}
+                                    onFocus={onFocus}
+                                    onBlur={onBlur}
+                                    onSubmit={handleSubmit}
+                                    sendBlocked={sendBlocked}
+                                    submitTitle="Send message"
+                                    hasUploadedFiles={uploadedFiles.length > 0}
+                                    mini={mini}
+                                    textareaId={composerTextareaId}
+                                    canQueueMessage={canQueueMessage}
+                                    hideDefaultSubmit={true}
+                                />
+                            </div>
+
+                            {/* Right icons */}
+                            <div className="flex items-center gap-1 shrink-0">
+                                {onRewritePrompt && inputValue.trim() && !rewritePromptDisabled && (
+                                    <button
+                                        type="button"
+                                        onClick={onRewritePrompt}
+                                        disabled={rewritePromptInProgress || responseInProgress}
+                                        aria-label="Rewrite prompt"
+                                        title="Rewrite prompt"
+                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--chat-muted-fg)] transition-colors hover:bg-black/5 hover:text-[var(--app-ink-900)] active:scale-95"
+                                    >
+                                        <RotateCcw size={16} className={rewritePromptInProgress ? "animate-spin" : ""} />
+                                    </button>
+                                )}
+
+                                {responseInProgress ? (
+                                    onStopGeneration && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                onStopGeneration();
+                                            }}
+                                            className="chat-composer-stop flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all active:scale-95"
+                                            title="Stop generation"
+                                            aria-label="Stop generation"
+                                        >
+                                            <Square size={14} fill="currentColor" strokeWidth={0} />
+                                        </button>
+                                    )
+                                ) : canSend ? (
+                                    <button
+                                        type="submit"
+                                        disabled={!canSend}
+                                        onClick={handleSubmit}
+                                        className="chat-composer-send flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all active:scale-95 chat-composer-send--enabled"
+                                        title="Send message"
+                                        aria-label="Send message"
+                                    >
+                                        <ArrowUp size={18} />
+                                    </button>
+                                ) : (
+                                    (onStartSTT || onAudioModeToggle) && (
+                                        <button
+                                            type="button"
+                                            onClick={isSTTActive ? onConfirmSTT : onStartSTT || (() => onAudioModeToggle?.(true))}
+                                            aria-label={isSTTActive ? "Stop listening" : "Dictate message"}
+                                            title={isSTTActive ? "Stop listening" : "Dictate message"}
+                                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--sidebar-fg)] transition-colors hover:bg-black/5 active:scale-95 ${isSTTActive ? 'text-rose-500 animate-pulse' : ''}`}
+                                        >
+                                            <Mic size={20} strokeWidth={1.8} />
+                                        </button>
+                                    )
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Input area */}
+                            <div className={styles.inputArea}>
+                                {/* Hidden file input */}
+                                <label htmlFor="chat-file-upload" className="sr-only">
+                                    Upload files
+                                </label>
+                                <input
+                                    id="chat-file-upload"
+                                    type="file"
+                                    ref={fileInputRef}
+                                    style={{ display: 'none' }}
+                                    onChange={handleFileInputChange}
+                                    tabIndex={-1}
+                                    disabled={attachmentsDisabled}
+                                    multiple
+                                    accept="image/*,audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.webm,.mp4,.pdf,.txt,.csv,.json,.md,.xml"
+                                />
+
+                                <ChatTextarea
+                                    value={inputValue}
+                                    onChange={handleInputChange}
+                                    onKeyDown={handleKeyDown}
+                                    onPaste={handlePaste}
+                                    placeholder={
+                                        isDictationTranscribing
+                                            ? "Transcribing..."
+                                            : isSTTActive
+                                                ? "Listening..."
+                                                : placeholder
+                                    }
+                                    textareaDisabled={isDictationTranscribing}
+                                    uploading={isAnyFileUploading}
+                                    responseInProgress={responseInProgress}
+                                    onStopGeneration={onStopGeneration}
+                                    textareaRef={textareaRef}
+                                    sidebarStyle={sidebarStyle}
+                                    onFocus={onFocus}
+                                    onBlur={onBlur}
+                                    onSubmit={handleSubmit}
+                                    sendBlocked={sendBlocked}
+                                    submitTitle={
+                                        isAnyFileUploading
+                                            ? 'Please wait for file uploads to complete'
+                                            : hasFilesButModelUnsupported
+                                                ? 'The selected model does not support file attachments'
+                                                : isPc
+                                                    ? 'Send message (Enter). New line: Shift+Enter'
+                                                    : 'Send message'
+                                    }
+                                    hasUploadedFiles={uploadedFiles.length > 0}
+                                    mini={mini}
+                                    textareaId={composerTextareaId}
+                                    canQueueMessage={canQueueMessage}
+                                    actionSlot={(
+                                        <ComposerMessageQueue
+                                            queuedMessages={queuedMessages}
+                                            onRemoveQueuedMessage={onRemoveQueuedMessage ?? (() => undefined)}
+                                            mini={mini}
+                                        />
+                                    )}
+                                />
+                            </div>
+
+                            <ChatControls
+                                disabled={attachmentsDisabled}
+                                modelSelectorDisabled={false}
+                                uploading={isAnyFileUploading}
+                                supportsFileUpload={supportsFileUpload && !hideUpload}
+                                selectedModel={selectedModel}
+                                onModelNameClick={onModelNameClick}
+                                onSelectModel={handleQuickPickSelect}
+                                quickPickModels={quickPickModels}
+                                favoritesLoaded={favoritesLoaded}
+                                onOpenFullModelPicker={onOpenFullModelPicker}
+                                wallet={wallet}
+                                onAddCredits={onAddCredits}
+                                isInsufficientCredits={isInsufficientCredits}
+                                requiredWalletBalance={requiredWalletBalance}
+                                onAttachmentClick={handleAttachmentClick}
+                                sidebarStyle={sidebarStyle}
+                                streaming={streaming}
+                                onStreamingToggle={onStreamingToggle}
+                                glisten={glisten && !compact}
+                                selectedPersonalityName={selectedPersonalityName}
+                                onPersonalityClick={onPersonalityClick}
+                                selectedPersonalityIconUrl={selectedPersonalityIconUrl}
+                                onClearPersonality={onClearPersonality}
+                                compact={compact}
+                                hideModelSelector={hideModelSelector}
+                                hideUpload={hideUpload}
+                                mini={mini}
+                                onAudioModeToggle={onAudioModeToggle}
+                                isAudioMode={isAudioMode}
+                                onStartSTT={onStartSTT}
+                                onCancelSTT={onCancelSTT}
+                                onConfirmSTT={onConfirmSTT}
+                                isSTTActive={isSTTActive}
+                                isDictationTranscribing={isDictationTranscribing}
+                                onRewritePrompt={onRewritePrompt}
+                                rewritePromptDisabled={rewritePromptDisabled}
+                                rewritePromptInProgress={rewritePromptInProgress}
+                            />
+                        </>
+                    )}
                 </div>
             </div>
             <ChatBoxStyles />
+            {previewTarget ? (
+                <ImagePreviewLightbox
+                    imageUrl={previewTarget}
+                    onClose={() => setPreviewTarget(null)}
+                />
+            ) : null}
         </div>
     );
 });
@@ -665,6 +826,7 @@ export default React.memo(ChatBoxInput, (prevProps, nextProps) => {
         prevProps.onRemoveUploadedFile === nextProps.onRemoveUploadedFile &&
         prevProps.onRetryFailedUpload === nextProps.onRetryFailedUpload &&
         prevProps.onRemoveFailedUpload === nextProps.onRemoveFailedUpload &&
+        prevProps.onImagePreview === nextProps.onImagePreview &&
         prevProps.onInputChange === nextProps.onInputChange &&
         prevProps.composerSessionKey === nextProps.composerSessionKey &&
         prevProps.commitComposerDraftForKey === nextProps.commitComposerDraftForKey &&

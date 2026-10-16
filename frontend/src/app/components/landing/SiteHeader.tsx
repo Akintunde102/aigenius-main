@@ -8,7 +8,7 @@ import {
 } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { NAV_LINKS, PRESS } from "./constants";
+import { HEADER_NAV_LINKS, PRESS } from "./constants";
 import { DownloadCta } from "./DownloadCta";
 import { MenuIcon, XIcon } from "./icons";
 import { useLandingScroll } from "./LandingShell";
@@ -66,6 +66,9 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
     if (href === "#desktop") return t("landing.desktop", label);
     if (href === "#tools") return t("landing.tools", label);
     if (href === "#pricing") return t("landing.pricing", label);
+    if (href === "/published-conversations")
+      return t("landing.publishedConversations", label);
+    if (href === "/h") return t("landing.publishedPages", label);
     return label;
   };
 
@@ -88,17 +91,30 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
           <Logo />
         </div>
 
-        <ul className="hidden items-center gap-6 text-[13.5px] md:flex">
-          {NAV_LINKS.map((link) => (
-            <li key={link.href}>
-              <a
-                href={link.href}
-                className={`transition-colors duration-150 ${linkTone}`}
-              >
-                {getNavLinkLabel(link.label, link.href)}
-              </a>
-            </li>
-          ))}
+        <ul className="hidden items-center gap-5 text-[13.5px] md:flex lg:gap-6">
+          {HEADER_NAV_LINKS.map((link) => {
+            const isInternal = link.href.startsWith("/");
+            const label = getNavLinkLabel(link.label, link.href);
+            return (
+              <li key={link.href}>
+                {isInternal ? (
+                  <Link
+                    href={link.href}
+                    className={`transition-colors duration-150 ${linkTone}`}
+                  >
+                    {label}
+                  </Link>
+                ) : (
+                  <a
+                    href={link.href}
+                    className={`transition-colors duration-150 ${linkTone}`}
+                  >
+                    {label}
+                  </a>
+                )}
+              </li>
+            );
+          })}
         </ul>
 
         <div className="flex flex-1 items-center justify-end gap-0.5">
@@ -130,7 +146,7 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
             aria-label={
               menuOpen
                 ? t("common.close", "Close menu")
-                : t("common.search", "Open menu")
+                : t("landing.openMenu", "Open menu")
             }
             aria-expanded={menuOpen}
             aria-controls={MENU_ID}
@@ -158,16 +174,29 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
           >
             {/* Plain links in a nav, not a <ul>: a global list rule was indenting them. */}
             <nav aria-label="Mobile" className="flex flex-col">
-              {NAV_LINKS.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className={`${DISPLAY} block py-3 text-4xl font-normal leading-tight tracking-[-0.03em] transition-opacity duration-150 hover:opacity-60`}
-                >
-                  {getNavLinkLabel(link.label, link.href)}
-                </a>
-              ))}
+              {HEADER_NAV_LINKS.map((link) => {
+                const isInternal = link.href.startsWith("/");
+                const label = getNavLinkLabel(link.label, link.href);
+                return isInternal ? (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMenuOpen(false)}
+                    className={`${DISPLAY} block py-3 text-4xl font-normal leading-tight tracking-[-0.03em] transition-opacity duration-150 hover:opacity-60`}
+                  >
+                    {label}
+                  </Link>
+                ) : (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMenuOpen(false)}
+                    className={`${DISPLAY} block py-3 text-4xl font-normal leading-tight tracking-[-0.03em] transition-opacity duration-150 hover:opacity-60`}
+                  >
+                    {label}
+                  </a>
+                );
+              })}
             </nav>
 
             <div className="mt-auto flex flex-col items-start gap-3 pt-10">
@@ -183,7 +212,7 @@ export function SiteHeader({ initialPlatform }: SiteHeaderProps) {
                 onClick={() => setMenuOpen(false)}
                 className={`inline-flex h-9 items-center justify-center rounded-full bg-black/[0.06] px-4 text-sm font-medium dark:bg-white/[0.1] ${PRESS}`}
               >
-                Use it on the web
+                {t("landing.useOnWeb", "Use it on the web")}
               </Link>
             </div>
           </motion.div>

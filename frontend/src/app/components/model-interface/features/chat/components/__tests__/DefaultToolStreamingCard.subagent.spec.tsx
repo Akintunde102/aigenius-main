@@ -9,6 +9,7 @@ jest.mock('lucide-react', () => {
 });
 
 import { DefaultToolStreamingCard } from '../DefaultToolStreamingCard';
+import { expandDefaultToolCard } from './expand-default-tool-card';
 
 const streamingTool = {
     tool: 'subagent',
@@ -32,6 +33,7 @@ describe('DefaultToolStreamingCard subagent', () => {
             />,
         );
 
+        expandDefaultToolCard(/Subagent/i);
         const link = screen.getByRole('link', { name: /Open subagent conversation/i });
         expect(link).toHaveAttribute('href', '/chat/child-9');
         expect(screen.getByText('PostgreSQL is the better fit.')).toBeInTheDocument();
@@ -72,6 +74,7 @@ describe('DefaultToolStreamingCard subagent', () => {
             />,
         );
 
+        expandDefaultToolCard(/Check Slug/i);
         expect(document.body.textContent).toContain('roi-calc');
         expect(document.body.textContent).toContain('"available": true');
     });
@@ -93,6 +96,7 @@ describe('DefaultToolStreamingCard subagent', () => {
             />,
         );
 
+        expandDefaultToolCard();
         expect(document.body.textContent).toContain('insufficient_funds');
         expect(document.body.textContent).toContain('"wallet": 0');
     });

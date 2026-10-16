@@ -101,6 +101,19 @@ export function MarkdownAnchor({
     if (href && (href.startsWith('/track/video/') || href.includes('/track/video/'))) {
         const linkText = reactNodeToPlainText(props.children);
         const slug = href.split('/track/video/')[1]?.split(/[?#]/)[0] || '';
+        const convMatch = typeof window !== 'undefined' ? window.location.pathname.match(/\/chat\/([0-9a-fA-F-]+)/) : null;
+        const convId = convMatch ? convMatch[1] : undefined;
+        let derivedTitle: string | undefined = undefined;
+        const cleanText = linkText.replace(/^[🎧🎬▶️\s]+|[🎧🎬▶️\s]+$/g, '').trim();
+        if (cleanText && !/^(track\s+(speech|video|audio)|preview|watch|play)$/i.test(cleanText)) {
+            derivedTitle = cleanText;
+        } else if (slug.includes('_job-')) {
+            const rawPrefix = slug.split('_job-')[0];
+            const words = rawPrefix.split(/[-_]/).filter(Boolean);
+            if (words.length > 0 && !['video', 'render', 'track'].includes(words[0].toLowerCase())) {
+                derivedTitle = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            }
+        }
         return (
             <a
                 {...props}
@@ -110,7 +123,8 @@ export function MarkdownAnchor({
                     e.stopPropagation();
                     openVideoTrackingModal({
                         identifier: slug,
-                        title: linkText || undefined,
+                        title: derivedTitle,
+                        conversationId: convId,
                     });
                 }}
                 className={clsx(
@@ -126,6 +140,19 @@ export function MarkdownAnchor({
     if (href && (href.startsWith('/track/speech/') || href.includes('/track/speech/'))) {
         const linkText = reactNodeToPlainText(props.children);
         const slug = href.split('/track/speech/')[1]?.split(/[?#]/)[0] || '';
+        const convMatch = typeof window !== 'undefined' ? window.location.pathname.match(/\/chat\/([0-9a-fA-F-]+)/) : null;
+        const convId = convMatch ? convMatch[1] : undefined;
+        let derivedTitle: string | undefined = undefined;
+        const cleanText = linkText.replace(/^[🎧🎬▶️\s]+|[🎧🎬▶️\s]+$/g, '').trim();
+        if (cleanText && !/^(track\s+(speech|video|audio)|preview|watch|play)$/i.test(cleanText)) {
+            derivedTitle = cleanText;
+        } else if (slug.includes('_job-')) {
+            const rawPrefix = slug.split('_job-')[0];
+            const words = rawPrefix.split(/[-_]/).filter(Boolean);
+            if (words.length > 0 && !['speech', 'audio', 'track'].includes(words[0].toLowerCase())) {
+                derivedTitle = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            }
+        }
         return (
             <a
                 {...props}
@@ -133,7 +160,11 @@ export function MarkdownAnchor({
                 onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    openSpeechTrackingModal({ identifier: slug, title: linkText || undefined });
+                    openSpeechTrackingModal({
+                        identifier: slug,
+                        title: derivedTitle,
+                        conversationId: convId,
+                    });
                 }}
                 className={clsx(props.className, 'inline-flex items-center gap-1.5 px-3 py-1 my-1 rounded-lg text-xs font-semibold border transition shadow-sm')}
                 style={{ color: 'var(--chat-accent)', borderColor: 'var(--modal-border)', background: 'var(--surface-muted)' }}

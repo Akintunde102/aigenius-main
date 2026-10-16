@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { FiX } from "react-icons/fi";
 import { UserFilesBrowser } from "@/app/components/user-files/UserFilesBrowser";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
 import type { UploadedFilesLibraryState } from "@/app/components/user-files/useUploadedFilesList";
@@ -35,28 +36,23 @@ const MyFilesModal: React.FC<MyFilesModalProps> = ({ onClose, library }) => {
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [onClose]);
 
-  const filesCount = library.files?.length ?? 0;
-  const subtitle =
-    filesCount > 0
-      ? `${filesCount} ${filesCount === 1 ? "file" : "files"} · ${t("modals.myFilesSubtitle", "Browse, search, and manage your uploaded files")}`
-      : t("modals.myFilesSubtitle", "Browse, search, and manage your uploaded files");
-
   return (
     <AppModal
       open
       onClose={onClose}
-      size="tall"
+      size="xl"
+      className="z-[110]"
       mobileFullScreen={isMobile}
       closeOnEscape={false}
       ariaLabelledBy="my-files-modal-title"
-      panelClassName="!max-h-[min(90vh,720px)]"
     >
       <AppModalHeader
         titleId="my-files-modal-title"
-        title={t("modals.myFilesTitle", "My files")}
-        subtitle={subtitle}
+        title={t("modals.myFilesTitle", "My Files")}
+        subtitle={t("modals.myFilesSubtitle", "Browse, search, and manage your uploaded and generated files.")}
         onClose={onClose}
       />
+
       <div className="my-files-browser-container flex min-h-0 flex-1 flex-col overflow-hidden px-0 pb-0 pt-0">
         <UserFilesBrowser
           variant="modal"

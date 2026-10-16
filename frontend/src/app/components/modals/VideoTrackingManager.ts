@@ -7,6 +7,8 @@ export interface VideoTrackingModalPayload {
     identifier: string;
     /** Optional friendly title for header */
     title?: string;
+    /** Conversation ID where video was generated */
+    conversationId?: string;
 }
 
 export const openVideoTrackingModal = (payload: VideoTrackingModalPayload) => {

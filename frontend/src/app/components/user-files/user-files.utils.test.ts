@@ -11,6 +11,7 @@ import {
   joinCloudFileS3Links,
   normalizeUploadFilesList,
   sortCloudFilesNewestFirst,
+  stripStorageKeyPrefix,
   inferPreviewTypeFromCloudFile,
 } from "./user-files.utils";
 
@@ -58,7 +59,50 @@ describe("user-files.utils", () => {
     ).toBe(false);
   });
 
-  it("classifyUserFileCategory maps extensions", () => {
+  it("stripStorageKeyPrefix strips UUID prefixes and directories but keeps base names", () => {
+    expect(
+      stripStorageKeyPrefix(
+        "73654cfc-a854-4b9b-b1ae-cf8de5638cdd_nobox-mobile-snapshot.png",
+      ),
+    ).toBe("nobox-mobile-snapshot.png");
+    expect(
+      stripStorageKeyPrefix(
+        "uploads/ff61872f-e65f-4b1c-9edc-cab7fec90861_generated-1791709425442-0.png",
+      ),
+    ).toBe("generated-1791709425442-0.png");
+    expect(
+      stripStorageKeyPrefix("3af3b412-d775-4611-89db-b8b8d01742cd.mp3"),
+    ).toBe("3af3b412-d775-4611-89db-b8b8d01742cd.mp3");
+    expect(stripStorageKeyPrefix("uploads/simple-image.png")).toBe("simple-image.png");
+  });
+
+  it("getFileExtensionFromCloudFile falls back to s3Link when name and originalName lack extension", () => {
+    expect(
+      getFileExtensionFromCloudFile(
+        file({
+          id: "3",
+          name: "73654cfc-a854-4b9b-b1ae-cf8de5638cdd_nobox-mobile-snapshot",
+          originalName: "",
+          s3Link: "https://bucket.s3.amazonaws.com/uploads/snapshot.png?X-Amz-Signature=123",
+        }),
+      ),
+    ).toBe("png");
+  });
+
+  it("isImageCloudFile detects image URLs from Cloudinary or s3Link", () => {
+    expect(
+      isImageCloudFile(
+        file({
+          id: "img1",
+          name: "no-extension",
+          originalName: "",
+          s3Link: "https://res.cloudinary.com/demo/image/upload/sample",
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("classifyUserFileCategory maps extensions and falls back to s3Link", () => {
     expect(classifyUserFileCategory("png")).toBe("images");
     expect(classifyUserFileCategory("pdf")).toBe("documents");
     expect(classifyUserFileCategory("csv")).toBe("spreadsheets");
@@ -67,9 +111,21 @@ describe("user-files.utils", () => {
     expect(classifyUserFileCategory("zip")).toBe("archives");
     expect(classifyUserFileCategory("mp3")).toBe("audio_video");
     expect(classifyUserFileCategory("weird")).toBe("other");
+    expect(
+      classifyUserFileCategory(
+        "",
+        "https://res.cloudinary.com/demo/image/upload/v1/sample",
+      ),
+    ).toBe("images");
+    expect(
+      classifyUserFileCategory(
+        "",
+        "https://res.cloudinary.com/demo/video/upload/v1/sample",
+      ),
+    ).toBe("audio_video");
   });
 
-  it("buildCloudFileDisplayName avoids double extension", () => {
+  it("buildCloudFileDisplayName avoids double extension and strips UUID prefix", () => {
     expect(
       buildCloudFileDisplayName(
         file({ id: "1", name: "a.png", originalName: "a.png" }),
@@ -80,6 +136,24 @@ describe("user-files.utils", () => {
         file({ id: "2", name: "b.png", originalName: "b" }),
       ),
     ).toBe("b.png");
+    expect(
+      buildCloudFileDisplayName(
+        file({
+          id: "3",
+          name: "uploads/73654cfc-a854-4b9b-b1ae-cf8de5638cdd_nobox-mobile-snapshot.png",
+          originalName: "73654cfc-a854-4b9b-b1ae-cf8de5638cdd_nobox-mobile-snapshot.png",
+        }),
+      ),
+    ).toBe("nobox-mobile-snapshot.png");
+    expect(
+      buildCloudFileDisplayName(
+        file({
+          id: "4",
+          name: "ff61872f-e65f-4b1c-9edc-cab7fec90861_generated-1791709425442-0.png",
+          originalName: "",
+        }),
+      ),
+    ).toBe("generated-1791709425442-0.png");
   });
 
   it("formatFileByteSize handles edge cases", () => {

@@ -6,7 +6,7 @@ export const EmptyState: React.FC = () => {
 
     return (
         <div
-            className="flex h-full w-full flex-col items-center justify-center px-6 text-center"
+            className="w-full max-w-md px-6 text-center"
             style={{ color: "var(--chat-muted-fg)" }}
         >
             <span

@@ -20,6 +20,7 @@ import { Download, Copy, Check, Clock, AlertCircle, RefreshCw } from 'lucide-rea
 import copy from 'copy-to-clipboard';
 import { useLanguage } from '@/lib/providers/LanguageProvider';
 import { MarkdownVideoPlayer } from '@/app/components/model-interface/shared/components/MarkdownVideoPlayer';
+import { updatePlaybackSession } from '@/app/components/playback/playback-session';
 import {
     AppModal,
     AppModalHeader,
@@ -129,6 +130,22 @@ export const VideoJobProgressModal: React.FC = () => {
             videoTrackingEmitter.off('close', onClose);
         };
     }, [doPoll, stopPolling]);
+
+    const derivedVideoTitle = statusData?.title
+        || (payload?.title && !/^(video\s+generation|track\s+video)$/i.test(payload.title) ? payload.title : null)
+        || (payload?.identifier.includes('_job-') ? payload.identifier.split('_job-')[0].split(/[-_]/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : null)
+        || 'Generated Video';
+    const videoConversationId = statusData?.conversation_id || payload?.conversationId;
+    const videoSubtitle = statusData?.model_name || undefined;
+
+    useEffect(() => {
+        if (!statusData || !payload) return;
+        updatePlaybackSession({
+            title: derivedVideoTitle,
+            subtitle: videoSubtitle,
+            conversationId: videoConversationId || undefined,
+        });
+    }, [statusData, payload, derivedVideoTitle, videoSubtitle, videoConversationId]);
 
     if (!payload) {
         return null;
@@ -396,7 +413,9 @@ export const VideoJobProgressModal: React.FC = () => {
 
                             <MarkdownVideoPlayer
                                 src={videoUrl}
-                                title={payload.title || 'Generated video'}
+                                title={derivedVideoTitle}
+                                playbackSubtitle={videoSubtitle}
+                                playbackConversation={videoConversationId || undefined}
                                 playbackReturn={`video:${payload.identifier}`}
                                 className="!max-w-none w-full max-h-[320px] !aspect-auto min-h-[180px] rounded-lg shadow-inner"
                             />

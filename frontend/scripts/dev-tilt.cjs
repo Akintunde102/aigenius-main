@@ -15,7 +15,9 @@ const { isPortFree } = require('../../../scripts/dev-ports.cjs');
 
 const frontendRoot = path.join(__dirname, '..');
 const port = resolveFrontendPort();
-const nextBin = path.join(frontendRoot, '..', 'node_modules', 'next', 'dist', 'bin', 'next');
+const nextBin = fs.existsSync(path.join(frontendRoot, 'node_modules', 'next', 'dist', 'bin', 'next'))
+  ? path.join(frontendRoot, 'node_modules', 'next', 'dist', 'bin', 'next')
+  : path.join(frontendRoot, '..', 'node_modules', 'next', 'dist', 'bin', 'next');
 
 // `next build` / `build:desktop` leaves a production `.next` tree. Running `next dev`
 // on top of it can fail with missing vendor chunks (e.g. react-icons.js).

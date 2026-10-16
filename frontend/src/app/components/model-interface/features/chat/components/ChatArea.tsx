@@ -5,9 +5,9 @@ import {
   OrphanReplyTrigger,
   StickyThreadMarker,
 } from "@/app/components/model-interface/shared/types";
+import { Loader2 } from "lucide-react";
 import { EmptyState } from "./EmptyState";
 import { TypingIndicator } from "./TypingIndicator";
-import { JumpToLatestButton } from "./JumpToLatestButton";
 import {
   ChatAreaVirtualizedList,
   type ChatAreaVirtualizedListProps,
@@ -49,10 +49,12 @@ interface ChatAreaProps {
   streaming?: boolean;
   selectedPersonalityName?: string;
   selectedPersonalityIconUrl?: string;
-  showScrollToBottom?: boolean;
+  isTranscriptHydrating?: boolean;
+  onScrolledUpChange?: (scrolledUp: boolean) => void;
   onPromptButtonSelect?: (label: string) => void;
   onRewritePrompt?: (options?: RewritePromptOptions) => void;
   rewritePromptInProgress?: boolean;
+  composerHeight?: number;
 }
 
 export function ChatArea({
@@ -87,12 +89,26 @@ export function ChatArea({
   streaming = false,
   selectedPersonalityName,
   selectedPersonalityIconUrl,
-  showScrollToBottom = false,
+  isTranscriptHydrating = false,
+  onScrolledUpChange,
   onPromptButtonSelect,
   onRewritePrompt,
   rewritePromptInProgress,
+  composerHeight = 96,
 }: ChatAreaProps) {
   const bindPinchZoom = useChatAreaPinchZoom();
+  const [isScrolledUp, setIsScrolledUp] = React.useState(false);
+
+  const handleScroll = useCallback(() => {
+    const chatArea = chatAreaRef.current;
+    if (!chatArea) return;
+    const distanceToBottom = chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
+    setIsScrolledUp(distanceToBottom > 80);
+  }, [chatAreaRef]);
+
+  useEffect(() => {
+    onScrolledUpChange?.(isScrolledUp);
+  }, [isScrolledUp, onScrolledUpChange]);
 
   const handleChatAreaRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -130,17 +146,12 @@ export function ChatArea({
 
     if (!isNearBottom()) return;
 
-    chatEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
-  }, [showTyping, chatEndRef, chatAreaRef]);
-
-  const handleJumpToLatest = useCallback(() => {
-    const chatArea = chatAreaRef.current;
     if (chatArea) {
-      chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: 'smooth' });
-      return;
+      chatArea.scrollTop = chatArea.scrollHeight;
+    } else {
+      chatEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
     }
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatAreaRef, chatEndRef]);
+  }, [showTyping, chatEndRef, chatAreaRef]);
 
   const listProps: ChatAreaVirtualizedListProps = {
     chat,
@@ -180,7 +191,8 @@ export function ChatArea({
   return (
     <div
       ref={handleChatAreaRef}
-      className="chat-area relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-transparent px-3 py-4 md:px-6 md:py-6 chat-scrollbar"
+      onScroll={handleScroll}
+      className="chat-area relative flex flex-1 min-h-0 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain bg-transparent px-2 py-3 sm:px-4 md:px-6 md:py-6 chat-scrollbar"
       style={{
         position: "relative",
         zIndex: 40,
@@ -189,6 +201,8 @@ export function ChatArea({
         overflowY: "auto",
         overflowX: "hidden",
         overscrollBehaviorY: "contain",
+        WebkitMaskImage: "linear-gradient(to bottom, black 90%, transparent 100%)",
+        maskImage: "linear-gradient(to bottom, black 90%, transparent 100%)",
       }}
     >
       <style jsx>{`
@@ -210,18 +224,37 @@ export function ChatArea({
         }
       `}</style>
 
-      {visibleNonSystemCount === 0 && <EmptyState />}
+      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col min-w-0">
+        {visibleNonSystemCount === 0 && isTranscriptHydrating ? (
+          <div
+            className="flex flex-1 items-center justify-center py-16"
+            aria-busy="true"
+            aria-live="polite"
+          >
+            <Loader2
+              className="h-6 w-6 animate-spin text-[color:var(--chat-muted-fg)]"
+              aria-hidden
+            />
+          </div>
+        ) : null}
 
-      {visibleNonSystemCount > 0 && (
-        <ChatAreaVirtualizedList {...listProps} />
-      )}
+        {visibleNonSystemCount === 0 && !isTranscriptHydrating ? (
+          <div className="flex flex-1 items-center justify-center py-16">
+            <EmptyState />
+          </div>
+        ) : null}
 
-      <TypingIndicator
-        loading={loading}
-        streaming={streaming}
-        showTyping={showTyping}
-        chat={chat}
-      />
+        {visibleNonSystemCount > 0 && (
+          <ChatAreaVirtualizedList {...listProps} />
+        )}
+
+        <TypingIndicator
+          loading={loading}
+          streaming={streaming}
+          showTyping={showTyping}
+          chat={chat}
+        />
+      </div>
 
       <style jsx>{`
         .typing-dot {
@@ -258,7 +291,12 @@ export function ChatArea({
         }
       `}</style>
 
-      <JumpToLatestButton visible={showScrollToBottom} onClick={handleJumpToLatest} />
+      {/* Dynamic bottom anchor to ensure the last message clears the composer and bottom gradient mask */}
+      <div
+        className="chat-scroll-anchor w-full shrink-0 pointer-events-none"
+        style={{ minHeight: `calc(${composerHeight}px + 24px)` }}
+        aria-hidden
+      />
 
       <div ref={chatEndRef} />
     </div>

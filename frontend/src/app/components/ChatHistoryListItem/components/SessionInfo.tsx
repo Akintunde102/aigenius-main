@@ -97,7 +97,7 @@ export const SessionInfo: React.FC<SessionInfoProps> = ({
                     />
                 ) : null}
                 <span className={`min-w-0 truncate transition-opacity ${
-                    isActive ? "font-medium opacity-100" : "font-[350] opacity-92 group-hover:opacity-100"
+                    isActive ? "font-medium opacity-100" : "font-normal opacity-90 group-hover:opacity-100"
                 }`}>
                     {title}
                 </span>

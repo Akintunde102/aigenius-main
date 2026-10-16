@@ -34,7 +34,7 @@ export const DOCS_SURFACE_CARD = "rounded-2xl bg-black/[0.04] dark:bg-white/[0.0
 export const DOCS_SCROLL_MARGIN = "scroll-mt-24";
 
 /** Body copy: comfortable reading size and rhythm. */
-export const DOCS_PROSE_BODY = "text-[16px] leading-[1.75] text-lp-fg antialiased";
+export const DOCS_PROSE_BODY = "text-[17px] leading-relaxed tracking-[-0.015em] text-lp-fg antialiased";
 
 /** Inline and footer text links (pair with DOCS_FOCUS on interactive elements). */
 export const DOCS_LINK_CLASS =

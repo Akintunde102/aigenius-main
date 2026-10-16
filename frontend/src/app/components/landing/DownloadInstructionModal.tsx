@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { FREE_CREDITS } from "./constants";
 import { Modal } from "./Modal";
 import type { Platform } from "./platforms";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 export type { Platform } from "./platforms";
 
@@ -22,15 +23,19 @@ const CODE_BLOCK = "mt-2 block rounded-lg bg-stone-900/5 px-3 py-2 font-mono tex
 
 /** Intentional replica of the Windows SmartScreen prompt so people recognise what to click. */
 function SmartScreenHint() {
+  const { t } = useLanguage();
+
   return (
     <div aria-hidden="true" className="select-none rounded bg-[#0078d7] p-4 text-white">
-      <p className="text-lg">Windows protected your PC</p>
+      <p className="text-lg">{t("landing.smartScreenTitle", "Windows protected your PC")}</p>
       <p className="mt-2 text-xs text-white/90">
-        Microsoft Defender SmartScreen prevented an unrecognized app from starting. Running this
-        app might put your PC at risk.
+        {t(
+          "landing.smartScreenDesc",
+          "Microsoft Defender SmartScreen prevented an unrecognized app from starting. Running this app might put your PC at risk.",
+        )}
       </p>
       <span className="relative mt-3 inline-block px-1 text-xs underline">
-        More info
+        {t("landing.smartScreenMoreInfo", "More info")}
         <span className="pointer-events-none absolute -inset-x-2 -inset-y-1.5 rounded-full border-2 border-white" />
       </span>
     </div>
@@ -90,6 +95,7 @@ interface DownloadInstructionModalProps {
 }
 
 export function DownloadInstructionModal({ platform, onClose }: DownloadInstructionModalProps) {
+  const { t } = useLanguage();
   // Remember the last platform so content stays put while the exit transition plays.
   const lastPlatform = useRef<Platform | null>(null);
   useEffect(() => {
@@ -103,7 +109,7 @@ export function DownloadInstructionModal({ platform, onClose }: DownloadInstruct
     <Modal
       open={platform !== null}
       onClose={onClose}
-      title="Your download should begin shortly."
+      title={t("landing.downloadStartingTitle", "Your download should begin shortly.")}
       description={instruction?.intro}
     >
       {instruction?.hint}
@@ -115,7 +121,9 @@ export function DownloadInstructionModal({ platform, onClose }: DownloadInstruct
       </ol>
 
       <p className="rounded-xl bg-stone-900/5 p-3.5 text-sm text-stone-600 dark:bg-white/10 dark:text-stone-300">
-        <strong>P.S.</strong> You get <strong>{FREE_CREDITS} free credits</strong> when you sign up in the app.
+        {t("landing.freeCreditsNotice", "P.S. You get {credits} free credits when you sign up in the app.", {
+          credits: FREE_CREDITS,
+        })}
       </p>
     </Modal>
   );

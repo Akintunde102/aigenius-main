@@ -21,6 +21,7 @@ export interface ChatHistoryListItemProps {
     onStopGenerating?: () => void;
     models: Model[];
     onSelect: (session: ChatSession) => void;
+    onPrefetchTranscript?: () => void;
     onStarRequest: (session: ChatSession) => void;
     onDeleteRequest: (session: ChatSession) => void;
     onPublishRequest?: (session: ChatSession) => void;

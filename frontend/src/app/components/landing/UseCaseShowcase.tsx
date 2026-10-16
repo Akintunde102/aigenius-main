@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 import { UseCaseDemo } from "./UseCaseDemo";
 import { USE_CASE_DEMOS } from "./use-case-demos";
 
@@ -10,7 +11,36 @@ import { USE_CASE_DEMOS } from "./use-case-demos";
  * horizontal strip above the preview.
  */
 export function UseCaseShowcase() {
+  const { t } = useLanguage();
   const [activeId, setActiveId] = useState(USE_CASE_DEMOS[0]?.id ?? "");
+
+  const getUseCaseTitle = (id: string, defaultTitle: string) => {
+    switch (id) {
+      case "proposals":
+        return t("landing.useCaseProposals", defaultTitle);
+      case "website":
+        return t("landing.useCaseWebsite", defaultTitle);
+      case "excel":
+        return t("landing.useCaseExcel", defaultTitle);
+      case "organize":
+        return t("landing.useCaseFolders", defaultTitle);
+      case "research":
+        return t("landing.useCaseResearch", defaultTitle);
+      case "notes":
+        return t("landing.useCaseMeeting", defaultTitle);
+      case "code":
+        return t("landing.useCaseCode", defaultTitle);
+      case "pdf-summary":
+        return t("landing.useCaseReports", defaultTitle);
+      case "pdf-answer":
+        return t("landing.useCaseFindAnswer", defaultTitle);
+      case "data":
+        return t("landing.useCaseData", defaultTitle);
+      default:
+        return defaultTitle;
+    }
+  };
+
   const demo = USE_CASE_DEMOS.find((entry) => entry.id === activeId) ?? USE_CASE_DEMOS[0];
   if (!demo) return null;
 
@@ -18,7 +48,7 @@ export function UseCaseShowcase() {
     <div className="mt-12 grid gap-8 lg:grid-cols-12 lg:gap-12">
       <div
         role="group"
-        aria-label="Tasks"
+        aria-label={t("landing.tasks", "Tasks")}
         className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 lg:col-span-4 lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:px-0 lg:pb-0"
       >
         {USE_CASE_DEMOS.map((entry) => {
@@ -33,7 +63,7 @@ export function UseCaseShowcase() {
                 selected ? "bg-lp-tint text-lp-fg" : "text-lp-muted hover:text-lp-fg"
               }`}
             >
-              {entry.title}
+              {getUseCaseTitle(entry.id, entry.title)}
             </button>
           );
         })}

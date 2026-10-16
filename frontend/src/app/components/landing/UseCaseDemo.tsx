@@ -3,6 +3,9 @@
 import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
+import { isAigeniusDesktopRuntime } from "@/lib/utils/desktop-runtime";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
+import { Modal } from "./Modal";
 import { Appear, AppWindow, MetaFooter, ToolLine, UserBubble } from "./app-preview/AppWindow";
 import type { Block, ModelName, Segment } from "./app-preview/data";
 import { PREVIEW } from "./app-preview/previewTheme";
@@ -23,6 +26,33 @@ const CHIP_NAME: Readonly<Record<ModelName, string>> = {
   Gemini: "Gemini 2.5 Flash Lite",
   DeepSeek: "DeepSeek V3.1 Terminus",
 };
+
+type DeviceKind = "desktop-runtime" | "windows" | "linux" | "macos" | "mobile" | "other";
+
+function detectDevice(): DeviceKind {
+  if (typeof window === "undefined") return "windows";
+  if (isAigeniusDesktopRuntime()) return "desktop-runtime";
+
+  const ua = navigator.userAgent || "";
+  const uaPlatform = ((navigator as any).userAgentData?.platform || "").toLowerCase();
+  const isMobile =
+    (navigator as any).userAgentData?.mobile ??
+    /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua);
+
+  if (isMobile) return "mobile";
+  if (uaPlatform.includes("win") || /Windows NT|Windows/i.test(ua)) return "windows";
+  if (uaPlatform.includes("linux") || /Linux|X11/i.test(ua)) return "linux";
+  if (uaPlatform.includes("mac") || /Macintosh|Mac OS X/i.test(ua)) return "macos";
+  return "other";
+}
+
+function WindowsIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 88 88" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M0 12.402l35.687-4.86.016 34.423-35.67.203zm35.67 33.529l.028 34.453L.028 75.48.016 45.728zm4.326-39.027L87.914 0v41.527l-47.918.375zm47.918 46.608v41.77L39.996 79.54l.028-34.721z" />
+    </svg>
+  );
+}
 
 function Segments({ segments }: { segments: readonly Segment[] }) {
   return (
@@ -110,8 +140,8 @@ function ReplyBlock({ block }: { block: Block }) {
 function Stage({ framed, children }: { framed: boolean; children: ReactNode }) {
   if (!framed) return <>{children}</>;
   return (
-    <div className="rounded-2xl bg-stone-200 p-3 dark:bg-stone-600/40 sm:p-6">
-      <div className="rounded-xl shadow-2xl ring-1 ring-black/10 dark:ring-white/20">{children}</div>
+    <div className="rounded-xl bg-stone-200/90 p-2 sm:p-2.5 dark:bg-stone-700/50">
+      <div className="rounded-lg shadow-xl ring-1 ring-black/10 dark:ring-white/15">{children}</div>
     </div>
   );
 }
@@ -128,9 +158,32 @@ interface UseCaseDemoProps {
  * use case starts from the beginning.
  */
 export function UseCaseDemo({ demo, framed = true }: UseCaseDemoProps) {
+  const { t } = useLanguage();
   const reduceMotion = useReducedMotion();
   const [time, setTime] = useState(0);
   const [run, setRun] = useState(0);
+  const [device, setDevice] = useState<DeviceKind>("windows");
+  const [linuxModalOpen, setLinuxModalOpen] = useState(false);
+
+  useEffect(() => {
+    setDevice(detectDevice());
+
+    if (typeof window !== "undefined" && !document.getElementById("ms-store-badge-script")) {
+      const script = document.createElement("script");
+      script.id = "ms-store-badge-script";
+      script.type = "module";
+      script.src = "https://get.microsoft.com/badge/ms-store-badge.bundled.js";
+      document.head.appendChild(script);
+    }
+  }, []);
+
+  const handleWindowsLaunch = () => {
+    try {
+      window.location.href = "ms-windows-store://pdp/?ProductId=9NGQQ3GF2WHL";
+    } catch {
+      window.open("https://apps.microsoft.com/detail/9NGQQ3GF2WHL", "_blank");
+    }
+  };
 
   const typeEnd = TYPE_START_MS + demo.prompt.length * TYPE_MS_PER_CHAR;
   const sendAt = typeEnd + SEND_PAUSE_MS;
@@ -158,55 +211,171 @@ export function UseCaseDemo({ demo, framed = true }: UseCaseDemoProps) {
   return (
     <div>
       <Stage framed={framed}>
-      <AppWindow modelName={CHIP_NAME[demo.model]} draft={draft} typing={!sent && typedChars > 0}>
-        {sent && (
-          <Appear>
-            <UserBubble>{demo.prompt}</UserBubble>
-          </Appear>
-        )}
+        <AppWindow
+          modelName={CHIP_NAME[demo.model]}
+          draft={draft}
+          typing={!sent && typedChars > 0}
+          bodyHeightClassName={framed ? "h-[25rem] sm:h-[26.5rem]" : "h-[34rem]"}
+          chatPaddingClassName={framed ? "px-4 pt-3.5 sm:px-5 sm:pt-4" : "px-7 pt-7"}
+        >
+          {sent && (
+            <Appear>
+              <UserBubble>{demo.prompt}</UserBubble>
+            </Appear>
+          )}
 
-        {thinking && (
-          <span className="inline-flex items-center gap-1" role="status" aria-label="Thinking">
-            {[0, 1, 2].map((dot) => (
-              <motion.span
-                key={dot}
-                className="h-1.5 w-1.5 rounded-full bg-current opacity-50"
-                animate={{ opacity: [0.2, 0.8, 0.2] }}
-                transition={{ duration: 1, repeat: Infinity, delay: dot * 0.15 }}
-              />
-            ))}
-          </span>
-        )}
+          {thinking && (
+            <span className="inline-flex items-center gap-1" role="status" aria-label="Thinking">
+              {[0, 1, 2].map((dot) => (
+                <motion.span
+                  key={dot}
+                  className="h-1.5 w-1.5 rounded-full bg-current opacity-50"
+                  animate={{ opacity: [0.2, 0.8, 0.2] }}
+                  transition={{ duration: 1, repeat: Infinity, delay: dot * 0.15 }}
+                />
+              ))}
+            </span>
+          )}
 
-        {demo.blocks.slice(0, visibleBlocks).map((block, index) => (
-          <Appear key={index}>
-            <ReplyBlock block={block} />
-          </Appear>
-        ))}
+          {demo.blocks.slice(0, visibleBlocks).map((block, index) => (
+            <Appear key={index}>
+              <ReplyBlock block={block} />
+            </Appear>
+          ))}
 
-        {finished && (
-          <Appear>
-            <MetaFooter credits={demo.credits} calls={demo.calls} model={CHIP_NAME[demo.model]} />
-          </Appear>
-        )}
-      </AppWindow>
+          {finished && (
+            <Appear>
+              <MetaFooter credits={demo.credits} calls={demo.calls} model={CHIP_NAME[demo.model]} />
+            </Appear>
+          )}
+        </AppWindow>
       </Stage>
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2.5">
         <button
           type="button"
           onClick={() => setRun((value) => value + 1)}
-          className="inline-flex h-11 items-center justify-center rounded-full bg-stone-900/[0.07] px-6 text-[15px] font-medium text-stone-900 transition-[background-color,transform] duration-150 ease-out-strong hover:bg-stone-900/[0.12] active:scale-[0.97] dark:bg-white/[0.1] dark:text-stone-100 dark:hover:bg-white/[0.16]"
+          className="inline-flex h-9 sm:h-10 items-center justify-center rounded-full bg-stone-900/[0.07] px-5 text-sm font-medium text-stone-900 transition-[background-color,transform] duration-150 ease-out-strong hover:bg-stone-900/[0.12] active:scale-[0.97] dark:bg-white/[0.1] dark:text-stone-100 dark:hover:bg-white/[0.16]"
         >
-          Replay
+          {t("landing.demoReplay", "Replay")}
         </button>
-        <Link
-          href="/login"
-          className="inline-flex h-11 items-center justify-center rounded-full bg-stone-900 px-6 text-[15px] font-medium text-white transition-[transform,opacity] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97] dark:bg-white dark:text-stone-900"
-        >
-          Try this with your own files
-        </Link>
+
+        {device === "desktop-runtime" ? (
+          <Link
+            href="/login"
+            className="inline-flex h-9 sm:h-10 items-center justify-center rounded-full bg-stone-900 px-5 text-sm font-medium text-white transition-[transform,opacity] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97] dark:bg-white dark:text-stone-900"
+          >
+            {t("landing.demoTryWithFiles", "Try this with your own files")}
+          </Link>
+        ) : device === "windows" ? (
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            <div className="relative inline-flex overflow-hidden rounded-full">
+              <a
+                href="https://apps.microsoft.com/detail/9NGQQ3GF2WHL"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={handleWindowsLaunch}
+                className="inline-flex h-9 sm:h-10 items-center justify-center gap-2 rounded-full bg-stone-900 px-5 text-sm font-medium text-white transition-[transform,opacity] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97] dark:bg-white dark:text-stone-900"
+              >
+                <WindowsIcon className="h-3.5 w-3.5" />
+                <span>{t("landing.demoTryInWindows", "Try in Windows App")}</span>
+              </a>
+              <ms-store-badge
+                productid="9NGQQ3GF2WHL"
+                launchmode="direct"
+                cid="use_case_demo"
+                theme="auto"
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%) scale(10)",
+                  opacity: 0.001,
+                  cursor: "pointer",
+                  zIndex: 10,
+                }}
+              />
+            </div>
+            <Link
+              href="/login"
+              className="text-xs text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 underline underline-offset-2"
+            >
+              {t("landing.demoOrTryOnWeb", "or try on web")}
+            </Link>
+          </div>
+        ) : device === "linux" ? (
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            <button
+              type="button"
+              onClick={() => setLinuxModalOpen(true)}
+              className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-500/15 transition-colors"
+              title="Linux desktop build is in development"
+            >
+              <span>{t("landing.demoLinuxComingSoon", "Linux app coming soon")}</span>
+              <span className="underline ml-0.5">{t("landing.demoInfo", "info")}</span>
+            </button>
+            <Link
+              href="/login"
+              className="inline-flex h-9 sm:h-10 items-center justify-center rounded-full bg-stone-900 px-5 text-sm font-medium text-white transition-[transform,opacity] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97] dark:bg-white dark:text-stone-900"
+            >
+              {t("landing.demoTryOnWeb", "Try on Web")}
+            </Link>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            {device === "macos" && (
+              <span className="text-xs text-stone-500 dark:text-stone-400">
+                {t("landing.demoMacComingSoon", "macOS app coming soon")}
+              </span>
+            )}
+            <Link
+              href="/login"
+              className="inline-flex h-9 sm:h-10 items-center justify-center rounded-full bg-stone-900 px-5 text-sm font-medium text-white transition-[transform,opacity] duration-150 ease-out-strong hover:opacity-90 active:scale-[0.97] dark:bg-white dark:text-stone-900"
+            >
+              {t("landing.demoTryOnWeb", "Try on Web")}
+            </Link>
+          </div>
+        )}
       </div>
+
+      {linuxModalOpen && (
+        <Modal
+          open={linuxModalOpen}
+          onClose={() => setLinuxModalOpen(false)}
+          title={t("landing.demoLinuxModalTitle", "Linux desktop app coming soon")}
+          size="md"
+        >
+          <div className="space-y-4 text-sm text-stone-600 dark:text-stone-300">
+            <p>
+              {t(
+                "landing.demoLinuxModalP1",
+                "We currently support Windows for native desktop, with the Linux desktop app currently in active development.",
+              )}
+            </p>
+            <p>
+              {t(
+                "landing.demoLinuxModalP2",
+                "In the meantime, you can use AIGenius with full capabilities—including multi-model chat, local file attachments, and tools—directly in your web browser!",
+              )}
+            </p>
+            <div className="pt-2 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setLinuxModalOpen(false)}
+                className="rounded-full px-4 py-2 text-sm text-stone-600 hover:bg-stone-200/50 dark:text-stone-400 dark:hover:bg-white/10"
+              >
+                {t("landing.demoLinuxModalDismiss", "Dismiss")}
+              </button>
+              <Link
+                href="/login"
+                className="inline-flex h-9 items-center justify-center rounded-full bg-stone-900 px-5 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-stone-900"
+              >
+                {t("landing.demoContinueOnWeb", "Continue on Web")}
+              </Link>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

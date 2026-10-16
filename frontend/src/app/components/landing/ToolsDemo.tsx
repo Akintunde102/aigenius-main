@@ -10,6 +10,7 @@ import {
   UserBubble,
 } from "./app-preview/AppWindow";
 import { useLoopClock } from "./useLoopClock";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 const LOOP_MS = 12500;
 const SETTLED_MS = 9800;
@@ -37,6 +38,7 @@ function phase(time: number, start: number, done: number): Phase {
 
 /** Illustrative conversation. Credits are example figures. */
 export function ToolsDemo() {
+  const { t } = useLanguage();
   const { ref, time } = useLoopClock(LOOP_MS, SETTLED_MS);
   const pdf = phase(time, AT.pdfStart, AT.pdfDone);
   const web = phase(time, AT.webStart, AT.webDone);
@@ -51,8 +53,10 @@ export function ToolsDemo() {
       {time >= AT.prompt && (
         <Appear>
           <UserBubble>
-            Summarize annual-report.pdf, check what competitors charge, and find
-            the Acme invoice in my email.
+            {t(
+              "landing.demoToolsPrompt",
+              "Summarize annual-report.pdf, check what competitors charge, and find the Acme invoice in my email.",
+            )}
           </UserBubble>
         </Appear>
       )}
@@ -60,7 +64,7 @@ export function ToolsDemo() {
         <Appear>
           <ToolLine
             label="read_file"
-            status={pdf === "done" ? "done" : "running"}
+            status={pdf === "done" ? t("landing.demoDoneStatus", "done") : "running"}
           />
         </Appear>
       )}
@@ -68,7 +72,7 @@ export function ToolsDemo() {
         <Appear>
           <ToolLine
             label="web_search"
-            status={web === "done" ? "done" : "running"}
+            status={web === "done" ? t("landing.demoDoneStatus", "done") : "running"}
           />
         </Appear>
       )}
@@ -83,18 +87,18 @@ export function ToolsDemo() {
       )}
       {mail === "done" && (
         <Appear>
-          <ToolLine label="gmail_search" status="done" />
+          <ToolLine label="gmail_search" status={t("landing.demoDoneStatus", "done")} />
         </Appear>
       )}
       {time >= AT.answer && (
         <Appear>
           <AssistantText>
-            <strong className="font-semibold">Report:</strong> revenue grew and
-            margins held flat.{" "}
-            <strong className="font-semibold">Competitors:</strong> most charge
-            a flat monthly plan.{" "}
-            <strong className="font-semibold">Email:</strong> the Acme invoice
-            arrived on Tuesday.
+            <strong className="font-semibold">{t("landing.demoToolsAnswerReport", "Report:")}</strong>
+            {t("landing.demoToolsAnswerReportBody", " revenue grew and margins held flat. ")}
+            <strong className="font-semibold">{t("landing.demoToolsAnswerCompetitors", "Competitors:")}</strong>
+            {t("landing.demoToolsAnswerCompetitorsBody", " most charge a flat monthly plan. ")}
+            <strong className="font-semibold">{t("landing.demoToolsAnswerEmail", "Email:")}</strong>
+            {t("landing.demoToolsAnswerEmailBody", " the Acme invoice arrived on Tuesday.")}
           </AssistantText>
         </Appear>
       )}

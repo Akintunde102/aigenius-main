@@ -9,20 +9,22 @@ import {
   ModelMenu,
   UserBubble,
 } from "./app-preview/AppWindow";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 import { PREVIEW } from "./app-preview/previewTheme";
 import { FREE_CREDITS } from "./constants";
 import { useLoopClock } from "./useLoopClock";
 
 const START_CREDITS = Number(FREE_CREDITS);
 
-/**
- * All four models, one message each. For every message the demo opens the model picker, picks the
- * model, types a prompt, sends it, and shows the reply with its cost under it while the wallet
- * balance in the title bar drops by exactly that. Expensive first, so the biggest drop comes first
- * and the cheap models show how little they cost. Prices are the per-message prices from the real
- * model list. Everything is a pure function of the clock, like the other looping demos.
- */
-const TURNS = [
+interface TurnData {
+  model: string;
+  provider: string;
+  cost: number;
+  prompt: string;
+  reply: string;
+}
+
+const STATIC_TURNS = [
   {
     model: "Claude Sonnet 4.5",
     provider: "Anthropic",
@@ -56,7 +58,7 @@ const TURNS = [
 
 /** The model the composer starts on, and where it ends up, so the loop restarts seamlessly. */
 const INITIAL_MODEL = "Gemini 2.5 Flash Lite";
-const MODEL_NAMES = TURNS.map((turn) => turn.model);
+const MODEL_NAMES = STATIC_TURNS.map((turn) => turn.model);
 
 const BEAT_MS = 4600;
 const TYPE_MS_PER_CHAR = 24;
@@ -71,19 +73,51 @@ const AT = {
   cost: 3800,
 } as const;
 
-const SETTLED_MS = (TURNS.length - 1) * BEAT_MS + AT.cost + 700;
+const SETTLED_MS = (STATIC_TURNS.length - 1) * BEAT_MS + AT.cost + 700;
 const FADE_OUT_MS = SETTLED_MS + 700;
 const LOOP_MS = FADE_OUT_MS + 900;
 
 const at = (turnIndex: number, offset: number) => turnIndex * BEAT_MS + offset;
 
 export function WalletDemo() {
+  const { t } = useLanguage();
   const { ref, time } = useLoopClock(LOOP_MS, SETTLED_MS);
 
-  const active = Math.min(TURNS.length - 1, Math.floor(time / BEAT_MS));
-  const turn = TURNS[active] ?? TURNS[0];
+  const turns: readonly TurnData[] = [
+    {
+      model: "Claude Sonnet 4.5",
+      provider: "Anthropic",
+      cost: 31,
+      prompt: t("landing.demoWalletPrompt1", STATIC_TURNS[0].prompt),
+      reply: t("landing.demoWalletReply1", STATIC_TURNS[0].reply),
+    },
+    {
+      model: "GPT-5 Mini",
+      provider: "OpenAI",
+      cost: 4,
+      prompt: t("landing.demoWalletPrompt2", STATIC_TURNS[1].prompt),
+      reply: t("landing.demoWalletReply2", STATIC_TURNS[1].reply),
+    },
+    {
+      model: "DeepSeek V3.1 Terminus",
+      provider: "DeepSeek",
+      cost: 2,
+      prompt: t("landing.demoWalletPrompt3", STATIC_TURNS[2].prompt),
+      reply: t("landing.demoWalletReply3", STATIC_TURNS[2].reply),
+    },
+    {
+      model: "Gemini 2.5 Flash Lite",
+      provider: "Google",
+      cost: 1,
+      prompt: t("landing.demoWalletPrompt4", STATIC_TURNS[3].prompt),
+      reply: t("landing.demoWalletReply4", STATIC_TURNS[3].reply),
+    },
+  ];
+
+  const active = Math.min(turns.length - 1, Math.floor(time / BEAT_MS));
+  const turn = turns[active] ?? turns[0];
   const previousModel =
-    active === 0 ? INITIAL_MODEL : (TURNS[active - 1]?.model ?? INITIAL_MODEL);
+    active === 0 ? INITIAL_MODEL : (turns[active - 1]?.model ?? INITIAL_MODEL);
 
   const chosen = time >= at(active, AT.select);
   const chipModel = chosen ? turn.model : previousModel;
@@ -98,8 +132,8 @@ export function WalletDemo() {
       ? turn.prompt.slice(0, Math.min(turn.prompt.length, typedChars))
       : "";
 
-  const spent = TURNS.reduce(
-    (total, t, index) => (time >= at(index, AT.cost) ? total + t.cost : total),
+  const spent = turns.reduce(
+    (total, tItem, index) => (time >= at(index, AT.cost) ? total + tItem.cost : total),
     0,
   );
   const balance = START_CREDITS - spent;
@@ -134,29 +168,29 @@ export function WalletDemo() {
           >
             {balance}
           </motion.span>
-          <span className={PREVIEW.muted}>credits</span>
+          <span className={PREVIEW.muted}>{t("landing.demoCreditsLabel", "credits")}</span>
         </span>
       }
     >
-      {TURNS.map((t, index) =>
+      {turns.map((tItem, index) =>
         time >= at(index, AT.send) ? (
-          <div key={t.prompt} className="space-y-3.5">
+          <div key={tItem.prompt} className="space-y-3.5">
             <Appear>
-              <UserBubble>{t.prompt}</UserBubble>
+              <UserBubble>{tItem.prompt}</UserBubble>
             </Appear>
             {time >= at(index, AT.reply) && (
               <Appear>
                 <AssistantText>
-                  {t.reply.slice(0, Math.max(0, Math.floor((time - at(index, AT.reply)) / 8)))}
+                  {tItem.reply.slice(0, Math.max(0, Math.floor((time - at(index, AT.reply)) / 8)))}
                 </AssistantText>
               </Appear>
             )}
             {time >= at(index, AT.cost) && (
               <Appear>
                 <MetaFooter
-                  credits={t.cost}
+                  credits={tItem.cost}
                   calls={1}
-                  model={`${t.provider}: ${t.model}`}
+                  model={`${tItem.provider}: ${tItem.model}`}
                 />
               </Appear>
             )}

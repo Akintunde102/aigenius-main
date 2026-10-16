@@ -18,6 +18,7 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
     onStopGenerating,
     models,
     onSelect,
+    onPrefetchTranscript,
     onStarRequest,
     onDeleteRequest,
     onPublishRequest,
@@ -93,6 +94,8 @@ const ChatHistoryListItem: React.FC<ChatHistoryListItemProps> = React.memo(({
         <li
             className={getListItemClassName(isActive, isDeleting, isStarring, isStarred)}
             onClick={handleItemClick}
+            onPointerEnter={onPrefetchTranscript}
+            onFocus={onPrefetchTranscript}
             {...(isActive ? { 'data-active-session': 'true' } : {})}
         >
             <SessionInfo

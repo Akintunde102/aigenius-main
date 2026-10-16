@@ -11,6 +11,7 @@ import {
   UserIcon,
 } from "./appIcons";
 import { PREVIEW } from "./previewTheme";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
@@ -44,6 +45,8 @@ interface AppWindowProps {
   /** A model menu (see ModelMenu) that opens above the model chip. */
   readonly chipMenu?: ReactNode;
   readonly children: ReactNode;
+  readonly bodyHeightClassName?: string;
+  readonly chatPaddingClassName?: string;
 }
 
 /** The desktop app window: title bar, a chat area, and the composer with its model chip. */
@@ -57,7 +60,10 @@ export function AppWindow({
   anchorBottom = false,
   chipMenu,
   children,
+  bodyHeightClassName,
+  chatPaddingClassName,
 }: AppWindowProps) {
+  const { t } = useLanguage();
   const scrollRef = useRef<HTMLDivElement>(null);
   const isAutoScrolling = useRef(true);
 
@@ -97,11 +103,11 @@ export function AppWindow({
         {headerRight ? <div className="ml-auto">{headerRight}</div> : null}
       </div>
 
-      <div className="flex h-[34rem] flex-col">
+      <div className={`flex flex-col ${bodyHeightClassName ?? "h-[34rem]"}`}>
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className={`flex-1 overflow-y-auto px-7 pt-7 text-[15px] ${
+          className={`flex-1 overflow-y-auto text-[15px] ${chatPaddingClassName ?? "px-7 pt-7"} ${
             anchorBottom
               ? "flex flex-col justify-end gap-3.5 pb-3 [mask-image:linear-gradient(to_bottom,transparent,black_2.5rem)]"
               : "space-y-3.5 pb-4"
@@ -118,7 +124,7 @@ export function AppWindow({
               <p
                 className={`min-h-10 flex-1 truncate px-3 py-2 text-lg ${draft ? "" : PREVIEW.muted}`}
               >
-                {draft || "Type..."}
+                {draft || t("landing.demoTypePlaceholder", "Type...")}
                 {typing && (
                   <span className="ml-px inline-block h-5 w-px translate-y-0.5 bg-current motion-safe:animate-pulse" />
                 )}
@@ -214,6 +220,7 @@ interface ApprovalCardProps {
 
 /** Shown while a tool that changes or reads something sensitive waits for the person. Not clickable. */
 export function ApprovalCard({ tool, target, allowed }: ApprovalCardProps) {
+  const { t } = useLanguage();
   return (
     <div className={`rounded-xl border p-4 ${PREVIEW.panel} ${PREVIEW.line}`}>
       <p className="text-sm font-medium">{tool}</p>
@@ -223,7 +230,7 @@ export function ApprovalCard({ tool, target, allowed }: ApprovalCardProps) {
         {target}
       </p>
       <p className={`mt-3 text-[13px] ${PREVIEW.muted}`}>
-        Waiting for your approval
+        {t("landing.demoWaitingApproval", "Waiting for your approval")}
       </p>
       <div className="mt-3 flex items-center gap-2">
         <span
@@ -231,12 +238,12 @@ export function ApprovalCard({ tool, target, allowed }: ApprovalCardProps) {
             allowed ? "scale-[0.96] opacity-70" : ""
           }`}
         >
-          Allow
+          {t("landing.demoAllow", "Allow")}
         </span>
         <span
           className={`rounded-full border px-5 py-1.5 text-[13px] ${PREVIEW.line} ${PREVIEW.muted}`}
         >
-          Deny
+          {t("landing.demoDeny", "Deny")}
         </span>
       </div>
     </div>
@@ -251,17 +258,26 @@ interface MetaFooterProps {
 
 /** The credits line under a finished reply — mirrors the real app's two-column layout. */
 export function MetaFooter({ credits, calls, model }: MetaFooterProps) {
+  const { t } = useLanguage();
+  const creditsText =
+    credits === 1
+      ? t("landing.demoCreditSingle", "1 credit")
+      : t("landing.demoCreditsCount", "{credits} credits", { credits });
+  const callsText =
+    calls === 1
+      ? t("landing.demoCallSingle", "1 call")
+      : t("landing.demoCallsCount", "{calls} calls", { calls });
+
   return (
     <p
       className={`flex items-center justify-between gap-3 pt-1 text-[11px] ${PREVIEW.muted}`}
     >
       <span>
-        <span className={PREVIEW.accent}>
-          {credits} {credits === 1 ? "credit" : "credits"}
-        </span>{" "}
-        · {calls} {calls === 1 ? "call" : "calls"}
+        <span className={PREVIEW.accent}>{creditsText}</span> · {callsText}
       </span>
-      <span>{model} · just now</span>
+      <span>
+        {model} · {t("landing.demoAgoJustNow", "just now")}
+      </span>
     </p>
   );
 }
@@ -282,6 +298,7 @@ interface ModelMenuProps {
 
 /** The model picker as the real app draws it. Presentation only: it opens above the composer's model chip. */
 export function ModelMenu({ current, options, highlighted }: ModelMenuProps) {
+  const { t } = useLanguage();
   return (
     <motion.div
       initial={{ opacity: 0, y: 6, scale: 0.97 }}
@@ -293,7 +310,7 @@ export function ModelMenu({ current, options, highlighted }: ModelMenuProps) {
       <p
         className={`px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-[0.1em] ${PREVIEW.muted}`}
       >
-        Current model
+        {t("landing.demoCurrentModel", "Current model")}
       </p>
       <div className="flex items-center justify-between gap-3 px-3 py-1.5 text-[13px]">
         <span className="truncate">{current}</span>
@@ -303,7 +320,7 @@ export function ModelMenu({ current, options, highlighted }: ModelMenuProps) {
       <p
         className={`px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-[0.1em] ${PREVIEW.muted}`}
       >
-        Quick picks
+        {t("landing.demoQuickPicks", "Quick picks")}
       </p>
       {options.map((name) => (
         <div

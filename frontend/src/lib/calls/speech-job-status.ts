@@ -7,6 +7,9 @@ import {
 export interface SpeechJobStatusResponse {
     success: boolean;
     job_id: string;
+    title?: string | null;
+    voice?: string | null;
+    conversation_id?: string | null;
     model_name: string;
     stage: 'queued' | 'rendering' | 'finalizing' | 'ready' | 'failed';
     stage_label: string;

@@ -21,6 +21,7 @@ import { LINKS } from "@/lib/links";
 import {
   getChatHistory,
 } from "@/lib/utils/modelChatConversationUtils";
+import { storeChatHistory } from "@/lib/utils/chatStorage";
 import {
   DragDropHandler,
   MobileToggleButton,
@@ -165,7 +166,14 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
   const { wallet, setWallet, refreshWalletFromBackend } = walletState;
   const { chatEndRef, chatAreaRef } = refs;
   const { currentChatCostUSD, currentChatCostNaira } = computed;
-  const { switchToSession, isSessionActive, isSessionInFlight, project, onClearDraftQueueRef } = sessionState;
+  const {
+    switchToSession,
+    isSessionActive,
+    isSessionInFlight,
+    hydratingTranscriptSessionId,
+    project,
+    onClearDraftQueueRef,
+  } = sessionState;
   const {
     isAudioMode,
     isSTTActive,
@@ -353,6 +361,20 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
     refreshWalletBalance,
     setWallet,
   });
+
+  const handleRenameSession = useCallback(
+    (sessionId: string, newTitle: string) => {
+      setChatHistory((prev) => {
+        const updated = prev.map((session) =>
+          session.id === sessionId ? { ...session, title: newTitle } : session
+        );
+        void storeChatHistory(updated);
+        return updated;
+      });
+      toast.success("Conversation renamed");
+    },
+    [setChatHistory],
+  );
 
   useModelInterfaceLifecycle({
     isDesktopShell,
@@ -550,6 +572,7 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     hide={
                       showModelSelectionModal ||
                       mobileSidebarOpen ||
+                      isMobile ||
                       !isMobile
                     }
                   />
@@ -627,6 +650,12 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                     setImagePreview={setImagePreview}
                     chatAreaRef={chatAreaRef}
                     showScrollToBottom={showScrollToBottom}
+                    isTranscriptHydrating={
+                      Boolean(
+                        hydratingTranscriptSessionId &&
+                          hydratingTranscriptSessionId === viewSessionId,
+                      )
+                    }
                     handleSave={handleSave}
                     handleChatBoxSend={handleChatBoxSend}
                     handleFileUpload={handleFileUpload}
@@ -696,6 +725,12 @@ export default function ModelInterface({ routeConversationId = null }: ModelInte
                       void handleRewritePrompt(options);
                     }}
                     rewritePromptInProgress={isRewritingPrompt}
+                    onOpenSidebar={() => setMobileSidebarOpen(true)}
+                    onNewChat={() => createNewSessionAndSwitchWrapper(models[0]?.id || "default")}
+                    onRenameSession={handleRenameSession}
+                    onDeleteSession={handleRemoveChatHistorySessionById}
+                    onStarToggle={handleStarToggle}
+                    onPublishSession={handlePublishFromSidebar}
                   />
                   </RenderErrorBoundary>
                 </div>

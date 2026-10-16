@@ -13,6 +13,7 @@ import {
 } from "./app-preview/appIcons";
 import { PREVIEW } from "./app-preview/previewTheme";
 import { CheckIcon } from "./icons";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 const THINK_MS = 600;
@@ -160,6 +161,7 @@ function Switch({ checked, label, onChange }: SwitchProps) {
  * toggle for each model. Pick another model and the answer is regenerated with its own credit cost.
  */
 export function ModelSwitchPreview() {
+  const { t } = useLanguage();
   const [modelId, setModelId] = useState(DEFAULT_MODEL_ID);
   const [quickIds, setQuickIds] = useState<ReadonlySet<string>>(
     () => new Set(DEFAULT_QUICK_IDS),
@@ -268,7 +270,7 @@ export function ModelSwitchPreview() {
           <div
             className={`ml-auto w-fit max-w-[85%] rounded-3xl px-5 py-3.5 leading-relaxed ${PREVIEW.bubble}`}
           >
-            {PROMPT}
+            {t("landing.demoPromptVendor", PROMPT)}
           </div>
 
           <div className="mt-6 max-w-[92%]">
@@ -307,15 +309,15 @@ export function ModelSwitchPreview() {
                 >
                   <span>
                     <span className={PREVIEW.accent}>
-                      {active.credits} credits
+                      {t("landing.demoCreditsCount", "{credits} credits", { credits: active.credits })}
                     </span>{" "}
-                    · 1 call
+                    · {t("landing.demoCallSingle", "1 call")}
                   </span>
                   <span>
                     <span className={PREVIEW.accentSoft}>
                       {active.provider}: {active.name}
                     </span>{" "}
-                    · just now
+                    · {t("landing.demoAgoJustNow", "just now")}
                   </span>
                 </motion.p>
               )}
@@ -331,7 +333,7 @@ export function ModelSwitchPreview() {
               <p
                 className={`min-h-10 flex-1 px-3 py-2 text-lg ${PREVIEW.muted}`}
               >
-                Type...
+                {t("landing.demoTypePlaceholder", "Type...")}
               </p>
               <span
                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${PREVIEW.send}`}
@@ -364,7 +366,7 @@ export function ModelSwitchPreview() {
                       transition={{ duration: 0.15, ease: EASE }}
                       className={`absolute bottom-full left-0 z-20 mb-2 w-64 origin-bottom-left rounded-xl border p-1.5 shadow-xl ${PREVIEW.popover} ${PREVIEW.line}`}
                     >
-                      <p className={SECTION_LABEL}>Current model</p>
+                      <p className={SECTION_LABEL}>{t("landing.demoCurrentModel", "Current model")}</p>
                       <div className="flex items-center justify-between gap-3 px-3 py-1.5 text-xs">
                         <span className="truncate">{active.name}</span>
                         <CheckIcon
@@ -373,7 +375,7 @@ export function ModelSwitchPreview() {
                       </div>
 
                       <div className={`my-1.5 border-t ${PREVIEW.line}`} />
-                      <p className={SECTION_LABEL}>Quick picks</p>
+                      <p className={SECTION_LABEL}>{t("landing.demoQuickPicks", "Quick picks")}</p>
                       <div className="max-h-44 overflow-y-auto [scrollbar-width:thin]">
                         {quickPicks.map((model) => (
                           <button
@@ -396,7 +398,7 @@ export function ModelSwitchPreview() {
                         className={`${ROW} justify-start ${PREVIEW.muted}`}
                       >
                         <PlusIcon className="h-3 w-3" />
-                        Add models
+                        {t("landing.demoAddModels", "Add models")}
                       </button>
                     </motion.div>
                   )}
@@ -441,15 +443,17 @@ export function ModelSwitchPreview() {
             >
               <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-4">
                 <div>
-                  <h4 className="text-base font-semibold">All Models</h4>
+                  <h4 className="text-base font-semibold">{t("landing.demoAllModelsTitle", "All Models")}</h4>
                   <p className={`mt-1 text-xs ${PREVIEW.muted}`}>
-                    Browse and select from all available AI models. Default
-                    picks appear first.
+                    {t(
+                      "landing.demoAllModelsDesc",
+                      "Browse and select from all available AI models. Default picks appear first.",
+                    )}
                   </p>
                 </div>
                 <button
                   type="button"
-                  aria-label="Close"
+                  aria-label={t("common.close", "Close")}
                   onClick={() => setPanelOpen(false)}
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors duration-150 ${PREVIEW.muted} ${PREVIEW.hover}`}
                 >
@@ -463,11 +467,11 @@ export function ModelSwitchPreview() {
                 <SearchIcon
                   className={`h-3.5 w-3.5 shrink-0 ${PREVIEW.muted}`}
                 />
-                <span className="sr-only">Search models</span>
+                <span className="sr-only">{t("landing.demoSearchModelsPlaceholder", "Search models...")}</span>
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search models..."
+                  placeholder={t("landing.demoSearchModelsPlaceholder", "Search models...")}
                   className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-black/40 dark:placeholder:text-white/40"
                 />
               </label>
@@ -477,7 +481,7 @@ export function ModelSwitchPreview() {
                   <li
                     className={`px-3 py-6 text-center text-xs ${PREVIEW.muted}`}
                   >
-                    No models found
+                    {t("landing.demoNoModelsFound", "No models found")}
                   </li>
                 )}
                 {listed.map((model) => (
@@ -500,12 +504,14 @@ export function ModelSwitchPreview() {
                       <span
                         className={`block text-[11px] tabular-nums ${PREVIEW.muted}`}
                       >
-                        {model.credits} / msg
+                        {model.credits} {t("landing.demoPerMsg", "/ msg")}
                       </span>
                     </button>
                     <Switch
                       checked={quickIds.has(model.id)}
-                      label={`Show ${model.name} in quick picks`}
+                      label={t("landing.demoShowInQuickPicks", "Show {model} in quick picks", {
+                        model: model.name,
+                      })}
                       onChange={() => toggleQuick(model.id)}
                     />
                   </li>

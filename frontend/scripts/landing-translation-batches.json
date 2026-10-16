@@ -1,0 +1,12 @@
+[
+  ["en", "en-GB", "en-CA", "en-AU", "es", "es-MX", "fr", "fr-CA", "de", "zh-CN", "zh-TW"],
+  ["zh-HK", "ja", "ko", "pt-BR", "pt-PT", "it", "ru", "ar", "hi", "nl", "pl"],
+  ["tr", "sv", "uk", "el", "cs", "da", "fi", "no", "nn-NO", "ro", "hu"],
+  ["sk", "sl", "bg", "hr", "sr-latn", "sr-cyrl", "bs", "mk", "be", "lt", "lv"],
+  ["et", "is", "ca", "eu", "gl", "ga", "cy", "lb", "mt", "gd", "sq"],
+  ["vi", "id", "th", "bn", "ms", "fil", "ta", "te", "mr", "gu", "kn"],
+  ["ml", "pa", "ne", "si", "as", "kok", "or", "km", "lo", "my", "kk"],
+  ["uz", "az", "ka", "hy", "ky", "mn", "tg", "tk", "tt", "he", "fa"],
+  ["ur", "prs", "ku", "sd", "ug", "sw", "yo", "ha", "ig", "am", "af"],
+  ["zu", "xh", "rw", "nso", "tn", "wo", "ti", "quz", "chr", "iu", "quc"]
+]

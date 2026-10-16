@@ -95,7 +95,7 @@ export function DocPage({
           className={cn(
             "min-w-0 max-w-[42rem] space-y-12",
             DOCS_PROSE_BODY,
-            "[&_code]:rounded [&_code]:bg-black/[0.06] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.9em] dark:[&_code]:bg-white/[0.08] [&_strong]:font-semibold",
+            "[&_code]:rounded-md [&_code]:bg-lp-tint [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-lp-fg [&_strong]:font-semibold",
           )}
         >
           {children}

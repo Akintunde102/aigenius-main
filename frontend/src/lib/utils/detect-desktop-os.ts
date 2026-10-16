@@ -14,6 +14,7 @@ export function detectDesktopOS(): DesktopOS {
 
   const ua = navigator.userAgent;
 
+  if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) return "unknown";
   if (/Mac OS X/.test(ua)) return "macos";
   if (/Windows/.test(ua)) return "windows";
   if (/Linux/.test(ua)) return "linux";

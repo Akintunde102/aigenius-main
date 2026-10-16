@@ -8,6 +8,7 @@ import {
   type ReactNode,
   type SyntheticEvent,
 } from "react";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 import { XIcon } from "./icons";
 
 /** Exit is faster than enter (200ms in, 150ms out): the system responds quickly once you decide. */
@@ -29,6 +30,9 @@ interface ModalProps {
   /** Panel width. Defaults to "md". */
   size?: ModalSize;
   children: ReactNode;
+  className?: string;
+  headerClassName?: string;
+  bodyClassName?: string;
 }
 
 /**
@@ -45,7 +49,11 @@ export function Modal({
   description,
   size = "md",
   children,
+  className,
+  headerClassName,
+  bodyClassName,
 }: ModalProps) {
+  const { t } = useLanguage();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [visible, setVisible] = useState(false);
   const titleId = useId();
@@ -90,32 +98,42 @@ export function Modal({
       aria-describedby={description ? descId : undefined}
       className={`m-auto max-h-[calc(100%-2rem)] w-[calc(100%-2rem)] ${SIZE_CLASS[size]} overflow-y-auto rounded-2xl bg-stone-50 p-0 text-stone-900 shadow-2xl transition-[opacity,transform] ease-out-strong dark:bg-stone-800 dark:text-stone-100 motion-reduce:transition-none ${duration} ${
         visible ? "scale-100 opacity-100" : "scale-[0.97] opacity-0"
-      } backdrop:bg-black/0 backdrop:backdrop-blur-none backdrop:transition-[background-color,backdrop-filter] backdrop:duration-200 backdrop:ease-out-strong data-[visible=true]:backdrop:bg-black/70 data-[visible=true]:backdrop:backdrop-blur-sm motion-reduce:backdrop:transition-none`}
+      } backdrop:bg-black/0 backdrop:backdrop-blur-none backdrop:transition-[background-color,backdrop-filter] backdrop:duration-200 backdrop:ease-out-strong data-[visible=true]:backdrop:bg-black/70 data-[visible=true]:backdrop:backdrop-blur-sm motion-reduce:backdrop:transition-none ${
+        className ?? ""
+      }`}
     >
-      <div className="px-6 pb-2 pr-14 pt-6">
-        <h2 id={titleId} className="text-lg font-medium tracking-tight">
-          {title}
-        </h2>
-        {description && (
-          <p
-            id={descId}
-            className="mt-1.5 text-sm leading-relaxed text-stone-500 dark:text-stone-400"
-          >
-            {description}
-          </p>
-        )}
+      <div
+        className={`flex items-start justify-between gap-3 px-5 pt-3.5 pb-1 sm:px-6 sm:pt-4 sm:pb-1.5 ${
+          headerClassName ?? ""
+        }`}
+      >
+        <div className="min-w-0 pr-1">
+          <h2 id={titleId} className="text-base sm:text-lg font-medium tracking-tight leading-snug">
+            {title}
+          </h2>
+          {description && (
+            <p
+              id={descId}
+              className="mt-1 text-sm leading-relaxed text-stone-500 dark:text-stone-400"
+            >
+              {description}
+            </p>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t("landing.demoAriaClose", "Close dialog")}
+          className="shrink-0 -mr-1 -mt-0.5 rounded-full p-1.5 text-stone-500 transition-[transform,background-color] duration-150 ease-out-strong hover:bg-stone-900/5 hover:text-stone-900 active:scale-[0.97] dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-stone-100"
+        >
+          <XIcon className="h-4 w-4" />
+        </button>
       </div>
 
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close dialog"
-        className="absolute right-4 top-4 rounded-full p-1.5 text-stone-500 transition-[transform,background-color] duration-150 ease-out-strong hover:bg-stone-900/5 hover:text-stone-900 active:scale-[0.97] dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-stone-100"
-      >
-        <XIcon className="h-4 w-4" />
-      </button>
-
-      <div className="space-y-4 px-6 pb-6 pt-4">{children}</div>
+      <div className={`px-4 pb-4 sm:px-6 sm:pb-5 pt-1 ${bodyClassName ?? ""}`}>
+        {children}
+      </div>
     </dialog>
   );
 }

@@ -8,6 +8,8 @@ export interface VideoJobStatusResponse {
     success: boolean;
     job_id: string;
     identifier: string;
+    title?: string | null;
+    conversation_id?: string | null;
     model_id: string;
     model_name: string;
     status: 'pending_delivery' | 'processing_delivery' | 'delivered' | 'failed';

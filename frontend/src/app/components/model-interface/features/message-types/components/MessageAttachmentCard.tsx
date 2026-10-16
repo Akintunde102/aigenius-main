@@ -17,6 +17,7 @@ export type MessageAttachmentCardProps = {
     onRemove?: () => void;
     isLoading?: boolean;
     statusLabel?: string;
+    badge?: React.ReactNode;
     disabled?: boolean;
     /** Changes when parent message content changes — avoids stale browser image cache. */
     attachmentCacheSeed?: string | number | null;
@@ -31,6 +32,7 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
     onRemove,
     isLoading = false,
     statusLabel,
+    badge,
     disabled = false,
     attachmentCacheSeed,
 }) => {
@@ -84,6 +86,11 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
                         {statusLabel}
                     </span>
                 ) : null}
+                {badge ? (
+                    <div className="absolute bottom-1 left-1 z-10 pointer-events-none">
+                        {badge}
+                    </div>
+                ) : null}
                 {onRemove ? (
                     <button
                         type="button"
@@ -116,6 +123,18 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
             className="group relative flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800/80 dark:hover:border-slate-600 cursor-pointer overflow-hidden"
             title={`View ${fileName}`}
             onClick={fileUrl ? handleCardClick : undefined}
+            role={fileUrl && (onPreview || onImagePreview) ? 'button' : undefined}
+            tabIndex={fileUrl && (onPreview || onImagePreview) ? 0 : undefined}
+            onKeyDown={
+                fileUrl && (onPreview || onImagePreview)
+                    ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleCardClick(e as any);
+                          }
+                      }
+                    : undefined
+            }
         >
             <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-2 transition-transform duration-300 group-hover:scale-105">
                 {kind === 'audio' ? (
@@ -136,6 +155,11 @@ export const MessageAttachmentCard: React.FC<MessageAttachmentCardProps> = ({
                 <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[8px] font-medium text-white">
                     {statusLabel}
                 </span>
+            ) : null}
+            {badge ? (
+                <div className="absolute bottom-1 left-1 z-10 pointer-events-none">
+                    {badge}
+                </div>
             ) : null}
             {onRemove ? (
                 <button

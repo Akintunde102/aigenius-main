@@ -3,15 +3,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiCheck, FiCopy } from 'react-icons/fi';
 import { useLanguage } from '@/lib/providers/LanguageProvider';
+import { useFormatters } from '@/lib/hooks/useFormatters';
 import { getUserDetails } from '@/lib/calls/get-logged-user-details';
 import { RenderErrorBoundary } from '@/app/components/RenderErrorBoundary';
 import { AppModal, AppModalBody, AppModalHeader } from '@/app/components/modals/AppModal';
 import {
   type AccountDetailsUser,
   formatAccountDisplayName,
-  formatMemberSinceDate,
   formatPricePlanLabel,
-  formatWalletBalance,
   getAccountAvatarInitials,
 } from './me-account-display.utils';
 
@@ -20,7 +19,8 @@ type MeModalProps = {
 };
 
 function MeModalContent({ onClose }: MeModalProps) {
-  const { t, languageInfo } = useLanguage();
+  const { t } = useLanguage();
+  const { formatMemberSince, formatWallet } = useFormatters();
   const [user, setUser] = useState<AccountDetailsUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,15 +46,9 @@ function MeModalContent({ onClose }: MeModalProps) {
 
   const displayName = useMemo(() => formatAccountDisplayName(user), [user]);
   const initials = useMemo(() => getAccountAvatarInitials(user), [user]);
-  const memberSince = useMemo(
-    () => formatMemberSinceDate(user?.createdAt, languageInfo?.code),
-    [user?.createdAt, languageInfo?.code],
-  );
+  const memberSince = useMemo(() => formatMemberSince(user?.createdAt), [user?.createdAt, formatMemberSince]);
   const planLabel = useMemo(() => formatPricePlanLabel(user?.pricePlan), [user?.pricePlan]);
-  const walletLabel = useMemo(
-    () => formatWalletBalance(user?.config?.wallet, languageInfo?.code),
-    [user?.config?.wallet, languageInfo?.code],
-  );
+  const walletLabel = useMemo(() => formatWallet(user?.config?.wallet), [user?.config?.wallet, formatWallet]);
 
   const handleCopyId = async () => {
     const id = user?.id?.trim();

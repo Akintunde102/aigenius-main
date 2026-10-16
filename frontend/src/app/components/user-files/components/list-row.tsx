@@ -40,7 +40,7 @@ export function ListRow({
   const isImg = isImageCloudFile(file);
   const [imgErr, setImgErr] = useState(false);
   const ext = getFileExtensionFromCloudFile(file);
-  const cat = classifyUserFileCategory(ext);
+  const cat = classifyUserFileCategory(ext, file.s3Link);
   const theme = CATEGORY_THEME[cat];
   const borderAccent = FILE_TYPE_LEFT_BORDER[cat];
   const displayName = buildCloudFileDisplayName(file);
@@ -64,11 +64,18 @@ export function ListRow({
 
   return (
     <li>
-      <div className={`flex items-center gap-3 rounded-xl border bg-white p-2.5 transition-colors hover:border-gray-300 sm:gap-4 sm:p-3 ${pickMode && selected ? "border-cyan-500 ring-2 ring-cyan-500/30" : "border-gray-200"}`}>
+      <div
+        className={`app-model-card group flex items-center gap-3 rounded-xl border p-2.5 transition-colors sm:gap-4 sm:p-3 ${
+          pickMode && selected
+            ? "app-model-card--selected ring-1 ring-[var(--chat-accent)] border-[var(--chat-accent)]"
+            : "border-[var(--modal-border)] hover:border-[var(--sidebar-border)]"
+        }`}
+        style={{ background: "var(--modal-bg)" }}
+      >
         <button
           type="button"
           onClick={openOrPreview}
-          className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 sm:h-20 sm:w-20 ${!isImg || imgErr ? borderAccent : "border-l-4 border-l-transparent"}`}
+          className={`relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-lg bg-[var(--surface-muted)] border border-[var(--modal-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40`}
         >
           {isImg && !imgErr ? (
             <img
@@ -81,21 +88,21 @@ export function ListRow({
             />
           ) : (
             <div
-              className={`flex h-full w-full flex-col items-center justify-center gap-0.5 bg-gradient-to-br p-1 ${theme.tileAccent}`}
+              className={`flex h-full w-full flex-col items-center justify-center gap-0.5 p-1`}
             >
-              <span className="scale-[0.65] sm:scale-75">{categoryIcon(cat, "sm")}</span>
-              <span className="font-mono text-[9px] font-bold uppercase text-gray-800">
+              <span className="scale-[0.65] sm:scale-75 text-[var(--sidebar-muted-fg)]">{categoryIcon(cat, "sm")}</span>
+              <span className="font-mono text-[9px] font-bold uppercase text-[var(--sidebar-fg)]">
                 {ext || "—"}
               </span>
             </div>
           )}
         </button>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-gray-900 sm:text-base">
-            {buildCloudFileDisplayName(file)}
+          <p className="truncate text-sm font-semibold text-[var(--sidebar-fg)]" title={displayName}>
+            {displayName}
           </p>
-          <p className="mt-0.5 text-xs text-gray-500 tabular-nums sm:text-sm">
-            <span className="font-mono font-medium text-gray-700">
+          <p className="mt-0.5 text-xs text-[var(--sidebar-muted-fg)] tabular-nums">
+            <span className="font-mono font-medium text-[var(--sidebar-fg)]">
               {ext.toUpperCase()}
             </span>{" "}
             · {formatFileByteSize(file.fileSizeInBytes)} · {timeAgo(file.createdAt)}
@@ -104,21 +111,21 @@ export function ListRow({
         <div className="flex shrink-0 items-center gap-1.5">
           {pickMode ? (
             <span
-              className={`flex h-8 w-8 items-center justify-center rounded-full border ${
+              className={`flex h-6 w-6 items-center justify-center rounded-full border transition-colors ${
                 selected
-                  ? "border-cyan-600 bg-cyan-600 text-white"
-                  : "border-gray-300 bg-white text-transparent"
+                  ? "border-[var(--chat-accent)] bg-[var(--chat-accent)] text-white"
+                  : "border-[var(--modal-border)] bg-transparent text-transparent"
               }`}
               aria-hidden
             >
-              <Check className="h-4 w-4" />
+              <Check className="h-3 w-3 stroke-[3]" />
             </span>
           ) : (
             <>
               <button
                 type="button"
                 onClick={() => onCopy(file)}
-                className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700 sm:text-sm"
+                className="app-modal-btn-primary h-7 px-2.5 text-xs font-semibold"
                 title="Copy link"
               >
                 Copy
@@ -126,19 +133,19 @@ export function ListRow({
               <button
                 type="button"
                 onClick={openOrPreview}
-                className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50 sm:inline-flex sm:items-center sm:gap-1 sm:text-sm"
+                className="app-modal-btn-secondary h-7 px-2 text-xs font-medium inline-flex items-center gap-1"
                 title="Open file"
               >
-                <FiExternalLink size={14} aria-hidden />
-                <span className="sr-only sm:not-sr-only">Open</span>
+                <FiExternalLink size={13} aria-hidden />
+                <span className="hidden sm:inline">Open</span>
               </button>
-          <FileActionsMenu
-            file={file}
-            tone="light"
-            conversationOnly
-            onCopy={() => onCopy(file)}
-            onRequestClose={onRequestClose}
-          />
+              <FileActionsMenu
+                file={file}
+                tone="light"
+                conversationOnly
+                onCopy={() => onCopy(file)}
+                onRequestClose={onRequestClose}
+              />
             </>
           )}
         </div>

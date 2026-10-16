@@ -37,6 +37,7 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
   hasUploadedFiles = false,
   textareaId = 'chat-composer-textarea',
   mini = false,
+  hideDefaultSubmit = false,
   actionSlot,
 }) => {
   const { t } = useLanguage();
@@ -109,36 +110,38 @@ export const ChatTextarea: React.FC<ChatTextareaProps & {
 
       {actionSlot}
 
-      {responseInProgress ? (
-        <>
-          {onStopGeneration ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                onStopGeneration();
-              }}
-              className="chat-composer-stop flex-shrink-0 rounded-full p-2 transition-all active:scale-95"
-              title={t('composer.stop', 'Stop generation')}
-              aria-label={t('composer.stop', 'Stop generation')}
-              style={{ marginBottom: '2px' }}
-            >
-              <Square size={14} fill="currentColor" strokeWidth={0} />
-            </button>
-          ) : null}
-        </>
-      ) : (
-        <button
-          type="submit"
-          disabled={!canSend}
-          onClick={onSubmit}
-          className={`chat-composer-send flex-shrink-0 rounded-full p-1.5 transition-colors ${canSend ? "chat-composer-send--enabled" : "chat-composer-send--disabled"}`}
-          title={resolvedSubmitTitle}
-          aria-label={t('composer.send', 'Send message')}
-          style={{ marginBottom: '2px' }}
-        >
-          <ArrowUp size={16} />
-        </button>
+      {!hideDefaultSubmit && (
+        responseInProgress ? (
+          <>
+            {onStopGeneration ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onStopGeneration();
+                }}
+                className="chat-composer-stop flex-shrink-0 rounded-full p-2 transition-all active:scale-95"
+                title={t('composer.stop', 'Stop generation')}
+                aria-label={t('composer.stop', 'Stop generation')}
+                style={{ marginBottom: '2px' }}
+              >
+                <Square size={14} fill="currentColor" strokeWidth={0} />
+              </button>
+            ) : null}
+          </>
+        ) : (
+          <button
+            type="submit"
+            disabled={!canSend}
+            onClick={onSubmit}
+            className={`chat-composer-send flex-shrink-0 rounded-full p-1.5 transition-colors ${canSend ? "chat-composer-send--enabled" : "chat-composer-send--disabled"}`}
+            title={resolvedSubmitTitle}
+            aria-label={t('composer.send', 'Send message')}
+            style={{ marginBottom: '2px' }}
+          >
+            <ArrowUp size={16} />
+          </button>
+        )
       )}
     </div>
   );

@@ -85,6 +85,7 @@ export type ConversationLabel = {
 export type UserChatPreferences = {
     sidebarOrganization: 'flat' | 'labels';
     generalRules: string | null;
+    preferredLocale?: string | null;
 };
 
 export type AllChatResourcesPayload = {
@@ -153,7 +154,9 @@ function normalizeAggregatedResourcesPayload(raw: unknown): AllChatResourcesPayl
             d != null && Array.isArray(d.chatHistory) ? d.chatHistory.map(normalizeSessionMessages) : [],
         pinnedChats:
             d != null && Array.isArray(d.pinnedChats) ? d.pinnedChats.map(normalizeSessionMessages) : [],
-        userChatPreferences: d && d.userChatPreferences ? d.userChatPreferences : { sidebarOrganization: 'flat', generalRules: null },
+        userChatPreferences: d && d.userChatPreferences
+            ? d.userChatPreferences
+            : { sidebarOrganization: 'flat', generalRules: null, preferredLocale: null },
         conversationLabels: d && Array.isArray(d.conversationLabels) ? d.conversationLabels : [],
     };
 }

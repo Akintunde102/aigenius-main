@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import copy from "copy-to-clipboard";
 import toast from "react-hot-toast";
 import { RefreshCw, Search } from "lucide-react";
-import { FiX } from "react-icons/fi";
+import { FiFolder, FiSearch, FiX, FiFilm, FiFileText } from "react-icons/fi";
+import { FaRegImage } from "react-icons/fa";
+import { AppModalSearchRow } from "@/app/components/modals/AppModal";
 import type { CloudFile } from "@/app/components/file/file.interface";
 import {
   buildCloudFileDisplayName,
@@ -15,7 +17,21 @@ import {
   sortCloudFilesNewestFirst,
   USER_FILE_CATEGORY_LABELS,
   USER_FILE_CATEGORY_ORDER,
+  type UserFileCategory,
 } from "./user-files.utils";
+
+function getCategoryIcon(cat: UserFileCategory) {
+  switch (cat) {
+    case "images":
+      return <FaRegImage size={11} className="shrink-0" />;
+    case "documents":
+      return <FiFileText size={12} className="shrink-0" />;
+    case "audio_video":
+      return <FiFilm size={12} className="shrink-0" />;
+    default:
+      return null;
+  }
+}
 import { useUploadedFilesList } from "./useUploadedFilesList";
 import {
   EmptyLibraryState,
@@ -58,6 +74,22 @@ export function UserFilesBrowser({
   const [viewMode, setViewMode] = useState<ViewMode>(isModal ? "list" : "gallery");
   const [lightboxFile, setLightboxFile] = useState<CloudFile | null>(null);
   const [selectedPickIds, setSelectedPickIds] = useState<Set<string>>(new Set());
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key === "/" &&
+        document.activeElement?.tagName !== "INPUT" &&
+        document.activeElement?.tagName !== "TEXTAREA"
+      ) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const filtered = useMemo(
     () => {
@@ -212,7 +244,14 @@ export function UserFilesBrowser({
             onRequestClose={onRequestClose}
           />
         ) : (
-          <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50/60 py-16 text-center text-sm text-gray-500">
+          <div
+            className="m-4 rounded-xl border border-dashed py-14 text-center text-xs"
+            style={{
+              borderColor: "var(--modal-border)",
+              background: "var(--surface-muted)",
+              color: "var(--modal-muted-fg)",
+            }}
+          >
             Nothing matches this filter or search.
           </div>
         )
@@ -316,7 +355,7 @@ export function UserFilesBrowser({
 
   const pickToolbar = isPickMode ? (
     <div
-      className="flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2.5"
+      className="flex shrink-0 flex-wrap items-center gap-2 border-b px-6 py-2"
       style={{
         borderColor: "var(--modal-border)",
         background: "var(--modal-bg-muted)",
@@ -326,7 +365,7 @@ export function UserFilesBrowser({
         type="button"
         onClick={handleConfirmPick}
         disabled={selectedPickFiles.length === 0}
-        className="app-modal-btn-primary px-3.5 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40"
+        className="app-modal-btn-primary h-7 px-3 text-xs font-semibold"
       >
         Attach
       </button>
@@ -334,16 +373,12 @@ export function UserFilesBrowser({
         type="button"
         onClick={() => setSelectedPickIds(new Set())}
         disabled={selectedPickFiles.length === 0}
-        className="rounded-lg border px-3.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-40"
-        style={{
-          borderColor: "var(--modal-border)",
-          color: "var(--modal-fg)",
-        }}
+        className="app-modal-btn-secondary h-7 px-3 text-xs font-medium"
       >
         Clear
       </button>
       <span
-        className="text-xs tabular-nums"
+        className="text-xs font-medium tabular-nums"
         style={{ color: "var(--modal-muted-fg)" }}
       >
         {selectedPickFiles.length} selected
@@ -352,34 +387,56 @@ export function UserFilesBrowser({
   ) : null;
 
   const categoryPills = (
-    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+    <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
       <button
         type="button"
         onClick={() => setNavFilter("all")}
-        className={`app-filter-pill flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium ${
+        aria-pressed={navFilter === "all"}
+        className={`app-filter-pill inline-flex items-center gap-1.5 h-7 px-2.5 text-[11px] font-medium whitespace-nowrap tabular-nums transition-colors ${
           navFilter === "all" ? "app-filter-pill--active" : ""
         }`}
       >
         <span>All</span>
-        <span className="tabular-nums text-[10px] opacity-75">
-          ({filtered.length})
+        <span
+          className="text-[10px] font-semibold px-1 py-0.5 rounded-md leading-none"
+          style={{
+            background:
+              navFilter === "all"
+                ? "color-mix(in srgb, currentColor 14%, transparent)"
+                : "color-mix(in srgb, var(--modal-fg) 7%, transparent)",
+            color: navFilter === "all" ? "inherit" : "var(--sidebar-muted-fg)",
+          }}
+        >
+          {filtered.length}
         </span>
       </button>
       {USER_FILE_CATEGORY_ORDER.map((cat) => {
         const count = grouped[cat]?.length ?? 0;
         if (count === 0) return null;
+        const icon = getCategoryIcon(cat);
+        const isActive = navFilter === cat;
         return (
           <button
             key={cat}
             type="button"
             onClick={() => setNavFilter(cat)}
-            className={`app-filter-pill flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium ${
-              navFilter === cat ? "app-filter-pill--active" : ""
+            aria-pressed={isActive}
+            className={`app-filter-pill inline-flex items-center gap-1.5 h-7 px-2.5 text-[11px] font-medium whitespace-nowrap tabular-nums transition-colors ${
+              isActive ? "app-filter-pill--active" : ""
             }`}
           >
+            {icon}
             <span>{USER_FILE_CATEGORY_LABELS[cat]}</span>
-            <span className="tabular-nums text-[10px] opacity-75">
-              ({count})
+            <span
+              className="text-[10px] font-semibold px-1 py-0.5 rounded-md leading-none"
+              style={{
+                background: isActive
+                  ? "color-mix(in srgb, currentColor 14%, transparent)"
+                  : "color-mix(in srgb, var(--modal-fg) 7%, transparent)",
+                color: isActive ? "inherit" : "var(--sidebar-muted-fg)",
+              }}
+            >
+              {count}
             </span>
           </button>
         );
@@ -389,74 +446,41 @@ export function UserFilesBrowser({
 
   const explorerInnerModal = (
     <>
+      <AppModalSearchRow
+        value={query}
+        onChange={setQuery}
+        placeholder={t("userFiles.searchPlaceholder", "Search files...")}
+        inputRef={searchInputRef}
+      />
+
       <div
-        className="border-b sticky top-0 z-10 flex flex-col gap-2.5 px-4 py-3"
-        style={{
-          borderColor: "var(--modal-border)",
-          background: "var(--modal-bg)",
-        }}
+        className="border-b px-4 sm:px-5 py-2 shrink-0 flex items-center justify-between gap-2 overflow-x-auto [scrollbar-width:none]"
+        style={{ borderColor: "var(--modal-border)", background: "transparent" }}
       >
-        <div className="flex items-center gap-2">
-          <div className="relative min-w-0 flex-1">
-            <label htmlFor="user-files-modal-search" className="sr-only">
-              Search files
-            </label>
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
-              style={{ color: "var(--modal-muted-fg)" }}
-              aria-hidden
-            />
-            <input
-              id="user-files-modal-search"
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search files…"
-              aria-label="Search files"
-              className="app-modal-input h-9 pl-9 pr-8 text-xs sm:text-sm"
-            />
-            {query ? (
-              <button
-                type="button"
-                onClick={() => setQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded transition-colors hover:text-red-500"
-                style={{ color: "var(--modal-muted-fg)" }}
-                title="Clear search"
-                aria-label="Clear search"
-              >
-                <FiX size={14} />
-              </button>
-            ) : null}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none"
-            style={{
-              borderColor: "var(--modal-border)",
-              background: "var(--surface-muted)",
-              color: "var(--modal-muted-fg)",
-            }}
-            title="Refresh"
-            aria-label="Refresh files"
-          >
-            <RefreshCw
-              className={`h-4 w-4 transition-transform ${isRefreshing ? "animate-spin text-[var(--chat-accent)]" : ""}`}
-              aria-hidden
-            />
-          </button>
-        </div>
-
         {categoryPills}
+
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          className="app-filter-pill app-filter-pill--icon flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors"
+          style={{ borderColor: "var(--modal-border)" }}
+          title={t("common.refresh", "Refresh")}
+          aria-label="Refresh files"
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 transition-transform ${isRefreshing ? "animate-spin text-[var(--chat-accent)]" : ""}`}
+            aria-hidden
+          />
+        </button>
       </div>
 
       {pickToolbar}
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      {/* Body */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 sm:px-5 py-2" style={{ background: "transparent" }}>
         <div
-          className={`min-h-0 flex-1 overflow-y-auto overscroll-y-contain workflow-scroll ${
-            isMobileLayout ? "p-0 pb-4" : "p-0 pb-4"
+          className={`min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar [scrollbar-width:thin] ${
+            isMobileLayout ? "p-0 pb-3" : "p-0 pb-3"
           }`}
         >
           {alertsBlock}

@@ -18,9 +18,18 @@ export interface MarkdownVideoPlayerProps {
     className?: string;
     /** `speech:<id>` or `video:<id>` so the now-playing bar can reopen this view. */
     playbackReturn?: string;
+    playbackSubtitle?: string;
+    playbackConversation?: string;
 }
 
-export function MarkdownVideoPlayer({ src, title, className, playbackReturn }: MarkdownVideoPlayerProps) {
+export function MarkdownVideoPlayer({
+    src,
+    title,
+    className,
+    playbackReturn,
+    playbackSubtitle,
+    playbackConversation,
+}: MarkdownVideoPlayerProps) {
     const label = title?.trim() || 'Video';
     const mimeType = mimeTypeForMediaUrl(src);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -53,6 +62,8 @@ export function MarkdownVideoPlayer({ src, title, className, playbackReturn }: M
                 src={src}
                 title={label}
                 data-playback-title={label}
+                data-playback-subtitle={playbackSubtitle}
+                data-playback-conversation={playbackConversation}
                 data-playback-return={playbackReturn}
             >
                 <track kind="captions" />
@@ -74,6 +85,8 @@ export function MarkdownVideoPlayer({ src, title, className, playbackReturn }: M
                 src={src}
                 className="markdown-media-embed__video"
                 data-playback-title={label}
+                data-playback-subtitle={playbackSubtitle}
+                data-playback-conversation={playbackConversation}
                 data-playback-return={playbackReturn}
                 onDoubleClick={handleToggleFullscreen}
             >

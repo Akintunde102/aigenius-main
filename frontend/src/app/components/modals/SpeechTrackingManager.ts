@@ -5,6 +5,7 @@ export const speechTrackingEmitter = ee({});
 export interface SpeechTrackingModalPayload {
     identifier: string;
     title?: string;
+    conversationId?: string;
 }
 
 export const openSpeechTrackingModal = (payload: SpeechTrackingModalPayload) => {

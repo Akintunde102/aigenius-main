@@ -1,10 +1,11 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CopyIcon, DotsHorizontalIcon, RepeatIcon, TrashIcon, TriangleIcon } from "./appIcons";
-import { SUGGESTIONS, type Block, type Chat, type Message, type ModelName, type Segment } from "./data";
+import { getSuggestions, type Block, type Chat, type Message, type ModelName, type Segment } from "./data";
 import { APP } from "./theme";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
@@ -25,6 +26,7 @@ function MessageMenu({
   onDelete: () => void;
   onClose: () => void;
 }) {
+  const { t } = useLanguage();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -49,7 +51,7 @@ function MessageMenu({
         className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] ${APP.hover}`}
       >
         <CopyIcon className={`h-3.5 w-3.5 ${APP.muted}`} />
-        Copy
+        {t("landing.demoCopy", "Copy")}
       </button>
       <button
         type="button"
@@ -57,7 +59,7 @@ function MessageMenu({
         className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] text-red-500 ${APP.hover}`}
       >
         <TrashIcon className="h-3.5 w-3.5" />
-        Delete
+        {t("landing.demoDelete", "Delete")}
       </button>
     </motion.div>
   );
@@ -109,6 +111,7 @@ function Disclosure({ summary, children }: DisclosureProps) {
 }
 
 function BlockView({ block }: { block: Block }) {
+  const { t } = useLanguage();
   switch (block.type) {
     case "heading":
       return block.level === 1 ? (
@@ -131,7 +134,7 @@ function BlockView({ block }: { block: Block }) {
         <Disclosure
           summary={
             <span className="text-amber-600 dark:text-amber-400 text-[13px]">
-              <span className="mr-1 opacity-60">·</span>Thought
+              <span className="mr-1 opacity-60">·</span>{t("landing.demoThoughtLabel", "Thought")}
             </span>
           }
         >
@@ -215,9 +218,12 @@ interface ConversationProps {
 }
 
 export function Conversation({ chat, streaming, onSuggest, onResend, onDeleteMessage }: ConversationProps) {
+  const { t } = useLanguage();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const activeStream = streaming && streaming.chatId === chat.id ? streaming : null;
+
+  const suggestions = useMemo(() => getSuggestions(t), [t]);
 
   // A chat you open starts at the top. New activity (you send, words stream in, a reply lands)
   // scrolls the message list itself to the bottom. scrollIntoView would also scroll the whole page.
@@ -248,9 +254,9 @@ export function Conversation({ chat, streaming, onSuggest, onResend, onDeleteMes
           transition={{ duration: 0.3, ease: EASE }}
           className="mx-auto mt-10 max-w-xl text-center"
         >
-          <p className="text-2xl font-medium tracking-tight">What can I help with?</p>
+          <p className="text-2xl font-medium tracking-tight">{t("landing.demoHelpQuestion", "What can I help with?")}</p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
-            {SUGGESTIONS.map((suggestion) => (
+            {suggestions.map((suggestion) => (
               <button
                 key={suggestion}
                 type="button"
@@ -275,7 +281,7 @@ export function Conversation({ chat, streaming, onSuggest, onResend, onDeleteMes
               <div key={message.id} className={`relative ml-auto w-fit max-w-[85%] rounded-3xl px-5 py-3.5 ${APP.bubble}`}>
                 <p className="leading-relaxed">{message.text}</p>
                 <p className={`mt-2 flex items-center justify-end gap-2 text-[11px] ${APP.muted}`}>
-                  {message.ago ?? "just now"}
+                  {message.ago ?? t("landing.demoAgoJustNow", "just now")}
                   <button
                     type="button"
                     aria-label="Resend message"

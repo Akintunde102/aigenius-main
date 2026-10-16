@@ -5,6 +5,7 @@ import { Modal } from "./Modal";
 import { DISPLAY } from "./typography";
 import { UseCaseDemo } from "./UseCaseDemo";
 import { USE_CASE_DEMOS } from "./use-case-demos";
+import { useLanguage } from "@/lib/providers/LanguageProvider";
 
 function PlayIcon() {
   return (
@@ -20,11 +21,39 @@ function PlayIcon() {
  * CSS was indenting <ul>, which pushed the whole grid in from the heading).
  */
 export function UseCaseGrid() {
+  const { t } = useLanguage();
   const [activeId, setActiveId] = useState<string | null>(null);
   const lastId = useRef<string | null>(null);
   useEffect(() => {
     if (activeId) lastId.current = activeId;
   }, [activeId]);
+
+  const getUseCaseTitle = (id: string, defaultTitle: string) => {
+    switch (id) {
+      case "proposals":
+        return t("landing.useCaseProposals", defaultTitle);
+      case "website":
+        return t("landing.useCaseWebsite", defaultTitle);
+      case "excel":
+        return t("landing.useCaseExcel", defaultTitle);
+      case "organize":
+        return t("landing.useCaseFolders", defaultTitle);
+      case "research":
+        return t("landing.useCaseResearch", defaultTitle);
+      case "notes":
+        return t("landing.useCaseMeeting", defaultTitle);
+      case "code":
+        return t("landing.useCaseCode", defaultTitle);
+      case "pdf-summary":
+        return t("landing.useCaseReports", defaultTitle);
+      case "pdf-answer":
+        return t("landing.useCaseFindAnswer", defaultTitle);
+      case "data":
+        return t("landing.useCaseData", defaultTitle);
+      default:
+        return defaultTitle;
+    }
+  };
 
   // Keep the last demo mounted while the dialog plays its exit transition.
   const shownId = activeId ?? lastId.current;
@@ -33,29 +62,37 @@ export function UseCaseGrid() {
   return (
     <>
       <div className="mt-10 grid gap-2 sm:grid-cols-2">
-        {USE_CASE_DEMOS.map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            aria-haspopup="dialog"
-            onClick={() => setActiveId(entry.id)}
-            className="group flex items-center justify-between gap-6 rounded-2xl bg-black/[0.04] px-6 py-5 text-left transition-[background-color,transform] duration-200 ease-out-strong hover:bg-black/[0.07] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/40 dark:bg-white/[0.05] dark:hover:bg-white/[0.08] dark:focus-visible:ring-white/50"
-          >
-            <span className={`${DISPLAY} text-xl font-normal leading-snug tracking-[-0.015em]`}>
-              {entry.title}
-              <span className="sr-only">. See it work</span>
-            </span>
-            <span
-              aria-hidden="true"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/[0.07] transition-transform duration-200 ease-out-strong group-hover:scale-110 dark:bg-white/[0.1]"
+        {USE_CASE_DEMOS.map((entry) => {
+          const title = getUseCaseTitle(entry.id, entry.title);
+          return (
+            <button
+              key={entry.id}
+              type="button"
+              aria-haspopup="dialog"
+              onClick={() => setActiveId(entry.id)}
+              className="group flex items-center justify-between gap-6 rounded-2xl bg-black/[0.04] px-6 py-5 text-left transition-[background-color,transform] duration-200 ease-out-strong hover:bg-black/[0.07] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/40 dark:bg-white/[0.05] dark:hover:bg-white/[0.08] dark:focus-visible:ring-white/50"
             >
-              <PlayIcon />
-            </span>
-          </button>
-        ))}
+              <span className={`${DISPLAY} text-xl font-normal leading-snug tracking-[-0.015em]`}>
+                {title}
+                <span className="sr-only">. {t("landing.seeItWork", "See it work")}</span>
+              </span>
+              <span
+                aria-hidden="true"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/[0.07] transition-transform duration-200 ease-out-strong group-hover:scale-110 dark:bg-white/[0.1]"
+              >
+                <PlayIcon />
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      <Modal open={activeId !== null} onClose={() => setActiveId(null)} title={demo?.title ?? "Preview"} size="xl">
+      <Modal
+        open={activeId !== null}
+        onClose={() => setActiveId(null)}
+        title={demo ? getUseCaseTitle(demo.id, demo.title) : t("landing.preview", "Preview")}
+        size="xl"
+      >
         {demo && <UseCaseDemo key={demo.id} demo={demo} />}
       </Modal>
     </>
